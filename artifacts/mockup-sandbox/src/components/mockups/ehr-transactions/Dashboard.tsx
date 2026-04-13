@@ -16,10 +16,12 @@ import {
   MessageCircle,
   Minimize2,
   MoreHorizontal,
+  Plus,
   Printer,
   RotateCcw,
   Search,
   Send,
+  Trash2,
   UserCircle,
   Users,
   Wallet,
@@ -195,6 +197,67 @@ const TRANSACTIONS = [
 
 type Transaction = (typeof TRANSACTIONS)[number];
 
+type ProcedureRow = {
+  id: string;
+  procedureName: string;
+  doctor: string;
+  amount: number;
+  discount: number;
+};
+
+const PROCEDURE_OPTIONS = [
+  "Echocardiogram",
+  "Cardiac Stress Test",
+  "Knee Arthroscopy",
+  "Initial Consult",
+  "Annual Checkup",
+  "Blood Panel Comprehensive",
+  "Ultrasound Guided Injection",
+  "Neurological Assessment",
+];
+
+const DOCTOR_OPTIONS = [
+  "Dr. Emily Wong",
+  "Dr. James Wilson",
+  "Dr. Sarah Connor",
+  "Dr. Lisa Cuddy",
+  "Dr. Allison Cameron",
+  "Dr. Omar Farooq",
+];
+
+function createProcedureRows(transaction: Transaction | null): ProcedureRow[] {
+  if (!transaction) return [];
+
+  if (transaction.id === "TRX-847291") {
+    return [
+      {
+        id: `${transaction.id}-p1`,
+        procedureName: "Echocardiogram",
+        doctor: "Dr. Emily Wong",
+        amount: 900,
+        discount: 50,
+      },
+      {
+        id: `${transaction.id}-p2`,
+        procedureName: "Cardiac Stress Test",
+        doctor: "Dr. Omar Farooq",
+        amount: 300,
+        discount: 0,
+      },
+    ];
+  }
+
+  return [
+    {
+      id: `${transaction.id}-p1`,
+      procedureName: transaction.procedureName,
+      doctor: transaction.doctor,
+      amount: transaction.subtotal,
+      discount: transaction.discount,
+    },
+  ];
+}
+
 function StatusBadge({ status }: { status: string }) {
   switch (status.toLowerCase()) {
     case "paid":
@@ -274,17 +337,66 @@ function EditTransactionDrawer({
   onUpdate: (print?: boolean) => void;
 }) {
   const [paymentMode, setPaymentMode] = useState(transaction?.paymentMode.toLowerCase() ?? "cash");
+  const [procedures, setProcedures] = useState<ProcedureRow[]>(() => createProcedureRows(transaction));
 
   useEffect(() => {
     setPaymentMode(transaction?.paymentMode.toLowerCase() ?? "cash");
+    setProcedures(createProcedureRows(transaction));
   }, [transaction]);
 
   const isInsurancePayment = paymentMode === "insurance";
 
+  const procedureTotals = useMemo(() => {
+    const subtotal = procedures.reduce((sum, procedure) => sum + procedure.amount, 0);
+    const discount = procedures.reduce((sum, procedure) => sum + procedure.discount, 0);
+    const net = Math.max(subtotal - discount, 0);
+    const doctorRevenue = procedures.reduce((sum, procedure) => sum + Math.max(procedure.amount - procedure.discount, 0) * 0.35, 0);
+
+    return {
+      subtotal,
+      discount,
+      net,
+      doctorRevenue,
+      hospitalShare: net * 0.5,
+      departmentRevenue: net * 0.1,
+      subDepartmentRevenue: net * 0.05,
+    };
+  }, [procedures]);
+
   const totalPreview = useMemo(() => {
     if (!transaction) return 0;
-    return transaction.subtotal - transaction.discount - transaction.zakat;
-  }, [transaction]);
+    return Math.max(procedureTotals.net - transaction.zakat, 0);
+  }, [procedureTotals.net, transaction]);
+
+  const addProcedure = () => {
+    setProcedures((current) => [
+      ...current,
+      {
+        id: `new-${Date.now()}`,
+        procedureName: "Initial Consult",
+        doctor: DOCTOR_OPTIONS[0],
+        amount: 250,
+        discount: 0,
+      },
+    ]);
+  };
+
+  const removeProcedure = (id: string) => {
+    setProcedures((current) => (current.length > 1 ? current.filter((procedure) => procedure.id !== id) : current));
+  };
+
+  const updateProcedure = (id: string, field: keyof ProcedureRow, value: string | number) => {
+    setProcedures((current) =>
+      current.map((procedure) =>
+        procedure.id === id
+          ? {
+              ...procedure,
+              [field]: typeof value === "number" ? Math.max(value, 0) : value,
+            }
+          : procedure,
+      ),
+    );
+  };
 
   if (!transaction) return null;
 
@@ -349,18 +461,104 @@ function EditTransactionDrawer({
                 <FieldLabel label="Insurance No.">
                   <Input defaultValue={transaction.insuranceNo} className="h-9 font-mono" />
                 </FieldLabel>
-                <FieldLabel label="Procedure Name">
-                  <Input defaultValue={transaction.procedureName} className="h-9" />
-                </FieldLabel>
               </div>
               <p className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-500">Patient identity fields are locked to prevent front-desk editing errors.</p>
             </DrawerSection>
 
+            <DrawerSection title="Procedures & Doctor Assignment">
+              <div className="space-y-2">
+                {procedures.map((procedure, index) => {
+                  const netProcedureAmount = Math.max(procedure.amount - procedure.discount, 0);
+                  const rowDoctorRevenue = netProcedureAmount * 0.35;
+
+                  return (
+                    <div key={procedure.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 transition-all duration-200 ease-out">
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">{index + 1}</span>
+                          <span className="text-xs font-semibold text-slate-700">Procedure line</span>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:bg-rose-50 hover:text-rose-600" onClick={() => removeProcedure(procedure.id)} disabled={procedures.length === 1} title="Remove procedure">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <FieldLabel label="Procedure Name">
+                          <Select value={procedure.procedureName} onValueChange={(value) => updateProcedure(procedure.id, "procedureName", value)}>
+                            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PROCEDURE_OPTIONS.map((option) => (
+                                <SelectItem key={option} value={option}>{option}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FieldLabel>
+                        <FieldLabel label="Performing Doctor">
+                          <Select value={procedure.doctor} onValueChange={(value) => updateProcedure(procedure.id, "doctor", value)}>
+                            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {DOCTOR_OPTIONS.map((doctor) => (
+                                <SelectItem key={doctor} value={doctor}>{doctor}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FieldLabel>
+                        <FieldLabel label="Procedure Amount">
+                          <div className="relative">
+                            <DollarSign className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                            <Input type="number" value={procedure.amount} onChange={(event) => updateProcedure(procedure.id, "amount", Number(event.target.value) || 0)} className="h-9 pl-8 text-sm font-medium" />
+                          </div>
+                        </FieldLabel>
+                        <FieldLabel label="Discount">
+                          <div className="relative">
+                            <DollarSign className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                            <Input type="number" value={procedure.discount} onChange={(event) => updateProcedure(procedure.id, "discount", Number(event.target.value) || 0)} className="h-9 pl-8 text-sm font-medium" />
+                          </div>
+                        </FieldLabel>
+                      </div>
+                      <div className="mt-2 grid grid-cols-3 gap-2 rounded-lg bg-white p-2 text-xs">
+                        <div>
+                          <span className="text-slate-400">Net</span>
+                          <p className="font-bold text-slate-800">{formatCurrency(netProcedureAmount)}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Doctor Rev.</span>
+                          <p className="font-bold text-emerald-700">{formatCurrency(rowDoctorRevenue)}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Assigned</span>
+                          <p className="truncate font-semibold text-slate-700">{procedure.doctor.replace("Dr. ", "")}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <Button variant="outline" className="mt-3 h-9 w-full border-dashed border-indigo-200 bg-indigo-50/50 text-indigo-700 hover:bg-indigo-50" onClick={addProcedure}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Procedure
+              </Button>
+              <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs">
+                <div>
+                  <span className="text-indigo-500">Procedure subtotal</span>
+                  <p className="text-sm font-bold text-indigo-950">{formatCurrency(procedureTotals.subtotal)}</p>
+                </div>
+                <div>
+                  <span className="text-indigo-500">Procedure discounts</span>
+                  <p className="text-sm font-bold text-rose-600">-{formatCurrency(procedureTotals.discount)}</p>
+                </div>
+                <div>
+                  <span className="text-indigo-500">Net billable</span>
+                  <p className="text-sm font-bold text-indigo-950">{formatCurrency(procedureTotals.net)}</p>
+                </div>
+              </div>
+            </DrawerSection>
+
             <DrawerSection title="Billing Information">
               <div className="grid grid-cols-2 gap-3">
-                <MoneyInput label="Subtotal" value={transaction.subtotal} />
+                <MoneyInput label="Subtotal" value={procedureTotals.subtotal} />
                 <MoneyInput label="Zakat" value={transaction.zakat} />
-                <MoneyInput label="Discount" value={transaction.discount} />
+                <MoneyInput label="Discount" value={procedureTotals.discount} />
                 <FieldLabel label="Total">
                   <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-800">{formatCurrency(totalPreview)}</div>
                 </FieldLabel>
@@ -398,10 +596,10 @@ function EditTransactionDrawer({
 
             <DrawerSection title="Shares & Revenue">
               <div className="grid grid-cols-2 gap-3">
-                <MoneyInput label="Doctor Revenue" value={transaction.doctorRevenue} />
-                <MoneyInput label="Hospital Share" value={transaction.hospitalShare} />
-                <MoneyInput label="Department Revenue" value={transaction.deptRevenue} />
-                <MoneyInput label="Sub-department Revenue" value={transaction.subDeptRevenue} />
+                <MoneyInput label="Doctor Revenue" value={procedureTotals.doctorRevenue} />
+                <MoneyInput label="Hospital Share" value={procedureTotals.hospitalShare} />
+                <MoneyInput label="Department Revenue" value={procedureTotals.departmentRevenue} />
+                <MoneyInput label="Sub-department Revenue" value={procedureTotals.subDepartmentRevenue} />
                 <FieldLabel label="Payment Date">
                   <Input defaultValue={transaction.paymentDate} className="h-9" />
                 </FieldLabel>
