@@ -1,0 +1,96 @@
+Design a Financial Transactions Report Dashboard UI for a medical EHR system. The interface must be clean, minimal, and optimized for high-volume data (100+ transactions) without any horizontal scrolling.
+
+Layout & Navigation
+* Use a horizontal top navbar (no vertical sidebar).
+* The UI should be full-screen and responsive, fitting entirely within the viewport.
+* Only the data section scrolls vertically — the rest of the layout (navbar, filters, summary cards) should remain fixed.
+* Strictly avoid horizontal scrolling across the entire screen
+
+Filters Section (Sticky Top)
+Provide a compact and user-friendly filter bar with:
+* Select Department
+* Select Sub-department
+* Select Consultant
+* Amount Received By
+* Date Range Picker
+* Mode of Payment
+* Procedure
+* Visit Type
+* Search bar (search by patient name, MR#, phone)
+Design Guidelines:
+* Keep filters compact and well-aligned (2–3 rows max)
+* Use dropdowns with search capability
+* Maintain clean spacing to avoid clutter
+
+Quick Summary Section (Top Cards)
+Display key metrics:
+* Total Revenue
+* Total Patients
+* Total Amount via Cash
+* Total Amount via Online
+Design Guidelines:
+* Use minimal cards with subtle visual hierarchy
+* Keep information easily scannable
+
+Transactions Display (Core Requirement)
+Each transaction must be displayed in a way that fits within screen width without horizontal scroll.
+Structure Each Transaction into 3 Logical Sections:
+
+1. Visit Info
+* MR#
+* Patient Name
+* Patient Phone
+* Referred By
+* Doctor
+* Insurance Company
+* Insurance No.
+* Procedure Name
+
+2. Billing Info
+* Subtotal
+* Zakat
+* Discount
+* Insurance Claim
+* Co-Payment
+* Total
+* Payment Status
+* Mode of Payment
+
+3. Shares & Revenue
+* Doctor Revenue
+* Hospital Share
+* Department Revenue
+* Sub-department Revenue
+* Payment Date
+
+Additional Field
+* Created By
+
+Row Actions
+Each transaction row must include:
+* Edit
+* Print
+* Refund
+(Use icons or a compact action menu to save space)
+
+UI/UX Strategy (Very Important)
+* Avoid traditional wide tables that cause horizontal scrolling
+* Use card-based rows OR grouped grid layout per transaction
+* Ensure each transaction is:
+    * Compact
+    * Readable
+    * Visually separated (cards or dividers)
+
+Enhancements for Usability
+* Sticky headers for sections (if needed)
+* Expandable/collapsible rows for additional details
+* Use icons, tags, and badges instead of long text where possible
+* Proper alignment and spacing to reduce cognitive load
+* Pagination or infinite scroll for large datasets
+
+Goal
+Design should allow users to:
+* Easily scan and understand transactions
+* Quickly filter and find records
+* View financial summaries instantly
+* Handle 100+ transactions without feeling cluttered or overwhelmed
