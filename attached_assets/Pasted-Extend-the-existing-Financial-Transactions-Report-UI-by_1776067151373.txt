@@ -1,0 +1,82 @@
+Extend the existing Financial Transactions Report UI by adding an Edit Transaction feature with a right-side drawer. The design must be clean, efficient, and optimized for front-desk workflows.
+
+Edit Transaction – Drawer Behavior
+On clicking “Edit” from a transaction row, open a right-side drawer.
+Drawer should:
+Occupy 40% of screen width
+Slide in from the right side
+Overlay the existing screen without full navigation change
+The main screen remains visible in the background (dimmed slightly)
+Drawer Header
+Title: Edit Transaction
+Right-side actions:
+Expand button → expands drawer to full screen
+Close (X) button → closes drawer without saving changes
+When expanded:
+Provide a collapse button to return to 40% width
+Editable Sections in Drawer
+1. Visit Information
+MR# (read-only)
+Patient Name (read-only)
+Patient Phone (read-only)
+Referred By (editable)
+Doctor (editable)
+Insurance Company (editable)
+Insurance No. (editable)
+Procedure Name (editable)
+2. Billing Information
+Subtotal
+Zakat
+Discount
+Insurance Claim
+Co-Payment
+Total (auto-calculated or editable based on logic)
+Payment Status
+Mode of Payment
+3. Shares & Revenue
+Doctor Revenue
+Hospital Share
+Department Revenue
+Sub-department Revenue
+Payment Date
+4. Additional Field
+Created By (editable or read-only based on permission)
+Footer Actions (Sticky Bottom of Drawer)
+
+Provide fixed action buttons:
+
+Update Transaction
+Update & Print
+
+Design Guidelines:
+
+Keep buttons always visible (sticky footer)
+Use primary/secondary button hierarchy
+UX Rules
+Patient-related fields must be non-editable
+Changes should not be saved until user clicks an action button
+Closing via X button discards all changes
+Provide subtle confirmation or feedback on update
+Ensure smooth transitions (open, close, expand, collapse)
+Additional Feature (Main Screen Update)
+
+Add a new quick action in each transaction row:
+
+Send Invoice
+
+Behavior:
+
+On click, provide options:
+Send via Email
+Send via WhatsApp
+
+Design Suggestions:
+
+Use icon-based action (e.g., share/send icon)
+Show as dropdown or quick popover
+Keep it compact to avoid clutter in action buttons
+Goal
+Enable fast and error-free transaction editing
+Maintain a non-intrusive workflow (no full page navigation)
+Keep UI clean even with multiple actions
+Ensure usability for high-volume front desk operations
