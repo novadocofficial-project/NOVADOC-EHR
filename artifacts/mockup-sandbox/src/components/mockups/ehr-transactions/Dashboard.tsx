@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   Bell,
@@ -273,6 +273,14 @@ function EditTransactionDrawer({
   onToggleExpand: () => void;
   onUpdate: (print?: boolean) => void;
 }) {
+  const [paymentMode, setPaymentMode] = useState(transaction?.paymentMode.toLowerCase() ?? "cash");
+
+  useEffect(() => {
+    setPaymentMode(transaction?.paymentMode.toLowerCase() ?? "cash");
+  }, [transaction]);
+
+  const isInsurancePayment = paymentMode === "insurance";
+
   const totalPreview = useMemo(() => {
     if (!transaction) return 0;
     return transaction.subtotal - transaction.discount - transaction.zakat;
@@ -353,8 +361,6 @@ function EditTransactionDrawer({
                 <MoneyInput label="Subtotal" value={transaction.subtotal} />
                 <MoneyInput label="Zakat" value={transaction.zakat} />
                 <MoneyInput label="Discount" value={transaction.discount} />
-                <MoneyInput label="Insurance Claim" value={transaction.insuranceClaim} />
-                <MoneyInput label="Co-Payment" value={transaction.coPayment} />
                 <FieldLabel label="Total">
                   <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-800">{formatCurrency(totalPreview)}</div>
                 </FieldLabel>
@@ -370,7 +376,7 @@ function EditTransactionDrawer({
                   </Select>
                 </FieldLabel>
                 <FieldLabel label="Mode of Payment">
-                  <Select defaultValue={transaction.paymentMode.toLowerCase()}>
+                  <Select value={paymentMode} onValueChange={setPaymentMode}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="cash">Cash</SelectItem>
@@ -381,6 +387,12 @@ function EditTransactionDrawer({
                     </SelectContent>
                   </Select>
                 </FieldLabel>
+              </div>
+              <div className={`overflow-hidden transition-all duration-300 ease-out ${isInsurancePayment ? "mt-3 max-h-28 opacity-100" : "mt-0 max-h-0 opacity-0"}`}>
+                <div className="grid grid-cols-2 gap-3 rounded-lg border border-purple-100 bg-purple-50/40 p-3">
+                  <MoneyInput label="Insurance Claim" value={isInsurancePayment ? transaction.insuranceClaim : 0} />
+                  <MoneyInput label="Co-Payment" value={isInsurancePayment ? transaction.coPayment : 0} />
+                </div>
               </div>
             </DrawerSection>
 
