@@ -277,9 +277,9 @@ function PaymentModeBadge({ mode }: { mode: string }) {
       return <Badge variant="outline" className="text-slate-600 border-slate-200 bg-slate-50"><Wallet className="w-3 h-3 mr-1" /> Cash</Badge>;
     case "online":
     case "card":
-      return <Badge variant="outline" className="text-indigo-600 border-indigo-200 bg-indigo-50"><CreditCard className="w-3 h-3 mr-1" /> {mode}</Badge>;
+      return <Badge variant="outline" className="text-[#4982CF] border-[#4982CF]/25 bg-[#4982CF]/10"><CreditCard className="w-3 h-3 mr-1" /> {mode}</Badge>;
     case "insurance":
-      return <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50"><Building2 className="w-3 h-3 mr-1" /> Insurance</Badge>;
+      return <Badge variant="outline" className="text-[#4982CF] border-[#4982CF]/25 bg-[#4982CF]/10"><Building2 className="w-3 h-3 mr-1" /> Insurance</Badge>;
     default:
       return <Badge variant="outline" className="text-slate-400 border-slate-200 bg-slate-50">{mode}</Badge>;
   }
@@ -314,7 +314,7 @@ function DrawerSection({ title, children }: { title: string; children: React.Rea
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-bold text-slate-900">{title}</h3>
-        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+        <span className="h-1.5 w-1.5 rounded-full bg-[#4982CF]/100" />
       </div>
       {children}
     </section>
@@ -407,7 +407,7 @@ function EditTransactionDrawer({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-slate-950">Edit Transaction</h2>
-              <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">{transaction.id}</Badge>
+              <Badge variant="outline" className="bg-[#4982CF]/10 text-[#4982CF] border-[#4982CF]/25">{transaction.id}</Badge>
             </div>
             <p className="text-xs text-slate-500">Changes are staged until an update action is clicked</p>
           </div>
@@ -475,7 +475,7 @@ function EditTransactionDrawer({
                     <div key={procedure.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 transition-all duration-200 ease-out">
                       <div className="mb-2 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">{index + 1}</span>
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4982CF]/15 text-xs font-bold text-[#4982CF]">{index + 1}</span>
                           <span className="text-xs font-semibold text-slate-700">Procedure line</span>
                         </div>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:bg-rose-50 hover:text-rose-600" onClick={() => removeProcedure(procedure.id)} disabled={procedures.length === 1} title="Remove procedure">
@@ -534,22 +534,22 @@ function EditTransactionDrawer({
                   );
                 })}
               </div>
-              <Button variant="outline" className="mt-3 h-9 w-full border-dashed border-indigo-200 bg-indigo-50/50 text-indigo-700 hover:bg-indigo-50" onClick={addProcedure}>
+              <Button variant="outline" className="mt-3 h-9 w-full border-dashed border-[#4982CF]/25 bg-[#4982CF]/10/50 text-[#4982CF] hover:bg-[#4982CF]/10" onClick={addProcedure}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Procedure
               </Button>
-              <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs">
+              <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-[#4982CF]/20 bg-[#4982CF]/10 p-3 text-xs">
                 <div>
-                  <span className="text-indigo-500">Procedure subtotal</span>
-                  <p className="text-sm font-bold text-indigo-950">{formatCurrency(procedureTotals.subtotal)}</p>
+                  <span className="text-[#4982CF]">Procedure subtotal</span>
+                  <p className="text-sm font-bold text-[#214B7D]">{formatCurrency(procedureTotals.subtotal)}</p>
                 </div>
                 <div>
-                  <span className="text-indigo-500">Procedure discounts</span>
+                  <span className="text-[#4982CF]">Procedure discounts</span>
                   <p className="text-sm font-bold text-rose-600">-{formatCurrency(procedureTotals.discount)}</p>
                 </div>
                 <div>
-                  <span className="text-indigo-500">Net billable</span>
-                  <p className="text-sm font-bold text-indigo-950">{formatCurrency(procedureTotals.net)}</p>
+                  <span className="text-[#4982CF]">Net billable</span>
+                  <p className="text-sm font-bold text-[#214B7D]">{formatCurrency(procedureTotals.net)}</p>
                 </div>
               </div>
             </DrawerSection>
@@ -560,7 +560,7 @@ function EditTransactionDrawer({
                 <MoneyInput label="Zakat" value={transaction.zakat} />
                 <MoneyInput label="Discount" value={procedureTotals.discount} />
                 <FieldLabel label="Total">
-                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-800">{formatCurrency(totalPreview)}</div>
+                  <div className="rounded-lg border border-[#4982CF]/25 bg-[#4982CF]/10 px-3 py-2 text-sm font-bold text-[#2D609E]">{formatCurrency(totalPreview)}</div>
                 </FieldLabel>
                 <FieldLabel label="Payment Status">
                   <Select defaultValue={transaction.status.toLowerCase()}>
@@ -587,7 +587,7 @@ function EditTransactionDrawer({
                 </FieldLabel>
               </div>
               <div className={`overflow-hidden transition-all duration-300 ease-out ${isInsurancePayment ? "mt-3 max-h-28 opacity-100" : "mt-0 max-h-0 opacity-0"}`}>
-                <div className="grid grid-cols-2 gap-3 rounded-lg border border-purple-100 bg-purple-50/40 p-3">
+                <div className="grid grid-cols-2 gap-3 rounded-lg border border-[#4982CF]/20 bg-[#4982CF]/10/40 p-3">
                   <MoneyInput label="Insurance Claim" value={isInsurancePayment ? transaction.insuranceClaim : 0} />
                   <MoneyInput label="Co-Payment" value={isInsurancePayment ? transaction.coPayment : 0} />
                 </div>
@@ -638,7 +638,7 @@ function EditTransactionDrawer({
                 <Printer className="mr-2 h-4 w-4" />
                 Update & Print
               </Button>
-              <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => onUpdate(false)}>
+              <Button className="bg-[#4982CF] hover:bg-[#3D73BC]" onClick={() => onUpdate(false)}>
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 Update Transaction
               </Button>
@@ -681,12 +681,12 @@ export function Dashboard() {
     <div className="relative flex h-screen flex-col overflow-hidden bg-slate-50 font-sans text-slate-900">
       <header className="z-20 flex h-14 flex-none items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 text-lg font-bold tracking-tight text-indigo-700">
+          <div className="flex items-center gap-2 text-lg font-bold tracking-tight text-[#4982CF]">
             <Activity className="h-6 w-6" />
             <span>MedFinance Pro</span>
           </div>
           <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
-            <Button variant="ghost" className="h-9 bg-indigo-50 px-3 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800">Transactions</Button>
+            <Button variant="ghost" className="h-9 bg-[#4982CF]/10 px-3 text-[#4982CF] hover:bg-[#4982CF]/15 hover:text-[#3D73BC]">Transactions</Button>
             <Button variant="ghost" className="h-9 px-3 hover:bg-slate-100">Reports</Button>
             <Button variant="ghost" className="h-9 px-3 hover:bg-slate-100">Claims</Button>
             <Button variant="ghost" className="h-9 px-3 hover:bg-slate-100">Settlements</Button>
@@ -695,7 +695,7 @@ export function Dashboard() {
         <div className="flex items-center gap-3">
           <div className="relative hidden sm:block">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-            <Input placeholder="Search MRN, Name..." className="h-9 w-64 border-slate-200 bg-slate-50 pl-9 text-sm focus-visible:ring-indigo-500" />
+            <Input placeholder="Search MRN, Name..." className="h-9 w-64 border-slate-200 bg-slate-50 pl-9 text-sm focus-visible:ring-[#4982CF]" />
           </div>
           <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-500 hover:text-slate-700">
             <Bell className="h-5 w-5" />
@@ -733,7 +733,7 @@ export function Dashboard() {
             </h1>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="h-8 border-slate-200 bg-white text-xs font-medium">Clear All</Button>
-              <Button size="sm" className="h-8 bg-indigo-600 text-xs font-medium text-white hover:bg-indigo-700">Apply Filters</Button>
+              <Button size="sm" className="h-8 bg-[#4982CF] text-xs font-medium text-white hover:bg-[#3D73BC]">Apply Filters</Button>
             </div>
           </div>
 
@@ -810,7 +810,7 @@ export function Dashboard() {
                     <p className="text-lg font-bold tracking-tight text-slate-900">{stat.value}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <div className="rounded-md bg-indigo-50 p-1.5 text-indigo-600">
+                    <div className="rounded-md bg-[#4982CF]/10 p-1.5 text-[#4982CF]">
                       <Icon className="h-4 w-4" />
                     </div>
                     <span className={`text-[10px] font-medium ${isPositive ? "text-emerald-600" : "text-rose-600"}`}>{stat.trend}</span>
@@ -832,7 +832,7 @@ export function Dashboard() {
           </div>
 
           {TRANSACTIONS.map((trx) => (
-            <Collapsible key={trx.id} open={expandedRows[trx.id]} onOpenChange={() => toggleRow(trx.id)} className={`overflow-hidden rounded-lg border bg-white shadow-sm transition-all hover:border-indigo-200 ${selectedTransaction?.id === trx.id ? "border-indigo-300 ring-2 ring-indigo-100" : "border-slate-200"}`}>
+            <Collapsible key={trx.id} open={expandedRows[trx.id]} onOpenChange={() => toggleRow(trx.id)} className={`overflow-hidden rounded-lg border bg-white shadow-sm transition-all hover:border-[#4982CF]/25 ${selectedTransaction?.id === trx.id ? "border-[#4982CF]/45 ring-2 ring-[#4982CF]/15" : "border-slate-200"}`}>
               <div className="relative grid grid-cols-1 gap-4 p-4 lg:grid-cols-12 lg:items-center">
                 <div className="col-span-1 flex gap-3 lg:col-span-4">
                   <div className="mt-1">
@@ -867,7 +867,7 @@ export function Dashboard() {
                   <div className="flex flex-col justify-center gap-1 border-l border-slate-100 pl-3 text-xs">
                     <div className="flex justify-between text-slate-500"><span>Subtotal:</span> <span className="font-medium text-slate-700">{formatCurrency(trx.subtotal)}</span></div>
                     {trx.discount > 0 && <div className="flex justify-between text-rose-500"><span>Discount:</span> <span>-{formatCurrency(trx.discount)}</span></div>}
-                    <div className="flex justify-between text-indigo-600"><span>Co-Pay:</span> <span className="font-medium">{formatCurrency(trx.coPayment)}</span></div>
+                    <div className="flex justify-between text-[#4982CF]"><span>Co-Pay:</span> <span className="font-medium">{formatCurrency(trx.coPayment)}</span></div>
                   </div>
                 </div>
 
@@ -894,15 +894,15 @@ export function Dashboard() {
 
                 <div className="absolute right-4 top-4 col-span-1 flex items-center justify-end gap-1 lg:relative lg:right-auto lg:top-auto lg:col-span-1">
                   <div className="flex gap-1 lg:flex-col">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600" title="Edit Transaction" onClick={() => openEditor(trx)}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:bg-[#4982CF]/10 hover:text-[#4982CF]" title="Edit Transaction" onClick={() => openEditor(trx)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600" title="Print Receipt">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:bg-[#4982CF]/10 hover:text-[#4982CF]" title="Print Receipt">
                       <Printer className="h-4 w-4" />
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600" title="Send Invoice">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:bg-[#4982CF]/10 hover:text-[#4982CF]" title="Send Invoice">
                           <Send className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -952,7 +952,7 @@ export function Dashboard() {
                       <div className="grid grid-cols-3 gap-1"><span className="text-slate-500">Subtotal:</span> <span className="col-span-2 font-medium">{formatCurrency(trx.subtotal)}</span></div>
                       <div className="grid grid-cols-3 gap-1"><span className="text-slate-500">Zakat:</span> <span className="col-span-2 font-medium">{formatCurrency(trx.zakat)}</span></div>
                       <div className="grid grid-cols-3 gap-1"><span className="text-slate-500">Discount:</span> <span className="col-span-2 font-medium text-rose-600">{formatCurrency(trx.discount)}</span></div>
-                      <div className="grid grid-cols-3 gap-1"><span className="text-slate-500">Ins. Claim:</span> <span className="col-span-2 font-medium text-purple-600">{formatCurrency(trx.insuranceClaim)}</span></div>
+                      <div className="grid grid-cols-3 gap-1"><span className="text-slate-500">Ins. Claim:</span> <span className="col-span-2 font-medium text-[#4982CF]">{formatCurrency(trx.insuranceClaim)}</span></div>
                       <div className="grid grid-cols-3 gap-1"><span className="text-slate-500">Total:</span> <span className="col-span-2 font-bold">{formatCurrency(trx.total)}</span></div>
                     </div>
                     <div className="space-y-2">
@@ -971,7 +971,7 @@ export function Dashboard() {
             <div className="text-xs text-slate-500">Showing <span className="font-medium text-slate-900">1</span> to <span className="font-medium text-slate-900">5</span> of <span className="font-medium text-slate-900">124</span> transactions</div>
             <div className="flex gap-1">
               <Button variant="outline" size="sm" className="h-8 w-8 border-slate-200 bg-white p-0" disabled><span className="sr-only">Previous Page</span><ChevronDown className="h-4 w-4 rotate-90" /></Button>
-              <Button variant="outline" size="sm" className="h-8 w-8 border-slate-200 bg-indigo-50 p-0 text-indigo-700">1</Button>
+              <Button variant="outline" size="sm" className="h-8 w-8 border-slate-200 bg-[#4982CF]/10 p-0 text-[#4982CF]">1</Button>
               <Button variant="outline" size="sm" className="h-8 w-8 border-slate-200 bg-white p-0">2</Button>
               <Button variant="outline" size="sm" className="h-8 w-8 border-slate-200 bg-white p-0">3</Button>
               <Button variant="outline" size="sm" className="h-8 w-8 border-slate-200 bg-white p-0"><span className="sr-only">Next Page</span><ChevronDown className="h-4 w-4 -rotate-90" /></Button>
