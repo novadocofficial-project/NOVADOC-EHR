@@ -562,7 +562,6 @@ export function DoctorsModule({ departments }: { departments: Dept[] }) {
                         {([
                           ["pmdcNumber", "PMDC Number"],
                           ["experience", "Years of Experience"],
-                          ["degreeCompletion", "Degree Completion Year"],
                           ["languages", "Languages Spoken"],
                         ] as [keyof Professional, string][]).map(([key, label]) => (
                           <FormField key={key} label={label}>
