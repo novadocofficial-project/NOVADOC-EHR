@@ -1,0 +1,51 @@
+Objective:
+Design an Admin Settings section accessible via the profile icon. This section will allow management of administration settings with a clean, scalable UI.
+
+🧭 Navigation & Layout
+The main website already has a fixed horizontal navbar at the top.
+When the user enters the Admin Settings, this main navbar should remain unchanged and fixed.
+Inside the Admin page:
+Add a secondary vertical navbar on left side (sub-navbar) specific to admin modules.
+This sub-navbar will contain different admin options (starting with Departments).
+The admin content area should:
+Be internally scrollable
+Maintain a fixed screen layout
+Handle overflow smoothly if there are many options
+🏢 Module 1: Departments & Sub-Departments
+1. Department Creation
+Admin can:
+Create a new department
+Edit department name
+Activate / Deactivate department
+Delete department
+2. Sub-Department Management
+Each department can contain multiple sub-departments
+Admin can:
+Create sub-departments under a specific department
+Edit sub-department name
+Activate / Deactivate sub-department
+Delete sub-department
+📊 Data Display (Important UX Requirement)
+Existing data should be displayed in a grouped structure:
+Departments as parent items
+Sub-departments nested under each department
+Example UI:
+Expandable / collapsible list OR card-based grouping
+Each item (department/sub-department) should show:
+Name
+Status (Active / Inactive)
+Action buttons (Edit, Delete, Toggle Status)
+🎨 UI/UX Guidelines
+Clean and structured admin UI
+Use:
+Cards OR accordion-style layout for grouping
+Toggle switches for activation
+Inline editing OR modal-based editing
+Keep it scalable for future modules in admin
+⚙️ Functional Expectations
+State management for departments & sub-departments
+Real-time UI updates after actions (create/edit/delete)
+Prevent deletion if dependencies exist (optional enhancement)
+Smooth scrolling within admin content area
+🧠 Future Scalability
+Design the sub-navbar in a way that more modules can be added later (e.g., Services, Doctors, Branches)
