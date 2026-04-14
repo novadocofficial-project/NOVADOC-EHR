@@ -119,19 +119,19 @@ export function FeesModule({ departments, doctors }: { departments: Department[]
   const configuredCount = doctorRows.filter(r => r.consultationFee.trim() !== "").length;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4">
+    <div className="flex h-full flex-col p-6 overflow-hidden">
       {/* Header */}
-      <div>
+      <div className="flex-none mb-4">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Doctor Fees & Shares</h1>
         <p className="mt-1 text-sm text-slate-500">
           Select a doctor to configure consultation and follow-up charges per sub-department.
         </p>
       </div>
 
-      <div className="flex gap-5" style={{ minHeight: "calc(100vh - 220px)" }}>
+      <div className="flex flex-1 gap-5 overflow-hidden">
         {/* Doctor List */}
-        <aside className="flex w-64 flex-none flex-col gap-2">
-          <div className="relative">
+        <aside className="flex w-64 flex-none flex-col gap-2 overflow-hidden">
+          <div className="relative flex-none">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <Input
               placeholder="Search doctors…"
@@ -189,7 +189,7 @@ export function FeesModule({ departments, doctors }: { departments: Department[]
         </aside>
 
         {/* Fee Config Panel */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-y-auto">
           {!selectedDoctor ? (
             <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-slate-400">
               <Banknote className="mb-3 h-12 w-12 opacity-30" />

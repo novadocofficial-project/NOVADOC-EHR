@@ -358,7 +358,7 @@ export function AdminSettings() {
         </aside>
 
         {/* Right Content */}
-        <main className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
+        <main className={`flex-1 bg-slate-50/50 ${activeModule === "fees" ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
           )}
