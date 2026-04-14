@@ -33,7 +33,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
 type SubDept = { id: string; name: string; active: boolean };
-type Dept = { id: string; name: string; active: boolean; subDepartments: SubDept[] };
+type DeptSpecialty = { id: string; name: string; active: boolean };
+type Dept = { id: string; name: string; active: boolean; subDepartments: SubDept[]; specialties: DeptSpecialty[] };
 
 type Qualification = { id: string; name: string; startYear: string; completionYear: string };
 type Timing = { id: string; day: string; startTime: string; endTime: string; slotDuration: number; allowMultiple: boolean };
@@ -64,12 +65,6 @@ type Doctor = {
   status: "active" | "inactive";
 };
 
-const SPECIALTIES = [
-  "Cardiology", "Orthopedics", "Neurology", "Pediatrics", "Internal Medicine",
-  "Oncology", "Dermatology", "Ophthalmology", "ENT", "Gynecology",
-  "Radiology", "Psychiatry", "Urology", "Endocrinology", "Gastroenterology",
-];
-
 const ALL_SERVICES = [
   "Consultation", "Surgery", "Diagnosis", "Treatment", "Follow-up",
   "Vaccination", "Lab Tests", "Radiology", "Physiotherapy", "Emergency Care",
@@ -85,7 +80,7 @@ const INITIAL_DOCTORS: Doctor[] = [
     id: "doc-1", name: "Dr. Emily Wong", gender: "Female",
     phone: "+1 (555) 201-3344", email: "emily.wong@medfinance.com", shift: "Morning",
     departments: ["d1"], subDepartments: { d1: ["sd1-1"] },
-    specialties: ["Cardiology", "Internal Medicine"], doctorType: "appointment",
+    specialties: ["Interventional Cardiology", "Electrophysiology"], doctorType: "appointment",
     hasProfessionalDetails: true,
     professional: { awards: "Best Cardiologist 2021", expertise: "Heart failure, Arrhythmia", memberships: "AHA, ESC", languages: "English, Mandarin", experience: "12 years", degreeCompletion: "2010", pmdcNumber: "PMDC-2010-8821" },
     qualifications: [
@@ -104,7 +99,7 @@ const INITIAL_DOCTORS: Doctor[] = [
     id: "doc-2", name: "Dr. James Wilson", gender: "Male",
     phone: "+1 (555) 302-5511", email: "james.wilson@medfinance.com", shift: "Afternoon",
     departments: ["d2"], subDepartments: { d2: ["sd2-1"] },
-    specialties: ["Orthopedics"], doctorType: "token",
+    specialties: ["Joint Replacement"], doctorType: "token",
     hasProfessionalDetails: false, professional: {},
     qualifications: [{ id: "q3", name: "MBBS", startYear: "2005", completionYear: "2011" }],
     services: ["Surgery", "Physiotherapy"],
@@ -115,7 +110,7 @@ const INITIAL_DOCTORS: Doctor[] = [
     id: "doc-3", name: "Dr. Sarah Connor", gender: "Female",
     phone: "+1 (555) 410-7720", email: "sarah.connor@medfinance.com", shift: "Morning",
     departments: ["d3"], subDepartments: { d3: ["sd3-1"] },
-    specialties: ["Neurology"], doctorType: "appointment",
+    specialties: ["Stroke & Cerebrovascular"], doctorType: "appointment",
     hasProfessionalDetails: false, professional: {},
     qualifications: [{ id: "q4", name: "MBBS", startYear: "2006", completionYear: "2012" }, { id: "q5", name: "MD Neurology", startYear: "2012", completionYear: "2015" }],
     services: ["Consultation", "Diagnosis", "Treatment"],
@@ -202,13 +197,37 @@ export function DoctorsModule({ departments }: { departments: Dept[] }) {
   const toggleDept = (deptId: string) => {
     const isSelected = form.departments.includes(deptId);
     if (isSelected) {
+      const dept = departments.find(d => d.id === deptId);
+      const removedSpecialtyNames = (dept?.specialties ?? []).map(s => s.name);
       const newSubDepts = { ...form.subDepartments };
       delete newSubDepts[deptId];
-      setForm(f => ({ ...f, departments: f.departments.filter(d => d !== deptId), subDepartments: newSubDepts }));
+      setForm(f => ({
+        ...f,
+        departments: f.departments.filter(d => d !== deptId),
+        subDepartments: newSubDepts,
+        specialties: f.specialties.filter(s => !removedSpecialtyNames.includes(s)),
+      }));
     } else {
       setForm(f => ({ ...f, departments: [...f.departments, deptId], subDepartments: { ...f.subDepartments, [deptId]: [] } }));
     }
   };
+
+  const availableSpecialties = useMemo(() => {
+    const seen = new Set<string>();
+    const result: { id: string; name: string; deptId: string; deptName: string }[] = [];
+    form.departments.forEach(deptId => {
+      const dept = departments.find(d => d.id === deptId);
+      if (dept) {
+        dept.specialties.forEach(spec => {
+          if (!seen.has(spec.id)) {
+            seen.add(spec.id);
+            result.push({ id: spec.id, name: spec.name, deptId: dept.id, deptName: dept.name });
+          }
+        });
+      }
+    });
+    return result;
+  }, [form.departments, departments]);
 
   const toggleSubDept = (deptId: string, subId: string) => {
     const current = form.subDepartments[deptId] ?? [];
@@ -485,21 +504,43 @@ export function DoctorsModule({ departments }: { departments: Dept[] }) {
 
                 <div>
                   <SectionLabel>Specialties</SectionLabel>
-                  <div className="flex flex-wrap gap-2">
-                    {SPECIALTIES.map(s => {
-                      const selected = form.specialties.includes(s);
-                      return (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => toggleSpecialty(s)}
-                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${selected ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-200 text-slate-600 hover:border-[#4982CF]/50 hover:text-[#4982CF]"}`}
-                        >
-                          {s}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {form.departments.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center">
+                      <p className="text-xs text-slate-400">Select departments above to see their available specialties.</p>
+                    </div>
+                  ) : availableSpecialties.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center">
+                      <p className="text-xs text-slate-400">No specialties are configured for the selected departments.</p>
+                      <p className="mt-1 text-[11px] text-slate-400">Add specialties in Admin Settings → Specialties.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {form.departments.map(deptId => {
+                        const dept = departments.find(d => d.id === deptId);
+                        if (!dept || dept.specialties.length === 0) return null;
+                        return (
+                          <div key={deptId}>
+                            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">{dept.name}</p>
+                            <div className="flex flex-wrap gap-2">
+                              {dept.specialties.map(spec => {
+                                const selected = form.specialties.includes(spec.name);
+                                return (
+                                  <button
+                                    key={spec.id}
+                                    type="button"
+                                    onClick={() => toggleSpecialty(spec.name)}
+                                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${selected ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-200 text-slate-600 hover:border-[#4982CF]/50 hover:text-[#4982CF]"}`}
+                                  >
+                                    {spec.name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 <Separator />
