@@ -31,9 +31,10 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type SubDept = { id: string; name: string; active: boolean };
-type DeptSpecialty = { id: string; name: string; active: boolean };
+type DeptSpecialty = { id: string; name: string; description: string; active: boolean };
 type Dept = { id: string; name: string; active: boolean; subDepartments: SubDept[]; specialties: DeptSpecialty[] };
 
 type Qualification = { id: string; name: string; startYear: string; completionYear: string };
@@ -514,32 +515,42 @@ export function DoctorsModule({ departments }: { departments: Dept[] }) {
                       <p className="mt-1 text-[11px] text-slate-400">Add specialties in Admin Settings → Specialties.</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {form.departments.map(deptId => {
-                        const dept = departments.find(d => d.id === deptId);
-                        if (!dept || dept.specialties.length === 0) return null;
-                        return (
-                          <div key={deptId}>
-                            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">{dept.name}</p>
-                            <div className="flex flex-wrap gap-2">
-                              {dept.specialties.map(spec => {
-                                const selected = form.specialties.includes(spec.name);
-                                return (
-                                  <button
-                                    key={spec.id}
-                                    type="button"
-                                    onClick={() => toggleSpecialty(spec.name)}
-                                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${selected ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-200 text-slate-600 hover:border-[#4982CF]/50 hover:text-[#4982CF]"}`}
-                                  >
-                                    {spec.name}
-                                  </button>
-                                );
-                              })}
+                    <TooltipProvider delayDuration={200}>
+                      <div className="space-y-4">
+                        {form.departments.map(deptId => {
+                          const dept = departments.find(d => d.id === deptId);
+                          if (!dept || dept.specialties.length === 0) return null;
+                          return (
+                            <div key={deptId}>
+                              <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">{dept.name}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {dept.specialties.map(spec => {
+                                  const selected = form.specialties.includes(spec.name);
+                                  return (
+                                    <Tooltip key={spec.id}>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleSpecialty(spec.name)}
+                                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${selected ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-200 text-slate-600 hover:border-[#4982CF]/50 hover:text-[#4982CF]"}`}
+                                        >
+                                          {spec.name}
+                                        </button>
+                                      </TooltipTrigger>
+                                      {spec.description && (
+                                        <TooltipContent side="top" className="max-w-56 text-center leading-relaxed">
+                                          {spec.description}
+                                        </TooltipContent>
+                                      )}
+                                    </Tooltip>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    </TooltipProvider>
                   )}
                 </div>
 
