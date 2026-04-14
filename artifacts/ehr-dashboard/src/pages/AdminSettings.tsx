@@ -21,7 +21,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { DoctorsModule } from "@/pages/DoctorsModule";
+import { DoctorsModule, Doctor, INITIAL_DOCTORS } from "@/pages/DoctorsModule";
 import { SpecialtiesModule } from "@/pages/SpecialtiesModule";
 import { FeesModule } from "@/pages/FeesModule";
 import { Button } from "@/components/ui/button";
@@ -132,6 +132,8 @@ export function AdminSettings() {
 
   const toggleNav = (key: keyof typeof navExpanded) =>
     setNavExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
     d1: true, d2: true, d3: false, d4: true,
@@ -358,7 +360,7 @@ export function AdminSettings() {
         {/* Right Content */}
         <main className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
           {activeModule === "doctors" && (
-            <DoctorsModule departments={departments} />
+            <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
           )}
 
           {activeModule === "specialties" && (
@@ -366,7 +368,7 @@ export function AdminSettings() {
           )}
 
           {activeModule === "fees" && (
-            <FeesModule departments={departments} />
+            <FeesModule departments={departments} doctors={doctors} />
           )}
 
           {activeModule === "departments" && (

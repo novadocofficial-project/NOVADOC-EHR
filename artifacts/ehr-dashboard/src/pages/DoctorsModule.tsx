@@ -46,7 +46,7 @@ type Professional = {
   languages: string; experience: string; degreeCompletion: string; pmdcNumber: string;
 };
 
-type Doctor = {
+export type Doctor = {
   id: string;
   name: string;
   gender: string;
@@ -76,7 +76,7 @@ const SHIFTS = ["Morning", "Afternoon", "Evening", "Night"];
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const GENDERS = ["Male", "Female", "Other"];
 
-const INITIAL_DOCTORS: Doctor[] = [
+export const INITIAL_DOCTORS: Doctor[] = [
   {
     id: "doc-1", name: "Dr. Emily Wong", gender: "Female",
     phone: "+1 (555) 201-3344", email: "emily.wong@medfinance.com", shift: "Morning",
@@ -152,8 +152,15 @@ function FormField({ label, children, required }: { label: string; children: Rea
   );
 }
 
-export function DoctorsModule({ departments }: { departments: Dept[] }) {
-  const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
+export function DoctorsModule({
+  departments,
+  doctors,
+  setDoctors,
+}: {
+  departments: Dept[];
+  doctors: Doctor[];
+  setDoctors: React.Dispatch<React.SetStateAction<Doctor[]>>;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("biography");
