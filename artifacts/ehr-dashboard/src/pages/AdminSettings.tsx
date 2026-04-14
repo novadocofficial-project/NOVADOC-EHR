@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import {
   Activity,
+  Banknote,
   Bell,
   Building2,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Edit2,
   GitBranch,
@@ -16,10 +18,12 @@ import {
   Sparkles,
   Stethoscope,
   Trash2,
+  UserRound,
   X,
 } from "lucide-react";
 import { DoctorsModule } from "@/pages/DoctorsModule";
 import { SpecialtiesModule } from "@/pages/SpecialtiesModule";
+import { FeesModule } from "@/pages/FeesModule";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -118,12 +122,16 @@ const INITIAL_DATA: Department[] = [
   },
 ];
 
-type ActiveModule = "departments" | "specialties" | "doctors";
+type ActiveModule = "departments" | "specialties" | "doctors" | "fees";
 
 export function AdminSettings() {
   const [, setLocation] = useLocation();
   const [activeModule, setActiveModule] = useState<ActiveModule>("departments");
+  const [navExpanded, setNavExpanded] = useState({ departments: true, doctors: true });
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DATA);
+
+  const toggleNav = (key: keyof typeof navExpanded) =>
+    setNavExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
     d1: true, d2: true, d3: false, d4: true,
@@ -227,15 +235,15 @@ export function AdminSettings() {
     setAddValue("");
   };
 
-  const navItem = (module: ActiveModule, icon: React.ReactNode, label: string, indent = false) => (
-    <Button
-      variant="ghost"
-      className={`w-full justify-start gap-3 ${indent ? "pl-8" : ""} ${activeModule === module ? "bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15" : "text-slate-600 hover:bg-slate-100"}`}
+  const subNavItem = (module: ActiveModule, icon: React.ReactNode, label: string) => (
+    <button
+      type="button"
       onClick={() => setActiveModule(module)}
+      className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${activeModule === module ? "bg-[#4982CF]/10 text-[#4982CF]" : "text-slate-600 hover:bg-slate-100"}`}
     >
       {icon}
       {label}
-    </Button>
+    </button>
   );
 
   return (
@@ -294,18 +302,56 @@ export function AdminSettings() {
             <Settings className="h-4 w-4 text-[#4982CF]" />
             Admin Settings
           </div>
-          <nav className="space-y-0.5 p-3">
-            {navItem("departments", <Building2 className="h-4 w-4" />, "Departments")}
-            {navItem("specialties", <Sparkles className="h-4 w-4" />, "Specialties", true)}
-            {navItem("doctors", <Stethoscope className="h-4 w-4" />, "Doctors")}
-            <Button variant="ghost" className="w-full justify-start gap-3 text-slate-400 hover:bg-transparent" disabled>
+          <nav className="p-3 space-y-1">
+            {/* Departments Group */}
+            <button
+              type="button"
+              onClick={() => toggleNav("departments")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Building2 className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Departments</span>
+              {navExpanded.departments
+                ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.departments && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("departments", <LayoutGrid className="h-3.5 w-3.5" />, "Sub-Departments")}
+                {subNavItem("specialties", <Sparkles className="h-3.5 w-3.5" />, "Specialties")}
+              </div>
+            )}
+
+            {/* Doctors Group */}
+            <button
+              type="button"
+              onClick={() => toggleNav("doctors")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Stethoscope className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Doctors</span>
+              {navExpanded.doctors
+                ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.doctors && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("doctors", <UserRound className="h-3.5 w-3.5" />, "Doctor Profiles")}
+                {subNavItem("fees", <Banknote className="h-3.5 w-3.5" />, "Fees & Shares")}
+              </div>
+            )}
+
+            {/* Soon items */}
+            <button type="button" disabled className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-300 cursor-default">
               <Layers className="h-4 w-4" />
-              Services <span className="ml-auto text-[10px] uppercase tracking-wider">Soon</span>
-            </Button>
-            <Button variant="ghost" className="w-full justify-start gap-3 text-slate-400 hover:bg-transparent" disabled>
+              <span className="flex-1 text-left">Services</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">Soon</span>
+            </button>
+            <button type="button" disabled className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-300 cursor-default">
               <GitBranch className="h-4 w-4" />
-              Branches <span className="ml-auto text-[10px] uppercase tracking-wider">Soon</span>
-            </Button>
+              <span className="flex-1 text-left">Branches</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">Soon</span>
+            </button>
           </nav>
         </aside>
 
@@ -317,6 +363,10 @@ export function AdminSettings() {
 
           {activeModule === "specialties" && (
             <SpecialtiesModule departments={departments} setDepartments={setDepartments} />
+          )}
+
+          {activeModule === "fees" && (
+            <FeesModule departments={departments} />
           )}
 
           {activeModule === "departments" && (
