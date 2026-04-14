@@ -1,0 +1,116 @@
+Objective:
+Design and implement a Doctor Management module inside Admin Settings where admin users can add, edit, and manage doctors using a structured multi-section form.
+
+⚠️ Important Instruction (Must Follow)
+Do NOT test the entire application at the end
+Do NOT run full app validation or end-to-end testing
+Only:
+Build the Doctor module functionality
+Ensure UI and logic for this module works in isolation
+Stop execution after completing the Doctor module
+I (the user) will manually test the functionality
+🧭 Entry Point
+Accessible via: Admin Settings → Doctor Section
+Features:
+List of doctors
+“Add Doctor” button
+Edit / Activate / Deactivate / Delete actions
+➕ Add Doctor – Multi-Section Form
+
+Use Tabs or Stepper UI with the following 5 sections:
+
+🧑‍⚕️ 1. Biography Data
+Basic Fields:
+Name
+Gender
+Phone
+Email
+Password
+Shift
+Department Mapping:
+Multi-select Departments
+For each selected department:
+Multi-select Sub-Departments
+Specialties:
+Multi-select specialties
+Doctor Type:
+Single select (radio):
+Token-based
+Appointment-based
+📌 Professional Statement (Conditional Section)
+Hidden by default
+Show only when checkbox is selected: “Add Professional Details”
+
+Fields:
+
+Awards
+Expertise
+Professional Memberships
+Languages
+Experience
+Degree Completion
+PMDC Number
+🎓 2. Qualifications
+Add multiple entries
+Each includes:
+Qualification Name
+Start Year
+Completion Year
+Include:
+“Add More” button
+Remove option per entry
+🛠 3. Services
+Add or select multiple services
+Option to:
+Select existing services
+(Optional) Add new service inline
+⏰ 4. Timings & Availability
+
+For each day:
+
+Inputs:
+Select day(s)
+Start Time
+End Time
+Slot Duration (minutes)
+Smart Logic:
+Auto-calculate:
+Total slots based on duration
+Show slot preview before saving
+Booking Rule:
+Checkbox per day:
+“Allow multiple bookings per slot”
+❓ 5. FAQs
+Add multiple FAQs:
+Question
+Answer
+Dynamic add/remove
+📊 Doctor List View
+
+Each doctor should display:
+
+Name
+Departments / Specialties
+Doctor Type
+Status
+
+Actions:
+
+Edit
+Delete
+Activate / Deactivate
+🎨 UI/UX Guidelines
+Clean admin layout
+Use:
+Tabs or Stepper
+Toggles, checkboxes, modals
+Ensure:
+Responsive design
+Proper spacing and grouping
+⚙️ Functional Requirements
+Dynamic forms (add/remove fields)
+Dependent dropdowns:
+Sub-departments based on department
+Real-time slot calculation
+Form validation
+Smooth state updates

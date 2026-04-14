@@ -4,7 +4,6 @@ import {
   Activity,
   Bell,
   Building2,
-  Check,
   ChevronDown,
   ChevronUp,
   Edit2,
@@ -18,6 +17,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { DoctorsModule } from "@/pages/DoctorsModule";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -86,6 +86,7 @@ const INITIAL_DATA: Department[] = [
 
 export function AdminSettings() {
   const [, setLocation] = useLocation();
+  const [activeModule, setActiveModule] = useState<"departments" | "doctors">("departments");
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DATA);
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
     d1: true,
@@ -244,13 +245,21 @@ export function AdminSettings() {
             Admin Settings
           </div>
           <nav className="space-y-1 p-3">
-            <Button variant="ghost" className="w-full justify-start gap-3 bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15">
+            <Button
+              variant="ghost"
+              className={`w-full justify-start gap-3 ${activeModule === "departments" ? "bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15" : "text-slate-600 hover:bg-slate-100"}`}
+              onClick={() => setActiveModule("departments")}
+            >
               <Building2 className="h-4 w-4" />
               Departments
             </Button>
-            <Button variant="ghost" className="w-full justify-start gap-3 text-slate-400 hover:bg-transparent" disabled>
+            <Button
+              variant="ghost"
+              className={`w-full justify-start gap-3 ${activeModule === "doctors" ? "bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15" : "text-slate-600 hover:bg-slate-100"}`}
+              onClick={() => setActiveModule("doctors")}
+            >
               <Stethoscope className="h-4 w-4" />
-              Doctors <span className="ml-auto text-[10px] uppercase tracking-wider">Soon</span>
+              Doctors
             </Button>
             <Button variant="ghost" className="w-full justify-start gap-3 text-slate-400 hover:bg-transparent" disabled>
               <Layers className="h-4 w-4" />
@@ -265,6 +274,10 @@ export function AdminSettings() {
 
         {/* Right Content */}
         <main className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
+          {activeModule === "doctors" && (
+            <DoctorsModule departments={departments} />
+          )}
+          {activeModule === "departments" && (
           <div className="mx-auto max-w-4xl space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -419,6 +432,7 @@ export function AdminSettings() {
               )}
             </div>
           </div>
+          )}
         </main>
       </div>
     </div>

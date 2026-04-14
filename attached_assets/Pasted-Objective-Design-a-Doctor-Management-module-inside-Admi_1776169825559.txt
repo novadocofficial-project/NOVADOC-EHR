@@ -1,0 +1,113 @@
+Objective:
+Design a Doctor Management module inside Admin Settings where admin users can add and manage doctors through a structured multi-section form.
+
+🧭 Entry Point
+Accessible from Admin Settings → Doctor Section
+Display:
+List of existing doctors
+“Add Doctor” button
+Edit / Activate / Deactivate / Delete options
+➕ Add Doctor – Multi-Section Form
+
+The “Add Doctor” flow should be divided into 5 structured sections (tabs or step-based UI).
+
+🧑‍⚕️ Section 1: Biography Data
+
+Capture core doctor information:
+
+Basic Fields:
+Name
+Gender
+Phone
+Email
+Password
+Shift
+Department Mapping:
+Multi-select Departments
+For each selected department:
+Allow multi-select Sub-Departments
+Specialties:
+Multi-select specialties
+Doctor Type:
+Radio selection (only one allowed):
+Token-based doctor
+Appointment-based doctor
+📌 Professional Statement (Collapsible Section)
+Hidden by default
+Display only when a checkbox is selected: “Add Professional Details”
+
+Fields inside:
+
+Awards
+Expertise
+Professional Memberships
+Languages
+Experience
+Degree Completion
+PMDC Number
+🎓 Section 2: Qualifications
+Allow adding multiple qualifications
+Each qualification includes:
+Qualification Name
+Start Year
+Completion Year
+UI:
+“Add More” button for dynamic entries
+🛠 Section 3: Services
+Multi-select or add multiple services the doctor offers
+Option to:
+Select from existing services
+OR create new service inline (optional enhancement)
+⏰ Section 4: Timings & Availability
+
+For each day of the week:
+
+Fields:
+Select available days (Mon–Sun)
+Start Time
+End Time
+Slot Duration (in minutes)
+Smart Behavior:
+When duration is entered:
+Automatically calculate and display:
+Total number of slots generated
+Show preview before saving
+Booking Rule:
+Checkbox per day:
+“Allow multiple bookings per slot”
+❓ Section 5: FAQs
+Add multiple FAQs related to the doctor
+Each FAQ includes:
+Question
+Answer
+Dynamic add/remove functionality
+📊 Doctor List View (After Creation)
+
+Each doctor entry should display:
+
+Name
+Departments / Specialties
+Doctor Type (Token / Appointment)
+Status (Active / Inactive)
+
+Actions:
+
+Edit
+Delete
+Activate / Deactivate
+🎨 UI/UX Guidelines
+Use:
+Tabs OR stepper-based form (recommended for clarity)
+Clean spacing and grouped inputs
+Toggle switches & checkboxes
+Ensure:
+Smooth validation
+User-friendly error messages
+Responsive design
+⚙️ Functional Expectations
+Dynamic form handling (add/remove fields)
+Dependent dropdowns:
+Sub-departments based on selected departments
+Real-time slot calculation
+Form validation before submission
+Optimized state management
