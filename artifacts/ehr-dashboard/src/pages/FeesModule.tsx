@@ -92,23 +92,26 @@ function buildSeedDocServices(): Record<string, DocServiceRow[]> {
     serviceId, useBasePrice: false, adjustedPrice, shareType, shareValue, selected: false,
   });
   return {
-    // Dr. Emily Wong — General Consultation, Emergency Consultation, CBC
+    // Dr. Emily Wong — General Consult, Emergency Consult, CBC, Ultrasound
     "doc-1": [
-      row("svc-1",  "500",  "percentage", "30"),
-      row("svc-4",  "2000", "percentage", "40"),
-      row("svc-10", "450",  "percentage", "20"),
+      row("svc-1",  "500",   "percentage", "30"),
+      row("svc-4",  "2000",  "percentage", "40"),
+      row("svc-10", "450",   "percentage", "20"),
+      row("svc-33", "2000",  "percentage", "25"),
     ],
-    // Dr. James Wilson — Specialist Consultation, Echocardiogram, CBC
+    // Dr. James Wilson — Specialist Consult, Echocardiogram, CBC, MRI Brain
     "doc-2": [
-      row("svc-2",  "1200", "percentage", "40"),
-      row("svc-30", "3500", "fixed",      "1500"),
-      row("svc-10", "450",  "percentage", "25"),
+      row("svc-2",  "1200",  "percentage", "40"),
+      row("svc-30", "3500",  "fixed",      "1500"),
+      row("svc-10", "450",   "percentage", "25"),
+      row("svc-34", "12000", "fixed",      "3500"),
     ],
-    // Dr. Sarah Connor — Follow-up Consultation, Pediatric Consultation, LFT
+    // Dr. Sarah Connor — Follow-up Consult, Pediatric Consult, LFT, X-Ray
     "doc-3": [
       row("svc-3",  "300",  "percentage", "25"),
       row("svc-6",  "800",  "percentage", "35"),
       row("svc-11", "800",  "percentage", "20"),
+      row("svc-31", "900",  "percentage", "15"),
     ],
   };
 }

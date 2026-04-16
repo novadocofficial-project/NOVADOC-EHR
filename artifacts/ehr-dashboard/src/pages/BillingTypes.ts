@@ -46,11 +46,12 @@ export type BillingEntity = {
 const D = "2024-01-01T00:00:00.000Z";
 
 export const INITIAL_SERVICE_TYPES: ServiceType[] = [
-  { id: "st-1", name: "Consultation",  active: true, createdAt: D },
-  { id: "st-2", name: "Lab",           active: true, createdAt: D },
-  { id: "st-3", name: "Procedures",    active: true, createdAt: D },
-  { id: "st-4", name: "Pharmacy",      active: true, createdAt: D },
-  { id: "st-5", name: "Consumables",   active: true, createdAt: D },
+  { id: "st-1", name: "Consultation",        active: true, createdAt: D },
+  { id: "st-2", name: "Lab",                 active: true, createdAt: D },
+  { id: "st-3", name: "Nursing Procedures",  active: true, createdAt: D },
+  { id: "st-4", name: "Pharmacy",            active: true, createdAt: D },
+  { id: "st-5", name: "Consumables",         active: true, createdAt: D },
+  { id: "st-6", name: "Imaging",             active: true, createdAt: D },
 ];
 
 export const INITIAL_SERVICES: Service[] = [
@@ -75,17 +76,29 @@ export const INITIAL_SERVICES: Service[] = [
   { id: "svc-18", name: "Renal Function Test (RFT)",   serviceTypeId: "st-2", basePrice: 650,   departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
   { id: "svc-19", name: "Blood Culture & Sensitivity", serviceTypeId: "st-2", basePrice: 1500,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
 
-  // ── Procedures ────────────────────────────────────────────────────────────
+  // ── Nursing Procedures ────────────────────────────────────────────────────
   { id: "svc-30", name: "Echocardiogram",              serviceTypeId: "st-3", basePrice: 3500,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
-  { id: "svc-31", name: "X-Ray Chest (PA View)",       serviceTypeId: "st-3", basePrice: 900,   departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
   { id: "svc-32", name: "Knee Arthroscopy",            serviceTypeId: "st-3", basePrice: 25000, departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
-  { id: "svc-33", name: "Ultrasound Abdomen",          serviceTypeId: "st-3", basePrice: 2000,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
-  { id: "svc-34", name: "MRI Brain (with contrast)",   serviceTypeId: "st-3", basePrice: 12000, departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
-  { id: "svc-35", name: "CT Chest (with contrast)",    serviceTypeId: "st-3", basePrice: 8500,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
   { id: "svc-36", name: "Upper GI Endoscopy",          serviceTypeId: "st-3", basePrice: 6000,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
   { id: "svc-37", name: "Wound Dressing (Minor)",      serviceTypeId: "st-3", basePrice: 500,   departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
   { id: "svc-38", name: "ECG (12-lead)",               serviceTypeId: "st-3", basePrice: 700,   departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
   { id: "svc-39", name: "Spirometry",                  serviceTypeId: "st-3", basePrice: 1500,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
+  { id: "svc-41", name: "IV Infusion (per hour)",      serviceTypeId: "st-3", basePrice: 800,   departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-42", name: "Nebulisation",                serviceTypeId: "st-3", basePrice: 350,   departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-43", name: "Suture Removal",              serviceTypeId: "st-3", basePrice: 400,   departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+
+  // ── Imaging ───────────────────────────────────────────────────────────────
+  { id: "svc-31", name: "X-Ray Chest (PA View)",               serviceTypeId: "st-6", basePrice: 900,   departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
+  { id: "svc-33", name: "Ultrasound Abdomen & Pelvis",         serviceTypeId: "st-6", basePrice: 2000,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
+  { id: "svc-34", name: "MRI Brain (with contrast)",           serviceTypeId: "st-6", basePrice: 12000, departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
+  { id: "svc-35", name: "CT Chest (with contrast)",            serviceTypeId: "st-6", basePrice: 8500,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
+  { id: "svc-60", name: "Mammography (bilateral)",             serviceTypeId: "st-6", basePrice: 3500,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
+  { id: "svc-61", name: "Bone Densitometry (DEXA)",            serviceTypeId: "st-6", basePrice: 4000,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
+  { id: "svc-62", name: "PET-CT Scan (whole body)",            serviceTypeId: "st-6", basePrice: 45000, departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
+  { id: "svc-63", name: "Doppler Ultrasound (lower limb)",     serviceTypeId: "st-6", basePrice: 3000,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
+  { id: "svc-64", name: "Fluoroscopy (barium swallow)",        serviceTypeId: "st-6", basePrice: 5500,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
+  { id: "svc-65", name: "MRI Spine (Lumbar)",                  serviceTypeId: "st-6", basePrice: 10000, departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
+  { id: "svc-66", name: "CT Abdomen & Pelvis (plain)",         serviceTypeId: "st-6", basePrice: 7000,  departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
 
   // ── Pharmacy ──────────────────────────────────────────────────────────────
   { id: "svc-50", name: "Paracetamol 500mg (strip)",  serviceTypeId: "st-4", basePrice: 50,    departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
