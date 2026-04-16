@@ -419,7 +419,7 @@ export function AdminSettings() {
             <InsurancePricingModule serviceTypes={serviceTypes} services={services} />
           )}
           {activeModule === "packages" && (
-            <PackagesModule />
+            <PackagesModule services={services} serviceTypes={serviceTypes} />
           )}
 
           {activeModule === "departments" && (

@@ -1,0 +1,110 @@
+Objective: Build a Packages / Bundles module inside Billing & Pricing that allows admin to create, price, and manage grouped services.
+
+⚠️ Important Instruction
+* This is a new module under Billing & Pricing
+* Do NOT test the full application
+* Only implement Packages functionality
+* Stop after completion
+
+🧱 Core Structure of Package
+➕ Create Package
+Fields:
+Basic Info:
+* Package Name
+* Description
+* Package Type:
+    * Fixed Package (one-time)
+    * Recurring Package (optional for future)
+* Active (Yes/No)
+
+🛠 Add Services to Package
+* Multi-select from existing services (Service Pricing module)
+For each selected service:
+* Show:
+    * Service Name
+    * Service Type
+    * Base Price
+
+🔢 Quantity Support (Important)
+* Allow quantity per service:
+    * Example:
+        * Consultation × 2
+        * Lab Test × 5
+
+💰 Pricing Logic (Critical Design Decision)
+You should support 2 pricing models:
+1. Fixed Package Price
+* Admin sets:
+    * Total Package Price manually
+* System:
+    * Shows original total vs discounted price
+
+2. Auto Calculated Price
+* System calculates:
+    * Sum of all services (based on base price × quantity)
+* Admin can:
+    * Apply discount:
+        * % OR fixed value
+
+📊 Price Breakdown (UI Must Show)
+* Total Base Price
+* Discount
+* Final Package Price
+
+🎯 Advanced (Very Important for Your System)
+Doctor Share Handling
+* Option:
+    * Use existing doctor service share
+    * OR define package-level share rule
+⚠️ Recommendation: Start with: 👉 Use existing service-level doctor share (do NOT overcomplicate initially)
+
+🏢 Corporate & Insurance Compatibility
+* Option:
+    * Allow package pricing override in:
+        * Corporate Pricing
+        * Insurance Pricing
+
+📦 Package Usage Rules
+Validity (Optional but useful)
+* Valid for X days
+* Expiry date
+Usage Limit
+* Can package be used:
+    * One time
+    * Multiple times
+
+📊 Package List View
+Columns:
+* Package Name
+* Number of Services
+* Total Price
+* Status
+* Created Date
+Actions:
+* Edit
+* Activate / Deactivate
+* Delete
+
+🎨 UI/UX Guidelines
+* Use:
+    * Stepper or tabbed form:
+        1. Basic Info
+        2. Add Services
+        3. Pricing
+* Show:
+    * Live price calculation
+* Keep:
+    * Clean financial breakdown
+
+⚙️ Functional Expectations
+* Fetch services dynamically
+* Handle quantities
+* Real-time price calculation
+* Discount logic
+* Save package with structured data
+
+🚨 Common Mistakes (Avoid These)
+* ❌ Treating package as just a name (no breakdown)
+* ❌ Not storing individual services inside package
+* ❌ Hardcoding prices (must be dynamic)
+* ❌ Ignoring doctor share impact
