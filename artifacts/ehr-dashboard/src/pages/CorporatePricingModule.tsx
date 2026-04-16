@@ -218,8 +218,16 @@ export function CorporatePricingModule({
     const totalConsumed = currentInvoices.reduce((s, inv) => s + inv.totalAmount, 0);
     const totalPaid = currentInvoices.reduce((s, inv) => s + inv.paidAmount, 0);
     const totalTax = currentInvoices.reduce((s, inv) => s + inv.taxDeducted, 0);
-    const pending = totalConsumed - totalPaid;
-    return { totalAdvance, totalConsumed, totalPaid, totalTax, pending };
+    // Raw invoice-level outstanding (not yet settled via claim)
+    const invoicePending = totalConsumed - totalPaid;
+    // Ledger running balance = all advances minus all claim debits ± tax adjustments
+    const ledgerBalance = currentLedger.reduce((s, e) => s + e.amount, 0);
+    // True receivable = only the portion of invoice-pending that EXCEEDS the available advance balance.
+    // If ledger balance covers all outstanding invoices, there is nothing to collect — it will be
+    // settled on the next claim run.
+    const trueReceivable = Math.max(0, invoicePending - Math.max(0, ledgerBalance));
+    const advanceCovered = invoicePending - trueReceivable;
+    return { totalAdvance, totalConsumed, totalPaid, totalTax, invoicePending, ledgerBalance, trueReceivable, advanceCovered };
   }, [currentLedger, currentInvoices]);
 
   // Filtered invoices
@@ -527,9 +535,27 @@ export function CorporatePricingModule({
               {/* Stats cards */}
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <StatCard label="Credit Limit" value={selectedEntity.creditEnabled ? `Rs. ${selectedEntity.creditLimit.toLocaleString()}` : "N/A"} icon={<WalletCards className="h-4 w-4" />} color="blue" />
-                <StatCard label="Advance Paid" value={`Rs. ${summary.totalAdvance.toLocaleString()}`} icon={<ArrowDownCircle className="h-4 w-4" />} color="emerald" />
-                <StatCard label="Total Consumed" value={`Rs. ${summary.totalConsumed.toLocaleString()}`} icon={<TrendingUp className="h-4 w-4" />} color="amber" />
-                <StatCard label="Pending (Receivable)" value={`Rs. ${Math.max(0, summary.pending).toLocaleString()}`} icon={<TrendingDown className="h-4 w-4" />} color={summary.pending > 0 ? "rose" : "emerald"} />
+                <StatCard
+                  label="Advance Balance"
+                  value={`Rs. ${Math.max(0, summary.ledgerBalance).toLocaleString()}`}
+                  icon={<ArrowDownCircle className="h-4 w-4" />}
+                  color={summary.ledgerBalance >= 0 ? "emerald" : "rose"}
+                  sub={`Total paid: Rs. ${summary.totalAdvance.toLocaleString()}`}
+                />
+                <StatCard
+                  label="Unclaimed (Invoices)"
+                  value={`Rs. ${summary.invoicePending.toLocaleString()}`}
+                  icon={<TrendingUp className="h-4 w-4" />}
+                  color="amber"
+                  sub={summary.advanceCovered > 0 ? `Rs. ${summary.advanceCovered.toLocaleString()} covered by advance` : "No advance cover"}
+                />
+                <StatCard
+                  label="Pending Receivable"
+                  value={`Rs. ${summary.trueReceivable.toLocaleString()}`}
+                  icon={<TrendingDown className="h-4 w-4" />}
+                  color={summary.trueReceivable > 0 ? "rose" : "emerald"}
+                  sub={summary.trueReceivable === 0 ? "Fully covered by advance" : "Exceeds advance — collect separately"}
+                />
               </div>
 
               {/* Credit utilization bar */}
@@ -1120,7 +1146,7 @@ export function CorporatePricingModule({
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon, color }: { label: string; value: string; icon: React.ReactNode; color: "blue" | "emerald" | "amber" | "rose" }) {
+function StatCard({ label, value, icon, color, sub }: { label: string; value: string; icon: React.ReactNode; color: "blue" | "emerald" | "amber" | "rose"; sub?: string }) {
   const colors = {
     blue: "bg-[#4982CF]/8 text-[#4982CF]",
     emerald: "bg-emerald-500/8 text-emerald-600",
@@ -1134,6 +1160,7 @@ function StatCard({ label, value, icon, color }: { label: string; value: string;
         <div className={`rounded-lg p-1.5 ${colors[color]}`}>{icon}</div>
       </div>
       <p className="text-xl font-bold text-slate-800">{value}</p>
+      {sub && <p className="text-[10px] text-slate-400 mt-1 leading-tight">{sub}</p>}
     </div>
   );
 }
