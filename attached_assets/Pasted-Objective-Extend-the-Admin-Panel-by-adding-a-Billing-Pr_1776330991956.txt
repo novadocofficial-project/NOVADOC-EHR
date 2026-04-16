@@ -1,0 +1,135 @@
+Objective: Extend the Admin Panel by adding a Billing & Pricing module in the vertical navbar. This module will handle service pricing, corporate pricing and insurance pricing with scalable and dynamic logic.
+
+🧭 Navigation Structure
+Add a new main menu item in the Admin Vertical Navbar:
+Billing & Pricing
+Sub-options:
+1. Service Pricing
+2. Corporate Pricing
+3. Insurance Pricing
+4. Packages / Bundles
+
+🛠 Module 1: Service Pricing
+➕ Add Service (Left Panel Button)
+Fields required:
+* Service Name
+* Service Type (dropdown)
+    * Examples: Consultation, Lab, Procedures, Medicines, Consumables
+* Base Price
+* Department
+* Sub-Department
+* Active (Yes/No toggle)
+* Taxable (Yes/No toggle)
+
+📊 Data Display
+* All added services should appear in tables grouped by Service Type
+* Each Service Type should have:
+    * Its own section
+    * Its own table
+* Also include:
+    * “All” tab → shows all services combined
+
+📋 Table Columns
+* Service Name
+* Service Type
+* Department / Sub-Department
+* Base Price
+* Taxable
+* Status (Active/Inactive)
+* Created Timestamp
+
+📤 Export Options
+* Provide Print / Export:
+    * Export to Excel
+    * Export to PDF
+
+🏢 Module 2: Corporate Pricing
+➕ Add Corporate
+Fields:
+* Corporate Name
+* Contact Person Details
+* Official Email
+* Upload MOU (PDF)
+* Credit Allowance:
+    * Enable/Disable
+    * If enabled → enter credit limit
+
+💰 Pricing Configuration
+* Define pricing adjustments based on Service Types:
+    * Increase by:
+        * Percentage (%) OR
+        * Fixed Value
+* Option:
+    * When new services are added in system:
+        * Use Base Price OR
+        * Use Adjusted Corporate Price
+
+📊 After Corporate Creation
+* Auto-load all services (grouped by Service Type)
+* Apply initial price adjustments based on defined rules
+
+✏️ Price Editing Options
+1. Direct Table Editing
+    * Modify individual service prices manually
+2. Bulk Price Update (Button: “Change Price”)
+    * Apply rules:
+        * Increase by % OR fixed value
+    * Apply on:
+        * Single Service Type
+        * All Service Types
+        * Selected Services (multi-select)
+
+🏥 Module 3: Insurance Pricing
+* Same structure and logic as Corporate Pricing
+* Separate entity for insurance providers
+Fields similar to Corporate:
+* Insurance Name
+* Contact Details
+* Agreement Upload
+* Pricing Rules
+
+
+🧩 New Required Module: Service Type Management
+Suggested Name:
+👉 Service Types
+
+Functionality:
+* Admin can:
+    * Create new Service Types
+    * Edit / Delete / Activate / Deactivate
+
+🔗 Dependency Behavior
+* Created Service Types should:
+    1. Appear in Service Pricing → Add Service (dropdown)
+    2. Be used for grouping services across the system
+
+🎨 UI/UX Guidelines
+* Use:
+    * Tabs for Service Types (including “All”)
+    * Tables with filters and search
+    * Drawer or modal for Add/Edit forms
+* Keep:
+    * Clean admin layout
+    * Scalable structure for large datasets
+
+⚙️ Functional Expectations
+* Dynamic grouping by Service Type
+* Bulk operations for pricing
+* File upload (PDF for MOU/agreements)
+* Export functionality (Excel/PDF)
+* Dependency-driven drop downs
+* Real-time UI updates
+
+⚠️ Important Instruction (Must Follow)
+* Only build Billing & Pricing module
+* Do NOT test the entire application
+* Do NOT run full system validation
+* Stop after implementing this module
+* I will manually test everything
+
+🧠 Scalability Notes
+* Design pricing engine in a reusable way
+* Future integration:
+    * POS / Invoice system
+    * Doctor services mapping
+    * Multi-branch pricing

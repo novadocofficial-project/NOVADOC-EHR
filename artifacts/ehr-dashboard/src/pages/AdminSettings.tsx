@@ -8,15 +8,21 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  ClipboardList,
+  CreditCard,
   Edit2,
   GitBranch,
   Layers,
   LayoutGrid,
+  Package,
   Plus,
+  Receipt,
   Search,
   Settings,
+  Shield,
   Sparkles,
   Stethoscope,
+  Tag,
   Trash2,
   UserRound,
   X,
@@ -24,6 +30,13 @@ import {
 import { DoctorsModule, Doctor, INITIAL_DOCTORS } from "@/pages/DoctorsModule";
 import { SpecialtiesModule } from "@/pages/SpecialtiesModule";
 import { FeesModule } from "@/pages/FeesModule";
+import { ServiceTypesModule } from "@/pages/ServiceTypesModule";
+import { ServicePricingModule } from "@/pages/ServicePricingModule";
+import { CorporatePricingModule } from "@/pages/CorporatePricingModule";
+import { InsurancePricingModule } from "@/pages/InsurancePricingModule";
+import { PackagesModule } from "@/pages/PackagesModule";
+import { INITIAL_SERVICE_TYPES, INITIAL_SERVICES } from "@/pages/BillingTypes";
+import type { ServiceType, Service } from "@/pages/BillingTypes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -122,18 +135,22 @@ const INITIAL_DATA: Department[] = [
   },
 ];
 
-type ActiveModule = "departments" | "specialties" | "doctors" | "fees";
+type ActiveModule =
+  | "departments" | "specialties" | "doctors" | "fees"
+  | "service-types" | "service-pricing" | "corporate-pricing" | "insurance-pricing" | "packages";
 
 export function AdminSettings() {
   const [, setLocation] = useLocation();
   const [activeModule, setActiveModule] = useState<ActiveModule>("departments");
-  const [navExpanded, setNavExpanded] = useState({ departments: true, doctors: true });
+  const [navExpanded, setNavExpanded] = useState({ departments: true, doctors: true, billing: true });
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DATA);
 
   const toggleNav = (key: keyof typeof navExpanded) =>
     setNavExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
   const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>(INITIAL_SERVICE_TYPES);
+  const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
     d1: true, d2: true, d3: false, d4: true,
@@ -299,12 +316,12 @@ export function AdminSettings() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sub-Navbar */}
-        <aside className="w-60 flex-none border-r border-slate-200 bg-white">
-          <div className="flex h-14 items-center gap-2 border-b border-slate-100 px-4 text-sm font-bold text-slate-800">
+        <aside className="flex w-60 flex-none flex-col border-r border-slate-200 bg-white overflow-hidden">
+          <div className="flex h-14 flex-none items-center gap-2 border-b border-slate-100 px-4 text-sm font-bold text-slate-800">
             <Settings className="h-4 w-4 text-[#4982CF]" />
             Admin Settings
           </div>
-          <nav className="p-3 space-y-1">
+          <nav className="flex-1 overflow-y-auto p-3 space-y-1">
             {/* Departments Group */}
             <button
               type="button"
@@ -343,6 +360,28 @@ export function AdminSettings() {
               </div>
             )}
 
+            {/* Billing & Pricing Group */}
+            <button
+              type="button"
+              onClick={() => toggleNav("billing")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Receipt className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Billing & Pricing</span>
+              {navExpanded.billing
+                ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.billing && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("service-types", <Tag className="h-3.5 w-3.5" />, "Service Types")}
+                {subNavItem("service-pricing", <ClipboardList className="h-3.5 w-3.5" />, "Service Pricing")}
+                {subNavItem("corporate-pricing", <CreditCard className="h-3.5 w-3.5" />, "Corporate Pricing")}
+                {subNavItem("insurance-pricing", <Shield className="h-3.5 w-3.5" />, "Insurance Pricing")}
+                {subNavItem("packages", <Package className="h-3.5 w-3.5" />, "Packages / Bundles")}
+              </div>
+            )}
+
             {/* Soon items */}
             <button type="button" disabled className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-300 cursor-default">
               <Layers className="h-4 w-4" />
@@ -358,17 +397,30 @@ export function AdminSettings() {
         </aside>
 
         {/* Right Content */}
-        <main className={`flex-1 bg-slate-50/50 ${activeModule === "fees" ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
+        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
           )}
-
           {activeModule === "specialties" && (
             <SpecialtiesModule departments={departments} setDepartments={setDepartments} />
           )}
-
           {activeModule === "fees" && (
             <FeesModule departments={departments} doctors={doctors} />
+          )}
+          {activeModule === "service-types" && (
+            <ServiceTypesModule serviceTypes={serviceTypes} setServiceTypes={setServiceTypes} />
+          )}
+          {activeModule === "service-pricing" && (
+            <ServicePricingModule serviceTypes={serviceTypes} services={services} setServices={setServices} departments={departments} />
+          )}
+          {activeModule === "corporate-pricing" && (
+            <CorporatePricingModule serviceTypes={serviceTypes} services={services} />
+          )}
+          {activeModule === "insurance-pricing" && (
+            <InsurancePricingModule serviceTypes={serviceTypes} services={services} />
+          )}
+          {activeModule === "packages" && (
+            <PackagesModule />
           )}
 
           {activeModule === "departments" && (
