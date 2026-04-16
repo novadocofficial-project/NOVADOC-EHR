@@ -404,7 +404,7 @@ export function AdminSettings() {
             <SpecialtiesModule departments={departments} setDepartments={setDepartments} />
           )}
           {activeModule === "fees" && (
-            <FeesModule departments={departments} doctors={doctors} />
+            <FeesModule departments={departments} doctors={doctors} services={services} serviceTypes={serviceTypes} />
           )}
           {activeModule === "service-types" && (
             <ServiceTypesModule serviceTypes={serviceTypes} setServiceTypes={setServiceTypes} />

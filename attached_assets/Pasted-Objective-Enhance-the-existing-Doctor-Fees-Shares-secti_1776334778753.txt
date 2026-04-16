@@ -1,0 +1,104 @@
+Objective:
+Enhance the existing Doctor "Fees & Shares" section to support service-level pricing overrides and doctor share configuration using services already defined in the system.
+
+⚠️ Important Instruction (Must Follow)
+This is an update to an existing module, not a new module
+Do NOT rebuild the entire section
+Extend current functionality only
+Do NOT test the full application
+Stop after implementing these changes
+I will manually test everything
+🛠 Enhancements Required
+1. 🔗 Integrate System Services
+Fetch and display services from:
+Service Pricing module
+Allow:
+Multi-select services to assign to doctor
+Prevent duplicate service assignment
+2. 💰 Adjust Service Pricing (Doctor-Level)
+
+For each assigned service:
+
+Show:
+Service Name
+Service Type
+Base Price (read-only)
+Add:
+Adjusted Price (editable)
+Option:
+Checkbox/Toggle: “Use Base Price”
+If enabled → Adjusted Price = Base Price (locked)
+If disabled → allow manual input
+3. 🤝 Doctor Share Configuration (Per Service)
+
+For each service:
+
+Add fields:
+Share Type:
+Percentage (%)
+Fixed Amount
+Share Value (input)
+4. 🧮 Auto Calculations
+Automatically calculate:
+Doctor Share Amount
+Clinic Share Amount
+
+Example logic:
+
+If %:
+Doctor Share = Adjusted Price × %
+If fixed:
+Doctor Share = entered value
+Clinic Share = Adjusted Price – Doctor Share
+
+5. 📊 Update Table UI
+
+  table to include:
+
+Service Name
+Service Type
+Base Price
+Adjusted Price
+Share Type
+Share Value
+Doctor Share (calculated)
+Clinic Share (calculated)
+6. ⚙️ Bulk Update Feature (New)
+
+Add a “Bulk Update” button:
+
+Options:
+Apply to:
+All services
+By Service Type
+Selected services
+Actions:
+Set Share:
+% OR fixed value
+(Optional) Adjust price by % or value
+7. ✅ Validation Rules
+Doctor share must not exceed Adjusted Price
+No negative values
+Required fields must be filled before save
+8. 🔄 Real-Time Behavior
+All calculations should update instantly on input change
+No page reload required
+🎨 UI/UX Guidelines
+Keep existing UI intact — extend it cleanly
+Use:
+Inline editable table fields
+Toggles / dropdowns for share type
+Highlight:
+Financial values clearly (Doctor vs Clinic share)
+🔗 Dependency Rules
+Any new service added in Service Pricing:
+Should automatically be available here
+🧠 Goal
+
+Make the module flexible enough so:
+
+Doctors can:
+Charge standard price
+OR custom price
+And have:
+Configurable revenue sharing per service
