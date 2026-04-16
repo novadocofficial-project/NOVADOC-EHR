@@ -85,6 +85,34 @@ function SubShareToggle({ value, onChange }: { value: SubShareType; onChange: (v
   );
 }
 
+// ─── Seed Data ────────────────────────────────────────────────────────────────
+
+function buildSeedDocServices(): Record<string, DocServiceRow[]> {
+  const row = (serviceId: string, adjustedPrice: string, shareType: "percentage" | "fixed", shareValue: string): DocServiceRow => ({
+    serviceId, useBasePrice: false, adjustedPrice, shareType, shareValue, selected: false,
+  });
+  return {
+    // Dr. Emily Wong — General Consultation, Emergency Consultation, CBC
+    "doc-1": [
+      row("svc-1",  "500",  "percentage", "30"),
+      row("svc-4",  "2000", "percentage", "40"),
+      row("svc-10", "450",  "percentage", "20"),
+    ],
+    // Dr. James Wilson — Specialist Consultation, Echocardiogram, CBC
+    "doc-2": [
+      row("svc-2",  "1200", "percentage", "40"),
+      row("svc-30", "3500", "fixed",      "1500"),
+      row("svc-10", "450",  "percentage", "25"),
+    ],
+    // Dr. Sarah Connor — Follow-up Consultation, Pediatric Consultation, LFT
+    "doc-3": [
+      row("svc-3",  "300",  "percentage", "25"),
+      row("svc-6",  "800",  "percentage", "35"),
+      row("svc-11", "800",  "percentage", "20"),
+    ],
+  };
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function FeesModule({
@@ -105,7 +133,7 @@ export function FeesModule({
   const [fees, setFees] = useState<Record<string, FeeRow[]>>({});
 
   // Service-level pricing state (new)
-  const [docServices, setDocServices] = useState<Record<string, DocServiceRow[]>>({});
+  const [docServices, setDocServices] = useState<Record<string, DocServiceRow[]>>(() => buildSeedDocServices());
 
   // Dialogs
   const [showAssignDialog, setShowAssignDialog] = useState(false);
