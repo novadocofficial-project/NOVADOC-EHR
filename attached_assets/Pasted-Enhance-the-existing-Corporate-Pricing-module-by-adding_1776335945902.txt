@@ -1,0 +1,147 @@
+Enhance the existing Corporate Pricing module by adding Advance Payments, Ledger Management, Pending Tracking, and Invoice Claim Handling with tax and transaction tracking.
+
+⚠️ Important Instruction (Must Follow)
+This is an enhancement to the existing Corporate module
+Do NOT rebuild the module from scratch
+Extend current functionality only
+Do NOT test the full application
+Stop after implementing this feature
+I will manually test everything
+🏢 Feature 1: Advance Payments & Ledger
+➕ Add Advance Payment
+
+Inside each Corporate profile:
+
+Add option: “Add Advance Payment”
+
+Fields:
+
+Amount
+Remarks / Notes
+Date (default = today)
+📊 Ledger Table
+
+Maintain a running ledger per corporate:
+
+Table Columns:
+Date
+Transaction Type:
+Advance Payment (Credit)
+Invoice Claim (Debit)
+Amount
+Tax Deducted (if any)
+Balance (running balance)
+Remarks
+Reference (Invoice ID / Transaction ID)
+📉 Feature 2: Pending Amount Tracking
+📊 Dashboard Stats (Per Corporate)
+
+Show:
+
+Total Credit Limit
+Total Advance Paid
+Total Consumed (services on credit)
+Pending Amount (Receivable)
+👥 Patient-Level Pending
+Show list of patients under the corporate:
+Patient Name
+Total Services Availed
+Total Amount
+Pending Amount
+Status (Paid / Partially Paid / Unpaid)
+💳 Feature 3: Invoice Claim Handling
+🧾 Claim Pending Invoices
+Admin can:
+View all pending invoices (on credit)
+Select:
+Single patient invoice
+Multiple invoices (multi-select)
+💰 Payment Allocation
+
+When corporate sends payment:
+
+Allow:
+Enter total received amount
+Select which invoices are being settled
+🧮 Tax Handling
+Support:
+Tax deduction (e.g., withholding tax)
+
+Options:
+
+Per Transaction Tax
+Apply tax on entire payment
+Per Invoice Tax
+Apply tax individually on selected invoices
+⚙️ Payment Allocation Logic
+
+Example:
+
+Total pending = 10,000 (10 patients)
+Payment received = 5,000
+Admin selects 5 invoices to settle
+
+System should:
+
+Mark selected invoices as Paid / Partially Paid
+Adjust remaining pending balances
+Reflect tax deduction in ledger
+🔗 Feature 4: Transaction & Audit Tracking
+
+For each payment:
+
+Store and display:
+
+Payment Date
+Payment Amount
+Tax Deducted
+Net Received Amount
+Payment Method (optional)
+Instrument / Transaction Number
+🔍 Invoice-Level Tracking
+
+For each patient invoice:
+
+Show:
+Claim Date
+Payment Received Date
+Amount Received
+Tax Deducted
+Remaining Balance
+Reference Transaction ID
+📊 UI/UX Guidelines
+Use:
+Tabs inside Corporate Profile:
+Overview
+Ledger
+Pending Patients
+Claims / Payments
+Tables:
+Searchable
+Filterable (by status, date)
+Highlight:
+Financial values clearly
+Paid vs Pending states
+⚙️ Functional Expectations
+Real-time balance updates
+Accurate ledger calculations
+Multi-invoice selection handling
+Partial payments support
+Tax calculations (both modes)
+🧠 Scalability Notes
+
+Design system to support:
+
+Insurance module reuse
+Multi-branch financial tracking
+Integration with accounting systems
+🎯 Goal
+
+Build a system where:
+
+Corporate credit is fully traceable
+Payments are flexible (partial, multi-invoice)
+Financial transparency is maintained at:
+Corporate level
+Patient level
+Invoice level
