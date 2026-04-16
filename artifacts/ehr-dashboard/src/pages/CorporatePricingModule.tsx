@@ -100,6 +100,70 @@ function StatusBadge({ status }: { status: PatientInvoice["status"] }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+// ─── Seed Data ────────────────────────────────────────────────────────────────
+
+const SEED_ENTITIES: BillingEntity[] = [
+  { id: "corp-1", name: "PTCL Health Plan", contactPerson: "Asif Raza", contactPhone: "0300-1234567", email: "health@ptcl.net.pk", mouFileName: "PTCL_MOU_2024.pdf", creditEnabled: true, creditLimit: 500000, useBaseForNew: false, pricingRules: { "st-1": { type: "percentage", value: 10 } }, entityServices: [], createdAt: "2024-01-15T00:00:00.000Z" },
+  { id: "corp-2", name: "Sui Northern Gas (SNGPL)", contactPerson: "Nadia Baig", contactPhone: "0321-9876543", email: "welfare@sngpl.com.pk", mouFileName: "SNGPL_MOU_2024.pdf", creditEnabled: true, creditLimit: 750000, useBaseForNew: false, pricingRules: {}, entityServices: [], createdAt: "2024-02-10T00:00:00.000Z" },
+  { id: "corp-3", name: "Allied Bank Ltd.", contactPerson: "Kamran Sheikh", contactPhone: "042-35780001", email: "medical@abl.com", mouFileName: "ABL_MOU_2024.pdf", creditEnabled: true, creditLimit: 1000000, useBaseForNew: true, pricingRules: { "st-2": { type: "percentage", value: 5 } }, entityServices: [], createdAt: "2024-03-01T00:00:00.000Z" },
+  { id: "corp-4", name: "Packages Limited", contactPerson: "Sana Tariq", contactPhone: "0301-4567890", email: "hr@packages.com.pk", mouFileName: "", creditEnabled: false, creditLimit: 0, useBaseForNew: true, pricingRules: {}, entityServices: [], createdAt: "2024-04-20T00:00:00.000Z" },
+  { id: "corp-5", name: "HBL Employee Welfare", contactPerson: "Zubair Ahmed", contactPhone: "0333-8765432", email: "welfare@hbl.com", mouFileName: "HBL_MOU_2024.pdf", creditEnabled: true, creditLimit: 2000000, useBaseForNew: false, pricingRules: { "st-1": { type: "percentage", value: 15 }, "st-3": { type: "percentage", value: 8 } }, entityServices: [], createdAt: "2024-01-05T00:00:00.000Z" },
+];
+
+function buildSeedLedgers(): Record<string, LedgerEntry[]> {
+  function make(id: string, date: string, type: LedgerEntry["type"], amount: number, tax: number, remarks: string, ref: string): LedgerEntry {
+    return { id, date, type, amount, taxDeducted: tax, balance: 0, remarks, reference: ref };
+  }
+  function bal(entries: LedgerEntry[]): LedgerEntry[] {
+    let b = 0; return entries.map(e => { b += e.amount; return { ...e, balance: b }; });
+  }
+  return {
+    "corp-1": bal([
+      make("l1-1", "2024-10-01", "advance",  50000,  0,    "Quarterly advance Q4",         "ADV-C1-001"),
+      make("l1-2", "2024-10-28", "claim",    -38500, 0,    "Invoice batch Oct Week-1 (5 patients)", "CLM-C1-001"),
+      make("l1-3", "2024-11-01", "tax",       2695,  2695, "WHT 7% on CLM-C1-001",         "CLM-C1-001"),
+      make("l1-4", "2024-11-15", "advance",  50000,  0,    "Advance November",              "ADV-C1-002"),
+      make("l1-5", "2024-12-05", "claim",    -21300, 0,    "Invoice batch Nov (3 patients)","CLM-C1-002"),
+    ]),
+    "corp-2": bal([
+      make("l2-1", "2024-09-15", "advance", 100000, 0,    "Annual advance Q4",             "ADV-C2-001"),
+      make("l2-2", "2024-10-20", "claim",   -67500, 0,    "Invoice batch Oct (8 patients)","CLM-C2-001"),
+      make("l2-3", "2024-10-20", "tax",      4725,  4725, "WHT 7% on CLM-C2-001",          "CLM-C2-001"),
+    ]),
+    "corp-3": bal([
+      make("l3-1", "2024-08-01", "advance", 200000, 0,    "Advance Aug-Oct",               "ADV-C3-001"),
+      make("l3-2", "2024-09-30", "claim",  -180000, 0,    "Quarterly claim (14 patients)", "CLM-C3-001"),
+      make("l3-3", "2024-09-30", "tax",     12600,  12600,"WHT 7% on CLM-C3-001",          "CLM-C3-001"),
+      make("l3-4", "2024-11-01", "advance", 150000, 0,    "Advance Nov-Dec",               "ADV-C3-002"),
+    ]),
+    "corp-4": bal([]),
+    "corp-5": bal([
+      make("l5-1", "2024-07-01", "advance", 500000, 0,    "H1 advance payment",            "ADV-C5-001"),
+      make("l5-2", "2024-09-30", "claim",  -325000, 0,    "Q3 invoice batch (22 patients)","CLM-C5-001"),
+      make("l5-3", "2024-09-30", "tax",     22750,  22750,"WHT 7% on CLM-C5-001",          "CLM-C5-001"),
+      make("l5-4", "2024-10-05", "advance", 300000, 0,    "Q4 advance",                    "ADV-C5-002"),
+      make("l5-5", "2024-11-30", "claim",  -180000, 0,    "Nov invoice batch (15 patients)","CLM-C5-002"),
+    ]),
+  };
+}
+
+function buildSeedInvoices(): Record<string, PatientInvoice[]> {
+  return {
+    "corp-1": generateMockInvoices("corp-1"),
+    "corp-2": generateMockInvoices("corp-2"),
+    "corp-3": generateMockInvoices("corp-3"),
+    "corp-4": generateMockInvoices("corp-4"),
+    "corp-5": [
+      ...generateMockInvoices("corp-5"),
+      { id: "inv-corp-5-7", patientName: "Hassan Mirza",   mrn: "MR-20001", serviceDate: "2024-11-10", services: ["MRI Brain", "Specialist Consultation"], totalAmount: 13200, paidAmount: 13200, taxDeducted: 924,  status: "paid",    claimDate: "2024-11-12", paymentDate: "2024-11-30", reference: "CLM-C5-002" },
+      { id: "inv-corp-5-8", patientName: "Rabia Siddiqui", mrn: "MR-20002", serviceDate: "2024-11-15", services: ["Echocardiogram", "ECG"], totalAmount: 4200,  paidAmount: 4200,  taxDeducted: 294,  status: "paid",    claimDate: "2024-11-17", paymentDate: "2024-11-30", reference: "CLM-C5-002" },
+      { id: "inv-corp-5-9", patientName: "Omar Farooq",    mrn: "MR-20003", serviceDate: "2024-12-01", services: ["CT Chest", "LFT", "CBC"], totalAmount: 9950,  paidAmount: 0,     taxDeducted: 0,    status: "unpaid",  claimDate: "2024-12-03", paymentDate: "",           reference: "" },
+    ],
+  };
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export function CorporatePricingModule({
   serviceTypes, services, entityLabel = "Corporate",
 }: {
@@ -108,7 +172,7 @@ export function CorporatePricingModule({
   entityLabel?: string;
 }) {
   // ── Core state (existing) ──
-  const [entities, setEntities] = useState<BillingEntity[]>([]);
+  const [entities, setEntities] = useState<BillingEntity[]>(() => SEED_ENTITIES);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [showEntityForm, setShowEntityForm] = useState(false);
@@ -120,8 +184,8 @@ export function CorporatePricingModule({
   const [pricingRuleForm, setPricingRuleForm] = useState<Record<string, { type: "percentage" | "fixed"; value: string }>>({});
 
   // ── New state: ledger, invoices ──
-  const [ledgers, setLedgers] = useState<Record<string, LedgerEntry[]>>({});
-  const [entityInvoices, setEntityInvoices] = useState<Record<string, PatientInvoice[]>>({});
+  const [ledgers, setLedgers] = useState<Record<string, LedgerEntry[]>>(() => buildSeedLedgers());
+  const [entityInvoices, setEntityInvoices] = useState<Record<string, PatientInvoice[]>>(() => buildSeedInvoices());
 
   // ── Advance payment dialog ──
   const [showAdvanceDialog, setShowAdvanceDialog] = useState(false);
