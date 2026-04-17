@@ -31,6 +31,7 @@ import {
   Users,
   Workflow,
   X,
+  Zap,
 } from "lucide-react";
 import { DoctorsModule, Doctor, INITIAL_DOCTORS } from "@/pages/DoctorsModule";
 import { SpecialtiesModule } from "@/pages/SpecialtiesModule";
@@ -44,6 +45,7 @@ import { BranchModule } from "@/pages/BranchModule";
 import { QueueModule } from "@/pages/QueueModule";
 import type { QueueSection } from "@/pages/QueueModule";
 import { UsersManagementModule } from "@/pages/UsersManagementModule";
+import { RoutingRulesModule } from "@/pages/RoutingRulesModule";
 import { INITIAL_SERVICE_TYPES, INITIAL_SERVICES } from "@/pages/BillingTypes";
 import type { ServiceType, Service } from "@/pages/BillingTypes";
 import { Button } from "@/components/ui/button";
@@ -432,6 +434,7 @@ export function AdminSettings() {
                 {subNavItem("locking-settings",   <Lock className="h-3.5 w-3.5" />,       "Locking")}
                 {subNavItem("display-settings",   <Monitor className="h-3.5 w-3.5" />,    "Display")}
                 {subNavItem("doctor-partitions",  <Stethoscope className="h-3.5 w-3.5" />,"Doctor / Partition")}
+                {subNavItem("routing-rules",      <Zap className="h-3.5 w-3.5" />,        "Routing Rules")}
               </div>
             )}
 
@@ -454,7 +457,7 @@ export function AdminSettings() {
         </aside>
 
         {/* Right Content */}
-        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
+        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
 
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
@@ -486,6 +489,8 @@ export function AdminSettings() {
           {(["visit-types","workflow-config","counter-types","counters","token-settings","queue-behavior","locking-settings","display-settings","doctor-partitions"] as const).map(s =>
             activeModule === s ? <QueueModule key={s} section={s as QueueSection} /> : null
           )}
+
+          {activeModule === "routing-rules" && <RoutingRulesModule />}
 
           {activeModule === "users-counters" && <UsersManagementModule />}
 
