@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Plus, Edit2, Trash2, Check, X, AlertCircle, GripVertical,
-  ChevronUp, ChevronDown, Info,
+  ChevronUp, ChevronDown, Info, Eye, Monitor, Volume2, VolumeX, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,8 +51,24 @@ type QueueBehavior = {
 
 type LockingSettings = { lockTimeoutSeconds: number; autoReleaseLock: boolean; allowForceTakeover: boolean; };
 
-type DisplaySettings = {
-  showLastNTokens: number; displayFormat: "token-counter" | "token-only"; soundAlert: boolean;
+type ScreenTheme = "dark" | "light" | "branded";
+type ScreenType  = "main-lobby" | "counter" | "doctor";
+
+type ScreenConfig = {
+  id: string;
+  name: string;
+  screenType: ScreenType;
+  associatedCounterId: string;
+  theme: ScreenTheme;
+  showCurrentToken: boolean;
+  showCounterName: boolean;
+  showLastNTokens: number;
+  showQueueCount: boolean;
+  tokenDisplayFormat: "token-counter" | "token-only";
+  soundAlert: boolean;
+  showClock: boolean;
+  tickerText: string;
+  active: boolean;
 };
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
@@ -106,7 +122,35 @@ const SEED_QUEUE_BEHAVIOR: QueueBehavior = {
 
 const SEED_LOCKING: LockingSettings = { lockTimeoutSeconds: 30, autoReleaseLock: true, allowForceTakeover: false };
 
-const SEED_DISPLAY: DisplaySettings = { showLastNTokens: 5, displayFormat: "token-counter", soundAlert: true };
+const SEED_SCREENS: ScreenConfig[] = [
+  {
+    id: "scr-1", name: "Main Lobby Display",
+    screenType: "main-lobby", associatedCounterId: "",
+    theme: "dark", showCurrentToken: true, showCounterName: true,
+    showLastNTokens: 5, showQueueCount: true,
+    tokenDisplayFormat: "token-counter", soundAlert: true,
+    showClock: true, tickerText: "Welcome to NovaDoc. Please wait for your token to be called.",
+    active: true,
+  },
+  {
+    id: "scr-2", name: "Dr. Room A Screen",
+    screenType: "doctor", associatedCounterId: "ctr-3",
+    theme: "dark", showCurrentToken: true, showCounterName: true,
+    showLastNTokens: 3, showQueueCount: false,
+    tokenDisplayFormat: "token-only", soundAlert: true,
+    showClock: false, tickerText: "",
+    active: true,
+  },
+  {
+    id: "scr-3", name: "Registration Desk Screen",
+    screenType: "counter", associatedCounterId: "ctr-1",
+    theme: "light", showCurrentToken: true, showCounterName: false,
+    showLastNTokens: 3, showQueueCount: true,
+    tokenDisplayFormat: "token-counter", soundAlert: false,
+    showClock: true, tickerText: "",
+    active: true,
+  },
+];
 
 const BRANCHES = [
   { id: "br-1", name: "Main Branch — Lahore" },
@@ -176,8 +220,16 @@ export function QueueModule({ section }: { section: QueueSection }) {
   const [tokenSettings, setTokenSettings] = useState<TokenSettings>(SEED_TOKEN_SETTINGS);
   const [queueBehavior, setQueueBehavior] = useState<QueueBehavior>(SEED_QUEUE_BEHAVIOR);
   const [lockingSettings, setLockingSettings] = useState<LockingSettings>(SEED_LOCKING);
-  const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(SEED_DISPLAY);
+  const [screens, setScreens] = useState<ScreenConfig[]>(SEED_SCREENS);
+  const [selectedScreenId, setSelectedScreenId] = useState<string>(SEED_SCREENS[0].id);
+  const [previewScreenId, setPreviewScreenId] = useState<string | null>(null);
+  const [clockTime, setClockTime] = useState(new Date());
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; type: string } | null>(null);
+
+  useEffect(() => {
+    const t = setInterval(() => setClockTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   // ── Section: Visit Types ────────────────────────────────────────────────────
   const [vtForm, setVtForm] = useState<Omit<VisitType, "id">>({ name: "", code: "", tokenPrefix: "", color: "#4982CF", queueMode: "single", partitionBy: "none", status: "active" });
@@ -678,34 +730,336 @@ export function QueueModule({ section }: { section: QueueSection }) {
     </div>
   );
 
-  if (section === "display-settings") return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <PageHeader title="Display Settings" desc="Configure what is shown on patient-facing token display screens." />
-      {/* Preview */}
-      <div className="rounded-xl border border-slate-200 bg-slate-900 p-6 text-center shadow-sm">
-        <p className="text-xs text-slate-400 mb-3 uppercase tracking-widest">Display Preview</p>
-        <div className="text-5xl font-black text-white tracking-wider font-mono">C{String(42).padStart(displaySettings.displayFormat === "token-counter" ? 3 : 0, "0")}</div>
-        {displaySettings.displayFormat === "token-counter" && <p className="text-lg font-bold text-[#4982CF] mt-2">Counter 3</p>}
-        <div className="flex justify-center gap-3 mt-4 text-sm text-slate-500">
-          {Array.from({ length: Math.min(displaySettings.showLastNTokens, 5) }, (_, i) => (
-            <span key={i} className="font-mono text-slate-400">C{String(40 - i).padStart(3, "0")}</span>
-          ))}
+  if (section === "display-settings") {
+    const BLANK_SCREEN: Omit<ScreenConfig, "id"> = {
+      name: "", screenType: "main-lobby", associatedCounterId: "",
+      theme: "dark", showCurrentToken: true, showCounterName: true,
+      showLastNTokens: 5, showQueueCount: false,
+      tokenDisplayFormat: "token-counter", soundAlert: true,
+      showClock: true, tickerText: "", active: true,
+    };
+
+    const selected = screens.find(s => s.id === selectedScreenId) ?? screens[0];
+    const previewScreen = previewScreenId ? screens.find(s => s.id === previewScreenId) : null;
+
+    const updateSelected = (patch: Partial<ScreenConfig>) =>
+      setScreens(p => p.map(s => s.id === selectedScreenId ? { ...s, ...patch } : s));
+
+    const addScreen = () => {
+      const newS: ScreenConfig = { ...BLANK_SCREEN, id: `scr-${Date.now()}`, name: "New Screen" };
+      setScreens(p => [...p, newS]);
+      setSelectedScreenId(newS.id);
+    };
+
+    const deleteScreen = (id: string) => {
+      setScreens(p => p.filter(s => s.id !== id));
+      if (selectedScreenId === id) setSelectedScreenId(screens.find(s => s.id !== id)?.id ?? "");
+    };
+
+    const SCREEN_TYPE_LABELS: Record<ScreenType, string> = {
+      "main-lobby": "Main Lobby",
+      "counter": "Counter",
+      "doctor": "Doctor Room",
+    };
+    const THEME_LABELS: Record<ScreenTheme, string> = { dark: "Dark", light: "Light", branded: "Branded" };
+    const THEME_COLORS: Record<ScreenTheme, string> = {
+      dark: "bg-slate-900",
+      light: "bg-white",
+      branded: "bg-[#4982CF]",
+    };
+
+    const getCounterName = (id: string) => {
+      if (!id) return "All Counters";
+      return counters.find(c => c.id === id)?.name ?? "—";
+    };
+
+    // ── Preview rendering helper ──────────────────────────────────────────
+    function ScreenPreview({ cfg }: { cfg: ScreenConfig }) {
+      const isDark = cfg.theme === "dark";
+      const isBranded = cfg.theme === "branded";
+      const bg = isDark ? "bg-slate-950" : isBranded ? "bg-[#4982CF]" : "bg-slate-100";
+      const textMain = isDark || isBranded ? "text-white" : "text-slate-900";
+      const textSub = isDark ? "text-[#4982CF]" : isBranded ? "text-blue-100" : "text-[#4982CF]";
+      const textMuted = isDark ? "text-slate-400" : isBranded ? "text-blue-200" : "text-slate-500";
+      const tokenBg = isDark ? "bg-slate-900 border-slate-700" : isBranded ? "bg-white/10 border-white/30" : "bg-white border-slate-300";
+      const histBg = isDark ? "bg-slate-800 border-slate-700" : isBranded ? "bg-white/10 border-white/20" : "bg-white border-slate-200";
+      const histText = isDark || isBranded ? "text-slate-300" : "text-slate-600";
+      const clockText = isDark ? "text-slate-500" : isBranded ? "text-blue-200" : "text-slate-400";
+
+      const now = clockTime;
+      const fmtTime = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+      const mockToken = cfg.tokenDisplayFormat === "token-counter"
+        ? { num: "C042", counter: getCounterName(cfg.associatedCounterId) || "Counter 3" }
+        : { num: "C042", counter: "" };
+
+      const histTokens = Array.from({ length: Math.min(cfg.showLastNTokens, 6) }, (_, i) => `C0${41 - i}`);
+
+      return (
+        <div className={`relative w-full h-full flex flex-col ${bg} rounded-xl overflow-hidden font-mono select-none`}>
+          {/* Top bar */}
+          <div className={`flex items-center justify-between px-6 py-3 border-b ${isDark ? "border-slate-800" : isBranded ? "border-white/20" : "border-slate-200"}`}>
+            <p className={`text-xs font-bold uppercase tracking-widest ${textMuted}`}>{cfg.name}</p>
+            <div className="flex items-center gap-3">
+              {cfg.soundAlert && (isDark || isBranded ? <Volume2 className={`h-3.5 w-3.5 ${textMuted}`} /> : <Volume2 className="h-3.5 w-3.5 text-slate-400" />)}
+              {cfg.showClock && <span className={`text-xs font-bold ${clockText}`}>{fmtTime}</span>}
+            </div>
+          </div>
+
+          {/* Main token area */}
+          {cfg.showCurrentToken && (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 py-4">
+              <p className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Now Serving</p>
+              <div className={`border-2 rounded-2xl px-10 py-5 text-center ${tokenBg}`}>
+                <p className={`text-6xl font-black tracking-widest ${isDark || isBranded ? "text-white" : "text-slate-900"}`}>{mockToken.num}</p>
+                {cfg.showCounterName && cfg.tokenDisplayFormat === "token-counter" && (
+                  <p className={`text-lg font-bold mt-1 ${textSub}`}>{mockToken.counter}</p>
+                )}
+              </div>
+              {cfg.showQueueCount && (
+                <p className={`text-xs font-semibold ${textMuted}`}>12 patients in queue</p>
+              )}
+            </div>
+          )}
+
+          {/* Recent tokens */}
+          {cfg.showLastNTokens > 0 && (
+            <div className={`px-6 py-3 border-t ${isDark ? "border-slate-800" : isBranded ? "border-white/20" : "border-slate-200"}`}>
+              <p className={`text-[9px] font-bold uppercase tracking-widest mb-2 ${textMuted}`}>Recently Called</p>
+              <div className="flex flex-wrap gap-1.5">
+                {histTokens.map((t, i) => (
+                  <span key={i} className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-bold ${histBg} ${histText}`}>{t}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Ticker */}
+          {cfg.tickerText && (
+            <div className={`px-4 py-2 border-t ${isDark ? "border-slate-800 bg-slate-900" : isBranded ? "border-white/20 bg-white/10" : "border-slate-200 bg-slate-50"}`}>
+              <p className={`text-[10px] font-medium truncate ${textMuted}`}>📢 {cfg.tickerText}</p>
+            </div>
+          )}
         </div>
+      );
+    }
+
+    const ToggleField = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) => (
+      <div className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
+        <span className="text-sm text-slate-600">{label}</span>
+        <Switch checked={checked} onCheckedChange={onChange} className="data-[state=checked]:bg-[#4982CF]" />
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100 px-5">
-        <SettingRow label="Show Last N Tokens" desc="Number of recently called tokens displayed on screen.">
-          <Input type="number" min="1" max="20" value={displaySettings.showLastNTokens} onChange={e => setDisplaySettings(p => ({ ...p, showLastNTokens: parseInt(e.target.value) || 1 }))} className="h-9 w-20 text-sm text-center" />
-        </SettingRow>
-        <SettingRow label="Display Format" desc="What information is shown alongside the token number.">
-          <Select value={displaySettings.displayFormat} onValueChange={(v: "token-counter" | "token-only") => setDisplaySettings(p => ({ ...p, displayFormat: v }))}>
-            <SelectTrigger className="h-9 w-44 text-sm"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="token-counter">Token + Counter</SelectItem><SelectItem value="token-only">Token Only</SelectItem></SelectContent>
-          </Select>
-        </SettingRow>
-        <ToggleRow label="Sound Alert" desc="Play an audio chime when a new token is called." value={displaySettings.soundAlert} onChange={v => setDisplaySettings(p => ({ ...p, soundAlert: v }))} />
+    );
+
+    return (
+      <div className="flex flex-col h-full overflow-hidden p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5 flex-shrink-0">
+          <PageHeader title="Display Settings" desc="Design and configure patient-facing display screens for counters, lobbies, and doctor rooms." />
+          <Button onClick={addScreen} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white gap-2 h-9 text-sm">
+            <Plus className="h-4 w-4" />New Screen
+          </Button>
+        </div>
+
+        {/* Two-panel layout */}
+        <div className="flex gap-5 flex-1 min-h-0">
+
+          {/* LEFT — screen list */}
+          <div className="w-60 flex-shrink-0 flex flex-col gap-2 overflow-y-auto pr-1">
+            {screens.map(scr => (
+              <div
+                key={scr.id}
+                onClick={() => setSelectedScreenId(scr.id)}
+                className={`rounded-xl border cursor-pointer transition-all p-3 group relative
+                  ${selectedScreenId === scr.id
+                    ? "border-[#4982CF] bg-[#4982CF]/5 shadow-sm"
+                    : "border-slate-200 bg-white hover:border-slate-300"}`}
+              >
+                {/* Mini preview thumbnail */}
+                <div className={`rounded-lg h-16 mb-2 overflow-hidden ${THEME_COLORS[scr.theme]}`}>
+                  <div className="h-full flex items-center justify-center">
+                    <span className={`font-mono font-black text-lg ${scr.theme !== "light" ? "text-white" : "text-slate-800"}`}>C042</span>
+                  </div>
+                </div>
+                <p className={`text-xs font-bold truncate ${selectedScreenId === scr.id ? "text-[#4982CF]" : "text-slate-700"}`}>{scr.name}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${selectedScreenId === scr.id ? "border-[#4982CF]/30 text-[#4982CF]" : "border-slate-200 text-slate-400"}`}>
+                    {SCREEN_TYPE_LABELS[scr.screenType]}
+                  </Badge>
+                  <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${scr.active ? "border-emerald-300 text-emerald-600" : "border-slate-200 text-slate-400"}`}>
+                    {scr.active ? "Active" : "Off"}
+                  </Badge>
+                </div>
+                {/* Actions */}
+                <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setPreviewScreenId(scr.id)} className="p-1 rounded bg-white shadow-sm border border-slate-200 text-slate-400 hover:text-[#4982CF]"><Eye className="h-3 w-3" /></button>
+                  <button onClick={() => deleteScreen(scr.id)} className="p-1 rounded bg-white shadow-sm border border-slate-200 text-slate-400 hover:text-rose-500"><Trash2 className="h-3 w-3" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* RIGHT — config + mini preview */}
+          {selected && (
+            <div className="flex-1 min-h-0 flex gap-5 overflow-hidden">
+              {/* Config panel */}
+              <div className="w-72 flex-shrink-0 overflow-y-auto">
+                <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                  {/* Screen name */}
+                  <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Screen Identity</p>
+                    <Input
+                      value={selected.name}
+                      onChange={e => updateSelected({ name: e.target.value })}
+                      className="h-9 text-sm font-semibold"
+                      placeholder="Screen name"
+                    />
+                  </div>
+
+                  {/* Type + counter */}
+                  <div className="px-4 py-3 border-b border-slate-100 space-y-3">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Screen Type</p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(["main-lobby", "counter", "doctor"] as ScreenType[]).map(t => (
+                        <button key={t} type="button" onClick={() => updateSelected({ screenType: t })}
+                          className={`rounded-lg border py-1.5 text-center text-[10px] font-bold transition-all
+                            ${selected.screenType === t ? "border-[#4982CF] bg-[#4982CF]/8 text-[#4982CF]" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                          {SCREEN_TYPE_LABELS[t]}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-600">Associated Counter</Label>
+                      <Select value={selected.associatedCounterId || "all"} onValueChange={v => updateSelected({ associatedCounterId: v === "all" ? "" : v })}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Counters</SelectItem>
+                          {counters.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Theme */}
+                  <div className="px-4 py-3 border-b border-slate-100 space-y-2">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Theme</p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(["dark", "light", "branded"] as ScreenTheme[]).map(t => (
+                        <button key={t} type="button" onClick={() => updateSelected({ theme: t })}
+                          className={`rounded-lg border py-2 text-[10px] font-bold transition-all relative overflow-hidden
+                            ${selected.theme === t ? "border-[#4982CF] ring-1 ring-[#4982CF]/30" : "border-slate-200 hover:border-slate-300"}`}>
+                          <span className={`inline-block w-4 h-4 rounded-full mb-1 border ${t === "dark" ? "bg-slate-900 border-slate-700" : t === "light" ? "bg-white border-slate-300" : "bg-[#4982CF] border-[#4982CF]"}`} />
+                          <p className="text-slate-600">{THEME_LABELS[t]}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Display elements */}
+                  <div className="px-4 py-3 border-b border-slate-100">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Display Elements</p>
+                    <ToggleField label="Current Token" checked={selected.showCurrentToken} onChange={v => updateSelected({ showCurrentToken: v })} />
+                    <ToggleField label="Counter Name" checked={selected.showCounterName} onChange={v => updateSelected({ showCounterName: v })} />
+                    <ToggleField label="Queue Count" checked={selected.showQueueCount} onChange={v => updateSelected({ showQueueCount: v })} />
+                    <ToggleField label="Sound Alert" checked={selected.soundAlert} onChange={v => updateSelected({ soundAlert: v })} />
+                    <ToggleField label="Show Clock" checked={selected.showClock} onChange={v => updateSelected({ showClock: v })} />
+                  </div>
+
+                  {/* Token display format + history */}
+                  <div className="px-4 py-3 border-b border-slate-100 space-y-3">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Token Format</p>
+                    <div className="flex gap-1.5">
+                      {([
+                        { val: "token-counter" as const, label: "Token + Counter" },
+                        { val: "token-only" as const, label: "Token Only" },
+                      ]).map(opt => (
+                        <button key={opt.val} type="button" onClick={() => updateSelected({ tokenDisplayFormat: opt.val })}
+                          className={`flex-1 rounded-lg border py-1.5 text-[10px] font-bold transition-all
+                            ${selected.tokenDisplayFormat === opt.val ? "border-[#4982CF] bg-[#4982CF]/8 text-[#4982CF]" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Show Last</Label>
+                      <Input type="number" min="0" max="10" value={selected.showLastNTokens}
+                        onChange={e => updateSelected({ showLastNTokens: parseInt(e.target.value) || 0 })}
+                        className="h-8 w-16 text-sm text-center" />
+                      <span className="text-xs text-slate-400 whitespace-nowrap">tokens</span>
+                    </div>
+                  </div>
+
+                  {/* Ticker */}
+                  <div className="px-4 py-3 border-b border-slate-100 space-y-2">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Ticker / Announcement</Label>
+                    <Input value={selected.tickerText}
+                      onChange={e => updateSelected({ tickerText: e.target.value })}
+                      placeholder="Leave blank to disable…" className="h-9 text-sm" />
+                  </div>
+
+                  {/* Active + Preview */}
+                  <div className="px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={selected.active} onCheckedChange={v => updateSelected({ active: v })} className="data-[state=checked]:bg-emerald-500" />
+                      <span className="text-sm text-slate-600">Active</span>
+                    </div>
+                    <Button onClick={() => setPreviewScreenId(selected.id)} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white gap-2 h-8 text-xs">
+                      <Eye className="h-3.5 w-3.5" />Preview
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live mini preview */}
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Live Preview — {selected.name}</p>
+                  <button onClick={() => setPreviewScreenId(selected.id)} className="flex items-center gap-1 text-[10px] font-semibold text-[#4982CF] hover:underline">
+                    <Monitor className="h-3 w-3" />Full Preview
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                  <ScreenPreview cfg={selected} />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Preview Modal ── */}
+        <Dialog open={!!previewScreen} onOpenChange={v => !v && setPreviewScreenId(null)}>
+          <DialogContent className="max-w-4xl p-0 overflow-hidden bg-transparent border-0 shadow-2xl">
+            <div className="sr-only">
+              <DialogHeader><DialogTitle>Screen Preview — {previewScreen?.name}</DialogTitle></DialogHeader>
+            </div>
+            {previewScreen && (
+              <div className="relative rounded-2xl overflow-hidden" style={{ height: "520px" }}>
+                <ScreenPreview cfg={previewScreen} />
+                <button
+                  onClick={() => setPreviewScreenId(null)}
+                  className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2 bg-black/40 rounded-lg px-3 py-1.5">
+                    <span className={`h-2 w-2 rounded-full ${previewScreen.active ? "bg-emerald-400" : "bg-slate-400"}`} />
+                    <span className="text-white text-xs font-semibold">{previewScreen.name}</span>
+                    <Badge variant="outline" className="border-white/30 text-white text-[9px] px-1.5 py-0">{SCREEN_TYPE_LABELS[previewScreen.screenType]}</Badge>
+                  </div>
+                  <div className="flex gap-1">
+                    {previewScreen.soundAlert && <div className="bg-black/40 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5"><Volume2 className="h-3 w-3 text-white" /><span className="text-white text-[10px] font-semibold">Sound On</span></div>}
+                    {!previewScreen.soundAlert && <div className="bg-black/40 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5"><VolumeX className="h-3 w-3 text-slate-400" /><span className="text-slate-400 text-[10px] font-semibold">Muted</span></div>}
+                    {previewScreen.showClock && <div className="bg-black/40 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5"><Clock className="h-3 w-3 text-white" /><span className="text-white text-[10px] font-semibold">Clock On</span></div>}
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
-    </div>
-  );
+    );
+  }
 
   if (section === "doctor-partitions") return (
     <div className="mx-auto max-w-4xl space-y-6">

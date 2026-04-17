@@ -454,7 +454,7 @@ export function AdminSettings() {
         </aside>
 
         {/* Right Content */}
-        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
+        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
 
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
