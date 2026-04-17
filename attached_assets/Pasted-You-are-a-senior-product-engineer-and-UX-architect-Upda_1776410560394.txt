@@ -1,0 +1,199 @@
+You are a senior product engineer and UX architect.
+Update the below features in our existing admin panel. 
+
+The system supports:
+* Multi-branch setup
+* Token-based queue system
+* Single visit type (for MVP)
+* Linear workflow
+* Basic locking
+* Configurable counters and doctor-based partitioning
+⚠️ IMPORTANT:
+* Design MUST be scalable for future (multi-visit, parallel queues)
+* Do NOT hardcode anything
+* Everything must be configurable via admin
+* Use clean modular sections
+* Each section must include:
+    1. UI Layout
+    2. Fields
+    3. Field Types
+    4. Relationships
+    5. Validation rules
+    6. Example values
+
+🎯 MAIN GOAL
+In our left-sidebar Admin Panel with the following sections:
+
+1. 🏥 BRANCH (A sub Option under a new section Branch Management)
+UI:
+* Table view (list of branches)
+* Add / Edit Drawer
+Fields:
+* Branch Name (text, required)
+* Branch Code (text, unique)
+* Timezone (dropdown)
+* Working Hours (time range)
+* Token Reset Time (time)
+* Status (active/inactive)
+Validation:
+* Code must be unique
+* Working hours required
+
+2. 🧾 VISIT TYPE MANAGEMENT  (A sub Option under a new section Queue Management)
+UI:
+* Card/List view
+* Add/Edit modal
+Fields:
+* Visit Type Name (text)
+* Code (text, unique)
+* Token Prefix (text, e.g. C, U)
+* Color (color picker)
+* Queue Mode (dropdown):
+    * Single Queue
+    * Partitioned Queue
+* Partition By (conditional dropdown):
+    * None
+    * Doctor
+* Status (active/inactive)
+Logic:
+* Partition By visible only if Partitioned Queue selected
+
+3. 🔁 WORKFLOW CONFIGURATION (A sub Option under a new section Queue Management)
+UI:
+* Step list (ordered)
+* Add Step button
+* Drag & reorder (optional MVP: numeric order field)
+Fields per Step:
+* Step Name (text)
+* Step Order (number)
+* Counter Type (dropdown)
+* Is Mandatory (toggle)
+* Allow Skip (toggle)
+* Average Service Time (number, minutes)
+Validation:
+* Step order must be unique per visit type
+* At least 1 step required
+
+4. 🧩 COUNTER TYPES (A sub Option under a new section Queue Management)
+UI:
+* Simple list + add modal
+Fields:
+* Counter Type Name (text)
+* Description (text)
+* Max Parallel Counters (number)
+
+5. 🪑 COUNTERS (STATIONS) (A sub Option under a new section Queue Management)
+UI:
+* Table view
+* Add/Edit drawer
+Fields:
+* Counter Name (text)
+* Counter Type (dropdown)
+* Branch (dropdown)
+* Allow Multi-user (toggle)
+* Status (active/inactive)
+
+6. 👨‍⚕️ USERS & COUNTER MAPPING (A sub Option under a new section Users Management)
+UI:
+* Table + assignment panel
+Fields:
+* User Name
+* Role (dropdown: Admin, Front Desk, Doctor)
+* Assigned Counter (dropdown)
+* Login ID
+* Password (masked input)
+* Status
+Logic:
+* One active session per user
+* One active counter per session
+
+7. 🧮 TOKEN SETTINGS  (A sub Option under a new section Queue Management)
+UI:
+* Settings form
+Fields:
+* Token Prefix (text)
+* Starting Number (number)
+* Reset Frequency (dropdown):
+    * Daily
+    * Manual
+* Display Format (dropdown):
+    * C001
+    * C1
+* Allow Manual Token Entry (toggle)
+
+8. ⚙️ QUEUE BEHAVIOR SETTINGS  (A sub Option under a new section Queue Management)
+UI:
+* Toggle-based settings panel
+Fields:
+* Auto Move to Next Step (toggle)
+* Require Manual Completion (toggle)
+* Allow Step Skip (toggle)
+* Allow Recall (toggle)
+* Max Recall Attempts (number)
+* Token Expiry (minutes)
+
+9. 🔐 LOCKING SETTINGS  (A sub Option under a new section Queue Management)
+UI:
+* Config panel
+Fields:
+* Lock Timeout (seconds)
+* Auto Release Lock (toggle)
+* Allow Force Takeover (toggle, admin only)
+
+10. 📺 DISPLAY SETTINGS  (A sub Option under a new section Queue Management)
+UI:
+* Preview + settings panel
+Fields:
+* Show Last N Tokens (number)
+* Display Format (dropdown):
+    * Token + Counter
+    * Token only
+* Sound Alert (toggle)
+
+11. 🧠 DOCTOR / PARTITION CONFIGURATION  (A sub Option under a new section Queue Management)
+UI:
+* Doctor list with mapping
+Fields:
+* Doctor Name
+* Speciality (text)
+* Assigned Counter
+* Queue Visibility (auto from partition)
+Logic:
+* Used when Partition By = Doctor
+* Token must carry doctor_id
+
+🔗 RELATIONSHIPS
+* Branch → Counters
+* Counter Type → Counters
+* Visit Type → Workflow Steps
+* Workflow Step → Counter Type
+* Token → Visit Type
+* Queue Entry → Step + Counter
+* Token → Doctor (if partitioned)
+
+🧱 OUTPUT REQUIREMENTS
+Generate:
+1. Full UI structure (sidebar + pages)
+2. Clean UX suggestions (forms, tables, drawers)
+3. Conditional logic handling
+
+🎨 UX EXPECTATIONS
+* Modern SaaS admin layout
+* Left sidebar navigation
+* Right-side drawers for forms
+* Minimal but scalable UI
+* Avoid clutter
+
+⚠️ EDGE CASES
+* Single-step workflow (camp / clinic)
+* Partitioned queues (multi-doctor)
+* Multiple counters same type
+* Token reset daily
+* Lock conflict handling
+
+🚀 FINAL GOAL
+Deliver new sections in admin panel  that can support:
+* Camp (single queue)
+* Clinic (doctor partitioned queue)
+* Hospital (future multi-step workflows)
+Do NOT oversimplify. Do NOT skip relationships.

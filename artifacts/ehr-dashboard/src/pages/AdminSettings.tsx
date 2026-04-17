@@ -14,6 +14,8 @@ import {
   GitBranch,
   Layers,
   LayoutGrid,
+  Lock,
+  Monitor,
   Package,
   Plus,
   Receipt,
@@ -23,8 +25,11 @@ import {
   Sparkles,
   Stethoscope,
   Tag,
+  Ticket,
   Trash2,
   UserRound,
+  Users,
+  Workflow,
   X,
 } from "lucide-react";
 import { DoctorsModule, Doctor, INITIAL_DOCTORS } from "@/pages/DoctorsModule";
@@ -35,6 +40,10 @@ import { ServicePricingModule } from "@/pages/ServicePricingModule";
 import { CorporatePricingModule } from "@/pages/CorporatePricingModule";
 import { InsurancePricingModule } from "@/pages/InsurancePricingModule";
 import { PackagesModule } from "@/pages/PackagesModule";
+import { BranchModule } from "@/pages/BranchModule";
+import { QueueModule } from "@/pages/QueueModule";
+import type { QueueSection } from "@/pages/QueueModule";
+import { UsersManagementModule } from "@/pages/UsersManagementModule";
 import { INITIAL_SERVICE_TYPES, INITIAL_SERVICES } from "@/pages/BillingTypes";
 import type { ServiceType, Service } from "@/pages/BillingTypes";
 import { Button } from "@/components/ui/button";
@@ -137,12 +146,16 @@ const INITIAL_DATA: Department[] = [
 
 type ActiveModule =
   | "departments" | "specialties" | "doctors" | "fees"
-  | "service-types" | "service-pricing" | "corporate-pricing" | "insurance-pricing" | "packages";
+  | "service-types" | "service-pricing" | "corporate-pricing" | "insurance-pricing" | "packages"
+  | "branches"
+  | "visit-types" | "workflow-config" | "counter-types" | "counters"
+  | "token-settings" | "queue-behavior" | "locking-settings" | "display-settings" | "doctor-partitions"
+  | "users-counters";
 
 export function AdminSettings() {
   const [, setLocation] = useLocation();
   const [activeModule, setActiveModule] = useState<ActiveModule>("departments");
-  const [navExpanded, setNavExpanded] = useState({ departments: true, doctors: true, billing: true });
+  const [navExpanded, setNavExpanded] = useState({ departments: true, doctors: true, billing: true, branches: false, queue: false, users: false });
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DATA);
 
   const toggleNav = (key: keyof typeof navExpanded) =>
@@ -381,22 +394,77 @@ export function AdminSettings() {
               </div>
             )}
 
-            {/* Soon items */}
-            <button type="button" disabled className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-300 cursor-default">
-              <Layers className="h-4 w-4" />
-              <span className="flex-1 text-left">Services</span>
-              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">Soon</span>
-            </button>
-            <button type="button" disabled className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-300 cursor-default">
-              <GitBranch className="h-4 w-4" />
+
+            {/* ── Branch Management Group ── */}
+            <div className="pt-1">
+              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">Branch Management</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => toggleNav("branches")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <GitBranch className="h-4 w-4 text-slate-500" />
               <span className="flex-1 text-left">Branches</span>
-              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">Soon</span>
+              {navExpanded.branches ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
             </button>
+            {navExpanded.branches && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("branches", <Building2 className="h-3.5 w-3.5" />, "Branch List")}
+              </div>
+            )}
+
+            {/* ── Queue Management Group ── */}
+            <div className="pt-2">
+              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">Queue Management</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => toggleNav("queue")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Ticket className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Queue Setup</span>
+              {navExpanded.queue ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.queue && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("visit-types",       <Activity className="h-3.5 w-3.5" />,   "Visit Types")}
+                {subNavItem("workflow-config",    <Workflow className="h-3.5 w-3.5" />,   "Workflow Config")}
+                {subNavItem("counter-types",      <Layers className="h-3.5 w-3.5" />,     "Counter Types")}
+                {subNavItem("counters",           <LayoutGrid className="h-3.5 w-3.5" />, "Counters")}
+                {subNavItem("token-settings",     <Tag className="h-3.5 w-3.5" />,        "Token Settings")}
+                {subNavItem("queue-behavior",     <Settings className="h-3.5 w-3.5" />,   "Queue Behavior")}
+                {subNavItem("locking-settings",   <Lock className="h-3.5 w-3.5" />,       "Locking")}
+                {subNavItem("display-settings",   <Monitor className="h-3.5 w-3.5" />,    "Display")}
+                {subNavItem("doctor-partitions",  <Stethoscope className="h-3.5 w-3.5" />,"Doctor / Partition")}
+              </div>
+            )}
+
+            {/* ── Users Management Group ── */}
+            <div className="pt-2">
+              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">Users Management</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => toggleNav("users")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Users className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Users</span>
+              {navExpanded.users ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.users && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("users-counters", <UserRound className="h-3.5 w-3.5" />, "Users & Counters")}
+              </div>
+            )}
           </nav>
         </aside>
 
         {/* Right Content */}
         <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
+
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
           )}
@@ -421,6 +489,14 @@ export function AdminSettings() {
           {activeModule === "packages" && (
             <PackagesModule services={services} serviceTypes={serviceTypes} />
           )}
+
+          {activeModule === "branches" && <BranchModule />}
+
+          {(["visit-types","workflow-config","counter-types","counters","token-settings","queue-behavior","locking-settings","display-settings","doctor-partitions"] as const).map(s =>
+            activeModule === s ? <QueueModule key={s} section={s as QueueSection} /> : null
+          )}
+
+          {activeModule === "users-counters" && <UsersManagementModule />}
 
           {activeModule === "departments" && (
             <div className="mx-auto max-w-4xl space-y-6">
