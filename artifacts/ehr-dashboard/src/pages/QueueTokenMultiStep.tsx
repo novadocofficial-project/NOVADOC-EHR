@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Workflow, CheckCircle2, Clock, RefreshCw, Search, UserPlus, ChevronRight, X, ArrowRight } from "lucide-react";
+import { Workflow, CheckCircle2, Clock, RefreshCw, Search, UserPlus, ChevronRight, X, ArrowRight, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +72,7 @@ export function QueueTokenMultiStep() {
   const [toast, setToast]           = useState<string | null>(null);
   const [filterStep, setFilterStep] = useState<number | "all">("all");
   const [showAddPatient, setShowAddPatient] = useState(false);
+  const [vtView, setVtView] = useState<"list" | "cards">("list");
   const searchRef = useRef<HTMLDivElement>(null);
   const [tick, setTick] = useState(0);
 
@@ -186,113 +187,135 @@ export function QueueTokenMultiStep() {
         {/* LEFT */}
         <div className="flex w-[400px] flex-shrink-0 flex-col border-r border-slate-200 bg-white overflow-hidden">
 
-          {/* TOP — Fixed token display */}
-          <div className="flex-shrink-0 flex flex-col items-center gap-2 px-6 pt-6 pb-5 border-b border-slate-100">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Next Token</p>
-            <div className="rounded-3xl border-2 px-14 py-7 text-center shadow-sm w-full"
-              style={{ borderColor: selectedVT.color + "60", backgroundColor: selectedVT.color + "0C" }}>
-              <p className="font-black tracking-widest font-mono text-7xl" style={{ color: selectedVT.color }}>{nextToken}</p>
-              <p className="mt-1 text-xs font-semibold" style={{ color: selectedVT.color + "AA" }}>
-                Step 1 of {selectedVT.steps.length} · {selectedVT.steps[0]}
-              </p>
+          {/* TOP — Fixed compact token */}
+          <div className="flex-shrink-0 px-4 py-3 border-b border-slate-100 bg-white">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Next Token</p>
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl border-2 px-5 py-2 text-center flex-shrink-0"
+                style={{ borderColor: selectedVT.color + "60", backgroundColor: selectedVT.color + "0C" }}>
+                <p className="font-black tracking-widest font-mono text-4xl leading-none" style={{ color: selectedVT.color }}>{nextToken}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-700 leading-tight">{selectedVT.name}</p>
+                <p className="text-xs leading-tight" style={{ color: selectedVT.color + "CC" }}>
+                  Step 1 of {selectedVT.steps.length} · {selectedVT.steps[0]}
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* MIDDLE — Scrollable: patient + visit type */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
-
-            {/* Patient Search */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient</p>
-                <Button variant="ghost" size="sm" className="h-6 gap-1 text-[10px] text-[#4982CF] hover:bg-[#4982CF]/10 px-2"
-                  onClick={() => setShowAddPatient(true)}>
-                  <UserPlus className="h-3 w-3" />Add New
+          {/* FIXED — Patient section */}
+          <div className="flex-shrink-0 px-4 py-3 border-b border-slate-100 bg-white">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Patient</p>
+              <Button variant="ghost" size="sm" className="h-5 gap-1 text-[10px] text-[#4982CF] hover:bg-[#4982CF]/10 px-2"
+                onClick={() => setShowAddPatient(true)}>
+                <UserPlus className="h-3 w-3" />Add New
+              </Button>
+            </div>
+            {selectedPat ? (
+              <div className="flex items-center gap-2.5 rounded-xl border-2 border-[#4982CF] bg-[#4982CF]/5 px-3 py-2">
+                <div className="h-8 w-8 rounded-full bg-[#4982CF] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {selectedPat.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-900 leading-tight">{selectedPat.name}</p>
+                  <p className="text-xs text-slate-500 leading-tight">{selectedPat.mrn} · {selectedPat.phone}</p>
+                </div>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 flex-shrink-0"
+                  onClick={() => { setSelectedPat(null); setSearch(""); }}>
+                  <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
-
-              {selectedPat ? (
-                <div className="flex items-center gap-3 rounded-xl border-2 border-[#4982CF] bg-[#4982CF]/5 p-3">
-                  <div className="h-9 w-9 rounded-full bg-[#4982CF] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                    {selectedPat.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-900 leading-tight">{selectedPat.name}</p>
-                    <p className="text-xs text-slate-500 leading-tight">{selectedPat.mrn} · {selectedPat.phone}</p>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 flex-shrink-0"
-                    onClick={() => { setSelectedPat(null); setSearch(""); }}>
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
+            ) : (
+              <div ref={searchRef} className="relative">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search name, MRN, or phone…"
+                    className="h-9 pl-9 text-sm border-slate-200 focus-visible:ring-[#4982CF]"
+                    value={search}
+                    onChange={e => { setSearch(e.target.value); setShowSearch(true); }}
+                    onFocus={() => setShowSearch(true)}
+                  />
                 </div>
-              ) : (
-                <div ref={searchRef} className="relative">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                    <Input
-                      placeholder="Search name, MRN, or phone…"
-                      className="h-10 pl-9 text-sm border-slate-200 focus-visible:ring-[#4982CF]"
-                      value={search}
-                      onChange={e => { setSearch(e.target.value); setShowSearch(true); }}
-                      onFocus={() => setShowSearch(true)}
-                    />
+                {showSearch && (
+                  <div className="absolute top-10 left-0 right-0 z-30 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+                    {filteredPatients.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-5 text-slate-400">
+                        <Search className="h-4 w-4 opacity-40" />
+                        <p className="text-xs font-medium">No patients found</p>
+                        <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setShowAddPatient(true)}>
+                          <UserPlus className="h-3.5 w-3.5" />Register New Patient
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="max-h-44 overflow-y-auto divide-y divide-slate-100">
+                        {filteredPatients.map(p => (
+                          <button key={p.id} className="w-full flex items-center gap-3 px-3 py-2 hover:bg-[#4982CF]/5 text-left transition-colors"
+                            onClick={() => { setSelectedPat(p); setSearch(""); setShowSearch(false); }}>
+                            <div className="h-7 w-7 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-xs font-bold flex-shrink-0">
+                              {p.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-slate-900 leading-tight">{p.name}</p>
+                              <p className="text-[10px] text-slate-400 leading-tight">{p.mrn} · {p.gender === "M" ? "Male" : "Female"}</p>
+                            </div>
+                            <ChevronRight className="h-3.5 w-3.5 text-slate-300 flex-shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
+                )}
+              </div>
+            )}
+          </div>
 
-                  {showSearch && (
-                    <div className="absolute top-11 left-0 right-0 z-30 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
-                      {filteredPatients.length === 0 ? (
-                        <div className="flex flex-col items-center gap-2 py-6 text-slate-400">
-                          <Search className="h-5 w-5 opacity-40" />
-                          <p className="text-xs font-medium">No patients found</p>
-                          <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs mt-1" onClick={() => setShowAddPatient(true)}>
-                            <UserPlus className="h-3.5 w-3.5" />Register New Patient
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="max-h-52 overflow-y-auto divide-y divide-slate-100">
-                          {filteredPatients.map(p => (
-                            <button key={p.id} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#4982CF]/5 text-left transition-colors"
-                              onClick={() => { setSelectedPat(p); setSearch(""); setShowSearch(false); }}>
-                              <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-xs font-bold flex-shrink-0">
-                                {p.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-slate-900 leading-tight">{p.name}</p>
-                                <p className="text-xs text-slate-400 leading-tight">{p.mrn} · {p.gender === "M" ? "Male" : "Female"}</p>
-                              </div>
-                              <ChevronRight className="h-4 w-4 text-slate-300 flex-shrink-0" />
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+          {/* MIDDLE — Scrollable visit type only */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2">
+
+            {/* Visit Type header + toggle */}
+            <div className="flex items-center justify-between">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Visit Type</p>
+              <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                <button
+                  onClick={() => setVtView("list")}
+                  className={`px-2 py-1 flex items-center transition-colors ${vtView === "list" ? "bg-[#4982CF] text-white" : "bg-white text-slate-400 hover:bg-slate-50"}`}
+                  title="List view">
+                  <List className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => setVtView("cards")}
+                  className={`px-2 py-1 flex items-center border-l border-slate-200 transition-colors ${vtView === "cards" ? "bg-[#4982CF] text-white" : "bg-white text-slate-400 hover:bg-slate-50"}`}
+                  title="Card view">
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
 
-            {/* Visit Type */}
-            <div>
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Visit Type</p>
-              <div className="space-y-2">
+            {vtView === "list" ? (
+              <div className="space-y-1.5">
                 {SEED_VISIT_TYPES.map(vt => {
                   const isSelected = vt.id === selectedVT.id;
                   return (
                     <button key={vt.id} onClick={() => setSelectedVT(vt)}
-                      className={`w-full rounded-xl border-2 p-3 text-left transition-all ${isSelected ? "shadow-sm" : "border-slate-200 bg-slate-50 hover:border-slate-300"}`}
+                      className={`w-full rounded-xl border-2 p-2.5 text-left transition-all ${isSelected ? "shadow-sm" : "border-slate-200 bg-slate-50 hover:border-slate-300"}`}
                       style={isSelected ? { borderColor: vt.color, backgroundColor: vt.color + "0A" } : undefined}>
-                      <div className="flex items-center gap-3">
-                        <div className="h-4 w-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-3.5 w-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
                           style={{ borderColor: isSelected ? vt.color : "#CBD5E1", backgroundColor: isSelected ? vt.color : "white" }}>
-                          {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                          {isSelected && <div className="h-1 w-1 rounded-full bg-white" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-900 leading-tight">{vt.name}</p>
+                          <p className="text-xs font-bold text-slate-900 leading-tight">{vt.name}</p>
                           <div className="flex items-center gap-0.5 mt-1 flex-wrap">
                             {vt.steps.map((s, i) => (
                               <span key={i} className="flex items-center gap-0.5">
-                                <span className="text-[9px] font-semibold text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">{s}</span>
-                                {i < vt.steps.length - 1 && <ArrowRight className="h-2.5 w-2.5 text-slate-300" />}
+                                <span className="text-[9px] font-semibold text-slate-500 bg-slate-100 rounded px-1 py-0.5">
+                                  {s.split(/[\s/&]+/)[0].slice(0, 3)}
+                                </span>
+                                {i < vt.steps.length - 1 && <ArrowRight className="h-2 w-2 text-slate-300" />}
                               </span>
                             ))}
                           </div>
@@ -302,8 +325,28 @@ export function QueueTokenMultiStep() {
                   );
                 })}
               </div>
-            </div>
-
+            ) : (
+              <div className="grid grid-cols-2 gap-1.5">
+                {SEED_VISIT_TYPES.map(vt => {
+                  const isSelected = vt.id === selectedVT.id;
+                  return (
+                    <button key={vt.id} onClick={() => setSelectedVT(vt)}
+                      className={`rounded-xl border-2 p-2.5 text-left transition-all ${isSelected ? "shadow-sm" : "border-slate-200 bg-slate-50 hover:border-slate-300"}`}
+                      style={isSelected ? { borderColor: vt.color, backgroundColor: vt.color + "0A" } : undefined}>
+                      <p className="text-xs font-bold text-slate-900 leading-tight mb-2">{vt.name}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {vt.steps.map((s, i) => (
+                          <span key={i} className="text-[9px] font-bold rounded px-1.5 py-0.5"
+                            style={{ backgroundColor: vt.color + "18", color: vt.color }}>
+                            {s.split(/[\s/&]+/)[0].slice(0, 3)}
+                          </span>
+                        ))}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* BOTTOM — Fixed generate button */}

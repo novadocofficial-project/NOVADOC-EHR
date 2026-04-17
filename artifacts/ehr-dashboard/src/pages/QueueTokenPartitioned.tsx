@@ -156,19 +156,18 @@ export function QueueTokenPartitioned() {
         {/* LEFT */}
         <div className="flex w-96 flex-shrink-0 flex-col border-r border-slate-200 bg-white overflow-hidden">
 
-          {/* TOP — Fixed token display */}
-          <div className="flex-shrink-0 flex flex-col items-center gap-3 px-6 pt-6 pb-5 border-b border-slate-100">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Next Token</p>
-            <div
-              className="rounded-3xl border-2 px-14 py-8 text-center shadow-sm w-full"
-              style={{ borderColor: selectedDQ.doctor.color + "60", backgroundColor: selectedDQ.doctor.color + "0C" }}
-            >
-              <p className="font-black tracking-widest font-mono text-7xl" style={{ color: selectedDQ.doctor.color }}>
-                {nextToken}
-              </p>
-              <p className="mt-1 text-xs font-semibold" style={{ color: selectedDQ.doctor.color + "AA" }}>
-                {selectedDQ.doctor.name} · {selectedDQ.doctor.counter}
-              </p>
+          {/* TOP — Fixed compact token display */}
+          <div className="flex-shrink-0 px-4 py-3 border-b border-slate-100 bg-white">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Next Token</p>
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl border-2 px-5 py-2 text-center flex-shrink-0"
+                style={{ borderColor: selectedDQ.doctor.color + "60", backgroundColor: selectedDQ.doctor.color + "0C" }}>
+                <p className="font-black tracking-widest font-mono text-4xl leading-none" style={{ color: selectedDQ.doctor.color }}>{nextToken}</p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800 leading-tight">{selectedDQ.doctor.name}</p>
+                <p className="text-xs text-slate-400 leading-tight">{selectedDQ.doctor.counter}</p>
+              </div>
             </div>
           </div>
 

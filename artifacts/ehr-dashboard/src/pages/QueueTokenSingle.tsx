@@ -117,13 +117,15 @@ export function QueueTokenSingle() {
         {/* LEFT — Token Generation Panel */}
         <div className="flex w-96 flex-shrink-0 flex-col border-r border-slate-200 bg-white overflow-hidden">
 
-          {/* TOP — Fixed token display */}
-          <div className="flex-shrink-0 flex flex-col items-center gap-3 px-6 pt-6 pb-5 border-b border-slate-100">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Next Token</p>
-            <div className="rounded-3xl border-2 border-emerald-200 bg-emerald-50 px-14 py-8 text-center shadow-sm w-full">
-              <p className="font-black tracking-widest font-mono text-7xl text-emerald-600">{nextToken}</p>
+          {/* TOP — Fixed compact token display */}
+          <div className="flex-shrink-0 px-4 py-3 border-b border-slate-100 bg-white">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Next Token</p>
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-5 py-2 text-center flex-shrink-0">
+                <p className="font-black tracking-widest font-mono text-4xl text-emerald-600 leading-none">{nextToken}</p>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">Auto-increments<br/>after each generation</p>
             </div>
-            <p className="text-xs text-slate-400">Auto-increments after each generation</p>
           </div>
 
           {/* MIDDLE — Scrollable content */}
