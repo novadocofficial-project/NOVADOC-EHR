@@ -346,14 +346,14 @@ export function AdminSettings() {
               className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
             >
               <Building2 className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Departments</span>
+              <span className="flex-1 text-left">Care Structure</span>
               {navExpanded.departments
                 ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
                 : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
             </button>
             {navExpanded.departments && (
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("departments", <LayoutGrid className="h-3.5 w-3.5" />, "Sub-Departments")}
+                {subNavItem("departments", <LayoutGrid className="h-3.5 w-3.5" />, "Departments & Sub")}
                 {subNavItem("specialties", <Sparkles className="h-3.5 w-3.5" />, "Specialties")}
               </div>
             )}
