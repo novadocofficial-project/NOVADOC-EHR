@@ -5,6 +5,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { Dashboard } from "@/pages/Dashboard";
 import { AdminSettings } from "@/pages/AdminSettings";
+import { QueueTokenSingle } from "@/pages/QueueTokenSingle";
+import { QueueTokenPartitioned } from "@/pages/QueueTokenPartitioned";
+import { QueueTokenMultiStep } from "@/pages/QueueTokenMultiStep";
 
 const queryClient = new QueryClient();
 
@@ -13,6 +16,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/admin" component={AdminSettings} />
+      <Route path="/queue/token/single" component={QueueTokenSingle} />
+      <Route path="/queue/token/partitioned" component={QueueTokenPartitioned} />
+      <Route path="/queue/token/multistep" component={QueueTokenMultiStep} />
       <Route component={NotFound} />
     </Switch>
   );

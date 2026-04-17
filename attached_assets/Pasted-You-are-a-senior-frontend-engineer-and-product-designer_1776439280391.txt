@@ -1,0 +1,339 @@
+You are a senior frontend engineer and product designer.
+
+Your task is to design **Queue Management Frontend Screens** for a healthcare SaaS product.
+
+This is a **front-user module (NOT admin panel)** and must be added to the **main header navigation**.
+
+---
+
+# 🎯 GOAL
+
+Create a new **top navbar menu**:
+
+👉 **Queue**
+
+With the following structure:
+
+```text
+Queue
+ └── Token Generation
+       ├── Single Queue
+       ├── Partitioned Queue
+       └── Multi-Step Visit Type
+```
+
+Each of the 3 options must open a **separate dedicated page** with its own UI and logic.
+
+---
+
+# 🧭 NAVIGATION BEHAVIOR
+
+* Hover on **Queue**
+* Click **Token Generation**
+* Show dropdown with:
+
+  * Single Queue
+  * Partitioned Queue
+  * Multi-Step Visit Type
+
+Each route:
+
+```text
+/queue/token/single
+/queue/token/partitioned
+/queue/token/multistep
+```
+
+---
+
+# 🧱 COMMON LAYOUT (ALL 3 SCREENS)
+
+All pages must share a consistent layout:
+
+```text
+-------------------------------------------------
+| Header (Page Title + Branch Selector)         |
+-------------------------------------------------
+| Left: Token Generation Panel                  |
+| Right: Live Queue Preview                     |
+-------------------------------------------------
+```
+
+---
+
+## LEFT PANEL (COMMON)
+
+* Token Preview (large, bold)
+* Dynamic Input Section (changes per variant)
+* Primary Button: **Generate Token**
+
+---
+
+## RIGHT PANEL (COMMON)
+
+Live Queue View:
+
+* Now Serving
+* Waiting Tokens
+* Completed (optional)
+* Auto-refresh or WebSocket-ready UI
+
+---
+
+# 🟢 1. SINGLE QUEUE (CAMP MODE)
+
+## 📌 USE CASE:
+
+* Ultrasound camp
+* Vaccination drive
+* Any simple queue
+
+## 🧠 LOGIC:
+
+* No selections required
+* One queue for all
+* One step only
+
+---
+
+## 🎨 UI REQUIREMENTS
+
+### Left Panel:
+
+* Title: "Single Queue Token"
+* Token Preview (auto increment, e.g. U001)
+* No dropdowns / inputs
+
+### Button:
+
+👉 Generate Token
+
+---
+
+## 👤 USER ACTION:
+
+* Click **Generate Token**
+
+---
+
+## ⚙️ SYSTEM LOGIC:
+
+* Create token
+* Create 1 queue entry (waiting)
+
+---
+
+## 💡 UX RULE:
+
+👉 Zero decision making
+👉 Fastest possible interaction
+
+---
+
+# 🟡 2. PARTITIONED QUEUE (MULTI-DOCTOR CLINIC)
+
+## 📌 USE CASE:
+
+* Clinic with multiple doctors
+* Each doctor has separate queue
+
+---
+
+## 🧠 LOGIC:
+
+* User MUST select doctor
+* Queue is divided by doctor
+
+---
+
+## 🎨 UI REQUIREMENTS
+
+### Left Panel:
+
+#### Section: Select Doctor
+
+* Use **radio buttons or cards (NOT dropdown)**
+* Show:
+
+  * Doctor Name
+  * Speciality
+
+Example:
+
+```text
+(•) Dr. Ahmed – Cardiologist
+( ) Dr. Sara – Dermatologist
+```
+
+---
+
+### Token Preview:
+
+* Updates after doctor selection (e.g. C021)
+
+---
+
+### Button:
+
+👉 Generate Token
+
+---
+
+## 👤 USER ACTION:
+
+1. Select doctor
+2. Click Generate Token
+
+---
+
+## ⚙️ SYSTEM LOGIC:
+
+* Token created with `doctor_id`
+* Queue entry created with partition
+
+---
+
+## 💡 UX RULE:
+
+👉 Selection must be quick and visible
+👉 Avoid dropdowns
+
+---
+
+# 🔵 3. MULTI-STEP VISIT TYPE (HOSPITAL OPD)
+
+## 📌 USE CASE:
+
+* Hospital OPD
+* Structured flow (Registration → Billing → Doctor)
+
+---
+
+## 🧠 LOGIC:
+
+* Token starts at first step only
+* System will move token step-by-step later
+
+---
+
+## 🎨 UI REQUIREMENTS
+
+### Left Panel:
+
+#### Patient Section:
+
+* Search Patient (typeahead)
+* Add New Patient (button)
+
+#### Visit Type:
+
+* Show default (OPD)
+* Keep it selectable (future-proof)
+
+---
+
+### Token Preview:
+
+* C105 style
+
+---
+
+### Button:
+
+👉 Generate Token
+
+---
+
+## 👤 USER ACTION:
+
+1. Select/Add patient
+2. Confirm visit type
+3. Click Generate Token
+
+---
+
+## ⚙️ SYSTEM LOGIC:
+
+* Create token
+* Create queue entry for **Step 1 only**
+
+---
+
+## 💡 UX RULE:
+
+👉 Structured but minimal
+👉 Do not overload fields
+
+---
+
+# 🔁 SHARED COMPONENTS
+
+## Token Preview Component
+
+* Large font
+* Updates dynamically
+
+## Generate Button
+
+* Primary CTA
+* Disabled until required input complete
+
+## Queue Preview Panel
+
+* Show:
+
+  * Now Serving
+  * Waiting List
+* Filter based on:
+
+  * All (Single Queue)
+  * Doctor (Partitioned)
+  * Step (Multi-step)
+
+---
+
+# ⚠️ EDGE CASE HANDLING
+
+* Prevent duplicate clicks (disable button on click)
+* Show success toast: "Token C021 Generated"
+* Handle empty doctor list
+* Handle no patient selected (multi-step)
+
+---
+
+# 🎨 UX EXPECTATIONS
+
+* Clean, fast, minimal UI
+* No unnecessary fields
+* Optimized for speed (front desk use)
+* Responsive (tablet-friendly)
+
+---
+
+# 🚀 OUTPUT REQUIREMENTS
+
+Generate:
+
+1. Full page UI designs (3 separate pages)
+2. Component structure (React or similar)
+3. State management logic
+4. API integration placeholders:
+
+   * createToken()
+   * fetchQueue()
+5. Conditional rendering logic
+6. Clean and modern styling
+
+---
+
+# 🔥 FINAL INSTRUCTION
+
+Design this like a **real front desk system used in clinics**, where:
+
+* Speed is critical
+* Errors must be minimized
+* UI must guide the user
+
+Do NOT overcomplicate.
+Do NOT merge all variants into one screen.
+Each variant must feel purpose-built.
