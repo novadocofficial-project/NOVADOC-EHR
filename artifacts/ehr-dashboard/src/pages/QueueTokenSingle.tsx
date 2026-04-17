@@ -14,7 +14,7 @@ const now = new Date();
 const SEED_QUEUE: QueueEntry[] = [
   { id: "e-0", tokenNumber: "U005", displayNum: 5, status: "completed", step: 1, totalSteps: 1, createdAt: new Date(now.getTime() - 18 * 60000) },
   { id: "e-1", tokenNumber: "U006", displayNum: 6, status: "completed", step: 1, totalSteps: 1, createdAt: new Date(now.getTime() - 12 * 60000) },
-  { id: "e-2", tokenNumber: "U007", displayNum: 7, status: "serving",   step: 1, totalSteps: 1, createdAt: new Date(now.getTime() - 4 * 60000) },
+  { id: "e-2", tokenNumber: "U007", displayNum: 7, status: "called",    step: 1, totalSteps: 1, createdAt: new Date(now.getTime() - 4 * 60000) },
   { id: "e-3", tokenNumber: "U008", displayNum: 8, status: "waiting",   step: 1, totalSteps: 1, createdAt: new Date(now.getTime() - 2 * 60000) },
   { id: "e-4", tokenNumber: "U009", displayNum: 9, status: "waiting",   step: 1, totalSteps: 1, createdAt: new Date(now.getTime() - 60000) },
 ];
@@ -35,7 +35,7 @@ export function QueueTokenSingle() {
     return () => clearInterval(t);
   }, []);
 
-  const serving   = queue.filter(e => e.status === "serving");
+  const called    = queue.filter(e => e.status === "called");
   const waiting   = queue.filter(e => e.status === "waiting");
   const completed = queue.filter(e => e.status === "completed");
   const nextToken = padToken(nextNum, "U");
@@ -74,16 +74,16 @@ export function QueueTokenSingle() {
   function callNext() {
     setQueue(prev => {
       const updated = [...prev];
-      const servingIdx = updated.findIndex(e => e.status === "serving");
-      if (servingIdx >= 0) updated[servingIdx] = { ...updated[servingIdx], status: "completed" };
+      const calledIdx = updated.findIndex(e => e.status === "called");
+      if (calledIdx >= 0) updated[calledIdx] = { ...updated[calledIdx], status: "completed" };
       const waitingIdx = updated.findIndex(e => e.status === "waiting");
-      if (waitingIdx >= 0) updated[waitingIdx] = { ...updated[waitingIdx], status: "serving" };
+      if (waitingIdx >= 0) updated[waitingIdx] = { ...updated[waitingIdx], status: "called" };
       return updated;
     });
   }
 
   const statusDot = (s: QueueStatus) =>
-    s === "serving"   ? "bg-emerald-500 animate-pulse" :
+    s === "called"    ? "bg-[#4982CF] animate-pulse" :
     s === "waiting"   ? "bg-amber-400" :
     "bg-slate-300";
 
@@ -148,9 +148,9 @@ export function QueueTokenSingle() {
             {/* Stats mini row */}
             <div className="flex w-full gap-3">
               {[
-                { label: "Waiting",   value: waiting.length,   color: "text-amber-700",   bg: "bg-amber-50   border-amber-200"   },
-                { label: "Serving",   value: serving.length,   color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
-                { label: "Done",      value: completed.length, color: "text-slate-600",   bg: "bg-slate-50   border-slate-200"   },
+                { label: "Waiting",    value: waiting.length,   color: "text-amber-700",  bg: "bg-amber-50  border-amber-200"  },
+                { label: "At Counter", value: called.length,   color: "text-[#4982CF]",  bg: "bg-blue-50   border-blue-200"   },
+                { label: "Done",       value: completed.length, color: "text-slate-600",  bg: "bg-slate-50  border-slate-200"  },
               ].map(s => (
                 <div key={s.label} className={`flex-1 rounded-xl border px-3 py-2.5 text-center ${s.bg}`}>
                   <p className={`text-xl font-black ${s.color}`}>{s.value}</p>
@@ -195,23 +195,25 @@ export function QueueTokenSingle() {
               </div>
             </div>
 
-            {serving.length > 0 ? (
+            {called.length > 0 ? (
               <div className="flex items-center gap-6">
-                <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50 px-10 py-5 text-center shadow-sm">
-                  <p className="font-black tracking-widest font-mono text-5xl text-emerald-700">{serving[0].tokenNumber}</p>
+                <div className="rounded-2xl border-2 border-[#4982CF]/40 bg-[#4982CF]/06 px-10 py-5 text-center shadow-sm">
+                  <p className="font-black tracking-widest font-mono text-5xl text-[#4982CF]">{called[0].tokenNumber}</p>
                 </div>
                 <div className="space-y-1">
-                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Being Served</Badge>
+                  <Badge className="bg-blue-100 text-[#4982CF] border-blue-200 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#4982CF] animate-pulse" />At Counter
+                  </Badge>
                   <p className="text-sm font-semibold text-slate-700">Single Queue — All Visitors</p>
                   <p className="flex items-center gap-1 text-xs text-slate-400">
-                    <Clock className="h-3 w-3" />Waiting {timeAgo(serving[0].createdAt)}
+                    <Clock className="h-3 w-3" />Called {timeAgo(called[0].createdAt)}
                   </p>
                 </div>
                 <div className="ml-auto flex gap-2">
                   <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => {}}>
                     <Printer className="h-3.5 w-3.5" />Print
                   </Button>
-                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs" onClick={callNext}>
+                  <Button size="sm" className="bg-[#4982CF] hover:bg-[#3D73BC] text-white gap-1.5 text-xs" onClick={callNext}>
                     Complete & Call Next
                   </Button>
                 </div>

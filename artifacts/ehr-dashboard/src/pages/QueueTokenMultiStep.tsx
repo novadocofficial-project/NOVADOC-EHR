@@ -33,7 +33,7 @@ const SEED_QUEUE: MultiEntry[] = [
     createdAt: new Date(now.getTime() - 55 * 60000),
   },
   {
-    id: "m-3", tokenNumber: "C105", displayNum: 105, status: "serving",
+    id: "m-3", tokenNumber: "C105", displayNum: 105, status: "called",
     step: 2, totalSteps: 4, stepLabel: "Doctor Consultation",
     patient: SEED_PATIENTS[0], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 30 * 60000),
@@ -51,7 +51,7 @@ const SEED_QUEUE: MultiEntry[] = [
     createdAt: new Date(now.getTime() - 6 * 60000),
   },
   {
-    id: "m-6", tokenNumber: "U001", displayNum: 1, status: "serving",
+    id: "m-6", tokenNumber: "U001", displayNum: 1, status: "called",
     step: 1, totalSteps: 2, stepLabel: "Triage & Registration",
     patient: SEED_PATIENTS[3], visitTypeId: "vt-2",
     createdAt: new Date(now.getTime() - 8 * 60000),
@@ -144,9 +144,15 @@ export function QueueTokenMultiStep() {
     }, 700);
   }
 
-  function advanceStep(entryId: string) {
+  function callEntry(entryId: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== entryId || e.status !== "waiting" ? e : { ...e, status: "called" }
+    ));
+  }
+
+  function completeStep(entryId: string) {
     setQueue(prev => prev.map(e => {
-      if (e.id !== entryId) return e;
+      if (e.id !== entryId || e.status !== "called") return e;
       const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
       const nextStep = e.step + 1;
       if (nextStep > e.totalSteps) return { ...e, status: "completed" };
@@ -154,12 +160,12 @@ export function QueueTokenMultiStep() {
         ...e,
         step: nextStep,
         stepLabel: vt.steps[nextStep - 1],
-        status: nextStep === e.totalSteps ? "serving" : "waiting",
+        status: "waiting",
       };
     }));
   }
 
-  const serving   = queue.filter(e => e.status === "serving");
+  const called    = queue.filter(e => e.status === "called");
   const waiting   = queue.filter(e => e.status === "waiting");
   const completed = queue.filter(e => e.status === "completed");
 
@@ -422,9 +428,9 @@ export function QueueTokenMultiStep() {
           {/* Summary stats bar */}
           <div className="flex items-center gap-4 border-b border-slate-200 bg-white px-6 py-3 flex-shrink-0">
             {[
-              { label: "Serving",   value: serving.length,   color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
-              { label: "Waiting",   value: waiting.length,   color: "text-amber-700",   bg: "bg-amber-50   border-amber-200"   },
-              { label: "Completed", value: completed.length, color: "text-slate-600",   bg: "bg-slate-50   border-slate-200"   },
+              { label: "In Progress", value: called.length,    color: "text-[#4982CF]",  bg: "bg-blue-50   border-blue-200"   },
+              { label: "Waiting",     value: waiting.length,   color: "text-amber-700",  bg: "bg-amber-50  border-amber-200"  },
+              { label: "Completed",   value: completed.length, color: "text-slate-600",  bg: "bg-slate-50  border-slate-200"  },
             ].map(s => (
               <div key={s.label} className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 ${s.bg}`}>
                 <span className={`text-base font-black ${s.color}`}>{s.value}</span>
@@ -447,27 +453,33 @@ export function QueueTokenMultiStep() {
             </div>
           </div>
 
-          {/* Queue entries */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {/* Queue entries — sectioned */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {visibleQueue.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
                 <Workflow className="h-10 w-10 opacity-20" />
                 <p className="text-sm font-medium">No active tokens</p>
                 <p className="text-xs">Generate a token to get started</p>
               </div>
-            ) : (
-              visibleQueue.map(entry => {
-                const vt = SEED_VISIT_TYPES.find(v => v.id === entry.visitTypeId) ?? SEED_VISIT_TYPES[0];
-                const isServing  = entry.status === "serving";
-                const stepColor  = stepColors[(entry.step - 1) % stepColors.length];
+            ) : (() => {
+              const calledQ  = visibleQueue.filter(e => e.status === "called");
+              const waitingQ = visibleQueue.filter(e => e.status === "waiting");
+
+              const renderEntry = (entry: typeof visibleQueue[0]) => {
+                const vt       = SEED_VISIT_TYPES.find(v => v.id === entry.visitTypeId) ?? SEED_VISIT_TYPES[0];
+                const isCalled = entry.status === "called";
+                const stepColor = stepColors[(entry.step - 1) % stepColors.length];
                 return (
                   <div key={entry.id}
-                    className={`rounded-2xl border overflow-hidden shadow-sm transition-all ${isServing ? "border-emerald-300 bg-white" : "border-slate-200 bg-white"}`}>
+                    className={`rounded-2xl border overflow-hidden shadow-sm transition-all ${isCalled ? "border-[#4982CF]/40 bg-white ring-1 ring-[#4982CF]/10" : "border-slate-200 bg-white"}`}>
+                    {/* Blue accent stripe for called entries */}
+                    {isCalled && <div className="h-1 w-full" style={{ backgroundColor: vt.color }} />}
                     <div className="flex items-center gap-4 px-5 py-4">
+
                       {/* Token */}
                       <div className="flex-shrink-0">
                         <div className="rounded-xl border-2 px-4 py-2 text-center min-w-[5rem]"
-                          style={{ borderColor: vt.color + "60", backgroundColor: vt.color + "08" }}>
+                          style={{ borderColor: vt.color + (isCalled ? "90" : "60"), backgroundColor: vt.color + (isCalled ? "12" : "08") }}>
                           <p className="font-mono font-black text-xl" style={{ color: vt.color }}>{entry.tokenNumber}</p>
                         </div>
                       </div>
@@ -493,46 +505,87 @@ export function QueueTokenMultiStep() {
                         <div className="flex items-center gap-0.5 mb-1.5">
                           {Array.from({ length: entry.totalSteps }).map((_, i) => (
                             <div key={i} className="flex items-center gap-0.5">
-                              <div className={`h-5 rounded flex items-center justify-center text-[9px] font-bold transition-all ${
-                                i + 1 < entry.step ? "bg-emerald-500 text-white px-1.5" :
-                                i + 1 === entry.step ? "text-white px-1.5" :
-                                "bg-slate-100 text-slate-400 px-1.5"
-                              }`}
-                                style={i + 1 === entry.step ? { backgroundColor: stepColors[i] } : undefined}>
+                              <div className={`h-5 rounded flex items-center justify-center text-[9px] font-bold transition-all px-1.5 relative ${
+                                i + 1 < entry.step  ? "bg-emerald-500 text-white" :
+                                i + 1 === entry.step && isCalled ? "text-white" :
+                                i + 1 === entry.step ? "text-white" :
+                                "bg-slate-100 text-slate-400"
+                              }`} style={i + 1 === entry.step ? { backgroundColor: stepColors[i] } : undefined}>
                                 {i + 1 < entry.step ? "✓" : vt.steps[i].split(" ")[0].slice(0, 3)}
+                                {i + 1 === entry.step && isCalled && (
+                                  <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-white border-2 border-[#4982CF] animate-pulse" />
+                                )}
                               </div>
                               {i < entry.totalSteps - 1 && <div className={`h-0.5 w-2 ${i + 1 < entry.step ? "bg-emerald-400" : "bg-slate-200"}`} />}
                             </div>
                           ))}
                         </div>
-                        <p className="text-xs font-semibold" style={{ color: stepColor }}>
-                          Step {entry.step}/{entry.totalSteps} · {entry.stepLabel}
+                        <p className="text-xs font-semibold" style={{ color: isCalled ? "#4982CF" : stepColor }}>
+                          {isCalled ? "▶ " : ""}Step {entry.step}/{entry.totalSteps} · {entry.stepLabel}
                         </p>
                       </div>
 
-                      {/* Status + action */}
+                      {/* Status + actions */}
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {isServing ? (
-                          <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />Serving
-                          </span>
+                        {isCalled ? (
+                          <>
+                            <span className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF]">
+                              <span className="h-1.5 w-1.5 rounded-full bg-[#4982CF] animate-pulse" />At Counter
+                            </span>
+                            <Button size="sm"
+                              className="h-7 px-3 text-xs font-semibold gap-1 text-white"
+                              style={{ backgroundColor: vt.color }}
+                              onClick={() => completeStep(entry.id)}>
+                              {entry.step >= entry.totalSteps ? "Complete Visit" : "Next Step"}
+                              <ChevronRight className="h-3 w-3" />
+                            </Button>
+                          </>
                         ) : (
-                          <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-600">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />Waiting
-                          </span>
+                          <>
+                            <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-600">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />Waiting
+                            </span>
+                            <Button variant="outline" size="sm"
+                              className="h-7 px-3 text-xs font-semibold gap-1 border-[#4982CF]/30 text-[#4982CF] hover:bg-blue-50"
+                              onClick={() => callEntry(entry.id)}>
+                              Call
+                              <ChevronRight className="h-3 w-3" />
+                            </Button>
+                          </>
                         )}
-                        <Button variant="outline" size="sm" className="h-7 px-3 text-xs font-semibold gap-1 border-slate-200 text-slate-600"
-                          onClick={() => advanceStep(entry.id)}
-                          disabled={entry.step >= entry.totalSteps && entry.status === "completed"}>
-                          {entry.step >= entry.totalSteps ? "Complete" : "Next Step"}
-                          <ChevronRight className="h-3 w-3" />
-                        </Button>
                       </div>
                     </div>
                   </div>
                 );
-              })
-            )}
+              };
+
+              return (
+                <>
+                  {calledQ.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="h-2 w-2 rounded-full bg-[#4982CF] animate-pulse" />
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#4982CF]">
+                          Currently In Progress · {calledQ.length}
+                        </p>
+                      </div>
+                      <div className="space-y-3">{calledQ.map(renderEntry)}</div>
+                    </div>
+                  )}
+                  {waitingQ.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2 mt-1">
+                        <span className="h-2 w-2 rounded-full bg-amber-400" />
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">
+                          Waiting · {waitingQ.length}
+                        </p>
+                      </div>
+                      <div className="space-y-3">{waitingQ.map(renderEntry)}</div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {completed.length > 0 && filterStep === "all" && (
               <div className="rounded-xl border border-dashed border-slate-200 p-3">

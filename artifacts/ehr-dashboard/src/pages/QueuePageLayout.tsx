@@ -13,7 +13,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type QueueStatus = "waiting" | "serving" | "completed";
+export type QueueStatus = "waiting" | "called" | "completed";
 
 export type QueueEntry = {
   id: string;
