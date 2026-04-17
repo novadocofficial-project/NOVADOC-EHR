@@ -1,6 +1,6 @@
 import { useLocation, Link } from "wouter";
 import {
-  Bell, Search, Ticket, ChevronDown, Zap, Users, Workflow,
+  Bell, Search, Ticket, ChevronDown, Zap, Users, Workflow, BarChart2, Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -174,11 +174,53 @@ export function QueueNavDropdown() {
   );
 }
 
+// ─── Reports Nav Dropdown (Transactions lives here) ──────────────────────────
+
+export function ReportsNavDropdown() {
+  const [location, setLocation] = useLocation();
+  const isActive = location === "/" || location.startsWith("/reports");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className={`h-9 px-3 gap-1.5 text-sm font-medium
+            ${isActive
+              ? "bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15"
+              : "text-slate-600 hover:bg-slate-100"}`}
+        >
+          <BarChart2 className="h-4 w-4" />
+          Reports
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52">
+        <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-2">
+          Financial
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => setLocation("/")}
+          className={`gap-3 cursor-pointer py-2 ${location === "/" ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
+        >
+          <span className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <Receipt className="h-3.5 w-3.5 text-[#4982CF]" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold leading-tight">Transactions</p>
+            <p className="text-[10px] text-slate-400 leading-tight">All financial records</p>
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 // ─── Full App Header for Queue pages ─────────────────────────────────────────
 
 export function QueueAppHeader() {
   const [, setLocation] = useLocation();
-  const [location] = useLocation();
 
   return (
     <header className="z-20 flex h-14 flex-none items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm">
@@ -187,15 +229,8 @@ export function QueueAppHeader() {
           <img src="/novadoc-logo.png" alt="NovaDoc" className="h-8 w-auto" />
         </div>
         <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
-          <Link href="/"
-            className={`flex items-center h-9 rounded-md px-3 transition-colors
-              ${location === "/" ? "bg-[#4982CF]/10 text-[#4982CF]" : "hover:bg-slate-100"}`}>
-            Transactions
-          </Link>
-          <Button variant="ghost" className="h-9 px-3 hover:bg-slate-100">Reports</Button>
-          <Button variant="ghost" className="h-9 px-3 hover:bg-slate-100">Claims</Button>
-          <Button variant="ghost" className="h-9 px-3 hover:bg-slate-100">Settlements</Button>
           <QueueNavDropdown />
+          <ReportsNavDropdown />
         </nav>
       </div>
       <div className="flex items-center gap-3">

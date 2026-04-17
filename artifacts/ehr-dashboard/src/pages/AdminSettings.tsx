@@ -47,7 +47,7 @@ import type { QueueSection } from "@/pages/QueueModule";
 import { UsersManagementModule } from "@/pages/UsersManagementModule";
 import { RoutingRulesModule } from "@/pages/RoutingRulesModule";
 import { INITIAL_SERVICE_TYPES, INITIAL_SERVICES } from "@/pages/BillingTypes";
-import { QueueNavDropdown } from "@/pages/QueuePageLayout";
+import { QueueNavDropdown, ReportsNavDropdown } from "@/pages/QueuePageLayout";
 import type { ServiceType, Service } from "@/pages/BillingTypes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -293,11 +293,8 @@ export function AdminSettings() {
             <img src="/novadoc-logo.png" alt="NovaDoc" className="h-8 w-auto" />
           </div>
           <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
-            <Link href="/" className="flex items-center h-9 px-3 hover:bg-slate-100 rounded-md">Transactions</Link>
-            <Button variant="ghost" className="h-9 px-3 hover:bg-slate-100">Reports</Button>
-            <Button variant="ghost" className="h-9 px-3 hover:bg-slate-100">Claims</Button>
-            <Button variant="ghost" className="h-9 px-3 hover:bg-slate-100">Settlements</Button>
             <QueueNavDropdown />
+            <ReportsNavDropdown />
           </nav>
         </div>
         <div className="flex items-center gap-3">

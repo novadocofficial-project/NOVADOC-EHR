@@ -49,7 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { QueueNavDropdown } from "@/pages/QueuePageLayout";
+import { QueueNavDropdown, ReportsNavDropdown } from "@/pages/QueuePageLayout";
 
 const SUMMARY_STATS = [
   { title: "Total Revenue", value: "$142,500.00", icon: DollarSign, trend: "+12.5%" },
@@ -698,11 +698,8 @@ export function Dashboard() {
             <img src="/novadoc-logo.png" alt="NovaDoc" className="h-8 w-auto" />
           </div>
           <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
-            <Link href="/" className="flex items-center h-9 rounded-md bg-[#4982CF]/10 px-3 text-[#4982CF] hover:bg-[#4982CF]/15 hover:text-[#3D73BC]">Transactions</Link>
-            <Button variant="ghost" className="h-9 px-3 hover:bg-slate-100">Reports</Button>
-            <Button variant="ghost" className="h-9 px-3 hover:bg-slate-100">Claims</Button>
-            <Button variant="ghost" className="h-9 px-3 hover:bg-slate-100">Settlements</Button>
             <QueueNavDropdown />
+            <ReportsNavDropdown />
           </nav>
         </div>
         <div className="flex items-center gap-3">
