@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   QueueAppHeader, QueueEntry, QueueStatus, SEED_BRANCHES,
-  padToken, timeAgo, uid,
+  padToken, timeAgo, uid, TokenSlipModal, TokenSlipData,
 } from "@/pages/QueuePageLayout";
 
 // ─── Seed queue ───────────────────────────────────────────────────────────────
@@ -28,6 +28,7 @@ export function QueueTokenSingle() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast]     = useState<string | null>(null);
   const [tick, setTick]       = useState(0);
+  const [tokenSlip, setTokenSlip] = useState<TokenSlipData | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setTick(p => p + 1), 10000);
@@ -47,15 +48,26 @@ export function QueueTokenSingle() {
   function generateToken() {
     if (loading) return;
     setLoading(true);
+    const snapToken = nextToken;
+    const snapBranch = SEED_BRANCHES.find(b => b.id === branch)?.name ?? branch;
+    const snapAt = new Date();
     setTimeout(() => {
       const entry: QueueEntry = {
-        id: uid(), tokenNumber: nextToken, displayNum: nextNum,
-        status: "waiting", step: 1, totalSteps: 1, createdAt: new Date(),
+        id: uid(), tokenNumber: snapToken, displayNum: nextNum,
+        status: "waiting", step: 1, totalSteps: 1, createdAt: snapAt,
       };
       setQueue(p => [...p, entry]);
       setNextNum(p => p + 1);
       setLoading(false);
-      showToast(`Token ${nextToken} generated successfully`);
+      showToast(`Token ${snapToken} generated successfully`);
+      setTokenSlip({
+        tokenNumber: snapToken,
+        color: "#10b981",
+        queueLabel: "Single Queue",
+        queueSub: "Camp / Walk-in Mode · Zero input required",
+        branch: snapBranch,
+        issuedAt: snapAt,
+      });
     }, 600);
   }
 
@@ -102,6 +114,9 @@ export function QueueTokenSingle() {
           </Select>
         </div>
       </div>
+
+      {/* Token Slip Modal */}
+      {tokenSlip && <TokenSlipModal data={tokenSlip} onClose={() => setTokenSlip(null)} />}
 
       {/* Toast */}
       {toast && (

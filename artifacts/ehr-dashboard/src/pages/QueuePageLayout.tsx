@@ -1,6 +1,7 @@
 import { useLocation, Link } from "wouter";
 import {
   Bell, Search, Ticket, ChevronDown, Zap, Users, Workflow, BarChart2, Receipt,
+  X, Printer, ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,145 @@ export const SEED_VISIT_TYPES: VisitType[] = [
   { id: "vt-2", name: "Urgent / Emergency",        steps: ["Triage & Registration", "Emergency Consultation"],                 prefix: "U", color: "#ef4444" },
   { id: "vt-3", name: "Follow-up Visit",           steps: ["Registration", "Doctor Consultation"],                              prefix: "F", color: "#10b981" },
 ];
+
+// ─── Token Slip ───────────────────────────────────────────────────────────────
+
+export type TokenSlipData = {
+  tokenNumber: string;
+  color: string;
+  queueLabel: string;
+  queueSub?: string;
+  patientName?: string;
+  patientMrn?: string;
+  branch: string;
+  issuedAt: Date;
+  steps?: string[];
+};
+
+export function TokenSlipModal({ data, onClose }: { data: TokenSlipData; onClose: () => void }) {
+  const dateStr = data.issuedAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const timeStr = data.issuedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div className="relative" onClick={e => e.stopPropagation()}>
+        {/* Floating close button */}
+        <button
+          onClick={onClose}
+          className="absolute -top-3 -right-3 z-10 h-7 w-7 rounded-full bg-slate-700 text-white hover:bg-slate-600 flex items-center justify-center shadow-xl transition-colors"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Receipt card */}
+        <div className="w-80 bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+          {/* Header band */}
+          <div className="px-6 pt-5 pb-7 text-white text-center"
+            style={{ background: `linear-gradient(160deg, ${data.color}, ${data.color}CC)` }}>
+            <div className="flex items-center justify-center gap-2 mb-0.5">
+              <Ticket className="h-4 w-4 text-white/80" />
+              <span className="text-lg font-black tracking-tight">NovaDoc</span>
+            </div>
+            <p className="text-[9px] text-white/70 uppercase tracking-widest">Smart Healthcare Queue System</p>
+          </div>
+
+          {/* Perforated top edge */}
+          <div className="relative -mt-3 h-4 bg-white"
+            style={{ backgroundImage: `radial-gradient(circle at 50% 0, ${data.color}22 12px, white 0)`, backgroundSize: "24px 100%", backgroundRepeat: "repeat-x" }} />
+
+          {/* Body */}
+          <div className="bg-white px-6 pb-4">
+
+            {/* Queue label */}
+            <div className="text-center mb-3">
+              <p className="text-xs font-bold text-slate-700 leading-tight">{data.queueLabel}</p>
+              {data.queueSub && <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{data.queueSub}</p>}
+            </div>
+
+            {/* Token number */}
+            <div className="flex justify-center mb-4">
+              <div className="rounded-2xl border-2 px-8 py-3 text-center shadow-sm"
+                style={{ borderColor: data.color + "60", backgroundColor: data.color + "0C" }}>
+                <p className="font-black tracking-widest font-mono text-6xl leading-none"
+                  style={{ color: data.color }}>{data.tokenNumber}</p>
+              </div>
+            </div>
+
+            <div className="border-t border-dashed border-slate-200 my-3" />
+
+            {/* Visit steps */}
+            {data.steps && data.steps.length > 1 && (
+              <div className="mb-3">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Visit Steps</p>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {data.steps.map((s, i) => (
+                    <span key={i} className="flex items-center gap-1">
+                      <span className="text-[9px] font-semibold rounded px-1.5 py-0.5"
+                        style={{ backgroundColor: data.color + "15", color: data.color }}>
+                        {s}
+                      </span>
+                      {i < data.steps!.length - 1 && <ArrowRight className="h-2.5 w-2.5 text-slate-300 flex-shrink-0" />}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Patient */}
+            <div className="mb-3">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Patient</p>
+              {data.patientName ? (
+                <div>
+                  <p className="text-sm font-bold text-slate-800 leading-tight">{data.patientName}</p>
+                  {data.patientMrn && <p className="text-xs text-slate-400">{data.patientMrn}</p>}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400 italic">Walk-in / Anonymous</p>
+              )}
+            </div>
+
+            <div className="border-t border-dashed border-slate-200 my-3" />
+
+            {/* Branch + date */}
+            <div className="flex items-start justify-between text-[10px]">
+              <div>
+                <p className="font-semibold text-slate-700 leading-tight">{data.branch}</p>
+                <p className="text-slate-400 leading-tight">{dateStr} · {timeStr}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-mono font-black text-slate-500 leading-tight">{data.tokenNumber}</p>
+                <p className="text-slate-400 leading-tight">Please keep this slip</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Perforated bottom edge */}
+          <div className="h-4 bg-slate-50"
+            style={{ backgroundImage: `radial-gradient(circle at 50% 100%, white 12px, #f8fafc 0)`, backgroundSize: "24px 100%", backgroundRepeat: "repeat-x" }} />
+
+          {/* Footer */}
+          <div className="bg-slate-50 px-5 pb-5 pt-2 text-center">
+            <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 mb-3">
+              <Printer className="h-3.5 w-3.5 flex-shrink-0" />
+              <span>In production this slip would be printed and handed to the patient.</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-full h-9 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow"
+              style={{ backgroundColor: data.color }}
+            >
+              Close Preview
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

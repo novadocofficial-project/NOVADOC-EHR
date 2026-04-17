@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   QueueAppHeader, QueueEntry, Patient, VisitType,
   SEED_BRANCHES, SEED_PATIENTS, SEED_VISIT_TYPES,
-  padToken, timeAgo, uid,
+  padToken, timeAgo, uid, TokenSlipModal, TokenSlipData,
 } from "@/pages/QueuePageLayout";
 
 // ─── Seed queue ───────────────────────────────────────────────────────────────
@@ -74,6 +74,7 @@ export function QueueTokenMultiStep() {
   const [showAddPatient, setShowAddPatient] = useState(false);
   const [vtView, setVtView] = useState<"list" | "cards">("list");
   const [walkIn, setWalkIn] = useState(false);
+  const [tokenSlip, setTokenSlip] = useState<TokenSlipData | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const [tick, setTick] = useState(0);
 
@@ -110,17 +111,34 @@ export function QueueTokenMultiStep() {
   function generateToken() {
     if (!canGenerate || loading) return;
     setLoading(true);
+    const snapToken   = nextToken;
+    const snapVT      = selectedVT;
+    const snapPat     = walkIn ? null : selectedPat;
+    const snapWalkIn  = walkIn;
+    const snapBranch  = SEED_BRANCHES.find(b => b.id === branch)?.name ?? branch;
+    const snapAt      = new Date();
     setTimeout(() => {
       const entry: MultiEntry = {
-        id: uid(), tokenNumber: nextToken, displayNum: nextNum,
-        status: "waiting", step: 1, totalSteps: selectedVT.steps.length,
-        stepLabel: selectedVT.steps[0], patient: walkIn ? null : selectedPat,
-        visitTypeId: selectedVT.id, createdAt: new Date(),
+        id: uid(), tokenNumber: snapToken, displayNum: nextNum,
+        status: "waiting", step: 1, totalSteps: snapVT.steps.length,
+        stepLabel: snapVT.steps[0], patient: snapPat,
+        visitTypeId: snapVT.id, createdAt: snapAt,
       };
       setQueue(p => [...p, entry]);
-      setNextNums(prev => ({ ...prev, [selectedVT.id]: (prev[selectedVT.id] ?? 1) + 1 }));
+      setNextNums(prev => ({ ...prev, [snapVT.id]: (prev[snapVT.id] ?? 1) + 1 }));
       setLoading(false);
-      showToast(walkIn ? `Token ${nextToken} generated (Walk-in)` : `Token ${nextToken} generated for ${selectedPat!.name}`);
+      showToast(snapWalkIn ? `Token ${snapToken} generated (Walk-in)` : `Token ${snapToken} generated for ${snapPat!.name}`);
+      setTokenSlip({
+        tokenNumber: snapToken,
+        color: snapVT.color,
+        queueLabel: snapVT.name,
+        queueSub: `Step 1 of ${snapVT.steps.length} · ${snapVT.steps[0]}`,
+        patientName: snapPat?.name,
+        patientMrn: snapPat?.mrn,
+        branch: snapBranch,
+        issuedAt: snapAt,
+        steps: snapVT.steps,
+      });
       setSelectedPat(null);
       setSearch("");
     }, 700);
@@ -174,6 +192,9 @@ export function QueueTokenMultiStep() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Token Slip Modal */}
+      {tokenSlip && <TokenSlipModal data={tokenSlip} onClose={() => setTokenSlip(null)} />}
 
       {/* Toast */}
       {toast && (

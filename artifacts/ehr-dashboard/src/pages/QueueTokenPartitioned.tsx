@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   QueueAppHeader, QueueEntry, Doctor, SEED_BRANCHES, SEED_DOCTORS,
-  padToken, timeAgo, uid,
+  padToken, timeAgo, uid, TokenSlipModal, TokenSlipData,
 } from "@/pages/QueuePageLayout";
 
 // ─── Per-doctor seed queues ───────────────────────────────────────────────────
@@ -66,6 +66,7 @@ export function QueueTokenPartitioned() {
   const [toast, setToast]         = useState<string | null>(null);
   const [filterDoc, setFilterDoc] = useState<string | "all">("all");
   const [tick, setTick]           = useState(0);
+  const [tokenSlip, setTokenSlip] = useState<TokenSlipData | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setTick(p => p + 1), 10000);
@@ -83,6 +84,10 @@ export function QueueTokenPartitioned() {
   function generateToken() {
     if (loading) return;
     setLoading(true);
+    const snapToken   = nextToken;
+    const snapDoctor  = selectedDQ.doctor;
+    const snapBranch  = SEED_BRANCHES.find(b => b.id === branch)?.name ?? branch;
+    const snapAt      = new Date();
     setTimeout(() => {
       setDQ(prev => prev.map(dq => {
         if (dq.doctor.id !== selectedDoc) return dq;
@@ -90,12 +95,20 @@ export function QueueTokenPartitioned() {
           id: uid(), tokenNumber: padToken(dq.nextNum, dq.doctor.prefix),
           displayNum: dq.nextNum, status: "waiting",
           doctorId: dq.doctor.id, doctorName: dq.doctor.name,
-          step: 1, totalSteps: 1, createdAt: new Date(),
+          step: 1, totalSteps: 1, createdAt: snapAt,
         };
         return { ...dq, entries: [...dq.entries, entry], nextNum: dq.nextNum + 1 };
       }));
       setLoading(false);
-      showToast(`Token ${nextToken} generated for ${selectedDQ.doctor.name.replace("Dr. ", "Dr. ")}`);
+      showToast(`Token ${snapToken} generated for ${snapDoctor.name}`);
+      setTokenSlip({
+        tokenNumber: snapToken,
+        color: snapDoctor.color,
+        queueLabel: snapDoctor.name,
+        queueSub: `${snapDoctor.specialty} · ${snapDoctor.counter}`,
+        branch: snapBranch,
+        issuedAt: snapAt,
+      });
     }, 600);
   }
 
@@ -142,6 +155,9 @@ export function QueueTokenPartitioned() {
           </Select>
         </div>
       </div>
+
+      {/* Token Slip Modal */}
+      {tokenSlip && <TokenSlipModal data={tokenSlip} onClose={() => setTokenSlip(null)} />}
 
       {/* Toast */}
       {toast && (
