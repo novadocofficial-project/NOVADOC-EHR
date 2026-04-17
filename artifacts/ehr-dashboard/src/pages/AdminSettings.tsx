@@ -81,6 +81,7 @@ export type SubDepartment = {
   id: string;
   name: string;
   active: boolean;
+  specialties: Specialty[];
 };
 
 export type Department = {
@@ -97,8 +98,8 @@ const INITIAL_DATA: Department[] = [
     name: "Cardiology",
     active: true,
     subDepartments: [
-      { id: "sd1-1", name: "Outpatient", active: true },
-      { id: "sd1-2", name: "Inpatient", active: false },
+      { id: "sd1-1", name: "Outpatient", active: true, specialties: [] },
+      { id: "sd1-2", name: "Inpatient", active: false, specialties: [] },
     ],
     specialties: [
       { id: "sp1-1", name: "Interventional Cardiology", description: "Diagnosis and treatment of heart conditions using catheter-based procedures such as angioplasty and stenting.", active: true },
@@ -111,8 +112,10 @@ const INITIAL_DATA: Department[] = [
     name: "Orthopedics",
     active: true,
     subDepartments: [
-      { id: "sd2-1", name: "Surgery", active: true },
-      { id: "sd2-2", name: "Rehabilitation", active: true },
+      { id: "sd2-1", name: "Surgery", active: true, specialties: [
+        { id: "sp-sd2-1", name: "Arthroscopic Surgery", description: "Minimally invasive joint surgery.", active: true },
+      ]},
+      { id: "sd2-2", name: "Rehabilitation", active: true, specialties: [] },
     ],
     specialties: [
       { id: "sp2-1", name: "Joint Replacement", description: "Hip, knee, and shoulder replacement surgeries for arthritis and injury-related joint damage.", active: true },
@@ -124,7 +127,7 @@ const INITIAL_DATA: Department[] = [
     name: "Neurology",
     active: false,
     subDepartments: [
-      { id: "sd3-1", name: "Consultation", active: true },
+      { id: "sd3-1", name: "Consultation", active: true, specialties: [] },
     ],
     specialties: [
       { id: "sp3-1", name: "Stroke & Cerebrovascular", description: "Emergency and long-term management of stroke, TIA, and cerebrovascular disease.", active: true },
@@ -136,8 +139,8 @@ const INITIAL_DATA: Department[] = [
     name: "Pediatrics",
     active: true,
     subDepartments: [
-      { id: "sd4-1", name: "Vaccination", active: true },
-      { id: "sd4-2", name: "ICU", active: false },
+      { id: "sd4-1", name: "Vaccination", active: true, specialties: [] },
+      { id: "sd4-2", name: "ICU", active: false, specialties: [] },
     ],
     specialties: [
       { id: "sp4-1", name: "Neonatology", description: "Specialized care for newborns, especially premature or critically ill infants in the NICU.", active: true },
@@ -214,7 +217,7 @@ export function AdminSettings() {
     if (!name || bulkSelectedDepts.length === 0) return;
     setDepartments(prev => prev.map(d =>
       bulkSelectedDepts.includes(d.id)
-        ? { ...d, subDepartments: [...d.subDepartments, { id: `sd-${Date.now()}-${d.id}`, name, active: true }] }
+        ? { ...d, subDepartments: [...d.subDepartments, { id: `sd-${Date.now()}-${d.id}`, name, active: true, specialties: [] }] }
         : d
     ));
     closeBulkDialog();
