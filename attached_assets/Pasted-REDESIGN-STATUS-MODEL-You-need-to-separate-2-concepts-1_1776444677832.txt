@@ -1,0 +1,121 @@
+REDESIGN STATUS MODEL
+
+You need to separate 2 concepts:
+
+1. Queue State (Position)
+2. Activity State (What’s happening now)
+🧠 NEW STATUS MODEL (CLEAN + REALISTIC)
+
+Instead of 3 statuses, use:
+
+waiting     → waiting in queue
+called      → called to counter (in progress)
+completed   → fully done
+
+👉 Replace “serving” with “called”
+
+🔄 UPDATED FLOW
+When token is created:
+status: "waiting"
+step: 1
+When counter clicks “Call Next”:
+status: "called"
+
+👉 THIS is your real “serving” moment
+
+When step is completed:
+Case 1: More steps remaining
+status: "waiting"
+step: next_step
+Case 2: Final step completed
+status: "completed"
+🎯 NEW LOGIC (IMPORTANT)
+Call Next → status = "called"
+Complete Step → move to next step → status = "waiting"
+Final Step Complete → status = "completed"
+💡 WHAT CHANGES IN UX
+BEFORE ❌
+Everyone looks “waiting”
+Only last step looks active
+AFTER ✅
+Real-time visibility:
+Waiting → in queue
+Called → currently being served
+Completed → done
+🎨 UI IMPROVEMENTS (THIS WILL FIX YOUR PAIN)
+1. STATUS LABELS
+
+Replace:
+
+Old	New
+Waiting	Waiting
+Serving	In Progress
+Completed	Completed
+2. VISUAL STATES
+🟡 Waiting
+Amber dot
+Subtle UI
+🔵 Called (In Progress)
+Blue/Green highlight
+Pulse animation
+Label: “At Counter” or “In Progress”
+⚫ Completed
+Removed from main list
+3. STEP PROGRESS (KEEP YOUR IDEA, BUT IMPROVE)
+
+Your step chips are good—just tweak meaning:
+
+✓ → Completed step
+🔵 → Current active step (called)
+🟡 → Waiting step
+⚪ → Future step
+🚀 MASSIVE UX UPGRADE (HIGH IMPACT)
+Add: “Active Now” Section
+
+Instead of mixing everything:
+
+---------------------------------
+🟢 Currently Serving (Called)
+---------------------------------
+C102 – Billing
+C105 – Doctor
+
+---------------------------------
+🟡 Waiting
+---------------------------------
+C106 – Registration
+C107 – Billing
+
+👉 This instantly removes frustration
+
+🧠 OPTIONAL (ADVANCED BUT POWERFUL)
+Split status into 2 fields
+
+Instead of overloading one field:
+
+queue_status: "waiting" | "called" | "completed"
+step_status: "pending" | "active" | "done"
+
+But for MVP:
+👉 Stick with single status = waiting/called/completed
+
+⚠️ IMPORTANT DESIGN RULE
+
+👉 “Serving” should NEVER depend on step number
+
+It should depend on:
+
+User action (Call Next)
+🔥 FINAL RESULT
+
+After fix:
+
+Reception sees tokens moving ✔️
+Staff sees active patients ✔️
+Queue feels alive ✔️
+No more “everyone waiting” problem ✔️
+
+
+Don't implement this in design now, just confirm me first that with our actual queue system configuration now, is it feasible to implement the above thing or we need some extra table in our database.
+
+also confirm if the above logic make more sense to you that the laready implemented one.
