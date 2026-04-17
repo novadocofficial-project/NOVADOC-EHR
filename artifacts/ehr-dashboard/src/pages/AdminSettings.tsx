@@ -396,9 +396,6 @@ export function AdminSettings() {
 
 
             {/* ── Branch Management Group ── */}
-            <div className="pt-1">
-              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">Branch Management</p>
-            </div>
             <button
               type="button"
               onClick={() => toggleNav("branches")}
@@ -415,9 +412,6 @@ export function AdminSettings() {
             )}
 
             {/* ── Queue Management Group ── */}
-            <div className="pt-2">
-              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">Queue Management</p>
-            </div>
             <button
               type="button"
               onClick={() => toggleNav("queue")}
@@ -442,9 +436,6 @@ export function AdminSettings() {
             )}
 
             {/* ── Users Management Group ── */}
-            <div className="pt-2">
-              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">Users Management</p>
-            </div>
             <button
               type="button"
               onClick={() => toggleNav("users")}

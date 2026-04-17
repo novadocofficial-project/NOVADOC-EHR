@@ -522,37 +522,126 @@ export function QueueModule({ section }: { section: QueueSection }) {
     </div>
   );
 
-  if (section === "token-settings") return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <PageHeader title="Token Settings" desc="Configure how tokens are generated, displayed, and reset." />
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100">
-        <SettingRow label="Token Prefix" desc="Letter(s) prepended to every token number.">
-          <Input value={tokenSettings.prefix} onChange={e => setTokenSettings(p => ({ ...p, prefix: e.target.value.toUpperCase().slice(0, 2) }))} className="h-9 w-20 text-sm text-center font-mono font-bold" />
-        </SettingRow>
-        <SettingRow label="Starting Number" desc="First number issued when tokens are reset.">
-          <Input type="number" min="1" value={tokenSettings.startingNumber} onChange={e => setTokenSettings(p => ({ ...p, startingNumber: parseInt(e.target.value) || 1 }))} className="h-9 w-24 text-sm text-center" />
-        </SettingRow>
-        <SettingRow label="Reset Frequency" desc="How often token numbering resets to the starting number.">
-          <Select value={tokenSettings.resetFrequency} onValueChange={(v: "daily" | "manual") => setTokenSettings(p => ({ ...p, resetFrequency: v }))}>
-            <SelectTrigger className="h-9 w-32 text-sm"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="daily">Daily</SelectItem><SelectItem value="manual">Manual</SelectItem></SelectContent>
-          </Select>
-        </SettingRow>
-        <SettingRow label="Display Format" desc="How the token number is shown on displays.">
-          <div className="flex gap-2 items-center">
-            <Select value={tokenSettings.displayFormat} onValueChange={(v: "padded" | "plain") => setTokenSettings(p => ({ ...p, displayFormat: v }))}>
-              <SelectTrigger className="h-9 w-32 text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="padded">C001 (padded)</SelectItem><SelectItem value="plain">C1 (plain)</SelectItem></SelectContent>
-            </Select>
-            <span className="font-mono text-sm font-bold text-[#4982CF] bg-[#4982CF]/8 px-2 py-1 rounded">
-              {tokenSettings.prefix}{tokenSettings.displayFormat === "padded" ? "001" : "1"}
-            </span>
+  if (section === "token-settings") {
+    const previewNum = tokenSettings.displayFormat === "padded"
+      ? String(tokenSettings.startingNumber).padStart(3, "0")
+      : String(tokenSettings.startingNumber);
+    const previewToken = `${tokenSettings.prefix}${previewNum}`;
+
+    return (
+      <div className="mx-auto max-w-2xl space-y-6">
+        <PageHeader title="Token Settings" desc="Configure how tokens are generated, formatted, and reset." />
+
+        {/* Live preview card */}
+        <div className="rounded-xl border border-[#4982CF]/20 bg-gradient-to-br from-[#4982CF]/5 to-[#4982CF]/10 p-6 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#4982CF] mb-1">Live Preview</p>
+            <p className="text-xs text-slate-500">How tokens will appear at the counter display</p>
           </div>
-        </SettingRow>
-        <ToggleRow label="Allow Manual Token Entry" desc="Staff can manually enter a token number at registration." value={tokenSettings.allowManualEntry} onChange={v => setTokenSettings(p => ({ ...p, allowManualEntry: v }))} />
+          <div className="text-right">
+            <div className="inline-block bg-white border-2 border-[#4982CF]/30 rounded-2xl px-8 py-4 shadow-sm">
+              <p className="text-4xl font-black font-mono tracking-widest text-[#4982CF]">{previewToken}</p>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-2">Next: {tokenSettings.prefix}{tokenSettings.displayFormat === "padded" ? String(tokenSettings.startingNumber + 1).padStart(3, "0") : tokenSettings.startingNumber + 1}</p>
+          </div>
+        </div>
+
+        {/* Settings form */}
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="grid grid-cols-2 gap-0 divide-x divide-slate-100">
+            {/* Left column */}
+            <div className="p-5 space-y-5">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Token Prefix</Label>
+                <p className="text-[11px] text-slate-400">Letter(s) prepended to every token number (max 2).</p>
+                <Input
+                  value={tokenSettings.prefix}
+                  onChange={e => setTokenSettings(p => ({ ...p, prefix: e.target.value.toUpperCase().slice(0, 2) }))}
+                  className="h-10 w-24 text-center font-mono font-black text-xl tracking-widest"
+                  maxLength={2}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Starting Number</Label>
+                <p className="text-[11px] text-slate-400">First number issued when tokens reset.</p>
+                <Input
+                  type="number"
+                  min="1"
+                  value={tokenSettings.startingNumber}
+                  onChange={e => setTokenSettings(p => ({ ...p, startingNumber: parseInt(e.target.value) || 1 }))}
+                  className="h-10 w-28 text-center text-lg font-bold"
+                />
+              </div>
+            </div>
+
+            {/* Right column */}
+            <div className="p-5 space-y-5">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Reset Frequency</Label>
+                <p className="text-[11px] text-slate-400">How often token numbering resets.</p>
+                <div className="flex gap-2">
+                  {(["daily", "manual"] as const).map(f => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setTokenSettings(p => ({ ...p, resetFrequency: f }))}
+                      className={`flex-1 rounded-lg border-2 py-2 text-sm font-semibold capitalize transition-all
+                        ${tokenSettings.resetFrequency === f
+                          ? "border-[#4982CF] bg-[#4982CF]/5 text-[#4982CF]"
+                          : "border-slate-200 text-slate-500 hover:border-slate-300"}`}
+                    >
+                      {f === "daily" ? "Daily" : "Manual"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Display Format</Label>
+                <p className="text-[11px] text-slate-400">How the number appears alongside the prefix.</p>
+                <div className="flex gap-2">
+                  {([
+                    { val: "padded" as const, label: "Padded", example: `${tokenSettings.prefix}001` },
+                    { val: "plain"  as const, label: "Plain",  example: `${tokenSettings.prefix}1`   },
+                  ]).map(({ val, label, example }) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setTokenSettings(p => ({ ...p, displayFormat: val }))}
+                      className={`flex-1 rounded-lg border-2 py-2 px-3 text-left transition-all
+                        ${tokenSettings.displayFormat === val
+                          ? "border-[#4982CF] bg-[#4982CF]/5"
+                          : "border-slate-200 hover:border-slate-300"}`}
+                    >
+                      <p className={`text-xs font-semibold ${tokenSettings.displayFormat === val ? "text-[#4982CF]" : "text-slate-600"}`}>{label}</p>
+                      <p className="font-mono text-base font-black text-slate-700 mt-0.5">{example}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer toggle */}
+          <div className="border-t border-slate-100 px-5 py-4 flex items-center justify-between bg-slate-50/50">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Allow Manual Token Entry</p>
+              <p className="text-xs text-slate-400 mt-0.5">Staff can manually type a token number at registration instead of auto-generating.</p>
+            </div>
+            <div className="flex items-center gap-2 ml-6 flex-shrink-0">
+              <Switch
+                checked={tokenSettings.allowManualEntry}
+                onCheckedChange={v => setTokenSettings(p => ({ ...p, allowManualEntry: v }))}
+                className="data-[state=checked]:bg-[#4982CF]"
+              />
+              <span className={`text-xs font-semibold w-7 ${tokenSettings.allowManualEntry ? "text-[#4982CF]" : "text-slate-400"}`}>
+                {tokenSettings.allowManualEntry ? "On" : "Off"}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   if (section === "queue-behavior") return (
     <div className="mx-auto max-w-2xl space-y-6">
