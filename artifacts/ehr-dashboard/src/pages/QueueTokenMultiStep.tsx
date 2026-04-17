@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Workflow, CheckCircle2, Clock, RefreshCw, Search, UserPlus, ChevronRight, X, ArrowRight, LayoutGrid, List } from "lucide-react";
+import { Workflow, CheckCircle2, Clock, RefreshCw, Search, UserPlus, ChevronRight, X, ArrowRight, LayoutGrid, List, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +73,7 @@ export function QueueTokenMultiStep() {
   const [filterStep, setFilterStep] = useState<number | "all">("all");
   const [showAddPatient, setShowAddPatient] = useState(false);
   const [vtView, setVtView] = useState<"list" | "cards">("list");
+  const [walkIn, setWalkIn] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const [tick, setTick] = useState(0);
 
@@ -99,7 +100,7 @@ export function QueueTokenMultiStep() {
 
   const nextNum   = nextNums[selectedVT.id] ?? 1;
   const nextToken = padToken(nextNum, selectedVT.prefix);
-  const canGenerate = selectedPat !== null;
+  const canGenerate = selectedPat !== null || walkIn;
 
   function showToast(msg: string) {
     setToast(msg);
@@ -113,13 +114,13 @@ export function QueueTokenMultiStep() {
       const entry: MultiEntry = {
         id: uid(), tokenNumber: nextToken, displayNum: nextNum,
         status: "waiting", step: 1, totalSteps: selectedVT.steps.length,
-        stepLabel: selectedVT.steps[0], patient: selectedPat,
+        stepLabel: selectedVT.steps[0], patient: walkIn ? null : selectedPat,
         visitTypeId: selectedVT.id, createdAt: new Date(),
       };
       setQueue(p => [...p, entry]);
       setNextNums(prev => ({ ...prev, [selectedVT.id]: (prev[selectedVT.id] ?? 1) + 1 }));
       setLoading(false);
-      showToast(`Token ${nextToken} generated for ${selectedPat!.name}`);
+      showToast(walkIn ? `Token ${nextToken} generated (Walk-in)` : `Token ${nextToken} generated for ${selectedPat!.name}`);
       setSelectedPat(null);
       setSearch("");
     }, 700);
@@ -206,14 +207,44 @@ export function QueueTokenMultiStep() {
 
           {/* FIXED — Patient section */}
           <div className="flex-shrink-0 px-4 py-3 border-b border-slate-100 bg-white">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Patient</p>
-              <Button variant="ghost" size="sm" className="h-5 gap-1 text-[10px] text-[#4982CF] hover:bg-[#4982CF]/10 px-2"
-                onClick={() => setShowAddPatient(true)}>
-                <UserPlus className="h-3 w-3" />Add New
-              </Button>
+            {/* Header row: label + walk-in toggle + add new */}
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 flex-1">Patient</p>
+              {/* Walk-in toggle */}
+              <button
+                onClick={() => { setWalkIn(w => !w); setSelectedPat(null); setSearch(""); }}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold transition-all ${
+                  walkIn
+                    ? "bg-amber-50 border-amber-300 text-amber-700"
+                    : "bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                }`}
+              >
+                <UserX className="h-3 w-3" />
+                Walk-in
+              </button>
+              {!walkIn && (
+                <Button variant="ghost" size="sm" className="h-5 gap-1 text-[10px] text-[#4982CF] hover:bg-[#4982CF]/10 px-2"
+                  onClick={() => setShowAddPatient(true)}>
+                  <UserPlus className="h-3 w-3" />Add New
+                </Button>
+              )}
             </div>
-            {selectedPat ? (
+
+            {walkIn ? (
+              /* Walk-in mode — no patient required */
+              <div className="flex items-center gap-2.5 rounded-xl border-2 border-amber-200 bg-amber-50 px-3 py-2">
+                <div className="h-8 w-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center flex-shrink-0">
+                  <UserX className="h-4 w-4 text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-amber-800 leading-tight">Walk-in / Anonymous</p>
+                  <p className="text-[10px] text-amber-600 leading-tight">No patient info required</p>
+                </div>
+                <button onClick={() => setWalkIn(false)} className="text-amber-400 hover:text-amber-700 transition-colors flex-shrink-0">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : selectedPat ? (
               <div className="flex items-center gap-2.5 rounded-xl border-2 border-[#4982CF] bg-[#4982CF]/5 px-3 py-2">
                 <div className="h-8 w-8 rounded-full bg-[#4982CF] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                   {selectedPat.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
@@ -358,8 +389,8 @@ export function QueueTokenMultiStep() {
                 ? <><RefreshCw className="h-5 w-5 animate-spin" />Generating…</>
                 : <><Workflow className="h-5 w-5" />Generate Token</>}
             </Button>
-            {!selectedPat && (
-              <p className="text-center text-xs text-slate-400 -mt-2">Select a patient to enable token generation</p>
+            {!selectedPat && !walkIn && (
+              <p className="text-center text-xs text-slate-400 -mt-2">Select a patient or use Walk-in mode</p>
             )}
           </div>
         </div>
