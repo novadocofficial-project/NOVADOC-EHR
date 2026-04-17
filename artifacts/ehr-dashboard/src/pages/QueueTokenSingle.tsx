@@ -115,18 +115,19 @@ export function QueueTokenSingle() {
       <div className="flex flex-1 gap-0 overflow-hidden">
 
         {/* LEFT — Token Generation Panel */}
-        <div className="flex w-96 flex-shrink-0 flex-col border-r border-slate-200 bg-white">
-          <div className="flex flex-1 flex-col items-center justify-center gap-8 p-8">
+        <div className="flex w-96 flex-shrink-0 flex-col border-r border-slate-200 bg-white overflow-hidden">
 
-            {/* Token preview */}
-            <div className="flex flex-col items-center gap-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Next Token</p>
-              <div className="rounded-3xl border-2 border-emerald-200 bg-emerald-50 px-14 py-8 text-center shadow-sm">
-                <p className="font-black tracking-widest font-mono text-7xl text-emerald-600">{nextToken}</p>
-              </div>
-              <p className="text-xs text-slate-400">Auto-increments after each generation</p>
+          {/* TOP — Fixed token display */}
+          <div className="flex-shrink-0 flex flex-col items-center gap-3 px-6 pt-6 pb-5 border-b border-slate-100">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Next Token</p>
+            <div className="rounded-3xl border-2 border-emerald-200 bg-emerald-50 px-14 py-8 text-center shadow-sm w-full">
+              <p className="font-black tracking-widest font-mono text-7xl text-emerald-600">{nextToken}</p>
             </div>
+            <p className="text-xs text-slate-400">Auto-increments after each generation</p>
+          </div>
 
+          {/* MIDDLE — Scrollable content */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
             {/* Stats mini row */}
             <div className="flex w-full gap-3">
               {[
@@ -140,8 +141,14 @@ export function QueueTokenSingle() {
                 </div>
               ))}
             </div>
+            <p className="text-xs text-center text-slate-400 leading-relaxed">
+              One queue for all — no selections required.<br />
+              Fastest token generation mode.
+            </p>
+          </div>
 
-            {/* Generate button */}
+          {/* BOTTOM — Fixed footer: Generate + Call Next */}
+          <div className="flex-shrink-0 border-t border-slate-100 p-4 space-y-2">
             <Button
               size="lg"
               onClick={generateToken}
@@ -152,15 +159,6 @@ export function QueueTokenSingle() {
                 ? <><RefreshCw className="h-5 w-5 animate-spin" />Generating…</>
                 : <><Zap className="h-5 w-5" />Generate Token</>}
             </Button>
-
-            <p className="text-xs text-center text-slate-400 leading-relaxed">
-              One queue for all — no selections required.<br />
-              Fastest token generation mode.
-            </p>
-          </div>
-
-          {/* Call next action */}
-          <div className="border-t border-slate-100 p-4">
             <Button variant="outline" className="w-full h-10 gap-2 text-sm font-semibold text-slate-600" onClick={callNext} disabled={waiting.length === 0}>
               <Users className="h-4 w-4" />Call Next Token
             </Button>

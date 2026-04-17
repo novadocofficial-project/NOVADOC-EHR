@@ -154,28 +154,27 @@ export function QueueTokenPartitioned() {
       <div className="flex flex-1 gap-0 overflow-hidden">
 
         {/* LEFT */}
-        <div className="flex w-96 flex-shrink-0 flex-col border-r border-slate-200 bg-white">
-          <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
+        <div className="flex w-96 flex-shrink-0 flex-col border-r border-slate-200 bg-white overflow-hidden">
 
-            {/* Token preview */}
-            <div className="flex flex-col items-center gap-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Next Token</p>
-              <div
-                className="rounded-3xl border-2 px-14 py-8 text-center shadow-sm w-full"
-                style={{ borderColor: selectedDQ.doctor.color + "60", backgroundColor: selectedDQ.doctor.color + "0C" }}
-              >
-                <p className="font-black tracking-widest font-mono text-7xl" style={{ color: selectedDQ.doctor.color }}>
-                  {nextToken}
-                </p>
-                <p className="mt-1 text-xs font-semibold" style={{ color: selectedDQ.doctor.color + "AA" }}>
-                  {selectedDQ.doctor.name} · {selectedDQ.doctor.counter}
-                </p>
-              </div>
+          {/* TOP — Fixed token display */}
+          <div className="flex-shrink-0 flex flex-col items-center gap-3 px-6 pt-6 pb-5 border-b border-slate-100">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Next Token</p>
+            <div
+              className="rounded-3xl border-2 px-14 py-8 text-center shadow-sm w-full"
+              style={{ borderColor: selectedDQ.doctor.color + "60", backgroundColor: selectedDQ.doctor.color + "0C" }}
+            >
+              <p className="font-black tracking-widest font-mono text-7xl" style={{ color: selectedDQ.doctor.color }}>
+                {nextToken}
+              </p>
+              <p className="mt-1 text-xs font-semibold" style={{ color: selectedDQ.doctor.color + "AA" }}>
+                {selectedDQ.doctor.name} · {selectedDQ.doctor.counter}
+              </p>
             </div>
+          </div>
 
-            {/* Doctor selection */}
-            <div>
-              <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Select Doctor</p>
+          {/* MIDDLE — Scrollable doctor selection */}
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Select Doctor</p>
               <div className="space-y-2">
                 {doctorQueues.map(dq => {
                   const isSelected = dq.doctor.id === selectedDoc;
@@ -228,9 +227,10 @@ export function QueueTokenPartitioned() {
                   );
                 })}
               </div>
-            </div>
+          </div>
 
-            {/* Generate button */}
+          {/* BOTTOM — Fixed generate button */}
+          <div className="flex-shrink-0 border-t border-slate-100 p-4">
             <Button
               size="lg"
               onClick={generateToken}

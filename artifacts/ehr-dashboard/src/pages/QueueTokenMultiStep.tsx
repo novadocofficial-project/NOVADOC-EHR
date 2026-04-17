@@ -184,20 +184,22 @@ export function QueueTokenMultiStep() {
       <div className="flex flex-1 gap-0 overflow-hidden">
 
         {/* LEFT */}
-        <div className="flex w-[400px] flex-shrink-0 flex-col border-r border-slate-200 bg-white overflow-y-auto">
-          <div className="flex flex-col gap-5 p-6">
+        <div className="flex w-[400px] flex-shrink-0 flex-col border-r border-slate-200 bg-white overflow-hidden">
 
-            {/* Token preview */}
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Next Token</p>
-              <div className="rounded-3xl border-2 px-14 py-7 text-center shadow-sm w-full"
-                style={{ borderColor: selectedVT.color + "60", backgroundColor: selectedVT.color + "0C" }}>
-                <p className="font-black tracking-widest font-mono text-7xl" style={{ color: selectedVT.color }}>{nextToken}</p>
-                <p className="mt-1 text-xs font-semibold" style={{ color: selectedVT.color + "AA" }}>
-                  Step 1 of {selectedVT.steps.length} · {selectedVT.steps[0]}
-                </p>
-              </div>
+          {/* TOP — Fixed token display */}
+          <div className="flex-shrink-0 flex flex-col items-center gap-2 px-6 pt-6 pb-5 border-b border-slate-100">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Next Token</p>
+            <div className="rounded-3xl border-2 px-14 py-7 text-center shadow-sm w-full"
+              style={{ borderColor: selectedVT.color + "60", backgroundColor: selectedVT.color + "0C" }}>
+              <p className="font-black tracking-widest font-mono text-7xl" style={{ color: selectedVT.color }}>{nextToken}</p>
+              <p className="mt-1 text-xs font-semibold" style={{ color: selectedVT.color + "AA" }}>
+                Step 1 of {selectedVT.steps.length} · {selectedVT.steps[0]}
+              </p>
             </div>
+          </div>
+
+          {/* MIDDLE — Scrollable: patient + visit type */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
 
             {/* Patient Search */}
             <div>
@@ -302,7 +304,10 @@ export function QueueTokenMultiStep() {
               </div>
             </div>
 
-            {/* Generate button */}
+          </div>
+
+          {/* BOTTOM — Fixed generate button */}
+          <div className="flex-shrink-0 border-t border-slate-100 p-4 space-y-2">
             <Button size="lg" onClick={generateToken} disabled={!canGenerate || loading}
               className="w-full h-14 text-white text-base font-bold rounded-xl shadow-md gap-2"
               style={{ backgroundColor: canGenerate ? selectedVT.color : undefined }}>
