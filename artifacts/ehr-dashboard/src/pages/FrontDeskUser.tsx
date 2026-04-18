@@ -8,7 +8,6 @@ import {
   Maximize2, Minimize2, Pencil,
   Stethoscope, TestTube2, Scan, Pill, Package,
   Plus, Minus, Trash2, Receipt, Printer, ArrowRight, Percent, ShoppingCart,
-  LayoutGrid, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -442,7 +441,6 @@ function BillingContent({ entry, onComplete }: BillingContentProps) {
   const [catId, setCatId]       = useState<string | null>(null);
   const [cart, setCart]         = useState<CartLine[]>([]);
   const [showDiscFor, setShowDiscFor] = useState<string | null>(null);
-  const [showSub, setShowSub]   = useState(false);
 
   // Payment state
   const [payType, setPayType]     = useState<PayType | null>(null);
@@ -510,8 +508,8 @@ function BillingContent({ entry, onComplete }: BillingContentProps) {
     <div className="flex flex-col h-full">
       <BillingStepBar step="cart" />
 
-      {/* Patient info + browse trigger */}
-      <div className="flex-shrink-0 px-5 pt-4 pb-3 border-b border-slate-100">
+      {/* Mode toggle + patient info */}
+      <div className="flex-shrink-0 px-5 pt-4 pb-3 space-y-3">
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-slate-900 truncate">{entry.patient?.name ?? "Walk-in Patient"}</p>
@@ -519,27 +517,14 @@ function BillingContent({ entry, onComplete }: BillingContentProps) {
           </div>
           <span className="font-mono font-black text-[#4982CF] text-sm">{entry.tokenNumber}</span>
         </div>
-        <div className="flex items-center justify-between mt-3">
-          {/* Current selection breadcrumb */}
-          <div className="flex items-center gap-1.5">
-            {mode === "services" && catId && currentCat ? (
-              <>
-                <div className={currentCat.color}>{catIcon(catId, "h-3.5 w-3.5")}</div>
-                <span className={`text-xs font-bold ${currentCat.color}`}>{currentCat.name}</span>
-              </>
-            ) : mode === "packages" ? (
-              <>
-                <Package className="h-3.5 w-3.5 text-[#4982CF]" />
-                <span className="text-xs font-bold text-[#4982CF]">Packages</span>
-              </>
-            ) : (
-              <span className="text-[11px] text-slate-400">No category selected</span>
-            )}
-          </div>
-          {/* Browse button */}
-          <button onClick={() => setShowSub(v => !v)}
-            className={`flex items-center gap-1.5 h-7 px-3 rounded-lg text-xs font-bold transition-all border ${showSub ? "bg-[#4982CF] text-white border-[#4982CF]" : "bg-slate-50 text-slate-600 border-slate-200 hover:border-[#4982CF] hover:text-[#4982CF]"}`}>
-            <LayoutGrid className="h-3 w-3" /> Browse
+        <div className="flex rounded-xl border border-slate-200 p-1 bg-slate-50 gap-1">
+          <button onClick={() => { setMode("services"); setCatId(null); }}
+            className={`flex-1 flex items-center justify-center gap-2 h-8 rounded-lg text-xs font-bold transition-all ${mode === "services" ? "bg-white shadow-sm text-[#4982CF] border border-slate-200" : "text-slate-500 hover:text-slate-700"}`}>
+            <Stethoscope className="h-3.5 w-3.5" /> Services
+          </button>
+          <button onClick={() => { setMode("packages"); setCatId(null); }}
+            className={`flex-1 flex items-center justify-center gap-2 h-8 rounded-lg text-xs font-bold transition-all ${mode === "packages" ? "bg-white shadow-sm text-[#4982CF] border border-slate-200" : "text-slate-500 hover:text-slate-700"}`}>
+            <Package className="h-3.5 w-3.5" /> Packages
           </button>
         </div>
       </div>
@@ -547,25 +532,35 @@ function BillingContent({ entry, onComplete }: BillingContentProps) {
       {/* Scrollable selection + cart */}
       <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
 
-        {/* ── SERVICES — no category selected ───────────────────────── */}
+        {/* ── SERVICES ──────────────────────────────────────────────── */}
         {mode === "services" && !catId && (
-          <div className="flex flex-col items-center justify-center py-14 gap-3 text-slate-400">
-            <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center">
-              <LayoutGrid className="h-7 w-7 opacity-40" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-semibold text-slate-600">Select a category</p>
-              <p className="text-xs text-slate-400 mt-0.5">Use the Browse panel to pick a category</p>
-            </div>
-            <button onClick={() => setShowSub(true)}
-              className="flex items-center gap-2 h-8 px-4 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:border-[#4982CF] hover:text-[#4982CF] transition-all">
-              <LayoutGrid className="h-3.5 w-3.5" /> Open Browse Panel <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+          <div className="grid grid-cols-2 gap-3">
+            {SVC_CATEGORIES.map(cat => {
+              const count = SVC_ITEMS.filter(s => s.catId === cat.id).length;
+              const added = cart.filter(c => SVC_ITEMS.find(s => s.id === c.itemId && s.catId === cat.id)).length;
+              return (
+                <button key={cat.id} onClick={() => setCatId(cat.id)}
+                  className={`flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all hover:shadow-sm ${cat.bg} relative`}>
+                  <div className={cat.color}>{catIcon(cat.id)}</div>
+                  <div>
+                    <p className={`text-sm font-bold ${cat.color}`}>{cat.name}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{count} services</p>
+                  </div>
+                  {added > 0 && (
+                    <span className="absolute top-2 right-2 h-5 w-5 rounded-full bg-[#4982CF] text-white text-[10px] font-black flex items-center justify-center">{added}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
 
         {mode === "services" && catId && currentCat && (
           <div className="space-y-2">
+            <button onClick={() => setCatId(null)}
+              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#4982CF] transition-colors mb-3">
+              <ChevronLeft className="h-3.5 w-3.5" /> Back to categories
+            </button>
             <div className={`flex items-center gap-2 rounded-xl border p-3 mb-3 ${currentCat.bg}`}>
               <div className={currentCat.color}>{catIcon(catId, "h-4 w-4")}</div>
               <p className={`text-sm font-bold ${currentCat.color}`}>{currentCat.name}</p>
@@ -697,78 +692,6 @@ function BillingContent({ entry, onComplete }: BillingContentProps) {
         </Button>
       </div>
 
-      {/* ── SUB-DRAWER: slide-in category browser ───────────────────── */}
-      {showSub && (
-        <>
-          {/* Invisible backdrop — click outside closes sub-drawer */}
-          <div className="fixed inset-0 z-[70]" onClick={() => setShowSub(false)} />
-          {/* Panel — slides in from right edge of the billing drawer */}
-          <div className="fixed top-0 right-[40vw] h-full w-44 z-[71] flex flex-col
-            bg-slate-900/95 backdrop-blur-sm border-l border-white/10 shadow-2xl
-            animate-in slide-in-from-right-2 duration-200">
-
-            {/* Panel header */}
-            <div className="flex items-center justify-between px-3 pt-5 pb-3 border-b border-white/10 flex-shrink-0">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Browse</p>
-              <button onClick={() => setShowSub(false)}
-                className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
-                <X className="h-3 w-3 text-slate-300" />
-              </button>
-            </div>
-
-            {/* Services / Packages toggle */}
-            <div className="px-2.5 py-3 border-b border-white/10 flex-shrink-0 space-y-1">
-              <button onClick={() => { setMode("services"); setCatId(null); }}
-                className={`w-full flex items-center gap-2.5 h-9 px-3 rounded-xl text-xs font-bold transition-all ${mode === "services" ? "bg-[#4982CF] text-white" : "text-slate-400 hover:bg-white/10 hover:text-white"}`}>
-                <Stethoscope className="h-3.5 w-3.5 flex-shrink-0" /> Services
-              </button>
-              <button onClick={() => { setMode("packages"); setCatId(null); setShowSub(false); }}
-                className={`w-full flex items-center gap-2.5 h-9 px-3 rounded-xl text-xs font-bold transition-all ${mode === "packages" ? "bg-[#4982CF] text-white" : "text-slate-400 hover:bg-white/10 hover:text-white"}`}>
-                <Package className="h-3.5 w-3.5 flex-shrink-0" /> Packages
-              </button>
-            </div>
-
-            {/* Category list — services mode only */}
-            {mode === "services" && (
-              <div className="flex-1 overflow-y-auto py-2">
-                <p className="px-3 pt-1 pb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">Categories</p>
-                {SVC_CATEGORIES.map(cat => {
-                  const added = cart.filter(c => SVC_ITEMS.find(s => s.id === c.itemId && s.catId === cat.id)).length;
-                  const isActive = catId === cat.id;
-                  return (
-                    <button key={cat.id}
-                      onClick={() => { setCatId(cat.id); setShowSub(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-3 text-left transition-all relative
-                        ${isActive ? "bg-white/15 text-white" : "text-slate-400 hover:bg-white/8 hover:text-white"}`}>
-                      <div className={isActive ? "text-white" : cat.color}>
-                        {catIcon(cat.id, "h-4 w-4 flex-shrink-0")}
-                      </div>
-                      <span className="text-xs font-semibold flex-1 truncate leading-tight">{cat.name}</span>
-                      {added > 0 && (
-                        <span className="h-4 min-w-[16px] px-0.5 rounded-full bg-[#4982CF] text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">
-                          {added}
-                        </span>
-                      )}
-                      {isActive && <div className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r-full bg-[#4982CF]" />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Cart item count pill at bottom */}
-            {cart.length > 0 && (
-              <div className="flex-shrink-0 px-3 py-3 border-t border-white/10">
-                <div className="flex items-center gap-2 rounded-xl bg-white/8 px-3 py-2">
-                  <ShoppingCart className="h-3.5 w-3.5 text-[#4982CF] flex-shrink-0" />
-                  <span className="text-xs text-slate-300 font-semibold flex-1">{cart.length} {cart.length === 1 ? "item" : "items"}</span>
-                  <span className="text-xs font-black text-[#4982CF]">{fmt(grandTotal)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
     </div>
   );
 
