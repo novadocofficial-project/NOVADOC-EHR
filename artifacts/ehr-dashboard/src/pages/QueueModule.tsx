@@ -74,10 +74,9 @@ type ScreenConfig = {
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 
 const SEED_VISIT_TYPES: VisitType[] = [
-  { id: "vt-1", name: "Normal Consultation", code: "NORM", tokenPrefix: "C", color: "#4982CF", queueMode: "partitioned", partitionBy: "doctor", status: "active" },
+  { id: "vt-1", name: "Normal Consultation", code: "NORM", tokenPrefix: "C", color: "#4982CF", queueMode: "multi-step", partitionBy: "none", status: "active" },
   { id: "vt-2", name: "Urgent / Emergency", code: "EMER", tokenPrefix: "U", color: "#ef4444", queueMode: "single", partitionBy: "none", status: "active" },
   { id: "vt-3", name: "Follow-up Visit", code: "FLUP", tokenPrefix: "F", color: "#10b981", queueMode: "single", partitionBy: "none", status: "inactive" },
-  { id: "vt-4", name: "Hospital OPD (Multi-Step)", code: "OPD", tokenPrefix: "O", color: "#8b5cf6", queueMode: "multi-step", partitionBy: "none", status: "active" },
 ];
 
 const SEED_COUNTER_TYPES: CounterType[] = [
