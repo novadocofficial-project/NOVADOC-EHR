@@ -410,7 +410,7 @@ function VitalsPanel({ entry, onClose }: { entry: MultiEntry; onClose: () => voi
 
         {activeCategory === "vitals" ? (
           <div className="flex-1 flex overflow-hidden">
-            <div className={`flex-shrink-0 overflow-hidden border-r border-slate-200 transition-all duration-300 ${fullscreen ? "w-64" : "w-1/2"}`}>
+            <div className="w-1/2 flex-shrink-0 overflow-hidden border-r border-slate-200">
               <VitalsLeftPanel entry={entry} showTrends={showTrends} onToggleTrends={() => setShowTrends(t => !t)} />
             </div>
             <div className="flex-1 flex flex-col overflow-hidden">
