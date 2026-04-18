@@ -18,9 +18,11 @@ pnpm workspace monorepo. Primary artifact: `artifacts/ehr-dashboard` — a pure 
   - 30-second call window → Register (walk-in) or Billing (named patient)
   - Max 3 call attempts → auto-skip
   - Skipped tokens slide-up panel with Recall
-  - Full patient registration form (search/new, relationship, patient type: Cash/Corporate/Insurance/Welfare)
-  - Billing panel (payment method + amount + complete)
+  - **Right-hand drawer** (40% width default, full-screen toggle) replaces center modal for all three panels:
+    - Registration drawer: search existing / register new patient
+    - Billing drawer: payment method, quick-amount chips, mark complete
   - Real-time cross-tab sync with Multi-Step Visit via BroadcastChannel API
+  - Rollback checkpoint: `ee11f519` (pre-drawer design)
 
 ### Admin Settings (`/admin`)
 - Departments, doctors, billing types, branches, queue setup (visit types, counters, behavior, display screens)
