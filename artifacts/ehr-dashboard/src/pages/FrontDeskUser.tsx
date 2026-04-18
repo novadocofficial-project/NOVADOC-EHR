@@ -88,10 +88,16 @@ interface RightDrawerProps {
   subtitle?: string;
   onClose: () => void;
   children: React.ReactNode;
+  onFullscreenChange?: (fs: boolean) => void;
 }
 
-function RightDrawer({ title, subtitle, onClose, children }: RightDrawerProps) {
+function RightDrawer({ title, subtitle, onClose, children, onFullscreenChange }: RightDrawerProps) {
   const [fullscreen, setFullscreen] = useState(false);
+  function toggleFullscreen() {
+    const next = !fullscreen;
+    setFullscreen(next);
+    onFullscreenChange?.(next);
+  }
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
@@ -102,7 +108,7 @@ function RightDrawer({ title, subtitle, onClose, children }: RightDrawerProps) {
             {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={() => setFullscreen(f => !f)}
+            <button onClick={toggleFullscreen}
               className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
               {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
@@ -410,6 +416,7 @@ export interface ReceiptInfo {
 interface BillingContentProps {
   entry: MultiEntry;
   onComplete: (receipt: ReceiptInfo) => void;
+  isFullscreen: boolean;
 }
 
 function BillingStepBar({ step }: { step: BillingStep }) {
@@ -435,7 +442,7 @@ function BillingStepBar({ step }: { step: BillingStep }) {
   );
 }
 
-function BillingContent({ entry, onComplete }: BillingContentProps) {
+function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps) {
   const [step, setStep]         = useState<BillingStep>("cart");
   const [mode, setMode]         = useState<BillingMode>("services");
   const [catId, setCatId]       = useState<string | null>(null);
@@ -625,73 +632,102 @@ function BillingContent({ entry, onComplete }: BillingContentProps) {
           </div>
         )}
 
-        {/* ── CART SUMMARY ──────────────────────────────────────────── */}
-        {cart.length > 0 && (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden mt-2">
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-white border-b border-slate-100">
-              <ShoppingCart className="h-3.5 w-3.5 text-[#4982CF]" />
-              <p className="text-xs font-bold text-slate-700">Cart · {cart.length} {cart.length === 1 ? "item" : "items"}</p>
-            </div>
-            <div className="p-3 space-y-2">
-              {cart.map(line => (
-                <div key={line.uid} className="bg-white rounded-xl border border-slate-100 px-3 py-2.5">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 leading-tight">{line.name}</p>
-                      <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-full bg-slate-100 text-[9px] font-bold text-slate-500">{line.catName}</span>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <div className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1">
-                        <button onClick={() => updateQty(line.uid, -1)} className="text-slate-400 hover:text-slate-700"><Minus className="h-3 w-3" /></button>
-                        <span className="text-xs font-black text-slate-700 w-4 text-center">{line.qty}</span>
-                        <button onClick={() => updateQty(line.uid, 1)} className="text-slate-400 hover:text-slate-700"><Plus className="h-3 w-3" /></button>
-                      </div>
-                      <button onClick={() => setShowDiscFor(showDiscFor === line.uid ? null : line.uid)}
-                        className={`transition-colors ${line.discount > 0 ? "text-amber-500" : "text-slate-300 hover:text-amber-400"}`}>
-                        <Percent className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={() => removeItem(line.uid)} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
-                    </div>
-                  </div>
-                  {showDiscFor === line.uid && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[10px] text-slate-500 font-semibold">Discount %</span>
-                      <Input type="number" min={0} max={100} className="h-6 w-16 text-xs px-2"
-                        value={line.discount || ""} placeholder="0"
-                        onChange={e => updateDiscount(line.uid, e.target.value)} />
-                      {line.discount > 0 && <span className="text-[10px] text-amber-600 font-bold">−{fmt(line.price * line.qty * line.discount / 100)}</span>}
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center mt-1.5">
-                    <span className="text-[10px] text-slate-400">{fmt(line.price)} × {line.qty}{line.discount > 0 ? ` − ${line.discount}%` : ""}</span>
-                    <span className="text-xs font-black text-slate-900">{fmt(lineTotal(line))}</span>
-                  </div>
-                </div>
-              ))}
-              {totalDiscount > 0 && (
-                <div className="flex justify-between px-3 py-1 text-xs text-amber-600">
-                  <span className="font-semibold">Total Discount</span>
-                  <span className="font-bold">−{fmt(Math.round(totalDiscount))}</span>
-                </div>
-              )}
-              <div className="flex justify-between items-center px-3 py-2 border-t border-slate-200 mt-1">
-                <span className="text-sm font-bold text-slate-700">Grand Total</span>
-                <span className="text-base font-black text-[#4982CF]">{fmt(grandTotal)}</span>
-              </div>
-            </div>
+      </div>
+
+      {/* Footer hint — shown only when cart is empty */}
+      {cart.length === 0 && (
+        <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
+          <div className="flex items-center justify-center gap-2 h-11 rounded-xl bg-slate-50 border border-slate-200 border-dashed">
+            <ShoppingCart className="h-4 w-4 text-slate-300" />
+            <span className="text-sm text-slate-400 font-medium">Add services to build your cart</span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Footer */}
-      <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
-        <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
-          disabled={cart.length === 0} onClick={() => setStep("payment")}>
-          <ArrowRight className="h-4 w-4" />
-          {cart.length === 0 ? "Add services to proceed" : `Proceed to Payment · ${fmt(grandTotal)}`}
-        </Button>
-      </div>
+      {/* ── CART SUB-PANEL — auto-shows when cart has items ──────────── */}
+      {cart.length > 0 && (
+        <div
+          className={`fixed top-0 h-full z-[51] flex flex-col
+            bg-slate-900/97 backdrop-blur-sm shadow-2xl
+            border-white/10 animate-in duration-200
+            ${isFullscreen
+              ? "left-0 w-72 border-r slide-in-from-left-2"
+              : "w-64 border-r slide-in-from-right-2"
+            }`}
+          style={isFullscreen ? undefined : { right: "max(40%, 520px)" }}
+        >
+          {/* Header */}
+          <div className="flex items-center gap-2.5 px-4 pt-5 pb-3 border-b border-white/10 flex-shrink-0">
+            <ShoppingCart className="h-4 w-4 text-[#4982CF] flex-shrink-0" />
+            <p className="text-xs font-black text-white flex-1 uppercase tracking-wide">Cart</p>
+            <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-[#4982CF] text-white text-[10px] font-black flex items-center justify-center">
+              {cart.length}
+            </span>
+          </div>
 
+          {/* Cart lines */}
+          <div className="flex-1 overflow-y-auto py-2 px-3 space-y-2">
+            {cart.map(line => (
+              <div key={line.uid} className="rounded-xl bg-white/8 px-3 py-2.5">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-white leading-tight">{line.name}</p>
+                    <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-full bg-white/10 text-[9px] font-bold text-slate-400">{line.catName}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center gap-1 rounded-lg bg-white/10 px-2 py-1">
+                      <button onClick={() => updateQty(line.uid, -1)} className="text-slate-400 hover:text-white transition-colors"><Minus className="h-3 w-3" /></button>
+                      <span className="text-xs font-black text-white w-4 text-center">{line.qty}</span>
+                      <button onClick={() => updateQty(line.uid, 1)} className="text-slate-400 hover:text-white transition-colors"><Plus className="h-3 w-3" /></button>
+                    </div>
+                    <button onClick={() => setShowDiscFor(showDiscFor === line.uid ? null : line.uid)}
+                      className={`transition-colors ${line.discount > 0 ? "text-amber-400" : "text-white/25 hover:text-amber-400"}`}>
+                      <Percent className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => removeItem(line.uid)} className="text-white/20 hover:text-red-400 transition-colors">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+                {showDiscFor === line.uid && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400 font-semibold">Disc %</span>
+                    <Input type="number" min={0} max={100}
+                      className="h-6 w-14 text-xs px-2 bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:ring-[#4982CF]"
+                      value={line.discount || ""} placeholder="0"
+                      onChange={e => updateDiscount(line.uid, e.target.value)} />
+                    {line.discount > 0 && (
+                      <span className="text-[10px] text-amber-400 font-bold">−{fmt(line.price * line.qty * line.discount / 100)}</span>
+                    )}
+                  </div>
+                )}
+                <div className="flex justify-between items-center mt-1.5">
+                  <span className="text-[10px] text-white/35">{fmt(line.price)} × {line.qty}{line.discount > 0 ? ` − ${line.discount}%` : ""}</span>
+                  <span className="text-xs font-black text-white">{fmt(lineTotal(line))}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Totals + proceed button */}
+          <div className="flex-shrink-0 border-t border-white/10 px-4 py-4 space-y-2">
+            {totalDiscount > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-amber-400 font-semibold">Discount</span>
+                <span className="text-amber-400 font-bold">−{fmt(Math.round(totalDiscount))}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pb-1">
+              <span className="text-sm font-bold text-slate-300">Total</span>
+              <span className="text-xl font-black text-[#4982CF]">{fmt(grandTotal)}</span>
+            </div>
+            <Button className="w-full h-10 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
+              onClick={() => setStep("payment")}>
+              <ArrowRight className="h-4 w-4" /> Proceed to Payment
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -864,6 +900,7 @@ export function FrontDeskUser() {
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   const [toast, setToast]             = useState<string | null>(null);
   const [receipt, setReceipt]         = useState<ReceiptInfo | null>(null);
+  const [billingFullscreen, setBillingFullscreen] = useState(false);
 
   const billingEnabled = (() => {
     try {
@@ -886,7 +923,7 @@ export function FrontDeskUser() {
   }, [tick]);
 
   function showToastMsg(msg: string) { setToast(msg); setTimeout(() => setToast(null), 3500); }
-  function closeDrawer() { setDrawerType(null); setActiveEntryId(null); }
+  function closeDrawer() { setDrawerType(null); setActiveEntryId(null); setBillingFullscreen(false); }
 
   const fdQueue = queue.filter(e => e.step === 1 && e.status !== "completed" && !e.skipped).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   const skippedQueue    = queue.filter(e => e.step === 1 && e.skipped);
@@ -1193,8 +1230,9 @@ export function FrontDeskUser() {
         </RightDrawer>
       )}
       {drawerType === "billing" && activeDrawerEntry && (
-        <RightDrawer title="Billing" subtitle={activeDrawerEntry.patient?.name ?? "Walk-in Patient"} onClose={closeDrawer}>
-          <BillingContent entry={activeDrawerEntry} onComplete={handleBillingComplete} />
+        <RightDrawer title="Billing" subtitle={activeDrawerEntry.patient?.name ?? "Walk-in Patient"} onClose={closeDrawer}
+          onFullscreenChange={setBillingFullscreen}>
+          <BillingContent entry={activeDrawerEntry} onComplete={handleBillingComplete} isFullscreen={billingFullscreen} />
         </RightDrawer>
       )}
 
