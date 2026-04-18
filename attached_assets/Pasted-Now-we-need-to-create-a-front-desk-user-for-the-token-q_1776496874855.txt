@@ -1,0 +1,66 @@
+Now we need to create a front desk user for the token queue. 
+
+In the top horizontal header nav bar there will be sub option in Queue as Queue users and under that it will be Front desk user.
+
+The front desk user should only see the queues that are assigned to them. For example, in our case, the registration queue.
+We can either create a separate queue for the billing counter, or we can have an option in admin settings (under queue settings) to enable billing on any queue. For now, we enable billing on the registration queue.
+Once enabled, tokens will start appearing in the registration queue. From there, I can:
+* Call a token
+* Skip a token
+* Call a token up to a maximum of 3 times
+
+When the Call button is clicked, it will change for 30 seconds into a Register button if the patient is walked in and if it’s token with a patient name then button will be Billing. If no action is taken during those 30 seconds, the button will revert back to Call again. This process will repeat up to 3 times, and After 3 calls, the token will automatically be skipped. Skip tokens can be recalled from the skip list.
+
+Only the token in the first row (top position) will be called; no other tokens can be called out of order.
+
+When the patient arrives at the counter, the front desk will first click Register (if it is a walk-in patient). The system will prompt to either:
+* Select an existing patient
+* Or register a new patient
+To select a patient, we can:
+* Search
+* Scan a card
+* Scan a thumb
+If it’s a new patient, we register them using the following fields:
+* Patient ID / MR No (auto-generated)
+* First Name (mandatory)
+* Last Name
+* Date of Birth (mandatory)
+* Phone (mandatory)
+* Complete Address
+* CNIC (mandatory)
+* Referred By
+* Relationship selection: Self, Parent, Spouse, or Guardian
+If Parent, Spouse, or Guardian is selected, then we must enter:
+* Name
+* Contact
+* CNIC number
+* Date of Birth
+
+Type of Patient:
+* Cash
+* Corporate
+* Insurance
+* Welfare
+If Insurance or Corporate is selected:
+* Select corporate/insurance from dropdown
+* Enter Employee ID / Insurance Number
+* Emergency Contact
+If Welfare is selected:
+* The system will ask to submit and sign welfare information
+* The front desk can either skip it for later or open the welfare form
+* Capture digital signatures of the patient and witnesses
+* (Sample format to be defined)
+Lastly, notes can also be added.
+
+After the patient is registered or selected, they will start appearing in the token queue row. Their name, MR number, phone, or CNIC will be visible, and the Register button will change to Billing.
+
+If the patient already exists, then only the Billing button will appear (no registration).
+Since billing is enabled on the registration queue, the patient will first appear in the registration waiting queue, and once billing is clicked, their status will move to At Counter. After billing is completed, the patient will move to the next step in the queue.
+If billing is enabled at any step, that step will not be marked as completed until billing is also completed.
+
+
+
+We can skip tokens as well. Skipped patients will appear separately in a different section below.
+For skipped patients, I want a UI behavior where:
+* A panel slides up from the bottom of the page
+* It shows the skipped tokens as a list
