@@ -447,12 +447,13 @@ function VitalsTrends() {
 function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: () => void; onSave: () => void }) {
   const [showTrends, setShowTrends] = useState(false);
   const [vitalsForm, setVitalsForm] = useState<VitalsFormState>({
-    date: "", pulseHR: "", tempC: "", bpSystolic: "", bpDiastolic: "",
-    bpPosition: "", bpOrthostatic: "", respiratory: "", bloodSugar: "",
-    weightKg: "", heightCm: "", bmi: "", o2Sat: "", bsa: "",
+    date: "2025-02-21", pulseHR: "76", tempC: "37.0", bpSystolic: "121",
+    bpDiastolic: "77", bpPosition: "sitting", bpOrthostatic: "no",
+    respiratory: "18", bloodSugar: "5.4", weightKg: "72", heightCm: "168",
+    bmi: "25.5", o2Sat: "97", bsa: "1.85",
   });
-  const [painScore, setPainScore]         = useState(-1);
-  const [mentalAnswers, setMentalAnswers] = useState([0, 0, 0, 0]);
+  const [painScore, setPainScore]         = useState(5);
+  const [mentalAnswers, setMentalAnswers] = useState([1, 1, 2, 1]);
   const [fullscreen, setFullscreen]       = useState(false);
   const [activeCategory, setActiveCategory] = useState<NurseCategory>("vitals");
   const [showConfirm, setShowConfirm]     = useState(false);
