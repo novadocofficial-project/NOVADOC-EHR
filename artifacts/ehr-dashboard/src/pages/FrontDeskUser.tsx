@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import {
   PhoneCall, UserCheck, CreditCard, SkipForward, RotateCcw,
-  ChevronUp, Clock, User, AlertCircle, CheckCircle2, X,
+  ChevronUp, ChevronLeft, Clock, User, AlertCircle, CheckCircle2, X,
   Fingerprint, CreditCard as CardIcon, Search,
   Building2, Shield, Heart, FileSignature, Phone, MapPin,
   CalendarDays, Hash, UserPlus, Banknote, RefreshCw,
   Maximize2, Minimize2, Pencil,
+  Stethoscope, TestTube2, Scan, Pill, Package,
+  Plus, Minus, Trash2, Receipt, Printer, ArrowRight, Percent, ShoppingCart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,9 +25,63 @@ function getSecsLeft(callTimestamp: number | null): number {
   return Math.max(0, CALL_WINDOW_SECS - Math.floor((Date.now() - callTimestamp) / 1000));
 }
 
+function fmt(n: number) { return "Rs. " + n.toLocaleString("en-PK"); }
+
+// ─── Billing Seed Data ────────────────────────────────────────────────────────
+
+interface SvcCategory { id: string; name: string; color: string; bg: string; }
+interface SvcItem     { id: string; catId: string; name: string; price: number; }
+interface BillPkg     { id: string; name: string; desc: string; price: number; }
+
+const SVC_CATEGORIES: SvcCategory[] = [
+  { id: "cat-1", name: "Consultation",    color: "text-[#4982CF]",  bg: "bg-blue-50   border-blue-200"   },
+  { id: "cat-2", name: "Lab / Pathology", color: "text-purple-700", bg: "bg-purple-50 border-purple-200" },
+  { id: "cat-3", name: "Radiology",       color: "text-teal-700",   bg: "bg-teal-50   border-teal-200"   },
+  { id: "cat-4", name: "Pharmacy",        color: "text-green-700",  bg: "bg-green-50  border-green-200"  },
+  { id: "cat-5", name: "Nursing",         color: "text-rose-700",   bg: "bg-rose-50   border-rose-200"   },
+];
+
+function catIcon(id: string, cls = "h-5 w-5") {
+  if (id === "cat-1") return <Stethoscope className={cls} />;
+  if (id === "cat-2") return <TestTube2   className={cls} />;
+  if (id === "cat-3") return <Scan        className={cls} />;
+  if (id === "cat-4") return <Pill        className={cls} />;
+  return                      <Heart      className={cls} />;
+}
+
+const SVC_ITEMS: SvcItem[] = [
+  { id: "s-101", catId: "cat-1", name: "General OPD Consultation",     price: 500  },
+  { id: "s-102", catId: "cat-1", name: "Specialist Consultation",      price: 1200 },
+  { id: "s-103", catId: "cat-1", name: "Follow-up Visit",              price: 300  },
+  { id: "s-104", catId: "cat-1", name: "Emergency Consultation",       price: 1500 },
+  { id: "s-201", catId: "cat-2", name: "CBC (Complete Blood Count)",   price: 800  },
+  { id: "s-202", catId: "cat-2", name: "Blood Sugar Fasting",          price: 250  },
+  { id: "s-203", catId: "cat-2", name: "Liver Function Tests (LFTs)",  price: 1500 },
+  { id: "s-204", catId: "cat-2", name: "Urine D/R & C/S",             price: 600  },
+  { id: "s-205", catId: "cat-2", name: "HbA1c",                       price: 900  },
+  { id: "s-206", catId: "cat-2", name: "Thyroid Profile (T3/T4/TSH)", price: 1800 },
+  { id: "s-301", catId: "cat-3", name: "Chest X-Ray (PA)",            price: 1200 },
+  { id: "s-302", catId: "cat-3", name: "Ultrasound Abdomen",          price: 2500 },
+  { id: "s-303", catId: "cat-3", name: "ECG (12-lead)",               price: 700  },
+  { id: "s-304", catId: "cat-3", name: "X-Ray Pelvis / Hip",          price: 1400 },
+  { id: "s-401", catId: "cat-4", name: "Paracetamol 500mg (Strip)",   price: 150  },
+  { id: "s-402", catId: "cat-4", name: "Amoxicillin 500mg (Strip)",   price: 320  },
+  { id: "s-403", catId: "cat-4", name: "Omeprazole 20mg (Strip)",     price: 280  },
+  { id: "s-501", catId: "cat-5", name: "IV Line Insertion",           price: 500  },
+  { id: "s-502", catId: "cat-5", name: "Wound Dressing",              price: 350  },
+  { id: "s-503", catId: "cat-5", name: "Nebulization",                price: 400  },
+  { id: "s-504", catId: "cat-5", name: "Blood Pressure Monitoring",   price: 200  },
+];
+
+const BILL_PKGS: BillPkg[] = [
+  { id: "pkg-1", name: "Basic Health Checkup",  price: 2500, desc: "CBC + Blood Sugar + Urine D/R + OPD Consultation" },
+  { id: "pkg-2", name: "Cardiac Package",        price: 4500, desc: "ECG + Chest X-Ray + Specialist Consultation" },
+  { id: "pkg-3", name: "Diabetes Panel",         price: 3200, desc: "HbA1c + Blood Sugar + Urine D/R + Consultation" },
+  { id: "pkg-4", name: "Liver Function Panel",   price: 3800, desc: "LFTs + Ultrasound Abdomen + Consultation" },
+  { id: "pkg-5", name: "Antenatal Profile",      price: 5500, desc: "CBC + LFTs + Blood Sugar + Urine + Ultrasound" },
+];
+
 // ─── Right Drawer ─────────────────────────────────────────────────────────────
-// Children are responsible for their own scroll + footer layout
-// (flex flex-col h-full with an overflow-y-auto region + a fixed footer div)
 
 interface RightDrawerProps {
   title: string;
@@ -36,55 +92,33 @@ interface RightDrawerProps {
 
 function RightDrawer({ title, subtitle, onClose, children }: RightDrawerProps) {
   const [fullscreen, setFullscreen] = useState(false);
-
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px] transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* Drawer panel */}
-      <div
-        className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-in-out border-l border-slate-200 ${
-          fullscreen ? "w-full" : "w-[40%] min-w-[480px]"
-        }`}
-      >
-        {/* Drawer header */}
+      <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
+      <div className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-in-out border-l border-slate-200 ${fullscreen ? "w-full" : "w-[40%] min-w-[520px]"}`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-white flex-shrink-0">
           <div>
             <p className="text-sm font-bold text-slate-900">{title}</p>
             {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
           </div>
           <div className="flex items-center gap-1">
-            <button
-              onClick={() => setFullscreen(f => !f)}
-              title={fullscreen ? "Collapse" : "Expand to full screen"}
-              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
-            >
+            <button onClick={() => setFullscreen(f => !f)}
+              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
               {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
-            <button
-              onClick={onClose}
-              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
-            >
+            <button onClick={onClose}
+              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
-
-        {/* Content — each child manages its own scroll + footer */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-          {children}
-        </div>
+        <div className="flex-1 overflow-hidden flex flex-col">{children}</div>
       </div>
     </>
   );
 }
 
 // ─── Registration Content ─────────────────────────────────────────────────────
-// Layout: tabs (fixed) → scrollable form → pinned footer button
 
 type RegMode = "search" | "new";
 
@@ -97,7 +131,6 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
   const [mode, setMode]       = useState<RegMode>("search");
   const [searchQ, setSearchQ] = useState("");
   const [found, setFound]     = useState<Patient | null>(null);
-
   const [firstName, setFirstName]   = useState("");
   const [lastName, setLastName]     = useState("");
   const [dob, setDob]               = useState("");
@@ -116,8 +149,8 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
   const [emergencyContact, setEmergencyContact] = useState("");
   const [notes, setNotes]           = useState("");
   const [showWelfare, setShowWelfare] = useState(false);
-  const sigCanvasRef                = useRef<HTMLCanvasElement>(null);
-  const [drawing, setDrawing]       = useState(false);
+  const sigCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [drawing, setDrawing] = useState(false);
 
   const filtered = SEED_PATIENTS.filter(p =>
     p.name.toLowerCase().includes(searchQ.toLowerCase()) ||
@@ -147,20 +180,9 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
     cv.getContext("2d")!.clearRect(0, 0, cv.width, cv.height);
   }
 
-  function handleConfirmExisting() {
-    if (!found) return;
-    onRegister(found);
-  }
-
   function handleRegisterNew() {
     if (!firstName || !dob || !phone || !cnic) return;
-    const newPatient: Patient = {
-      id: uid(),
-      mrn: "MR-" + Math.floor(45000 + Math.random() * 5000),
-      name: `${firstName} ${lastName}`.trim(),
-      phone, dob, gender: "M",
-    };
-    onRegister(newPatient);
+    onRegister({ id: uid(), mrn: "MR-" + Math.floor(45000 + Math.random() * 5000), name: `${firstName} ${lastName}`.trim(), phone, dob, gender: "M" });
   }
 
   const needsRelDetails = relation !== "self";
@@ -170,8 +192,6 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
 
   return (
     <div className="flex flex-col h-full">
-
-      {/* ── Tab switcher (fixed top) ──────────────────────────────── */}
       <div className="flex gap-1 px-5 pt-4 pb-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
         {(["search", "new"] as RegMode[]).map(m => (
           <button key={m} onClick={() => setMode(m)}
@@ -180,19 +200,13 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
           </button>
         ))}
       </div>
-
-      {/* ── Scrollable form area ──────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
-
-        {/* SEARCH MODE */}
         {mode === "search" && (
           <div className="p-5 space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input className="pl-9" placeholder="Search by name, MRN, phone, or CNIC..."
-                value={searchQ} onChange={e => setSearchQ(e.target.value)} autoFocus />
+              <Input className="pl-9" placeholder="Search by name, MRN, phone, or CNIC..." value={searchQ} onChange={e => setSearchQ(e.target.value)} autoFocus />
             </div>
-
             <div className="flex gap-2">
               <button className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-500 hover:border-[#4982CF] hover:text-[#4982CF] transition-colors flex-1 justify-center">
                 <CardIcon className="h-4 w-4" /> Scan Card
@@ -201,18 +215,13 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
                 <Fingerprint className="h-4 w-4" /> Scan Thumb
               </button>
             </div>
-
             {searchQ.length > 0 && (
               <div className="space-y-2">
-                {filtered.length === 0 && (
-                  <p className="text-center text-sm text-slate-400 py-6">No patients found</p>
-                )}
+                {filtered.length === 0 && <p className="text-center text-sm text-slate-400 py-6">No patients found</p>}
                 {filtered.map(p => (
                   <button key={p.id} onClick={() => setFound(p === found ? null : p)}
                     className={`w-full flex items-center gap-4 rounded-xl border px-4 py-3 text-left transition-all ${found?.id === p.id ? "border-[#4982CF] bg-blue-50" : "border-slate-200 hover:border-slate-300 bg-white"}`}>
-                    <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
-                      <User className="h-4 w-4 text-slate-400" />
-                    </div>
+                    <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0"><User className="h-4 w-4 text-slate-400" /></div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-900 leading-tight">{p.name}</p>
                       <p className="text-xs text-slate-400">{p.mrn} · {p.phone}</p>
@@ -224,11 +233,8 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
             )}
           </div>
         )}
-
-        {/* NEW PATIENT MODE */}
         {mode === "new" && (
           <div className="p-5 space-y-5">
-            {/* MR No */}
             <div className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
               <Hash className="h-4 w-4 text-slate-400 flex-shrink-0" />
               <div>
@@ -236,7 +242,6 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
                 <p className="text-sm font-mono font-bold text-slate-700">MR-{Math.floor(45100 + Math.random() * 900)} (auto-generated)</p>
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-slate-600 mb-1 block">First Name <span className="text-red-500">*</span></label>
@@ -247,24 +252,16 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
                 <Input placeholder="Last name" value={lastName} onChange={e => setLastName(e.target.value)} />
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-slate-600 mb-1 block">Date of Birth <span className="text-red-500">*</span></label>
-                <div className="relative">
-                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                  <Input className="pl-8" type="date" value={dob} onChange={e => setDob(e.target.value)} />
-                </div>
+                <div className="relative"><CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" /><Input className="pl-8" type="date" value={dob} onChange={e => setDob(e.target.value)} /></div>
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-600 mb-1 block">Phone <span className="text-red-500">*</span></label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                  <Input className="pl-8" placeholder="+92 300 000-0000" value={phone} onChange={e => setPhone(e.target.value)} />
-                </div>
+                <div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" /><Input className="pl-8" placeholder="+92 300 000-0000" value={phone} onChange={e => setPhone(e.target.value)} /></div>
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-slate-600 mb-1 block">CNIC <span className="text-red-500">*</span></label>
@@ -275,61 +272,39 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
                 <Input placeholder="Referrer name" value={referredBy} onChange={e => setReferredBy(e.target.value)} />
               </div>
             </div>
-
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1 block">Complete Address</label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-400" />
-                <textarea className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-16"
-                  placeholder="Street, area, city..." value={address} onChange={e => setAddress(e.target.value)} />
-              </div>
+              <div className="relative"><MapPin className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-400" /><textarea className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-16" placeholder="Street, area, city..." value={address} onChange={e => setAddress(e.target.value)} /></div>
             </div>
-
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1 block">Relationship</label>
               <Select value={relation} onValueChange={setRelation}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="self">Self</SelectItem>
-                  <SelectItem value="parent">Parent</SelectItem>
-                  <SelectItem value="spouse">Spouse</SelectItem>
-                  <SelectItem value="guardian">Guardian</SelectItem>
+                  <SelectItem value="self">Self</SelectItem><SelectItem value="parent">Parent</SelectItem>
+                  <SelectItem value="spouse">Spouse</SelectItem><SelectItem value="guardian">Guardian</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
             {needsRelDetails && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{relation} Details</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-semibold text-slate-500 mb-1 block">Name</label>
-                    <Input placeholder="Full name" value={relName} onChange={e => setRelName(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-slate-500 mb-1 block">Contact</label>
-                    <Input placeholder="Phone" value={relContact} onChange={e => setRelContact(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-slate-500 mb-1 block">CNIC</label>
-                    <Input placeholder="00000-0000000-0" value={relCnic} onChange={e => setRelCnic(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-slate-500 mb-1 block">Date of Birth</label>
-                    <Input type="date" value={relDob} onChange={e => setRelDob(e.target.value)} />
-                  </div>
+                  <div><label className="text-[10px] font-semibold text-slate-500 mb-1 block">Name</label><Input placeholder="Full name" value={relName} onChange={e => setRelName(e.target.value)} /></div>
+                  <div><label className="text-[10px] font-semibold text-slate-500 mb-1 block">Contact</label><Input placeholder="Phone" value={relContact} onChange={e => setRelContact(e.target.value)} /></div>
+                  <div><label className="text-[10px] font-semibold text-slate-500 mb-1 block">CNIC</label><Input placeholder="00000-0000000-0" value={relCnic} onChange={e => setRelCnic(e.target.value)} /></div>
+                  <div><label className="text-[10px] font-semibold text-slate-500 mb-1 block">Date of Birth</label><Input type="date" value={relDob} onChange={e => setRelDob(e.target.value)} /></div>
                 </div>
               </div>
             )}
-
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-2 block">Type of Patient</label>
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { v: "cash",      label: "Cash",      icon: <Banknote className="h-4 w-4" />,  color: "#10b981" },
+                  { v: "cash", label: "Cash", icon: <Banknote className="h-4 w-4" />, color: "#10b981" },
                   { v: "corporate", label: "Corporate", icon: <Building2 className="h-4 w-4" />, color: "#f59e0b" },
-                  { v: "insurance", label: "Insurance", icon: <Shield className="h-4 w-4" />,    color: "#4982CF" },
-                  { v: "welfare",   label: "Welfare",   icon: <Heart className="h-4 w-4" />,     color: "#ef4444" },
+                  { v: "insurance", label: "Insurance", icon: <Shield className="h-4 w-4" />, color: "#4982CF" },
+                  { v: "welfare", label: "Welfare", icon: <Heart className="h-4 w-4" />, color: "#ef4444" },
                 ].map(t => (
                   <button key={t.v} onClick={() => setPatientType(t.v)}
                     className={`flex flex-col items-center gap-1.5 rounded-xl border py-3 text-xs font-bold transition-all ${patientType === t.v ? "text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}
@@ -339,193 +314,631 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
                 ))}
               </div>
             </div>
-
             {needsInsDetails && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">
-                  {patientType === "insurance" ? "Insurance Details" : "Corporate Details"}
-                </p>
-                <div>
-                  <label className="text-[10px] font-semibold text-slate-500 mb-1 block">
-                    {patientType === "insurance" ? "Insurance Company" : "Corporate Organisation"}
-                  </label>
-                  <Select value={insCompany} onValueChange={setInsCompany}>
-                    <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="jubilee">Jubilee Insurance</SelectItem>
-                      <SelectItem value="efulife">EFU Life</SelectItem>
-                      <SelectItem value="adamjee">Adamjee Insurance</SelectItem>
-                      <SelectItem value="igicorp">IGI Corporate</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{patientType === "insurance" ? "Insurance Details" : "Corporate Details"}</p>
+                <Select value={insCompany} onValueChange={setInsCompany}>
+                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="jubilee">Jubilee Insurance</SelectItem><SelectItem value="efulife">EFU Life</SelectItem>
+                    <SelectItem value="adamjee">Adamjee Insurance</SelectItem><SelectItem value="igicorp">IGI Corporate</SelectItem>
+                  </SelectContent>
+                </Select>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-semibold text-slate-500 mb-1 block">
-                      {patientType === "insurance" ? "Insurance Number" : "Employee ID"}
-                    </label>
-                    <Input placeholder="ID / Number" value={insNumber} onChange={e => setInsNumber(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-slate-500 mb-1 block">Emergency Contact</label>
-                    <Input placeholder="Phone" value={emergencyContact} onChange={e => setEmergencyContact(e.target.value)} />
-                  </div>
+                  <div><label className="text-[10px] font-semibold text-slate-500 mb-1 block">{patientType === "insurance" ? "Insurance Number" : "Employee ID"}</label><Input placeholder="ID / Number" value={insNumber} onChange={e => setInsNumber(e.target.value)} /></div>
+                  <div><label className="text-[10px] font-semibold text-slate-500 mb-1 block">Emergency Contact</label><Input placeholder="Phone" value={emergencyContact} onChange={e => setEmergencyContact(e.target.value)} /></div>
                 </div>
               </div>
             )}
-
             {isWelfare && (
               <div className="rounded-xl border border-red-100 bg-red-50 p-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileSignature className="h-4 w-4 text-red-500" />
-                    <p className="text-sm font-bold text-red-700">Welfare Form Required</p>
-                  </div>
+                  <div className="flex items-center gap-2"><FileSignature className="h-4 w-4 text-red-500" /><p className="text-sm font-bold text-red-700">Welfare Form Required</p></div>
                   <div className="flex gap-2">
-                    <button onClick={() => setShowWelfare(false)}
-                      className="text-xs font-semibold text-slate-500 hover:text-slate-700">Skip for later</button>
-                    <button onClick={() => setShowWelfare(v => !v)}
-                      className="h-7 px-3 rounded-full bg-red-500 text-white text-xs font-bold">
-                      {showWelfare ? "Hide" : "Open Form"}
-                    </button>
+                    <button onClick={() => setShowWelfare(false)} className="text-xs font-semibold text-slate-500 hover:text-slate-700">Skip for later</button>
+                    <button onClick={() => setShowWelfare(v => !v)} className="h-7 px-3 rounded-full bg-red-500 text-white text-xs font-bold">{showWelfare ? "Hide" : "Open Form"}</button>
                   </div>
                 </div>
                 {showWelfare && (
                   <div className="mt-4 space-y-3">
                     <p className="text-xs font-semibold text-red-700">Patient Signature</p>
                     <div className="rounded-xl border-2 border-dashed border-red-200 bg-white overflow-hidden">
-                      <canvas ref={sigCanvasRef} width={560} height={120}
-                        className="w-full touch-none cursor-crosshair"
+                      <canvas ref={sigCanvasRef} width={560} height={120} className="w-full touch-none cursor-crosshair"
                         onMouseDown={startDraw} onMouseMove={drawLine} onMouseUp={endDraw} onMouseLeave={endDraw} />
                     </div>
-                    <button onClick={clearSig} className="text-xs font-semibold text-slate-400 hover:text-slate-600 flex items-center gap-1">
-                      <RefreshCw className="h-3 w-3" /> Clear Signature
-                    </button>
+                    <button onClick={clearSig} className="text-xs font-semibold text-slate-400 hover:text-slate-600 flex items-center gap-1"><RefreshCw className="h-3 w-3" /> Clear Signature</button>
                   </div>
                 )}
               </div>
             )}
-
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1 block">Notes</label>
-              <textarea className="w-full px-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-16"
-                placeholder="Any additional notes..." value={notes} onChange={e => setNotes(e.target.value)} />
+              <textarea className="w-full px-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-16" placeholder="Any additional notes..." value={notes} onChange={e => setNotes(e.target.value)} />
             </div>
           </div>
         )}
       </div>
-
-      {/* ── Pinned footer ─────────────────────────────────────────── */}
       <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
         {mode === "search" ? (
           found ? (
-            <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
-              onClick={handleConfirmExisting}>
-              <UserCheck className="h-4 w-4" />
-              {isReassign ? `Reassign to ${found.name}` : `Confirm — ${found.name}`}
+            <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }} onClick={() => onRegister(found)}>
+              <UserCheck className="h-4 w-4" />{isReassign ? `Reassign to ${found.name}` : `Confirm — ${found.name}`}
             </Button>
           ) : (
-            <Button className="w-full h-11 text-sm font-bold gap-2 opacity-40 cursor-not-allowed" disabled
-              style={{ backgroundColor: "#4982CF" }}>
+            <Button className="w-full h-11 text-sm font-bold gap-2 opacity-40 cursor-not-allowed" disabled style={{ backgroundColor: "#4982CF" }}>
               <Search className="h-4 w-4" /> Search and select a patient above
             </Button>
           )
         ) : (
-          <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
-            disabled={!canSubmitNew} onClick={handleRegisterNew}>
-            <UserPlus className="h-4 w-4" />
-            {isReassign ? "Register & Reassign Patient" : "Register Patient & Continue"}
+          <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }} disabled={!canSubmitNew} onClick={handleRegisterNew}>
+            <UserPlus className="h-4 w-4" />{isReassign ? "Register & Reassign Patient" : "Register Patient & Continue"}
           </Button>
         )}
       </div>
-
     </div>
   );
 }
 
 // ─── Billing Content ───────────────────────────────────────────────────────────
-// Layout: scrollable form area → pinned footer button
+
+type BillingStep = "cart" | "payment" | "invoice";
+type BillingMode = "services" | "packages";
+type PayType = "cash" | "card" | "corporate" | "insurance" | "welfare";
+
+interface CartLine {
+  uid: string;
+  itemId: string;
+  name: string;
+  catName: string;
+  price: number;
+  qty: number;
+  discount: number;
+}
 
 interface BillingContentProps {
   entry: MultiEntry;
   onComplete: () => void;
 }
 
+function BillingStepBar({ step }: { step: BillingStep }) {
+  const steps = [
+    { id: "cart",    label: "Services"  },
+    { id: "payment", label: "Payment"   },
+    { id: "invoice", label: "Invoice"   },
+  ] as const;
+  const cur = steps.findIndex(s => s.id === step);
+  return (
+    <div className="flex items-center px-5 py-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+      {steps.map((s, i) => (
+        <div key={s.id} className="flex items-center flex-1 last:flex-none">
+          <div className="flex items-center gap-2">
+            <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${i < cur ? "bg-[#4982CF] text-white" : i === cur ? "border-2 border-[#4982CF] text-[#4982CF]" : "border-2 border-slate-200 text-slate-300"}`}>
+              {i < cur ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
+            </div>
+            <span className={`text-xs font-bold ${i <= cur ? "text-[#4982CF]" : "text-slate-400"}`}>{s.label}</span>
+          </div>
+          {i < steps.length - 1 && <div className={`flex-1 h-px mx-3 ${i < cur ? "bg-[#4982CF]" : "bg-slate-200"}`} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function BillingContent({ entry, onComplete }: BillingContentProps) {
-  const [payMethod, setPayMethod] = useState("cash");
-  const [amount, setAmount]       = useState("500");
+  const [step, setStep]         = useState<BillingStep>("cart");
+  const [mode, setMode]         = useState<BillingMode>("services");
+  const [catId, setCatId]       = useState<string | null>(null);
+  const [cart, setCart]         = useState<CartLine[]>([]);
+  const [showDiscFor, setShowDiscFor] = useState<string | null>(null);
+
+  // Payment state
+  const [payType, setPayType]     = useState<PayType | null>(null);
+  const [cashRx, setCashRx]       = useState("");
+  const [coPayAmt, setCoPayAmt]   = useState("");
+  const [refNum, setRefNum]       = useState("");
+
+  const invoiceRef = useRef("INV-" + Math.random().toString(36).substr(2, 6).toUpperCase());
+
+  // ── Cart helpers ─────────────────────────────────────────────────
+  const lineTotal = (l: CartLine) => Math.round(l.price * l.qty * (1 - l.discount / 100));
+  const grandTotal = cart.reduce((s, l) => s + lineTotal(l), 0);
+  const totalDiscount = cart.reduce((s, l) => s + (l.price * l.qty * l.discount / 100), 0);
+
+  function addService(svc: SvcItem) {
+    setCart(prev => {
+      const existing = prev.find(c => c.itemId === svc.id);
+      if (existing) return prev.map(c => c.itemId === svc.id ? { ...c, qty: c.qty + 1 } : c);
+      const cat = SVC_CATEGORIES.find(c => c.id === svc.catId)!;
+      return [...prev, { uid: uid(), itemId: svc.id, name: svc.name, catName: cat.name, price: svc.price, qty: 1, discount: 0 }];
+    });
+  }
+
+  function addPackage(pkg: BillPkg) {
+    setCart(prev => {
+      if (prev.find(c => c.itemId === pkg.id)) return prev;
+      return [...prev, { uid: uid(), itemId: pkg.id, name: pkg.name, catName: "Package", price: pkg.price, qty: 1, discount: 0 }];
+    });
+  }
+
+  function updateQty(uid: string, delta: number) {
+    setCart(prev => prev.map(c => c.uid === uid ? { ...c, qty: Math.max(1, c.qty + delta) } : c));
+  }
+
+  function updateDiscount(uid: string, val: string) {
+    const n = Math.min(100, Math.max(0, Number(val) || 0));
+    setCart(prev => prev.map(c => c.uid === uid ? { ...c, discount: n } : c));
+  }
+
+  function removeItem(uid: string) {
+    setCart(prev => prev.filter(c => c.uid !== uid));
+    setShowDiscFor(null);
+  }
+
+  // ── Payment helpers ──────────────────────────────────────────────
+  const cashReceived   = Number(cashRx) || 0;
+  const change         = Math.max(0, cashReceived - grandTotal);
+  const coPay          = Number(coPayAmt) || 0;
+  const welfareCovered = Math.max(0, grandTotal - coPay);
+
+  function canProceed(): boolean {
+    if (!payType) return false;
+    if (payType === "cash") return cashReceived >= grandTotal;
+    if (payType === "welfare") return coPay >= 0 && coPay <= grandTotal;
+    return true;
+  }
+
+  const currentCatItems = catId ? SVC_ITEMS.filter(s => s.catId === catId) : [];
+  const currentCat = catId ? SVC_CATEGORIES.find(c => c.id === catId) : null;
+
+  // ─────────────────────────────────────────────────────────────────
+  // STEP: CART
+  // ─────────────────────────────────────────────────────────────────
+  if (step === "cart") return (
+    <div className="flex flex-col h-full">
+      <BillingStepBar step="cart" />
+
+      {/* Mode toggle + patient info */}
+      <div className="flex-shrink-0 px-5 pt-4 pb-3 space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-slate-900 truncate">{entry.patient?.name ?? "Walk-in Patient"}</p>
+            {entry.patient && <p className="text-xs text-slate-400">{entry.patient.mrn}</p>}
+          </div>
+          <span className="font-mono font-black text-[#4982CF] text-sm">{entry.tokenNumber}</span>
+        </div>
+        <div className="flex rounded-xl border border-slate-200 p-1 bg-slate-50 gap-1">
+          <button onClick={() => { setMode("services"); setCatId(null); }}
+            className={`flex-1 flex items-center justify-center gap-2 h-8 rounded-lg text-xs font-bold transition-all ${mode === "services" ? "bg-white shadow-sm text-[#4982CF] border border-slate-200" : "text-slate-500 hover:text-slate-700"}`}>
+            <Stethoscope className="h-3.5 w-3.5" /> Services
+          </button>
+          <button onClick={() => { setMode("packages"); setCatId(null); }}
+            className={`flex-1 flex items-center justify-center gap-2 h-8 rounded-lg text-xs font-bold transition-all ${mode === "packages" ? "bg-white shadow-sm text-[#4982CF] border border-slate-200" : "text-slate-500 hover:text-slate-700"}`}>
+            <Package className="h-3.5 w-3.5" /> Packages
+          </button>
+        </div>
+      </div>
+
+      {/* Scrollable selection + cart */}
+      <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
+
+        {/* ── SERVICES ──────────────────────────────────────────────── */}
+        {mode === "services" && !catId && (
+          <div className="grid grid-cols-2 gap-3">
+            {SVC_CATEGORIES.map(cat => {
+              const count = SVC_ITEMS.filter(s => s.catId === cat.id).length;
+              const added = cart.filter(c => SVC_ITEMS.find(s => s.id === c.itemId && s.catId === cat.id)).length;
+              return (
+                <button key={cat.id} onClick={() => setCatId(cat.id)}
+                  className={`flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all hover:shadow-sm ${cat.bg} relative`}>
+                  <div className={cat.color}>{catIcon(cat.id)}</div>
+                  <div>
+                    <p className={`text-sm font-bold ${cat.color}`}>{cat.name}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{count} services</p>
+                  </div>
+                  {added > 0 && (
+                    <span className="absolute top-2 right-2 h-5 w-5 rounded-full bg-[#4982CF] text-white text-[10px] font-black flex items-center justify-center">{added}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {mode === "services" && catId && currentCat && (
+          <div className="space-y-2">
+            <button onClick={() => setCatId(null)}
+              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#4982CF] transition-colors mb-3">
+              <ChevronLeft className="h-3.5 w-3.5" /> Back to categories
+            </button>
+            <div className={`flex items-center gap-2 rounded-xl border p-3 mb-3 ${currentCat.bg}`}>
+              <div className={currentCat.color}>{catIcon(catId, "h-4 w-4")}</div>
+              <p className={`text-sm font-bold ${currentCat.color}`}>{currentCat.name}</p>
+            </div>
+            {currentCatItems.map(svc => {
+              const inCart = cart.find(c => c.itemId === svc.id);
+              return (
+                <div key={svc.id} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-4 py-3 hover:border-slate-200 transition-all">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 leading-tight">{svc.name}</p>
+                    <p className="text-xs font-bold text-[#4982CF] mt-0.5">{fmt(svc.price)}</p>
+                  </div>
+                  {inCart ? (
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-1 rounded-lg border border-[#4982CF]/30 bg-blue-50 px-2 py-1">
+                        <button onClick={() => updateQty(inCart.uid, -1)} className="text-[#4982CF] hover:text-blue-700"><Minus className="h-3 w-3" /></button>
+                        <span className="text-xs font-black text-[#4982CF] w-4 text-center">{inCart.qty}</span>
+                        <button onClick={() => updateQty(inCart.uid, 1)} className="text-[#4982CF] hover:text-blue-700"><Plus className="h-3 w-3" /></button>
+                      </div>
+                      <button onClick={() => removeItem(inCart.uid)} className="text-slate-300 hover:text-red-400 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  ) : (
+                    <button onClick={() => addService(svc)}
+                      className="flex items-center gap-1 h-8 px-3 rounded-lg bg-[#4982CF] text-white text-xs font-bold hover:bg-blue-600 transition-colors flex-shrink-0">
+                      <Plus className="h-3.5 w-3.5" /> Add
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── PACKAGES ──────────────────────────────────────────────── */}
+        {mode === "packages" && (
+          <div className="space-y-3">
+            {BILL_PKGS.map(pkg => {
+              const inCart = cart.find(c => c.itemId === pkg.id);
+              return (
+                <div key={pkg.id} className={`rounded-xl border p-4 transition-all ${inCart ? "border-[#4982CF]/40 bg-blue-50/60" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-[#4982CF]/10 flex items-center justify-center flex-shrink-0">
+                      <Package className="h-4 w-4 text-[#4982CF]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-900">{pkg.name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{pkg.desc}</p>
+                      <p className="text-sm font-black text-[#4982CF] mt-1.5">{fmt(pkg.price)}</p>
+                    </div>
+                    {inCart ? (
+                      <button onClick={() => removeItem(inCart.uid)} className="text-xs font-bold text-red-400 hover:text-red-600 flex-shrink-0 mt-0.5">Remove</button>
+                    ) : (
+                      <button onClick={() => addPackage(pkg)}
+                        className="flex items-center gap-1 h-8 px-3 rounded-lg bg-[#4982CF] text-white text-xs font-bold hover:bg-blue-600 transition-colors flex-shrink-0 mt-0.5">
+                        <Plus className="h-3.5 w-3.5" /> Add
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── CART SUMMARY ──────────────────────────────────────────── */}
+        {cart.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden mt-2">
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-white border-b border-slate-100">
+              <ShoppingCart className="h-3.5 w-3.5 text-[#4982CF]" />
+              <p className="text-xs font-bold text-slate-700">Cart · {cart.length} {cart.length === 1 ? "item" : "items"}</p>
+            </div>
+            <div className="p-3 space-y-2">
+              {cart.map(line => (
+                <div key={line.uid} className="bg-white rounded-xl border border-slate-100 px-3 py-2.5">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 leading-tight">{line.name}</p>
+                      <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-full bg-slate-100 text-[9px] font-bold text-slate-500">{line.catName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1">
+                        <button onClick={() => updateQty(line.uid, -1)} className="text-slate-400 hover:text-slate-700"><Minus className="h-3 w-3" /></button>
+                        <span className="text-xs font-black text-slate-700 w-4 text-center">{line.qty}</span>
+                        <button onClick={() => updateQty(line.uid, 1)} className="text-slate-400 hover:text-slate-700"><Plus className="h-3 w-3" /></button>
+                      </div>
+                      <button onClick={() => setShowDiscFor(showDiscFor === line.uid ? null : line.uid)}
+                        className={`transition-colors ${line.discount > 0 ? "text-amber-500" : "text-slate-300 hover:text-amber-400"}`}>
+                        <Percent className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => removeItem(line.uid)} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  </div>
+                  {showDiscFor === line.uid && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-[10px] text-slate-500 font-semibold">Discount %</span>
+                      <Input type="number" min={0} max={100} className="h-6 w-16 text-xs px-2"
+                        value={line.discount || ""} placeholder="0"
+                        onChange={e => updateDiscount(line.uid, e.target.value)} />
+                      {line.discount > 0 && <span className="text-[10px] text-amber-600 font-bold">−{fmt(line.price * line.qty * line.discount / 100)}</span>}
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center mt-1.5">
+                    <span className="text-[10px] text-slate-400">{fmt(line.price)} × {line.qty}{line.discount > 0 ? ` − ${line.discount}%` : ""}</span>
+                    <span className="text-xs font-black text-slate-900">{fmt(lineTotal(line))}</span>
+                  </div>
+                </div>
+              ))}
+              {totalDiscount > 0 && (
+                <div className="flex justify-between px-3 py-1 text-xs text-amber-600">
+                  <span className="font-semibold">Total Discount</span>
+                  <span className="font-bold">−{fmt(Math.round(totalDiscount))}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center px-3 py-2 border-t border-slate-200 mt-1">
+                <span className="text-sm font-bold text-slate-700">Grand Total</span>
+                <span className="text-base font-black text-[#4982CF]">{fmt(grandTotal)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
+        <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
+          disabled={cart.length === 0} onClick={() => setStep("payment")}>
+          <ArrowRight className="h-4 w-4" />
+          {cart.length === 0 ? "Add services to proceed" : `Proceed to Payment · ${fmt(grandTotal)}`}
+        </Button>
+      </div>
+    </div>
+  );
+
+  // ─────────────────────────────────────────────────────────────────
+  // STEP: PAYMENT
+  // ─────────────────────────────────────────────────────────────────
+  if (step === "payment") return (
+    <div className="flex flex-col h-full">
+      <BillingStepBar step="payment" />
+
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+
+        {/* Invoice total summary */}
+        <div className="rounded-xl border border-[#4982CF]/20 bg-blue-50/40 px-4 py-3 flex items-center gap-3">
+          <Receipt className="h-4 w-4 text-[#4982CF] flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-slate-500">Total Invoice Amount</p>
+            <p className="text-lg font-black text-[#4982CF]">{fmt(grandTotal)}</p>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className="text-[10px] text-slate-400">{cart.length} {cart.length === 1 ? "item" : "items"}</p>
+            <button onClick={() => setStep("cart")} className="text-[10px] font-bold text-[#4982CF] hover:underline mt-0.5">Edit cart</button>
+          </div>
+        </div>
+
+        {/* Payment type */}
+        <div>
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3">Payment Type</p>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { v: "cash",      label: "Cash",      icon: <Banknote   className="h-4 w-4" />, color: "#10b981", desc: "Collected at counter"   },
+              { v: "card",      label: "Card / Transfer", icon: <CreditCard className="h-4 w-4" />, color: "#4982CF", desc: "POS or bank transfer"   },
+              { v: "corporate", label: "Corporate", icon: <Building2  className="h-4 w-4" />, color: "#f59e0b", desc: "Billed to company"      },
+              { v: "insurance", label: "Insurance", icon: <Shield     className="h-4 w-4" />, color: "#6366f1", desc: "Insurance claim"        },
+              { v: "welfare",   label: "Welfare",   icon: <Heart      className="h-4 w-4" />, color: "#ef4444", desc: "Govt. welfare scheme"   },
+            ] as const).map(t => (
+              <button key={t.v} onClick={() => setPayType(t.v as PayType)}
+                className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${payType === t.v ? "border-current text-white shadow-sm" : "border-slate-200 text-slate-600 hover:border-slate-300 bg-white"}`}
+                style={payType === t.v ? { borderColor: t.color, backgroundColor: t.color } : undefined}>
+                <div>{t.icon}</div>
+                <div>
+                  <p className="text-xs font-bold leading-tight">{t.label}</p>
+                  <p className={`text-[10px] mt-0.5 ${payType === t.v ? "opacity-80" : "text-slate-400"}`}>{t.desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Payment details by type ────────────────────────────── */}
+        {payType === "cash" && (
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Cash Payment</p>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Cash Received (PKR)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rs.</span>
+                <Input className="pl-8 h-11 text-base font-bold" type="number" value={cashRx}
+                  onChange={e => setCashRx(e.target.value)} placeholder="0" autoFocus />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {[grandTotal, grandTotal + 100, grandTotal + 500, Math.ceil(grandTotal / 1000) * 1000].filter((v, i, a) => a.indexOf(v) === i).map(v => (
+                <button key={v} onClick={() => setCashRx(String(v))}
+                  className={`py-1.5 rounded-lg border text-xs font-bold transition-all ${Number(cashRx) === v ? "border-[#4982CF] bg-[#4982CF]/10 text-[#4982CF]" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                  {fmt(v)}
+                </button>
+              ))}
+            </div>
+            {cashReceived > 0 && (
+              <div className={`rounded-xl border p-3 flex items-center justify-between ${cashReceived >= grandTotal ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+                <span className={`text-xs font-semibold ${cashReceived >= grandTotal ? "text-green-700" : "text-red-600"}`}>
+                  {cashReceived >= grandTotal ? `Change to return` : `Short by`}
+                </span>
+                <span className={`text-sm font-black ${cashReceived >= grandTotal ? "text-green-700" : "text-red-600"}`}>
+                  {fmt(Math.abs(cashReceived - grandTotal))}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {payType === "card" && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 space-y-1">
+            <p className="text-xs font-bold text-slate-600">Card / Bank Transfer</p>
+            <p className="text-sm font-black text-[#4982CF]">{fmt(grandTotal)}</p>
+            <p className="text-xs text-slate-400">Confirm that POS / transfer has been completed for the above amount.</p>
+          </div>
+        )}
+
+        {(payType === "corporate" || payType === "insurance") && (
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">{payType === "insurance" ? "Insurance Details" : "Corporate Details"}</p>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">{payType === "insurance" ? "Policy / Authorization No." : "Reference / PO No."}</label>
+              <Input value={refNum} onChange={e => setRefNum(e.target.value)} placeholder="Enter reference number" autoFocus />
+            </div>
+            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-600">Amount Billed</span>
+              <span className="text-sm font-black text-[#4982CF]">{fmt(grandTotal)}</span>
+            </div>
+          </div>
+        )}
+
+        {payType === "welfare" && (
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Welfare / Co-Pay</p>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Patient Co-Pay Amount (PKR)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rs.</span>
+                <Input className="pl-8 h-10 font-bold" type="number" value={coPayAmt}
+                  onChange={e => setCoPayAmt(e.target.value)} placeholder="0" autoFocus />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2">
+                <p className="text-[10px] text-slate-500 font-semibold">Co-Pay</p>
+                <p className="text-sm font-black text-red-600">{fmt(coPay)}</p>
+              </div>
+              <div className="rounded-xl border border-green-100 bg-green-50 px-3 py-2">
+                <p className="text-[10px] text-slate-500 font-semibold">Welfare Covers</p>
+                <p className="text-sm font-black text-green-700">{fmt(welfareCovered)}</p>
+              </div>
+              <div className="rounded-xl border border-[#4982CF]/20 bg-blue-50 px-3 py-2">
+                <p className="text-[10px] text-slate-500 font-semibold">Total</p>
+                <p className="text-sm font-black text-[#4982CF]">{fmt(grandTotal)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
+        <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
+          disabled={!canProceed()} onClick={() => setStep("invoice")}>
+          <Receipt className="h-4 w-4" /> Generate Invoice
+        </Button>
+      </div>
+    </div>
+  );
+
+  // ─────────────────────────────────────────────────────────────────
+  // STEP: INVOICE
+  // ─────────────────────────────────────────────────────────────────
+  const now = new Date();
+  const invoiceDate = now.toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" });
+  const invoiceTime = now.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <div className="flex flex-col h-full">
+      <BillingStepBar step="invoice" />
 
-      {/* ── Scrollable billing form ──────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-5">
-
-        {/* Patient summary */}
-        <div className="rounded-xl border border-[#4982CF]/20 bg-blue-50/60 px-4 py-3 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-[#4982CF]/15 flex items-center justify-center flex-shrink-0">
-            <User className="h-4 w-4 text-[#4982CF]" />
+      <div className="flex-1 overflow-y-auto">
+        {/* Success header */}
+        <div className="flex flex-col items-center justify-center py-6 px-5 border-b border-slate-100">
+          <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
+            <CheckCircle2 className="h-6 w-6 text-green-600" />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-slate-900 leading-tight">
-              {entry.patient?.name ?? "Walk-in Patient"}
-            </p>
-            {entry.patient && <p className="text-xs text-slate-400">{entry.patient.mrn} · {entry.patient.phone}</p>}
-          </div>
-          <span className="font-mono font-black text-[#4982CF] text-sm flex-shrink-0">{entry.tokenNumber}</span>
+          <p className="text-base font-black text-slate-900">Invoice Generated</p>
+          <p className="text-xs text-slate-400 mt-0.5">{invoiceRef.current} · {invoiceDate} {invoiceTime}</p>
         </div>
 
-        {/* Payment method */}
-        <div>
-          <p className="text-xs font-semibold text-slate-500 mb-2">Payment Method</p>
+        {/* Invoice body */}
+        <div className="px-5 py-4 space-y-4">
+          {/* Patient + token */}
+          <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0"><User className="h-4 w-4 text-slate-500" /></div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-900 truncate">{entry.patient?.name ?? "Walk-in Patient"}</p>
+              {entry.patient && <p className="text-xs text-slate-400">{entry.patient.mrn} · {entry.patient.phone}</p>}
+            </div>
+            <span className="font-mono font-black text-[#4982CF] text-sm flex-shrink-0">{entry.tokenNumber}</span>
+          </div>
+
+          {/* Line items */}
+          <div className="rounded-xl border border-slate-100 overflow-hidden">
+            <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-50 border-b border-slate-100">
+              <p className="col-span-6 text-[10px] font-bold uppercase tracking-widest text-slate-400">Service</p>
+              <p className="col-span-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-center">Qty</p>
+              <p className="col-span-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Unit</p>
+              <p className="col-span-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Total</p>
+            </div>
+            {cart.map((line, i) => (
+              <div key={line.uid} className={`grid grid-cols-12 gap-2 px-4 py-2.5 ${i < cart.length - 1 ? "border-b border-slate-50" : ""}`}>
+                <div className="col-span-6">
+                  <p className="text-xs font-semibold text-slate-800 leading-tight">{line.name}</p>
+                  <p className="text-[10px] text-slate-400">{line.catName}{line.discount > 0 ? ` · ${line.discount}% off` : ""}</p>
+                </div>
+                <p className="col-span-2 text-xs text-slate-600 text-center self-center">{line.qty}</p>
+                <p className="col-span-2 text-xs text-slate-600 text-right self-center">{fmt(line.price)}</p>
+                <p className="col-span-2 text-xs font-bold text-slate-900 text-right self-center">{fmt(lineTotal(line))}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Totals */}
+          <div className="rounded-xl border border-slate-100 overflow-hidden">
+            {totalDiscount > 0 && (
+              <div className="flex justify-between px-4 py-2 border-b border-slate-50">
+                <span className="text-xs text-slate-500">Subtotal</span>
+                <span className="text-xs text-slate-700">{fmt(grandTotal + Math.round(totalDiscount))}</span>
+              </div>
+            )}
+            {totalDiscount > 0 && (
+              <div className="flex justify-between px-4 py-2 border-b border-slate-50">
+                <span className="text-xs text-amber-600 font-semibold">Discount</span>
+                <span className="text-xs text-amber-600 font-bold">−{fmt(Math.round(totalDiscount))}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center px-4 py-3 bg-[#4982CF]/5">
+              <span className="text-sm font-bold text-slate-700">Grand Total</span>
+              <span className="text-base font-black text-[#4982CF]">{fmt(grandTotal)}</span>
+            </div>
+          </div>
+
+          {/* Payment summary */}
+          <div className="rounded-xl border border-slate-100 px-4 py-3 space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Payment Summary</p>
+            <div className="flex justify-between text-xs">
+              <span className="text-slate-500 font-semibold">Method</span>
+              <span className="font-bold text-slate-800 capitalize">{payType === "card" ? "Card / Transfer" : payType}</span>
+            </div>
+            {payType === "cash" && (
+              <>
+                <div className="flex justify-between text-xs"><span className="text-slate-500 font-semibold">Cash Received</span><span className="font-bold text-slate-800">{fmt(cashReceived)}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-slate-500 font-semibold">Change Returned</span><span className="font-bold text-green-600">{fmt(change)}</span></div>
+              </>
+            )}
+            {payType === "welfare" && (
+              <>
+                <div className="flex justify-between text-xs"><span className="text-slate-500 font-semibold">Patient Co-Pay</span><span className="font-bold text-slate-800">{fmt(coPay)}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-slate-500 font-semibold">Welfare Covered</span><span className="font-bold text-green-600">{fmt(welfareCovered)}</span></div>
+              </>
+            )}
+            {(payType === "corporate" || payType === "insurance") && refNum && (
+              <div className="flex justify-between text-xs"><span className="text-slate-500 font-semibold">Reference No.</span><span className="font-bold text-slate-800">{refNum}</span></div>
+            )}
+          </div>
+
+          {/* Print / Save actions */}
           <div className="flex gap-2">
-            {[
-              { v: "cash",      label: "Cash",      icon: <Banknote className="h-3.5 w-3.5" /> },
-              { v: "card",      label: "Card",      icon: <CreditCard className="h-3.5 w-3.5" /> },
-              { v: "insurance", label: "Insurance", icon: <Shield className="h-3.5 w-3.5" /> },
-            ].map(m => (
-              <button key={m.v} onClick={() => setPayMethod(m.v)}
-                className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-bold flex-1 justify-center transition-all ${payMethod === m.v ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}>
-                {m.icon} {m.label}
-              </button>
-            ))}
+            <button className="flex-1 flex items-center justify-center gap-2 h-9 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all">
+              <Printer className="h-3.5 w-3.5" /> Print Invoice
+            </button>
+            <button className="flex-1 flex items-center justify-center gap-2 h-9 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all">
+              <Receipt className="h-3.5 w-3.5" /> Save as PDF
+            </button>
           </div>
         </div>
-
-        {/* Amount */}
-        <div>
-          <p className="text-xs font-semibold text-slate-500 mb-1.5">Consultation Fee (PKR)</p>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rs.</span>
-            <Input className="pl-8 h-11 text-base font-bold" type="number" value={amount}
-              onChange={e => setAmount(e.target.value)} />
-          </div>
-        </div>
-
-        {/* Quick amounts */}
-        <div>
-          <p className="text-xs font-semibold text-slate-500 mb-2">Quick Select</p>
-          <div className="flex gap-2 flex-wrap">
-            {["200", "500", "800", "1000", "1500"].map(v => (
-              <button key={v} onClick={() => setAmount(v)}
-                className={`px-3 py-1.5 rounded-full border text-xs font-bold transition-all ${amount === v ? "border-[#4982CF] bg-[#4982CF]/10 text-[#4982CF]" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
-                Rs. {v}
-              </button>
-            ))}
-          </div>
-        </div>
-
       </div>
 
-      {/* ── Pinned footer ─────────────────────────────────────────── */}
+      {/* Footer */}
       <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
-        <Button className="w-full h-12 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
-          onClick={onComplete}>
-          <CheckCircle2 className="h-4 w-4" />
-          Mark Payment Completed · Rs. {amount}
+        <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }} onClick={onComplete}>
+          <ArrowRight className="h-4 w-4" /> Advance to Vitals
         </Button>
       </div>
-
     </div>
   );
 }
@@ -547,103 +960,55 @@ export function FrontDeskUser() {
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   const [toast, setToast]             = useState<string | null>(null);
 
-  // Billing setting for this counter (ctr-1 = Registration Desk 1)
   const billingEnabled = (() => {
     try {
       const stored = localStorage.getItem("ehr-billing-counters");
-      if (stored) {
-        const map = JSON.parse(stored) as Record<string, boolean>;
-        return map["ctr-1"] ?? true;
-      }
+      if (stored) { const map = JSON.parse(stored) as Record<string, boolean>; return map["ctr-1"] ?? true; }
       return JSON.parse(localStorage.getItem("ehr-billing-reg") ?? "true");
     } catch { return true; }
   })();
 
-  useEffect(() => {
-    const t = setInterval(() => setTick(p => p + 1), 1000);
-    return () => clearInterval(t);
-  }, []);
+  useEffect(() => { const t = setInterval(() => setTick(p => p + 1), 1000); return () => clearInterval(t); }, []);
 
   useEffect(() => {
     queue.forEach(e => {
       if (!e.callTimestamp) return;
-      const elapsed = Date.now() - e.callTimestamp;
-      if (elapsed >= CALL_WINDOW_SECS * 1000) {
+      if (Date.now() - e.callTimestamp >= CALL_WINDOW_SECS * 1000) {
         fdTimerExpire(e.id);
         if (e.callCount >= MAX_CALLS) showToastMsg(`Token ${e.tokenNumber} auto-skipped after ${MAX_CALLS} calls`);
       }
     });
   }, [tick]);
 
-  function showToastMsg(msg: string) {
-    setToast(msg); setTimeout(() => setToast(null), 3500);
-  }
+  function showToastMsg(msg: string) { setToast(msg); setTimeout(() => setToast(null), 3500); }
+  function closeDrawer() { setDrawerType(null); setActiveEntryId(null); }
 
-  function closeDrawer() {
-    setDrawerType(null);
-    setActiveEntryId(null);
-  }
-
-  // Front desk sees only step-1, non-completed, non-skipped tokens (FIFO)
-  const fdQueue = queue
-    .filter(e => e.step === 1 && e.status !== "completed" && !e.skipped)
-    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-
+  const fdQueue = queue.filter(e => e.step === 1 && e.status !== "completed" && !e.skipped).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   const skippedQueue    = queue.filter(e => e.step === 1 && e.skipped);
   const atCounterEntry  = fdQueue.find(e => e.status === "called") ?? null;
   const activeCallEntry = fdQueue.find(e => e.callTimestamp !== null && getSecsLeft(e.callTimestamp) > 0) ?? null;
   const waitingTokens   = fdQueue.filter(e => e.status === "waiting" && !e.callTimestamp && e.id !== atCounterEntry?.id);
   const activeDrawerEntry = queue.find(e => e.id === activeEntryId) ?? atCounterEntry ?? null;
 
-  function handleCall(id: string) {
-    fdCall(id); showToastMsg("Token called — 30 second window started");
-  }
-
-  function handleRegisterClick(entry: MultiEntry) {
-    fdRegisterStart(entry.id);
-    setActiveEntryId(entry.id);
-    setDrawerType("registration");
-  }
-
-  function handleReassignClick(entry: MultiEntry) {
-    setActiveEntryId(entry.id);
-    setDrawerType("reassign");
-  }
-
-  function handleBillingClick(entry: MultiEntry) {
-    fdBilling(entry.id);
-    setActiveEntryId(entry.id);
-    setDrawerType("billing");
-    showToastMsg(`${entry.tokenNumber} is now At Counter`);
-  }
-
-  function handleOpenBillingDrawer(entry: MultiEntry) {
-    setActiveEntryId(entry.id);
-    setDrawerType("billing");
-  }
-
+  function handleCall(id: string) { fdCall(id); showToastMsg("Token called — 30 second window started"); }
+  function handleRegisterClick(entry: MultiEntry) { fdRegisterStart(entry.id); setActiveEntryId(entry.id); setDrawerType("registration"); }
+  function handleReassignClick(entry: MultiEntry) { setActiveEntryId(entry.id); setDrawerType("reassign"); }
+  function handleBillingClick(entry: MultiEntry) { fdBilling(entry.id); setActiveEntryId(entry.id); setDrawerType("billing"); showToastMsg(`${entry.tokenNumber} is now At Counter`); }
+  function handleOpenBillingDrawer(entry: MultiEntry) { setActiveEntryId(entry.id); setDrawerType("billing"); }
   function handleRegComplete(patient: Patient) {
     if (!activeEntryId) return;
     fdRegisterComplete(activeEntryId, patient);
     closeDrawer();
-    const verb = drawerType === "reassign" ? "reassigned" : "registered";
-    showToastMsg(`Patient ${verb} — ${patient.name}`);
+    showToastMsg(`Patient ${drawerType === "reassign" ? "reassigned" : "registered"} — ${patient.name}`);
   }
-
   function handleBillingComplete() {
     if (!activeEntryId) return;
     fdCompleteBilling(activeEntryId);
     closeDrawer();
-    showToastMsg("Payment completed — token advanced to next step");
+    showToastMsg("Invoice finalised — token advancing to Vitals");
   }
-
-  function handleSkip(id: string) {
-    fdSkip(id); closeDrawer(); showToastMsg("Token skipped");
-  }
-
-  function handleRecall(id: string, tokenNum: string) {
-    fdRecall(id); showToastMsg(`Token ${tokenNum} recalled to queue`);
-  }
+  function handleSkip(id: string) { fdSkip(id); closeDrawer(); showToastMsg("Token skipped"); }
+  function handleRecall(id: string, tokenNum: string) { fdRecall(id); showToastMsg(`Token ${tokenNum} recalled to queue`); }
 
   const secsLeft = getSecsLeft(activeCallEntry?.callTimestamp ?? null);
   const timerPct = (secsLeft / CALL_WINDOW_SECS) * 100;
@@ -652,7 +1017,6 @@ export function FrontDeskUser() {
     <div className="flex h-screen flex-col bg-slate-50 overflow-hidden">
       <QueueAppHeader />
 
-      {/* Assignment bar */}
       <div className="flex items-center gap-3 bg-[#4982CF] px-6 py-2.5 flex-shrink-0">
         <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
         <p className="text-xs font-bold text-white/90 uppercase tracking-widest">Registration Counter · Main Branch — Lahore</p>
@@ -665,15 +1029,14 @@ export function FrontDeskUser() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-
-        {/* ── LEFT SIDEBAR ────────────────────────────────────────────── */}
+        {/* ── LEFT SIDEBAR ──────────────────────────────────────────────── */}
         <div className="w-64 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col">
           <div className="p-4 border-b border-slate-100">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Queue Stats</p>
             {[
               { label: "At Counter", value: fdQueue.filter(e => e.status === "called").length, color: "text-[#4982CF]", bg: "bg-blue-50 border-blue-200" },
-              { label: "Waiting",    value: waitingTokens.length,                               color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
-              { label: "Skipped",    value: skippedQueue.length,                                color: "text-red-600",   bg: "bg-red-50 border-red-200" },
+              { label: "Waiting",    value: waitingTokens.length,  color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
+              { label: "Skipped",    value: skippedQueue.length,   color: "text-red-600",   bg: "bg-red-50 border-red-200"     },
             ].map(s => (
               <div key={s.label} className={`flex items-center justify-between rounded-xl border px-4 py-2.5 mb-2 ${s.bg}`}>
                 <span className="text-xs font-semibold text-slate-500">{s.label}</span>
@@ -690,11 +1053,11 @@ export function FrontDeskUser() {
           </div>
         </div>
 
-        {/* ── MAIN AREA ───────────────────────────────────────────────── */}
+        {/* ── MAIN AREA ─────────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
 
-            {/* ── AT COUNTER ─────────────────────────────────────────── */}
+            {/* AT COUNTER */}
             {atCounterEntry && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -704,20 +1067,15 @@ export function FrontDeskUser() {
                 <div className="rounded-2xl border-2 border-[#4982CF]/30 bg-white shadow-sm overflow-hidden">
                   <div className="h-1 w-full bg-[#4982CF]" />
                   <div className="flex items-center gap-5 px-6 py-5">
-                    {/* Token */}
                     <div className="flex-shrink-0 text-center">
                       <div className="rounded-2xl border-2 border-[#4982CF]/50 bg-blue-50 px-6 py-3">
                         <p className="font-mono font-black text-2xl text-[#4982CF]">{atCounterEntry.tokenNumber}</p>
                       </div>
                       <p className="text-[9px] text-slate-400 mt-1">Call #{atCounterEntry.callCount}</p>
                     </div>
-                    {/* Patient */}
                     <div className="flex-1 min-w-0">
                       {atCounterEntry.patient ? (
-                        <>
-                          <p className="text-base font-black text-slate-900 leading-tight">{atCounterEntry.patient.name}</p>
-                          <p className="text-xs text-slate-400">{atCounterEntry.patient.mrn} · {atCounterEntry.patient.phone}</p>
-                        </>
+                        <><p className="text-base font-black text-slate-900 leading-tight">{atCounterEntry.patient.name}</p><p className="text-xs text-slate-400">{atCounterEntry.patient.mrn} · {atCounterEntry.patient.phone}</p></>
                       ) : (
                         <p className="text-base font-black text-slate-500">Walk-in Patient</p>
                       )}
@@ -729,7 +1087,6 @@ export function FrontDeskUser() {
                         <span className="text-xs text-slate-400">{timeAgo(atCounterEntry.createdAt)}</span>
                       </div>
                     </div>
-                    {/* Actions */}
                     <div className="flex flex-col gap-2 flex-shrink-0">
                       {billingEnabled ? (
                         <Button className="h-10 px-5 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
@@ -742,7 +1099,6 @@ export function FrontDeskUser() {
                           <SkipForward className="h-3.5 w-3.5 mr-1" /> Skip
                         </Button>
                       )}
-                      {/* Reassign patient button */}
                       <Button variant="outline" size="sm"
                         className="h-8 px-3 text-xs border-slate-200 text-slate-500 hover:border-[#4982CF] hover:text-[#4982CF] gap-1.5"
                         onClick={() => handleReassignClick(atCounterEntry)}>
@@ -755,7 +1111,7 @@ export function FrontDeskUser() {
               </div>
             )}
 
-            {/* ── ACTIVE CALL WINDOW ─────────────────────────────────── */}
+            {/* ACTIVE CALL WINDOW */}
             {activeCallEntry && !atCounterEntry && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -764,8 +1120,7 @@ export function FrontDeskUser() {
                 </div>
                 <div className="rounded-2xl border-2 border-amber-200 bg-white shadow-sm overflow-hidden">
                   <div className="h-1.5 w-full bg-slate-100 relative">
-                    <div className="h-full transition-all duration-1000"
-                      style={{ width: `${timerPct}%`, backgroundColor: secsLeft < 10 ? "#ef4444" : "#f59e0b" }} />
+                    <div className="h-full transition-all duration-1000" style={{ width: `${timerPct}%`, backgroundColor: secsLeft < 10 ? "#ef4444" : "#f59e0b" }} />
                   </div>
                   <div className="flex items-center gap-5 px-6 py-5">
                     <div className="flex-shrink-0 text-center">
@@ -776,10 +1131,7 @@ export function FrontDeskUser() {
                     </div>
                     <div className="flex-1 min-w-0">
                       {activeCallEntry.patient ? (
-                        <>
-                          <p className="text-base font-black text-slate-900 leading-tight">{activeCallEntry.patient.name}</p>
-                          <p className="text-xs text-slate-400">{activeCallEntry.patient.mrn}</p>
-                        </>
+                        <><p className="text-base font-black text-slate-900 leading-tight">{activeCallEntry.patient.name}</p><p className="text-xs text-slate-400">{activeCallEntry.patient.mrn}</p></>
                       ) : (
                         <p className="text-base font-black text-slate-500">Walk-in Patient</p>
                       )}
@@ -788,24 +1140,19 @@ export function FrontDeskUser() {
                     <div className="flex flex-col gap-2 flex-shrink-0">
                       {activeCallEntry.patient ? (
                         <>
-                          <Button className="h-10 px-5 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
-                            onClick={() => handleBillingClick(activeCallEntry)}>
+                          <Button className="h-10 px-5 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }} onClick={() => handleBillingClick(activeCallEntry)}>
                             <CreditCard className="h-4 w-4" /> Billing
                           </Button>
-                          <Button variant="outline" size="sm"
-                            className="h-8 px-3 text-xs border-slate-200 text-slate-500 hover:border-[#4982CF] hover:text-[#4982CF] gap-1.5"
-                            onClick={() => handleReassignClick(activeCallEntry)}>
+                          <Button variant="outline" size="sm" className="h-8 px-3 text-xs border-slate-200 text-slate-500 hover:border-[#4982CF] hover:text-[#4982CF] gap-1.5" onClick={() => handleReassignClick(activeCallEntry)}>
                             <Pencil className="h-3 w-3" /> Reassign
                           </Button>
                         </>
                       ) : (
-                        <Button className="h-11 px-6 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
-                          onClick={() => handleRegisterClick(activeCallEntry)}>
+                        <Button className="h-11 px-6 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }} onClick={() => handleRegisterClick(activeCallEntry)}>
                           <UserCheck className="h-4 w-4" /> Register
                         </Button>
                       )}
-                      <Button variant="outline" size="sm" className="border-red-200 text-red-500 hover:bg-red-50 text-xs"
-                        onClick={() => handleSkip(activeCallEntry.id)}>
+                      <Button variant="outline" size="sm" className="border-red-200 text-red-500 hover:bg-red-50 text-xs" onClick={() => handleSkip(activeCallEntry.id)}>
                         <SkipForward className="h-3 w-3 mr-1" /> Skip Token
                       </Button>
                     </div>
@@ -814,15 +1161,12 @@ export function FrontDeskUser() {
               </div>
             )}
 
-            {/* ── WAITING QUEUE ───────────────────────────────────────── */}
+            {/* WAITING QUEUE */}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="h-2 w-2 rounded-full bg-amber-400" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">
-                  Waiting in Queue · {waitingTokens.length}
-                </p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Waiting in Queue · {waitingTokens.length}</p>
               </div>
-
               {waitingTokens.length === 0 && !atCounterEntry && !activeCallEntry && (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-2">
                   <UserCheck className="h-10 w-10 opacity-20" />
@@ -830,31 +1174,20 @@ export function FrontDeskUser() {
                   <p className="text-xs">No tokens waiting at registration</p>
                 </div>
               )}
-
               <div className="space-y-2">
                 {waitingTokens.map((entry, idx) => {
                   const isFirst = idx === 0 && !atCounterEntry && !activeCallEntry;
                   return (
-                    <div key={entry.id}
-                      className={`flex items-center gap-4 rounded-xl border px-4 py-3 bg-white transition-all ${isFirst ? "border-slate-300 shadow-sm" : "border-slate-100 opacity-70"}`}>
-                      <div className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-sm font-black bg-slate-100 text-slate-500">
-                        {idx + 1}
-                      </div>
+                    <div key={entry.id} className={`flex items-center gap-4 rounded-xl border px-4 py-3 bg-white transition-all ${isFirst ? "border-slate-300 shadow-sm" : "border-slate-100 opacity-70"}`}>
+                      <div className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-sm font-black bg-slate-100 text-slate-500">{idx + 1}</div>
                       <div className="font-mono font-black text-sm text-slate-700 flex-shrink-0">{entry.tokenNumber}</div>
                       <div className="flex-1 min-w-0">
-                        {entry.patient ? (
-                          <p className="text-sm font-bold text-slate-800 truncate">
-                            {entry.patient.name}
-                            <span className="ml-2 text-xs font-normal text-slate-400">{entry.patient.mrn}</span>
-                          </p>
-                        ) : (
-                          <p className="text-sm font-bold text-slate-500">Walk-in Patient</p>
-                        )}
+                        {entry.patient ? <p className="text-sm font-bold text-slate-800 truncate">{entry.patient.name}<span className="ml-2 text-xs font-normal text-slate-400">{entry.patient.mrn}</span></p>
+                          : <p className="text-sm font-bold text-slate-500">Walk-in Patient</p>}
                       </div>
                       <span className="text-xs text-slate-400 flex-shrink-0">{timeAgo(entry.createdAt)}</span>
                       {isFirst ? (
-                        <Button size="sm" className="h-8 px-4 text-xs font-bold flex-shrink-0 gap-1.5"
-                          style={{ backgroundColor: "#4982CF" }} onClick={() => handleCall(entry.id)}>
+                        <Button size="sm" className="h-8 px-4 text-xs font-bold flex-shrink-0 gap-1.5" style={{ backgroundColor: "#4982CF" }} onClick={() => handleCall(entry.id)}>
                           <PhoneCall className="h-3.5 w-3.5" /> Call
                         </Button>
                       ) : (
@@ -865,48 +1198,32 @@ export function FrontDeskUser() {
                 })}
               </div>
             </div>
+          </div>
 
-          </div>{/* end scrollable */}
-
-          {/* ── SKIPPED TOKENS SLIDE-UP ─────────────────────────────── */}
+          {/* SKIPPED PANEL */}
           {skippedQueue.length > 0 && (
             <>
               <button onClick={() => setShowSkipped(v => !v)}
                 className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full border border-red-200 bg-white shadow-lg px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-all z-10">
-                <AlertCircle className="h-3.5 w-3.5" />
-                Skipped Tokens ({skippedQueue.length})
+                <AlertCircle className="h-3.5 w-3.5" /> Skipped Tokens ({skippedQueue.length})
                 <ChevronUp className={`h-3.5 w-3.5 transition-transform ${showSkipped ? "rotate-180" : ""}`} />
               </button>
-
               {showSkipped && (
                 <div className="absolute bottom-0 left-0 right-0 bg-white border-t-2 border-red-200 rounded-t-3xl shadow-2xl z-20 max-h-72 flex flex-col">
                   <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 flex-shrink-0">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-red-500" />
-                      <p className="text-sm font-bold text-slate-900">Skipped Tokens</p>
-                    </div>
-                    <button onClick={() => setShowSkipped(false)}
-                      className="h-7 w-7 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2"><AlertCircle className="h-4 w-4 text-red-500" /><p className="text-sm font-bold text-slate-900">Skipped Tokens</p></div>
+                    <button onClick={() => setShowSkipped(false)} className="h-7 w-7 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200"><X className="h-3.5 w-3.5" /></button>
                   </div>
                   <div className="flex-1 overflow-y-auto p-3 space-y-2">
                     {skippedQueue.map(entry => (
-                      <div key={entry.id}
-                        className="flex items-center gap-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+                      <div key={entry.id} className="flex items-center gap-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
                         <div className="font-mono font-black text-sm text-red-700 flex-shrink-0">{entry.tokenNumber}</div>
                         <div className="flex-1 min-w-0">
-                          {entry.patient ? (
-                            <p className="text-sm font-semibold text-slate-800">{entry.patient.name}</p>
-                          ) : (
-                            <p className="text-sm font-semibold text-slate-500">Walk-in</p>
-                          )}
+                          {entry.patient ? <p className="text-sm font-semibold text-slate-800">{entry.patient.name}</p> : <p className="text-sm font-semibold text-slate-500">Walk-in</p>}
                           <p className="text-[10px] text-slate-400">{timeAgo(entry.createdAt)}</p>
                         </div>
                         <span className="text-xs font-bold text-red-500 flex-shrink-0">{entry.callCount}/{MAX_CALLS} calls</span>
-                        <Button variant="outline" size="sm"
-                          className="h-7 px-3 text-xs border-red-300 text-red-600 hover:bg-red-100 flex-shrink-0"
-                          onClick={() => handleRecall(entry.id, entry.tokenNumber)}>
+                        <Button variant="outline" size="sm" className="h-7 px-3 text-xs border-red-300 text-red-600 hover:bg-red-100 flex-shrink-0" onClick={() => handleRecall(entry.id, entry.tokenNumber)}>
                           <RotateCcw className="h-3 w-3 mr-1" /> Recall
                         </Button>
                       </div>
@@ -916,49 +1233,27 @@ export function FrontDeskUser() {
               )}
             </>
           )}
+        </div>
+      </div>
 
-        </div>{/* end main area */}
-      </div>{/* end flex row */}
-
-      {/* ── RIGHT DRAWERS ─────────────────────────────────────────────── */}
-
-      {/* Registration drawer (walk-in → new patient) */}
+      {/* RIGHT DRAWERS */}
       {drawerType === "registration" && activeEntryId && (
-        <RightDrawer
-          title="Patient Registration"
-          subtitle="Link a patient record to this token"
-          onClose={closeDrawer}
-        >
+        <RightDrawer title="Patient Registration" subtitle="Link a patient record to this token" onClose={closeDrawer}>
           <RegistrationContent onRegister={handleRegComplete} />
         </RightDrawer>
       )}
-
-      {/* Reassign drawer (fix a wrong patient assignment) */}
       {drawerType === "reassign" && activeEntryId && (
-        <RightDrawer
-          title="Reassign Patient"
-          subtitle={`Correct the patient linked to ${activeDrawerEntry?.tokenNumber ?? "this token"}`}
-          onClose={closeDrawer}
-        >
+        <RightDrawer title="Reassign Patient" subtitle={`Correct the patient for ${activeDrawerEntry?.tokenNumber ?? "this token"}`} onClose={closeDrawer}>
           <RegistrationContent onRegister={handleRegComplete} isReassign />
         </RightDrawer>
       )}
-
-      {/* Billing drawer */}
       {drawerType === "billing" && activeDrawerEntry && (
-        <RightDrawer
-          title="Billing"
-          subtitle={activeDrawerEntry.patient?.name ?? "Walk-in Patient"}
-          onClose={closeDrawer}
-        >
-          <BillingContent
-            entry={activeDrawerEntry}
-            onComplete={handleBillingComplete}
-          />
+        <RightDrawer title="Billing" subtitle={activeDrawerEntry.patient?.name ?? "Walk-in Patient"} onClose={closeDrawer}>
+          <BillingContent entry={activeDrawerEntry} onComplete={handleBillingComplete} />
         </RightDrawer>
       )}
 
-      {/* ── TOAST ─────────────────────────────────────────────────────── */}
+      {/* TOAST */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-[60] rounded-xl bg-slate-900 text-white px-4 py-2.5 text-sm font-semibold shadow-xl animate-in slide-in-from-bottom-2">
           {toast}
