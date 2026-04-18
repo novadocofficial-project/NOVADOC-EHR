@@ -377,13 +377,13 @@ function VitalsPanel({ entry, onClose }: { entry: MultiEntry; onClose: () => voi
   });
   const [painScore, setPainScore]       = useState(-1);
   const [mentalAnswers, setMentalAnswers] = useState([0, 0, 0, 0]);
-  const [fullscreen, setFullscreen]     = useState(true);
+  const [fullscreen, setFullscreen]     = useState(false);
   const [activeCategory, setActiveCategory] = useState<NurseCategory>("vitals");
 
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
-      <div className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-in-out border-l border-slate-200 ${fullscreen ? "w-full" : "w-[85%]"}`}>
+      <div className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-in-out border-l border-slate-200 ${fullscreen ? "w-full" : "w-[80%]"}`}>
         <div className="flex-shrink-0 flex items-center border-b border-slate-200 bg-white">
           <div className="px-5 py-3 border-r border-slate-100 flex-shrink-0">
             <p className="text-sm font-bold text-slate-900">Patient Vitals</p>
@@ -410,7 +410,7 @@ function VitalsPanel({ entry, onClose }: { entry: MultiEntry; onClose: () => voi
 
         {activeCategory === "vitals" ? (
           <div className="flex-1 flex overflow-hidden">
-            <div className="w-64 flex-shrink-0 overflow-hidden">
+            <div className={`flex-shrink-0 overflow-hidden border-r border-slate-200 transition-all duration-300 ${fullscreen ? "w-64" : "w-1/2"}`}>
               <VitalsLeftPanel entry={entry} showTrends={showTrends} onToggleTrends={() => setShowTrends(t => !t)} />
             </div>
             <div className="flex-1 flex flex-col overflow-hidden">
