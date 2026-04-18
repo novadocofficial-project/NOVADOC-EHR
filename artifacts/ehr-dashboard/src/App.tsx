@@ -8,6 +8,7 @@ import { AdminSettings } from "@/pages/AdminSettings";
 import { QueueTokenSingle } from "@/pages/QueueTokenSingle";
 import { QueueTokenPartitioned } from "@/pages/QueueTokenPartitioned";
 import { QueueTokenMultiStep } from "@/pages/QueueTokenMultiStep";
+import { FrontDeskUser } from "@/pages/FrontDeskUser";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/queue/token/single" component={QueueTokenSingle} />
       <Route path="/queue/token/partitioned" component={QueueTokenPartitioned} />
       <Route path="/queue/token/multistep" component={QueueTokenMultiStep} />
+      <Route path="/queue/frontdesk" component={FrontDeskUser} />
       <Route component={NotFound} />
     </Switch>
   );

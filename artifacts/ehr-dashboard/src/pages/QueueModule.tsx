@@ -193,6 +193,69 @@ function ToggleRow({ label, desc, value, onChange }: { label: string; desc?: str
   );
 }
 
+function QueueBehaviorPanel({ queueBehavior, setQueueBehavior }: {
+  queueBehavior: QueueBehavior;
+  setQueueBehavior: (updater: (prev: QueueBehavior) => QueueBehavior) => void;
+}) {
+  const [billingOnReg, setBillingOnReg] = useState<boolean>(() => {
+    try { return JSON.parse(localStorage.getItem("ehr-billing-reg") ?? "true"); }
+    catch { return true; }
+  });
+
+  function toggleBilling(v: boolean) {
+    setBillingOnReg(v);
+    localStorage.setItem("ehr-billing-reg", JSON.stringify(v));
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-6">
+      <PageHeader title="Queue Behavior Settings" desc="Control how patients move through the queue workflow." />
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100 px-5">
+        <ToggleRow label="Auto Move to Next Step" desc="Automatically advance token to the next step upon completion." value={queueBehavior.autoMoveNext} onChange={v => setQueueBehavior(p => ({ ...p, autoMoveNext: v }))} />
+        <ToggleRow label="Require Manual Completion" desc="Staff must explicitly mark each step as complete." value={queueBehavior.requireManualCompletion} onChange={v => setQueueBehavior(p => ({ ...p, requireManualCompletion: v }))} />
+        <ToggleRow label="Allow Step Skip" desc="Staff can skip optional workflow steps for a token." value={queueBehavior.allowSkip} onChange={v => setQueueBehavior(p => ({ ...p, allowSkip: v }))} />
+        <ToggleRow label="Allow Recall" desc="Already-called tokens can be recalled to a counter." value={queueBehavior.allowRecall} onChange={v => setQueueBehavior(p => ({ ...p, allowRecall: v }))} />
+        <SettingRow label="Max Recall Attempts" desc="Maximum number of times a token can be recalled.">
+          <Input type="number" min="1" max="10" value={queueBehavior.maxRecallAttempts} onChange={e => setQueueBehavior(p => ({ ...p, maxRecallAttempts: parseInt(e.target.value) || 1 }))} className="h-9 w-20 text-sm text-center" disabled={!queueBehavior.allowRecall} />
+        </SettingRow>
+        <SettingRow label="Token Expiry (minutes)" desc="Tokens expire and are marked no-show after this duration.">
+          <Input type="number" min="0" value={queueBehavior.tokenExpiryMinutes} onChange={e => setQueueBehavior(p => ({ ...p, tokenExpiryMinutes: parseInt(e.target.value) || 0 }))} className="h-9 w-24 text-sm text-center" />
+        </SettingRow>
+      </div>
+
+      {/* Billing Settings */}
+      <div>
+        <div className="mb-3">
+          <p className="text-sm font-bold text-slate-900">Billing Settings</p>
+          <p className="text-xs text-slate-400 mt-0.5">Enable billing requirements per queue counter. When enabled, payment must be completed before a token advances to the next step.</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm px-5">
+          {[
+            { label: "Registration Counter", key: "reg", enabled: billingOnReg, toggle: toggleBilling,
+              desc: "Patient must complete billing at registration before proceeding to next step." },
+          ].map(row => (
+            <div key={row.key} className="flex items-center justify-between py-4 gap-4 border-b border-slate-100 last:border-0">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className="text-sm font-semibold text-slate-800">{row.label}</p>
+                  {row.enabled && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#4982CF]/10 text-[#4982CF] uppercase tracking-wide">Billing On</span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">{row.desc}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Switch checked={row.enabled} onCheckedChange={row.toggle} className="data-[state=checked]:bg-[#4982CF]" />
+                <span className={`text-xs font-medium w-8 ${row.enabled ? "text-[#4982CF]" : "text-slate-400"}`}>{row.enabled ? "On" : "Off"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DeleteDialog({ open, name, onClose, onConfirm }: { open: boolean; name: string; onClose: () => void; onConfirm: () => void }) {
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -696,21 +759,10 @@ export function QueueModule({ section }: { section: QueueSection }) {
   }
 
   if (section === "queue-behavior") return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <PageHeader title="Queue Behavior Settings" desc="Control how patients move through the queue workflow." />
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100 px-5">
-        <ToggleRow label="Auto Move to Next Step" desc="Automatically advance token to the next step upon completion." value={queueBehavior.autoMoveNext} onChange={v => setQueueBehavior(p => ({ ...p, autoMoveNext: v }))} />
-        <ToggleRow label="Require Manual Completion" desc="Staff must explicitly mark each step as complete." value={queueBehavior.requireManualCompletion} onChange={v => setQueueBehavior(p => ({ ...p, requireManualCompletion: v }))} />
-        <ToggleRow label="Allow Step Skip" desc="Staff can skip optional workflow steps for a token." value={queueBehavior.allowSkip} onChange={v => setQueueBehavior(p => ({ ...p, allowSkip: v }))} />
-        <ToggleRow label="Allow Recall" desc="Already-called tokens can be recalled to a counter." value={queueBehavior.allowRecall} onChange={v => setQueueBehavior(p => ({ ...p, allowRecall: v }))} />
-        <SettingRow label="Max Recall Attempts" desc="Maximum number of times a token can be recalled.">
-          <Input type="number" min="1" max="10" value={queueBehavior.maxRecallAttempts} onChange={e => setQueueBehavior(p => ({ ...p, maxRecallAttempts: parseInt(e.target.value) || 1 }))} className="h-9 w-20 text-sm text-center" disabled={!queueBehavior.allowRecall} />
-        </SettingRow>
-        <SettingRow label="Token Expiry (minutes)" desc="Tokens expire and are marked no-show after this duration.">
-          <Input type="number" min="0" value={queueBehavior.tokenExpiryMinutes} onChange={e => setQueueBehavior(p => ({ ...p, tokenExpiryMinutes: parseInt(e.target.value) || 0 }))} className="h-9 w-24 text-sm text-center" />
-        </SettingRow>
-      </div>
-    </div>
+    <QueueBehaviorPanel
+      queueBehavior={queueBehavior}
+      setQueueBehavior={setQueueBehavior}
+    />
   );
 
   if (section === "locking-settings") return (

@@ -309,6 +309,25 @@ export function QueueNavDropdown() {
             <p className="text-[10px] text-slate-400 leading-tight">Hospital OPD</p>
           </div>
         </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-2">
+          Queue Users
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem
+          onClick={() => setLocation("/queue/frontdesk")}
+          className={`gap-3 cursor-pointer py-2.5 ${isActive("/queue/frontdesk") ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
+        >
+          <span className="h-7 w-7 rounded-full bg-[#4982CF]/10 flex items-center justify-center flex-shrink-0">
+            <Users className="h-3.5 w-3.5 text-[#4982CF]" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold leading-tight">Front Desk User</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Registration · Billing counter</p>
+          </div>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

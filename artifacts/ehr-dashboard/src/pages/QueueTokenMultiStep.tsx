@@ -5,65 +5,20 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  QueueAppHeader, QueueEntry, Patient, VisitType,
+  QueueAppHeader, Patient, VisitType,
   SEED_BRANCHES, SEED_PATIENTS, SEED_VISIT_TYPES,
   padToken, timeAgo, uid, TokenSlipModal, TokenSlipData,
 } from "@/pages/QueuePageLayout";
-
-// ─── Seed queue ───────────────────────────────────────────────────────────────
-
-const now = new Date();
-
-type MultiEntry = QueueEntry & {
-  patient: Patient | null;
-  visitTypeId: string;
-};
-
-const SEED_QUEUE: MultiEntry[] = [
-  {
-    id: "m-1", tokenNumber: "C103", displayNum: 103, status: "completed",
-    step: 4, totalSteps: 4, stepLabel: "Pharmacy",
-    patient: SEED_PATIENTS[4], visitTypeId: "vt-1",
-    createdAt: new Date(now.getTime() - 90 * 60000),
-  },
-  {
-    id: "m-2", tokenNumber: "C104", displayNum: 104, status: "completed",
-    step: 3, totalSteps: 4, stepLabel: "Lab / Sample",
-    patient: SEED_PATIENTS[5], visitTypeId: "vt-1",
-    createdAt: new Date(now.getTime() - 55 * 60000),
-  },
-  {
-    id: "m-3", tokenNumber: "C105", displayNum: 105, status: "called",
-    step: 2, totalSteps: 4, stepLabel: "Doctor Consultation",
-    patient: SEED_PATIENTS[0], visitTypeId: "vt-1",
-    createdAt: new Date(now.getTime() - 30 * 60000),
-  },
-  {
-    id: "m-4", tokenNumber: "C106", displayNum: 106, status: "waiting",
-    step: 1, totalSteps: 4, stepLabel: "Registration",
-    patient: SEED_PATIENTS[1], visitTypeId: "vt-1",
-    createdAt: new Date(now.getTime() - 12 * 60000),
-  },
-  {
-    id: "m-5", tokenNumber: "C107", displayNum: 107, status: "waiting",
-    step: 1, totalSteps: 4, stepLabel: "Registration",
-    patient: SEED_PATIENTS[2], visitTypeId: "vt-1",
-    createdAt: new Date(now.getTime() - 6 * 60000),
-  },
-  {
-    id: "m-6", tokenNumber: "U001", displayNum: 1, status: "called",
-    step: 1, totalSteps: 2, stepLabel: "Triage & Registration",
-    patient: SEED_PATIENTS[3], visitTypeId: "vt-2",
-    createdAt: new Date(now.getTime() - 8 * 60000),
-  },
-];
+import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function QueueTokenMultiStep() {
+  const {
+    queue, nextNums, setNextNums,
+    callEntry, completeStep, addEntry,
+  } = useMultiStepQueue();
   const [branch, setBranch]         = useState(SEED_BRANCHES[0].id);
-  const [queue, setQueue]           = useState<MultiEntry[]>(SEED_QUEUE);
-  const [nextNums, setNextNums]     = useState<Record<string, number>>({ "vt-1": 108, "vt-2": 2, "vt-3": 1 });
   const [selectedVT, setSelectedVT] = useState<VisitType>(SEED_VISIT_TYPES[0]);
   const [selectedPat, setSelectedPat] = useState<Patient | null>(null);
   const [search, setSearch]         = useState("");
@@ -123,8 +78,9 @@ export function QueueTokenMultiStep() {
         status: "waiting", step: 1, totalSteps: snapVT.steps.length,
         stepLabel: snapVT.steps[0], patient: snapPat,
         visitTypeId: snapVT.id, createdAt: snapAt,
+        callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null,
       };
-      setQueue(p => [...p, entry]);
+      addEntry(entry);
       setNextNums(prev => ({ ...prev, [snapVT.id]: (prev[snapVT.id] ?? 1) + 1 }));
       setLoading(false);
       showToast(snapWalkIn ? `Token ${snapToken} generated (Walk-in)` : `Token ${snapToken} generated for ${snapPat!.name}`);
@@ -144,34 +100,13 @@ export function QueueTokenMultiStep() {
     }, 700);
   }
 
-  function callEntry(entryId: string) {
-    setQueue(prev => prev.map(e =>
-      e.id !== entryId || e.status !== "waiting" ? e : { ...e, status: "called" }
-    ));
-  }
-
-  function completeStep(entryId: string) {
-    setQueue(prev => prev.map(e => {
-      if (e.id !== entryId || e.status !== "called") return e;
-      const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
-      const nextStep = e.step + 1;
-      if (nextStep > e.totalSteps) return { ...e, status: "completed" };
-      return {
-        ...e,
-        step: nextStep,
-        stepLabel: vt.steps[nextStep - 1],
-        status: "waiting",
-      };
-    }));
-  }
-
-  const called    = queue.filter(e => e.status === "called");
-  const waiting   = queue.filter(e => e.status === "waiting");
-  const completed = queue.filter(e => e.status === "completed");
+  const called    = queue.filter(e => e.status === "called"    && !e.skipped);
+  const waiting   = queue.filter(e => e.status === "waiting"   && !e.skipped);
+  const completed = queue.filter(e => e.status === "completed" && !e.skipped);
 
   const visibleQueue = filterStep === "all"
-    ? queue.filter(e => e.status !== "completed")
-    : queue.filter(e => e.status !== "completed" && e.step === filterStep);
+    ? queue.filter(e => e.status !== "completed" && !e.skipped)
+    : queue.filter(e => e.status !== "completed" && !e.skipped && e.step === filterStep);
 
   const stepColors = ["#4982CF", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"];
 
