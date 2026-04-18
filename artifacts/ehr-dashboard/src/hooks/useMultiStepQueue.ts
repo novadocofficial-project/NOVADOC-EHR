@@ -19,35 +19,35 @@ const now = new Date();
 export const INITIAL_QUEUE: MultiEntry[] = [
   {
     id: "m-1", tokenNumber: "C103", displayNum: 103, status: "completed",
-    step: 4, totalSteps: 4, stepLabel: "Pharmacy",
+    step: 5, totalSteps: 5, stepLabel: "Pharmacy",
     patient: SEED_PATIENTS[4], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 90 * 60000),
     callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null,
   },
   {
     id: "m-2", tokenNumber: "C104", displayNum: 104, status: "completed",
-    step: 3, totalSteps: 4, stepLabel: "Lab / Sample",
+    step: 4, totalSteps: 5, stepLabel: "Lab / Sample",
     patient: SEED_PATIENTS[5], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 55 * 60000),
     callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null,
   },
   {
     id: "m-3", tokenNumber: "C105", displayNum: 105, status: "called",
-    step: 2, totalSteps: 4, stepLabel: "Doctor Consultation",
+    step: 3, totalSteps: 5, stepLabel: "Doctor Consultation",
     patient: SEED_PATIENTS[0], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 30 * 60000),
     callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null,
   },
   {
     id: "m-4", tokenNumber: "C106", displayNum: 106, status: "waiting",
-    step: 1, totalSteps: 4, stepLabel: "Registration",
+    step: 1, totalSteps: 5, stepLabel: "Registration",
     patient: SEED_PATIENTS[1], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 12 * 60000),
     callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null,
   },
   {
     id: "m-5", tokenNumber: "C107", displayNum: 107, status: "waiting",
-    step: 1, totalSteps: 4, stepLabel: "Registration",
+    step: 1, totalSteps: 5, stepLabel: "Registration",
     patient: SEED_PATIENTS[2], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 6 * 60000),
     callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null,
@@ -61,7 +61,7 @@ export const INITIAL_QUEUE: MultiEntry[] = [
   },
   {
     id: "m-7", tokenNumber: "C108", displayNum: 108, status: "waiting",
-    step: 1, totalSteps: 4, stepLabel: "Registration",
+    step: 1, totalSteps: 5, stepLabel: "Registration",
     patient: null,
     visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 3 * 60000),
@@ -74,9 +74,18 @@ export const INITIAL_QUEUE: MultiEntry[] = [
 const CHANNEL_NAME = "ehr-multistep-queue-v2";
 const LS_QUEUE_KEY = "ehr-queue-v2";
 const LS_NUMS_KEY  = "ehr-queue-nums-v2";
+const LS_VER_KEY   = "ehr-queue-ver";
+const QUEUE_VER    = "3"; // bump when seed schema changes
 
 function loadQueue(): MultiEntry[] {
   try {
+    // If stored version doesn't match, reset to fresh seed
+    if (localStorage.getItem(LS_VER_KEY) !== QUEUE_VER) {
+      localStorage.removeItem(LS_QUEUE_KEY);
+      localStorage.removeItem(LS_NUMS_KEY);
+      localStorage.setItem(LS_VER_KEY, QUEUE_VER);
+      return INITIAL_QUEUE;
+    }
     const raw = localStorage.getItem(LS_QUEUE_KEY);
     if (!raw) return INITIAL_QUEUE;
     return (JSON.parse(raw) as any[]).map(e => ({ ...e, createdAt: new Date(e.createdAt) }));

@@ -81,6 +81,7 @@ const SEED_VISIT_TYPES: VisitType[] = [
 
 const SEED_COUNTER_TYPES: CounterType[] = [
   { id: "ct-1", name: "Registration Counter", description: "Initial patient registration and token issuance.", maxParallel: 5 },
+  { id: "ct-5", name: "Nursing Counter", description: "Vitals recording — BP, temperature, weight, SPO₂.", maxParallel: 3 },
   { id: "ct-2", name: "Doctor Room", description: "Doctor consultation room. Partitioned per doctor.", maxParallel: 10 },
   { id: "ct-3", name: "Lab Counter", description: "Sample collection and lab test processing.", maxParallel: 4 },
   { id: "ct-4", name: "Pharmacy Counter", description: "Medicine dispensing and billing.", maxParallel: 3 },
@@ -93,15 +94,17 @@ const SEED_COUNTERS: Counter[] = [
   { id: "ctr-4", name: "Dr. Room B", counterTypeId: "ct-2", branchId: "br-1", allowMultiUser: false, status: "active" },
   { id: "ctr-5", name: "Lab Desk 1", counterTypeId: "ct-3", branchId: "br-1", allowMultiUser: true, status: "active" },
   { id: "ctr-6", name: "Pharmacy Desk", counterTypeId: "ct-4", branchId: "br-2", allowMultiUser: false, status: "active" },
+  { id: "ctr-7", name: "Vitals Desk 1", counterTypeId: "ct-5", branchId: "br-1", allowMultiUser: false, status: "active" },
 ];
 
 const SEED_WORKFLOW: WorkflowStep[] = [
-  { id: "ws-1", visitTypeId: "vt-1", stepName: "Patient Registration", stepOrder: 1, counterTypeId: "ct-1", isMandatory: true, allowSkip: false, avgServiceMinutes: 5 },
-  { id: "ws-2", visitTypeId: "vt-1", stepName: "Doctor Consultation", stepOrder: 2, counterTypeId: "ct-2", isMandatory: true, allowSkip: false, avgServiceMinutes: 20 },
-  { id: "ws-3", visitTypeId: "vt-1", stepName: "Lab / Sample Collection", stepOrder: 3, counterTypeId: "ct-3", isMandatory: false, allowSkip: true, avgServiceMinutes: 10 },
-  { id: "ws-4", visitTypeId: "vt-1", stepName: "Pharmacy / Dispensing", stepOrder: 4, counterTypeId: "ct-4", isMandatory: false, allowSkip: true, avgServiceMinutes: 8 },
-  { id: "ws-5", visitTypeId: "vt-2", stepName: "Triage & Registration", stepOrder: 1, counterTypeId: "ct-1", isMandatory: true, allowSkip: false, avgServiceMinutes: 3 },
-  { id: "ws-6", visitTypeId: "vt-2", stepName: "Emergency Consultation", stepOrder: 2, counterTypeId: "ct-2", isMandatory: true, allowSkip: false, avgServiceMinutes: 30 },
+  { id: "ws-1", visitTypeId: "vt-1", stepName: "Patient Registration", stepOrder: 1, counterTypeId: "ct-1", isMandatory: true,  allowSkip: false, avgServiceMinutes: 5 },
+  { id: "ws-7", visitTypeId: "vt-1", stepName: "Vitals",               stepOrder: 2, counterTypeId: "ct-5", isMandatory: true,  allowSkip: false, avgServiceMinutes: 5 },
+  { id: "ws-2", visitTypeId: "vt-1", stepName: "Doctor Consultation",   stepOrder: 3, counterTypeId: "ct-2", isMandatory: true,  allowSkip: false, avgServiceMinutes: 20 },
+  { id: "ws-3", visitTypeId: "vt-1", stepName: "Lab / Sample Collection", stepOrder: 4, counterTypeId: "ct-3", isMandatory: false, allowSkip: true, avgServiceMinutes: 10 },
+  { id: "ws-4", visitTypeId: "vt-1", stepName: "Pharmacy / Dispensing", stepOrder: 5, counterTypeId: "ct-4", isMandatory: false, allowSkip: true,  avgServiceMinutes: 8 },
+  { id: "ws-5", visitTypeId: "vt-2", stepName: "Triage & Registration", stepOrder: 1, counterTypeId: "ct-1", isMandatory: true,  allowSkip: false, avgServiceMinutes: 3 },
+  { id: "ws-6", visitTypeId: "vt-2", stepName: "Emergency Consultation", stepOrder: 2, counterTypeId: "ct-2", isMandatory: true,  allowSkip: false, avgServiceMinutes: 30 },
 ];
 
 const SEED_DOCTOR_PARTITIONS: DoctorPartition[] = [

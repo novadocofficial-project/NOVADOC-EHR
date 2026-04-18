@@ -82,7 +82,7 @@ export const SEED_PATIENTS: Patient[] = [
 ];
 
 export const SEED_VISIT_TYPES: VisitType[] = [
-  { id: "vt-1", name: "Normal Consultation (OPD)", steps: ["Registration", "Doctor Consultation", "Lab / Sample", "Pharmacy"], prefix: "C", color: "#4982CF" },
+  { id: "vt-1", name: "Normal Consultation (OPD)", steps: ["Registration", "Vitals", "Doctor Consultation", "Lab / Sample", "Pharmacy"], prefix: "C", color: "#4982CF" },
   { id: "vt-2", name: "Urgent / Emergency",        steps: ["Triage & Registration", "Emergency Consultation"],                 prefix: "U", color: "#ef4444" },
   { id: "vt-3", name: "Follow-up Visit",           steps: ["Registration", "Doctor Consultation"],                              prefix: "F", color: "#10b981" },
 ];
