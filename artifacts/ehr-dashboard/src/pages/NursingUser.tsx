@@ -195,10 +195,10 @@ function VitalsLeftPanel({ entry, showTrends, onToggleTrends, form, painScore, m
               {vitalsRows.length > 0 && (
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Patient Vitals</p>
-                  <div className="space-y-1">
-                    {vitalsRows.map(([label, value]) => (
-                      <div key={label} className="flex items-center justify-between py-0.5">
-                        <span className="text-slate-400">{label}</span>
+                  <div className="rounded-lg overflow-hidden border border-slate-100">
+                    {vitalsRows.map(([label, value], i) => (
+                      <div key={label} className={`flex items-center justify-between px-2.5 py-1.5 ${i % 2 === 0 ? "bg-blue-50" : "bg-white"}`}>
+                        <span className="text-slate-500">{label}</span>
                         <span className="font-semibold text-slate-800">{value}</span>
                       </div>
                     ))}
