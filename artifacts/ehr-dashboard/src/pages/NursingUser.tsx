@@ -110,10 +110,34 @@ function Collapsible({ title, badge, defaultOpen = true, accent, children }:
 
 // ─── Left panel (vitals section) ─────────────────────────────────────────────
 
-function VitalsLeftPanel({ entry, showTrends, onToggleTrends }:
-  { entry: MultiEntry; showTrends: boolean; onToggleTrends: () => void }) {
+function VitalsLeftPanel({ entry, showTrends, onToggleTrends, form, painScore, mentalAnswers }:
+  { entry: MultiEntry; showTrends: boolean; onToggleTrends: () => void;
+    form: VitalsFormState; painScore: number; mentalAnswers: number[] }) {
   const p = entry.patient;
-  const mockRecord = { date: "21 Feb 2025", status: "In progress", type: "Vitals Sign", doctor: "Dr. Asif Imam", summary: "Vitals: Normal, Pain Score: 5, Mental Score: 4" };
+  const [recordExpanded, setRecordExpanded] = useState(false);
+  const mockRecord = { date: "21 Feb 2025", status: "In progress", type: "Vitals Sign", doctor: "Dr. Asif Imam" };
+
+  const mentalTotal = mentalAnswers.reduce((s, v) => s + v, 0);
+
+  const vitalsRows: [string, string][] = [
+    ["Date",              form.date],
+    ["Pulse HR",          form.pulseHR],
+    ["Temperature (°C)",  form.tempC],
+    ["BP Systolic",       form.bpSystolic],
+    ["BP Diastolic",      form.bpDiastolic],
+    ["BP Position",       form.bpPosition],
+    ["Orthostatic",       form.bpOrthostatic],
+    ["Respiratory",       form.respiratory],
+    ["Blood Sugar",       form.bloodSugar],
+    ["Weight (kg)",       form.weightKg],
+    ["Height (cm)",       form.heightCm],
+    ["BMI",               form.bmi],
+    ["O₂ Saturation",     form.o2Sat],
+    ["BSA",               form.bsa],
+  ].filter(([, v]) => v && v.trim() !== "") as [string, string][];
+
+  const hasData = vitalsRows.length > 0 || painScore >= 0 || mentalTotal > 0;
+
   return (
     <div className="h-full overflow-y-auto px-4 py-4 border-r border-slate-200 bg-white">
       <Collapsible title="Patient Info" defaultOpen={false}>
@@ -128,9 +152,10 @@ function VitalsLeftPanel({ entry, showTrends, onToggleTrends }:
           </div>
         ) : <p className="text-xs text-slate-400 italic">No patient on file</p>}
       </Collapsible>
+
       <Collapsible title="Required Actions" badge={1} accent defaultOpen>
         <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 space-y-1.5 text-xs mb-2">
-          <p className="font-semibold text-slate-800 leading-tight">{mockRecord.summary}</p>
+          <p className="font-semibold text-slate-800 leading-tight">Vitals: Normal, Pain Score: 5, Mental Score: 4</p>
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
             <span>{mockRecord.date}</span>
             <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 inline-block" />{mockRecord.status}</span>
@@ -139,13 +164,23 @@ function VitalsLeftPanel({ entry, showTrends, onToggleTrends }:
           </div>
         </div>
       </Collapsible>
+
       <Collapsible title="All Records" badge={1} defaultOpen>
-        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 space-y-1.5 text-xs mb-2">
+        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs mb-2">
+          {/* Record header row */}
           <div className="flex items-start justify-between gap-2">
-            <p className="font-semibold text-slate-800 leading-tight flex-1">{mockRecord.summary}</p>
-            <button className="text-[10px] font-bold text-[#4982CF] hover:underline flex-shrink-0">Expand</button>
+            <p className="font-semibold text-slate-800 leading-tight flex-1">
+              {hasData
+                ? [vitalsRows.length > 0 && "Vitals recorded", painScore >= 0 && `Pain: ${painScore}`, mentalTotal > 0 && `Mental: ${mentalTotal}`].filter(Boolean).join(" · ")
+                : "Vitals: Normal, Pain Score: 5, Mental Score: 4"}
+            </p>
+            <button
+              onClick={() => setRecordExpanded(e => !e)}
+              className="text-[10px] font-bold text-[#4982CF] hover:underline flex-shrink-0 flex items-center gap-1">
+              {recordExpanded ? <><ChevronUp className="h-3 w-3" /> Collapse</> : <><Maximize2 className="h-3 w-3" /> Expand</>}
+            </button>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 justify-between">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 justify-between mt-1.5">
             <span>{mockRecord.date} · Tuesday, 26 Feb 2025</span>
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1"><Activity className="h-3 w-3" />{mockRecord.type}</span>
@@ -153,8 +188,55 @@ function VitalsLeftPanel({ entry, showTrends, onToggleTrends }:
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">Active</span>
             </div>
           </div>
+
+          {/* Expanded detail */}
+          {recordExpanded && (
+            <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
+              {vitalsRows.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Patient Vitals</p>
+                  <div className="space-y-1">
+                    {vitalsRows.map(([label, value]) => (
+                      <div key={label} className="flex items-center justify-between py-0.5">
+                        <span className="text-slate-400">{label}</span>
+                        <span className="font-semibold text-slate-800">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {painScore >= 0 && (
+                <div className="pt-2 border-t border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Pain Score</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Level {painScore}/10</span>
+                    <span className="font-bold text-slate-800">{PAIN_LEVELS[painScore]?.label ?? "—"}</span>
+                  </div>
+                  <div className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${(painScore / 10) * 100}%`, backgroundColor: painScore <= 3 ? "#22c55e" : painScore <= 6 ? "#f59e0b" : "#ef4444" }} />
+                  </div>
+                </div>
+              )}
+              {mentalTotal > 0 && (
+                <div className="pt-2 border-t border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Mental Health (PHQ-4)</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Total Score</span>
+                    <span className={`font-bold text-sm ${mentalTotal <= 2 ? "text-green-600" : mentalTotal <= 5 ? "text-amber-600" : "text-red-600"}`}>{mentalTotal} / 16</span>
+                  </div>
+                  <div className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${(mentalTotal / 16) * 100}%`, backgroundColor: mentalTotal <= 2 ? "#22c55e" : mentalTotal <= 5 ? "#f59e0b" : "#ef4444" }} />
+                  </div>
+                </div>
+              )}
+              {!hasData && (
+                <p className="text-[11px] text-slate-400 italic text-center py-2">No data entered yet. Fill the form on the right to see it here.</p>
+              )}
+            </div>
+          )}
         </div>
       </Collapsible>
+
       <div className="mt-4 pt-3 border-t border-slate-100">
         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">View Mode</p>
         <div className="flex rounded-lg border border-slate-200 overflow-hidden">
@@ -415,7 +497,8 @@ function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: (
         {activeCategory === "vitals" ? (
           <div className="flex-1 flex overflow-hidden">
             <div className="w-1/2 flex-shrink-0 overflow-hidden border-r border-slate-200">
-              <VitalsLeftPanel entry={entry} showTrends={showTrends} onToggleTrends={() => setShowTrends(t => !t)} />
+              <VitalsLeftPanel entry={entry} showTrends={showTrends} onToggleTrends={() => setShowTrends(t => !t)}
+                form={vitalsForm} painScore={painScore} mentalAnswers={mentalAnswers} />
             </div>
             <div className="flex-1 flex flex-col overflow-hidden">
               {showTrends ? <VitalsTrends /> : (
