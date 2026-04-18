@@ -110,9 +110,8 @@ function Collapsible({ title, badge, defaultOpen = true, accent, children }:
 
 // ─── Left panel (vitals section) ─────────────────────────────────────────────
 
-function VitalsLeftPanel({ entry, showTrends, onToggleTrends, form, painScore, mentalAnswers }:
-  { entry: MultiEntry; showTrends: boolean; onToggleTrends: () => void;
-    form: VitalsFormState; painScore: number; mentalAnswers: number[] }) {
+function VitalsLeftPanel({ entry, form, painScore, mentalAnswers }:
+  { entry: MultiEntry; form: VitalsFormState; painScore: number; mentalAnswers: number[] }) {
   const p = entry.patient;
   const [recordExpanded, setRecordExpanded] = useState(false);
   const mockRecord = { date: "21 Feb 2025", status: "In progress", type: "Vitals Sign", doctor: "Dr. Asif Imam" };
@@ -139,7 +138,11 @@ function VitalsLeftPanel({ entry, showTrends, onToggleTrends, form, painScore, m
   const hasData = vitalsRows.length > 0 || painScore >= 0 || mentalTotal > 0;
 
   return (
-    <div className="h-full overflow-y-auto px-4 py-4 border-r border-slate-200 bg-white">
+    <div className="h-full flex flex-col bg-white">
+      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Record</p>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-3">
       <Collapsible title="Patient Info" defaultOpen={false}>
         {p ? (
           <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-1.5 text-xs">
@@ -237,18 +240,6 @@ function VitalsLeftPanel({ entry, showTrends, onToggleTrends, form, painScore, m
         </div>
       </Collapsible>
 
-      <div className="mt-4 pt-3 border-t border-slate-100">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">View Mode</p>
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-          <button onClick={() => showTrends && onToggleTrends()}
-            className={`flex-1 py-2 text-xs font-semibold transition-colors ${!showTrends ? "bg-[#4982CF] text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>
-            Form
-          </button>
-          <button onClick={() => !showTrends && onToggleTrends()}
-            className={`flex-1 py-2 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${showTrends ? "bg-[#4982CF] text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>
-            <TrendingUp className="h-3.5 w-3.5" /> Trends
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -497,11 +488,33 @@ function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: (
         {/* ── BODY ───────────────────────────────────────────────────────── */}
         {activeCategory === "vitals" ? (
           <div className="flex-1 flex overflow-hidden">
-            <div className="w-1/2 flex-shrink-0 overflow-hidden border-r border-slate-200">
-              <VitalsLeftPanel entry={entry} showTrends={showTrends} onToggleTrends={() => setShowTrends(t => !t)}
-                form={vitalsForm} painScore={painScore} mentalAnswers={mentalAnswers} />
+            {/* Left panel */}
+            <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
+              <VitalsLeftPanel entry={entry} form={vitalsForm} painScore={painScore} mentalAnswers={mentalAnswers} />
             </div>
+            {/* Right panel */}
             <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Right panel toolbar */}
+              <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-[#4982CF]" />
+                  <span className="text-sm font-bold text-slate-700">
+                    {showTrends ? "Vitals Trends" : "Vitals Entry"}
+                  </span>
+                </div>
+                <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm">
+                  <button
+                    onClick={() => setShowTrends(false)}
+                    className={`px-4 py-1.5 text-xs font-semibold transition-colors ${!showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                    Form
+                  </button>
+                  <button
+                    onClick={() => setShowTrends(true)}
+                    className={`px-4 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                    <TrendingUp className="h-3 w-3" /> Trends
+                  </button>
+                </div>
+              </div>
               {showTrends ? <VitalsTrends /> : (
                 <VitalsForm form={vitalsForm} setForm={setVitalsForm} painScore={painScore} setPainScore={setPainScore}
                   mentalAnswers={mentalAnswers} setMentalAnswers={setMentalAnswers} />
