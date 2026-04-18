@@ -180,8 +180,8 @@ interface VitalsFormState {
   weightKg: string; heightCm: string; bmi: string; o2Sat: string; bsa: string;
 }
 
-function VitalsForm({ form, setForm, painScore, setPainScore, mentalAnswers, setMentalAnswers, onSubmit, onPrint, onDraft, onDiscard }:
-  { form: VitalsFormState; setForm: (f: VitalsFormState) => void; painScore: number; setPainScore: (n: number) => void; mentalAnswers: number[]; setMentalAnswers: (a: number[]) => void; onSubmit: () => void; onPrint: () => void; onDraft: () => void; onDiscard: () => void }) {
+function VitalsForm({ form, setForm, painScore, setPainScore, mentalAnswers, setMentalAnswers }:
+  { form: VitalsFormState; setForm: (f: VitalsFormState) => void; painScore: number; setPainScore: (n: number) => void; mentalAnswers: number[]; setMentalAnswers: (a: number[]) => void }) {
 
   function field(label: string, key: keyof VitalsFormState, placeholder: string) {
     return (
@@ -305,12 +305,6 @@ function VitalsForm({ form, setForm, painScore, setPainScore, mentalAnswers, set
         </div>
       </div>
 
-      <div className="flex-shrink-0 flex items-center gap-2 px-5 py-3 border-t border-slate-200 bg-white">
-        <Button onClick={onSubmit} className="flex-1 bg-[#4982CF] hover:bg-[#3a6fb8] text-white h-9 text-sm font-semibold">Submit &amp; Save</Button>
-        <Button onClick={onPrint} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white h-9 text-sm font-semibold">Submit &amp; Print</Button>
-        <Button onClick={onDraft} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white h-9 text-sm font-semibold">Save Draft &amp; Close</Button>
-        <Button onClick={onDiscard} className="flex-1 bg-slate-900 hover:bg-black text-white h-9 text-sm font-semibold">Discard</Button>
-      </div>
     </div>
   );
 }
@@ -368,22 +362,25 @@ function VitalsTrends() {
 
 // ─── Vitals split panel (fullscreen drawer) ───────────────────────────────────
 
-function VitalsPanel({ entry, onClose }: { entry: MultiEntry; onClose: () => void }) {
+function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: () => void; onSave: () => void }) {
   const [showTrends, setShowTrends] = useState(false);
   const [vitalsForm, setVitalsForm] = useState<VitalsFormState>({
     date: "", pulseHR: "", tempC: "", bpSystolic: "", bpDiastolic: "",
     bpPosition: "", bpOrthostatic: "", respiratory: "", bloodSugar: "",
     weightKg: "", heightCm: "", bmi: "", o2Sat: "", bsa: "",
   });
-  const [painScore, setPainScore]       = useState(-1);
+  const [painScore, setPainScore]         = useState(-1);
   const [mentalAnswers, setMentalAnswers] = useState([0, 0, 0, 0]);
-  const [fullscreen, setFullscreen]     = useState(false);
+  const [fullscreen, setFullscreen]       = useState(false);
   const [activeCategory, setActiveCategory] = useState<NurseCategory>("vitals");
+  const [showConfirm, setShowConfirm]     = useState(false);
 
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
       <div className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-in-out border-l border-slate-200 ${fullscreen ? "w-full" : "w-[80%]"}`}>
+
+        {/* ── HEADER ─────────────────────────────────────────────────────── */}
         <div className="flex-shrink-0 flex items-center border-b border-slate-200 bg-white">
           <div className="px-5 py-3 border-r border-slate-100 flex-shrink-0">
             <p className="text-sm font-bold text-slate-900">Patient Vitals</p>
@@ -396,7 +393,13 @@ function VitalsPanel({ entry, onClose }: { entry: MultiEntry; onClose: () => voi
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-1 px-3 flex-shrink-0">
+          <div className="flex items-center gap-2 px-3 flex-shrink-0">
+            <Button
+              onClick={() => setShowConfirm(true)}
+              className="h-8 px-4 text-xs font-bold bg-[#4982CF] hover:bg-[#3a6fb8] text-white gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Save
+            </Button>
+            <div className="w-px h-5 bg-slate-200" />
             <button onClick={() => setFullscreen(f => !f)}
               className="flex items-center gap-1.5 h-8 px-2.5 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
               {fullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
@@ -408,6 +411,7 @@ function VitalsPanel({ entry, onClose }: { entry: MultiEntry; onClose: () => voi
           </div>
         </div>
 
+        {/* ── BODY ───────────────────────────────────────────────────────── */}
         {activeCategory === "vitals" ? (
           <div className="flex-1 flex overflow-hidden">
             <div className="w-1/2 flex-shrink-0 overflow-hidden border-r border-slate-200">
@@ -416,8 +420,7 @@ function VitalsPanel({ entry, onClose }: { entry: MultiEntry; onClose: () => voi
             <div className="flex-1 flex flex-col overflow-hidden">
               {showTrends ? <VitalsTrends /> : (
                 <VitalsForm form={vitalsForm} setForm={setVitalsForm} painScore={painScore} setPainScore={setPainScore}
-                  mentalAnswers={mentalAnswers} setMentalAnswers={setMentalAnswers}
-                  onSubmit={onClose} onPrint={onClose} onDraft={onClose} onDiscard={onClose} />
+                  mentalAnswers={mentalAnswers} setMentalAnswers={setMentalAnswers} />
               )}
             </div>
           </div>
@@ -433,17 +436,56 @@ function VitalsPanel({ entry, onClose }: { entry: MultiEntry; onClose: () => voi
           </div>
         )}
       </div>
+
+      {/* ── CONFIRM DIALOG ─────────────────────────────────────────────── */}
+      {showConfirm && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-[60]" />
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+              <div className="h-1.5 w-full bg-[#4982CF]" />
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle2 className="h-5 w-5 text-[#4982CF]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-900">Save Records?</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Token {entry.tokenNumber}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600 leading-relaxed mb-5">
+                  All recorded information will be saved and the patient will be moved to the <span className="font-semibold text-slate-800">next step</span> in the queue.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => { setShowConfirm(false); onSave(); }}
+                    className="flex-1 bg-[#4982CF] hover:bg-[#3a6fb8] text-white font-bold h-10">
+                    Yes, Save &amp; Move
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowConfirm(false)}
+                    className="flex-1 border-slate-200 text-slate-600 font-semibold h-10">
+                    No, Go Back
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
 
 // ─── Nursing overview drawer (patient info + category cards) ──────────────────
 
-function NursingDrawer({ entry, onClose }: { entry: MultiEntry; onClose: () => void }) {
+function NursingDrawer({ entry, onClose, onSave }: { entry: MultiEntry; onClose: () => void; onSave: () => void }) {
   const [activeCategory, setActiveCategory] = useState<NurseCategory | null>(null);
   const p = entry.patient;
 
-  if (activeCategory) return <VitalsPanel entry={entry} onClose={onClose} />;
+  if (activeCategory) return <VitalsPanel entry={entry} onClose={onClose} onSave={onSave} />;
 
   return (
     <>
@@ -517,7 +559,7 @@ function NursingDrawer({ entry, onClose }: { entry: MultiEntry; onClose: () => v
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function NursingUser() {
-  const { queue, nurseCall, nurseTimerExpire, nurseAtCounter, nurseSkip, nurseRecall } = useMultiStepQueue();
+  const { queue, nurseCall, nurseTimerExpire, nurseAtCounter, nurseCompleteVitals, nurseSkip, nurseRecall } = useMultiStepQueue();
   const [tick, setTick]             = useState(0);
   const [drawerEntry, setDrawerEntry] = useState<MultiEntry | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
@@ -756,7 +798,17 @@ export function NursingUser() {
       </div>
 
       {/* NURSING DRAWER */}
-      {drawerEntry && <NursingDrawer entry={drawerEntry} onClose={() => setDrawerEntry(null)} />}
+      {drawerEntry && (
+        <NursingDrawer
+          entry={drawerEntry}
+          onClose={() => setDrawerEntry(null)}
+          onSave={() => {
+            nurseCompleteVitals(drawerEntry.id);
+            setDrawerEntry(null);
+            showToastMsg(`${drawerEntry.tokenNumber} vitals saved — advanced to next step`);
+          }}
+        />
+      )}
 
       {/* TOAST */}
       {toast && (
