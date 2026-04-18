@@ -931,7 +931,7 @@ export function FrontDeskUser() {
       <div class="center" style="font-size:9px">EHR · Billing Receipt</div>
       <div class="sep"></div>
       <div>Invoice: <span class="bold">${r.invNo}</span></div>
-      <div>Token:   <span class="bold">${r.tokenNumber}</span></div>
+      <div class="center" style="font-size:36px;font-weight:900;letter-spacing:2px;margin:6px 0 2px">${r.tokenNumber}</div>
       <div>Patient: <span class="bold">${r.patientName}</span></div>
       <div>${dt}</div>
       <div class="sep"></div>
