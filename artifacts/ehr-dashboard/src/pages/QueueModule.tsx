@@ -21,7 +21,7 @@ export type QueueSection =
 
 type VisitType = {
   id: string; name: string; code: string; tokenPrefix: string;
-  color: string; queueMode: "single" | "partitioned"; partitionBy: "none" | "doctor";
+  color: string; queueMode: "single" | "partitioned" | "multi-step"; partitionBy: "none" | "doctor";
   status: "active" | "inactive";
 };
 
@@ -77,6 +77,7 @@ const SEED_VISIT_TYPES: VisitType[] = [
   { id: "vt-1", name: "Normal Consultation", code: "NORM", tokenPrefix: "C", color: "#4982CF", queueMode: "partitioned", partitionBy: "doctor", status: "active" },
   { id: "vt-2", name: "Urgent / Emergency", code: "EMER", tokenPrefix: "U", color: "#ef4444", queueMode: "single", partitionBy: "none", status: "active" },
   { id: "vt-3", name: "Follow-up Visit", code: "FLUP", tokenPrefix: "F", color: "#10b981", queueMode: "single", partitionBy: "none", status: "inactive" },
+  { id: "vt-4", name: "Hospital OPD (Multi-Step)", code: "OPD", tokenPrefix: "O", color: "#8b5cf6", queueMode: "multi-step", partitionBy: "none", status: "active" },
 ];
 
 const SEED_COUNTER_TYPES: CounterType[] = [
@@ -446,8 +447,11 @@ export function QueueModule({ section }: { section: QueueSection }) {
               </Badge>
             </div>
             <div className="space-y-1 text-xs text-slate-500">
-              <p>Queue: <span className="font-medium text-slate-700">{vt.queueMode === "single" ? "Single Queue" : "Partitioned Queue"}</span></p>
-              {vt.partitionBy !== "none" && <p>Partition by: <span className="font-medium text-slate-700 capitalize">{vt.partitionBy}</span></p>}
+              <p>Queue: <span className="font-medium text-slate-700">
+                {vt.queueMode === "single" ? "Single Queue" : vt.queueMode === "partitioned" ? "Partitioned Queue" : "Multi-Step Visit"}
+              </span></p>
+              {vt.queueMode === "partitioned" && vt.partitionBy !== "none" && <p>Partition by: <span className="font-medium text-slate-700 capitalize">{vt.partitionBy}</span></p>}
+              {vt.queueMode === "multi-step" && <p className="text-[10px] text-violet-500 font-medium">Patient follows ordered steps through counters</p>}
             </div>
             <div className="flex items-center gap-1.5 pt-1">
               <Switch checked={vt.status === "active"} onCheckedChange={v => setVisitTypes(p => p.map(x => x.id === vt.id ? { ...x, status: v ? "active" : "inactive" } : x))} className="data-[state=checked]:bg-emerald-500 scale-75" />
@@ -488,11 +492,12 @@ export function QueueModule({ section }: { section: QueueSection }) {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-600">Queue Mode</Label>
-                <Select value={vtForm.queueMode} onValueChange={(v: "single" | "partitioned") => setVtForm(p => ({ ...p, queueMode: v, partitionBy: v === "single" ? "none" : p.partitionBy }))}>
+                <Select value={vtForm.queueMode} onValueChange={(v: "single" | "partitioned" | "multi-step") => setVtForm(p => ({ ...p, queueMode: v, partitionBy: v === "partitioned" ? p.partitionBy : "none" }))}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="single">Single Queue</SelectItem>
                     <SelectItem value="partitioned">Partitioned Queue</SelectItem>
+                    <SelectItem value="multi-step">Multi-Step Visit</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
