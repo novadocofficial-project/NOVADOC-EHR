@@ -512,7 +512,7 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
   // STEP: CART
   // ─────────────────────────────────────────────────────────────────
   if (step === "cart") return (
-    <div className="flex flex-col h-full">
+    <div className={`flex flex-col h-full transition-all duration-200 ${isFullscreen && cart.length > 0 ? "pl-72" : ""}`}>
       <BillingStepBar step="cart" />
 
       {/* Mode toggle + patient info */}
