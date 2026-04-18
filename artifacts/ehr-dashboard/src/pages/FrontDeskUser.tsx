@@ -1202,39 +1202,37 @@ export function FrontDeskUser() {
         <div className="fixed bottom-6 right-6 z-[60] w-80 rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-3">
           {/* Green header bar */}
           <div className="h-1.5 w-full bg-green-500" />
-          <div className="px-4 pt-4 pb-3">
-            {/* Logo + title row */}
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-[#4982CF] flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-black text-xs">N</span>
-                </div>
-                <div>
-                  <p className="text-xs font-black text-slate-900 leading-tight">NovaDoc</p>
-                  <p className="text-[10px] text-green-600 font-bold">Receipt Ready · Invoice Finalized</p>
-                </div>
-              </div>
-              <button onClick={() => setReceipt(null)}
-                className="h-6 w-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center flex-shrink-0 transition-colors">
-                <X className="h-3 w-3 text-slate-500" />
-              </button>
-            </div>
 
-            {/* Token + patient */}
-            <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 mb-3">
+          {/* Dismiss button */}
+          <div className="flex justify-end px-3 pt-3">
+            <button onClick={() => setReceipt(null)}
+              className="h-6 w-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+              <X className="h-3 w-3 text-slate-500" />
+            </button>
+          </div>
+
+          {/* Hero — logo + centered token */}
+          <div className="flex flex-col items-center pb-4 px-4 -mt-1">
+            <div className="h-10 w-10 rounded-xl bg-[#4982CF] flex items-center justify-center mb-2 shadow-md">
+              <span className="text-white font-black text-sm">N</span>
+            </div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">NovaDoc · Invoice Finalized</p>
+            <p className="font-mono font-black text-[#4982CF] text-5xl leading-none tracking-tight">{receipt.tokenNumber}</p>
+            <div className="flex items-center gap-1.5 mt-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              <p className="text-[10px] font-semibold text-green-600">Advanced to Vitals queue</p>
+            </div>
+          </div>
+
+          <div className="px-4 pb-4 space-y-3">
+            {/* Patient + total info */}
+            <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-black text-slate-900">{receipt.patientName}</p>
                   <p className="text-[10px] text-slate-400 mt-0.5">{receipt.invNo}</p>
                 </div>
-                <div className="text-right">
-                  <p className="font-mono font-black text-[#4982CF] text-base">{receipt.tokenNumber}</p>
-                  <p className="text-xs font-bold text-slate-900">{fmt(receipt.total)}</p>
-                </div>
-              </div>
-              <div className="mt-2 pt-2 border-t border-slate-200 flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                <p className="text-[10px] font-semibold text-slate-500">Advanced to Vitals queue</p>
+                <p className="text-base font-black text-slate-900">{fmt(receipt.total)}</p>
               </div>
             </div>
 
