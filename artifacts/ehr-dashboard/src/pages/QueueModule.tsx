@@ -193,19 +193,36 @@ function ToggleRow({ label, desc, value, onChange }: { label: string; desc?: str
   );
 }
 
-function QueueBehaviorPanel({ queueBehavior, setQueueBehavior }: {
+function QueueBehaviorPanel({ queueBehavior, setQueueBehavior, counters, counterTypes }: {
   queueBehavior: QueueBehavior;
   setQueueBehavior: (updater: (prev: QueueBehavior) => QueueBehavior) => void;
+  counters: Counter[];
+  counterTypes: CounterType[];
 }) {
-  const [billingOnReg, setBillingOnReg] = useState<boolean>(() => {
-    try { return JSON.parse(localStorage.getItem("ehr-billing-reg") ?? "true"); }
-    catch { return true; }
+  const [billingMap, setBillingMap] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem("ehr-billing-counters");
+      if (stored) return JSON.parse(stored) as Record<string, boolean>;
+      // migrate old single-bool key
+      const legacy = localStorage.getItem("ehr-billing-reg");
+      const legacyVal = legacy ? JSON.parse(legacy) as boolean : true;
+      return { "ctr-1": legacyVal, "ctr-2": legacyVal };
+    } catch { return { "ctr-1": true, "ctr-2": true }; }
   });
 
-  function toggleBilling(v: boolean) {
-    setBillingOnReg(v);
-    localStorage.setItem("ehr-billing-reg", JSON.stringify(v));
+  function toggleCounter(id: string, v: boolean) {
+    setBillingMap(prev => {
+      const next = { ...prev, [id]: v };
+      localStorage.setItem("ehr-billing-counters", JSON.stringify(next));
+      return next;
+    });
   }
+
+  // Group counters by counter type
+  const grouped = counterTypes.map(ct => ({
+    type: ct,
+    items: counters.filter(c => c.counterTypeId === ct.id),
+  })).filter(g => g.items.length > 0);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -227,30 +244,59 @@ function QueueBehaviorPanel({ queueBehavior, setQueueBehavior }: {
       <div>
         <div className="mb-3">
           <p className="text-sm font-bold text-slate-900">Billing Settings</p>
-          <p className="text-xs text-slate-400 mt-0.5">Enable billing requirements per queue counter. When enabled, payment must be completed before a token advances to the next step.</p>
+          <p className="text-xs text-slate-400 mt-0.5">Enable billing requirements per counter. When enabled, payment must be completed before a token advances to the next step.</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm px-5">
-          {[
-            { label: "Registration Counter", key: "reg", enabled: billingOnReg, toggle: toggleBilling,
-              desc: "Patient must complete billing at registration before proceeding to next step." },
-          ].map(row => (
-            <div key={row.key} className="flex items-center justify-between py-4 gap-4 border-b border-slate-100 last:border-0">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <p className="text-sm font-semibold text-slate-800">{row.label}</p>
-                  {row.enabled && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#4982CF]/10 text-[#4982CF] uppercase tracking-wide">Billing On</span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-400 leading-relaxed">{row.desc}</p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Switch checked={row.enabled} onCheckedChange={row.toggle} className="data-[state=checked]:bg-[#4982CF]" />
-                <span className={`text-xs font-medium w-8 ${row.enabled ? "text-[#4982CF]" : "text-slate-400"}`}>{row.enabled ? "On" : "Off"}</span>
-              </div>
+
+        {grouped.length === 0 && (
+          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-5 py-6 text-center text-sm text-slate-400">
+            No counters configured. Add counters in the Counters section first.
+          </div>
+        )}
+
+        {grouped.map(group => (
+          <div key={group.type.id} className="mb-4">
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{group.type.name}</span>
+              <div className="flex-1 h-px bg-slate-100" />
+              <span className="text-[10px] text-slate-300">{group.items.length} counter{group.items.length !== 1 ? "s" : ""}</span>
             </div>
-          ))}
-        </div>
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm px-5 divide-y divide-slate-100">
+              {group.items.map(ctr => {
+                const enabled = billingMap[ctr.id] ?? false;
+                return (
+                  <div key={ctr.id} className="flex items-center justify-between py-3.5 gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-sm font-semibold text-slate-800">{ctr.name}</p>
+                        {enabled && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#4982CF]/10 text-[#4982CF] uppercase tracking-wide">Billing On</span>
+                        )}
+                        {ctr.status === "inactive" && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400 uppercase tracking-wide">Inactive</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        {ctr.allowMultiUser ? "Multi-user counter" : "Single-user counter"}
+                        {" · "}ID: {ctr.id}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Switch
+                        checked={enabled}
+                        onCheckedChange={v => toggleCounter(ctr.id, v)}
+                        className="data-[state=checked]:bg-[#4982CF]"
+                        disabled={ctr.status === "inactive"}
+                      />
+                      <span className={`text-xs font-medium w-8 ${enabled ? "text-[#4982CF]" : "text-slate-400"}`}>
+                        {enabled ? "On" : "Off"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -762,6 +808,8 @@ export function QueueModule({ section }: { section: QueueSection }) {
     <QueueBehaviorPanel
       queueBehavior={queueBehavior}
       setQueueBehavior={setQueueBehavior}
+      counters={counters}
+      counterTypes={counterTypes}
     />
   );
 

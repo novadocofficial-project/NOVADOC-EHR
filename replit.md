@@ -24,7 +24,7 @@ pnpm workspace monorepo. Primary artifact: `artifacts/ehr-dashboard` — a pure 
 
 ### Admin Settings (`/admin`)
 - Departments, doctors, billing types, branches, queue setup (visit types, counters, behavior, display screens)
-- **Queue Behavior > Billing Settings**: toggle billing requirement per counter (persisted to localStorage `ehr-billing-reg`)
+- **Queue Behavior > Billing Settings**: dynamic per-counter billing toggles grouped by counter type (persisted to localStorage `ehr-billing-counters` as `Record<counterId, boolean>`; migrates from legacy `ehr-billing-reg` key automatically)
 
 ## Cross-Tab State Sync Architecture
 

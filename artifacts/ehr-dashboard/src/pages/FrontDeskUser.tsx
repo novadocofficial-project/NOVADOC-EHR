@@ -468,10 +468,17 @@ export function FrontDeskUser() {
   const [activeRegId, setActiveRegId]   = useState<string | null>(null);
   const [toast, setToast]           = useState<string | null>(null);
 
-  // Load billing setting from admin settings
+  // Load billing setting for this counter (ctr-1 = Registration Desk 1)
+  // Reads from the new per-counter map; falls back to legacy single-bool key
   const billingEnabled = (() => {
-    try { return JSON.parse(localStorage.getItem("ehr-billing-reg") ?? "true"); }
-    catch { return true; }
+    try {
+      const stored = localStorage.getItem("ehr-billing-counters");
+      if (stored) {
+        const map = JSON.parse(stored) as Record<string, boolean>;
+        return map["ctr-1"] ?? true;
+      }
+      return JSON.parse(localStorage.getItem("ehr-billing-reg") ?? "true");
+    } catch { return true; }
   })();
 
   // Tick every second to update timers
