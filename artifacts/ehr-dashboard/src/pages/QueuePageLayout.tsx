@@ -1,7 +1,7 @@
 import { useLocation, Link } from "wouter";
 import {
   Bell, Search, Ticket, ChevronDown, Zap, Users, Workflow, BarChart2, Receipt,
-  X, Printer, ArrowRight,
+  X, Printer, ArrowRight, Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -326,6 +326,19 @@ export function QueueNavDropdown() {
           <div>
             <p className="text-sm font-semibold leading-tight">Front Desk User</p>
             <p className="text-[10px] text-slate-400 leading-tight">Registration · Billing counter</p>
+          </div>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          onClick={() => setLocation("/queue/nursing")}
+          className={`gap-3 cursor-pointer py-2.5 ${isActive("/queue/nursing") ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
+        >
+          <span className="h-7 w-7 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
+            <Heart className="h-3.5 w-3.5 text-rose-600" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold leading-tight">Nursing</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Vitals · Patient assessment</p>
           </div>
         </DropdownMenuItem>
       </DropdownMenuContent>

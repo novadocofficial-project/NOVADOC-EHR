@@ -67,6 +67,27 @@ export const INITIAL_QUEUE: MultiEntry[] = [
     createdAt: new Date(now.getTime() - 3 * 60000),
     callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null,
   },
+  {
+    id: "m-8", tokenNumber: "C109", displayNum: 109, status: "waiting",
+    step: 2, totalSteps: 5, stepLabel: "Vitals",
+    patient: SEED_PATIENTS[3], visitTypeId: "vt-1",
+    createdAt: new Date(now.getTime() - 22 * 60000),
+    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null,
+  },
+  {
+    id: "m-9", tokenNumber: "C110", displayNum: 110, status: "waiting",
+    step: 2, totalSteps: 5, stepLabel: "Vitals",
+    patient: SEED_PATIENTS[6], visitTypeId: "vt-1",
+    createdAt: new Date(now.getTime() - 11 * 60000),
+    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null,
+  },
+  {
+    id: "m-10", tokenNumber: "C111", displayNum: 111, status: "waiting",
+    step: 2, totalSteps: 5, stepLabel: "Vitals",
+    patient: SEED_PATIENTS[0], visitTypeId: "vt-1",
+    createdAt: new Date(now.getTime() - 5 * 60000),
+    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null,
+  },
 ];
 
 // ─── Sync Utilities ────────────────────────────────────────────────────────────
@@ -75,7 +96,7 @@ const CHANNEL_NAME = "ehr-multistep-queue-v2";
 const LS_QUEUE_KEY = "ehr-queue-v2";
 const LS_NUMS_KEY  = "ehr-queue-nums-v2";
 const LS_VER_KEY   = "ehr-queue-ver";
-const QUEUE_VER    = "3"; // bump when seed schema changes
+const QUEUE_VER    = "4"; // bump when seed schema changes
 
 function loadQueue(): MultiEntry[] {
   try {
@@ -225,6 +246,50 @@ export function useMultiStepQueue() {
     ));
   }
 
+  // ── Nursing mutations ────────────────────────────────────────────────────────
+
+  function nurseCall(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, callCount: e.callCount + 1, callTimestamp: Date.now() }
+    ));
+  }
+
+  function nurseTimerExpire(id: string) {
+    setQueue(prev => prev.map(e => {
+      if (e.id !== id) return e;
+      if (e.callCount >= 3) return { ...e, skipped: true, callTimestamp: null };
+      return { ...e, callTimestamp: null };
+    }));
+  }
+
+  function nurseAtCounter(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, status: "called", callTimestamp: null }
+    ));
+  }
+
+  function nurseCompleteVitals(id: string) {
+    setQueue(prev => prev.map(e => {
+      if (e.id !== id) return e;
+      const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
+      const nextStep = e.step + 1;
+      if (nextStep > e.totalSteps) return { ...e, status: "completed" };
+      return { ...e, step: nextStep, stepLabel: vt.steps[nextStep - 1], status: "waiting", callCount: 0, callTimestamp: null };
+    }));
+  }
+
+  function nurseSkip(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, skipped: true, callTimestamp: null, status: "waiting" }
+    ));
+  }
+
+  function nurseRecall(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, skipped: false, callCount: 0, callTimestamp: null }
+    ));
+  }
+
   function addEntry(entry: MultiEntry) {
     setQueue(prev => [...prev, entry]);
   }
@@ -237,6 +302,8 @@ export function useMultiStepQueue() {
     // front desk
     fdCall, fdTimerExpire, fdRegisterStart, fdRegisterComplete,
     fdBilling, fdCompleteBilling, fdSkip, fdRecall,
+    // nursing
+    nurseCall, nurseTimerExpire, nurseAtCounter, nurseCompleteVitals, nurseSkip, nurseRecall,
     addEntry,
   };
 }
