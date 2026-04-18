@@ -381,7 +381,7 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
 
 // ─── Billing Content ───────────────────────────────────────────────────────────
 
-type BillingStep = "cart" | "payment" | "invoice";
+type BillingStep = "cart" | "payment";
 type BillingMode = "services" | "packages";
 type PayType = "cash" | "card" | "corporate" | "insurance" | "welfare";
 
@@ -395,16 +395,27 @@ interface CartLine {
   discount: number;
 }
 
+export interface ReceiptInfo {
+  tokenNumber: string;
+  patientName: string;
+  total: number;
+  payType: PayType;
+  items: CartLine[];
+  invNo: string;
+  refNum: string;
+  cashReceived: number;
+  coPay: number;
+}
+
 interface BillingContentProps {
   entry: MultiEntry;
-  onComplete: () => void;
+  onComplete: (receipt: ReceiptInfo) => void;
 }
 
 function BillingStepBar({ step }: { step: BillingStep }) {
   const steps = [
-    { id: "cart",    label: "Services"  },
-    { id: "payment", label: "Payment"   },
-    { id: "invoice", label: "Invoice"   },
+    { id: "cart",    label: "Services" },
+    { id: "payment", label: "Payment"  },
   ] as const;
   const cur = steps.findIndex(s => s.id === step);
   return (
@@ -437,7 +448,7 @@ function BillingContent({ entry, onComplete }: BillingContentProps) {
   const [coPayAmt, setCoPayAmt]   = useState("");
   const [refNum, setRefNum]       = useState("");
 
-  const invoiceRef = useRef("INV-" + Math.random().toString(36).substr(2, 6).toUpperCase());
+  const invNo = useRef("INV-" + Math.random().toString(36).substr(2, 6).toUpperCase()).current;
 
   // ── Cart helpers ─────────────────────────────────────────────────
   const lineTotal = (l: CartLine) => Math.round(l.price * l.qty * (1 - l.discount / 100));
@@ -816,127 +827,19 @@ function BillingContent({ entry, onComplete }: BillingContentProps) {
       {/* Footer */}
       <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
         <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
-          disabled={!canProceed()} onClick={() => setStep("invoice")}>
-          <Receipt className="h-4 w-4" /> Generate Invoice
-        </Button>
-      </div>
-    </div>
-  );
-
-  // ─────────────────────────────────────────────────────────────────
-  // STEP: INVOICE
-  // ─────────────────────────────────────────────────────────────────
-  const now = new Date();
-  const invoiceDate = now.toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" });
-  const invoiceTime = now.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" });
-
-  return (
-    <div className="flex flex-col h-full">
-      <BillingStepBar step="invoice" />
-
-      <div className="flex-1 overflow-y-auto">
-        {/* Success header */}
-        <div className="flex flex-col items-center justify-center py-6 px-5 border-b border-slate-100">
-          <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
-            <CheckCircle2 className="h-6 w-6 text-green-600" />
-          </div>
-          <p className="text-base font-black text-slate-900">Invoice Generated</p>
-          <p className="text-xs text-slate-400 mt-0.5">{invoiceRef.current} · {invoiceDate} {invoiceTime}</p>
-        </div>
-
-        {/* Invoice body */}
-        <div className="px-5 py-4 space-y-4">
-          {/* Patient + token */}
-          <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0"><User className="h-4 w-4 text-slate-500" /></div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-slate-900 truncate">{entry.patient?.name ?? "Walk-in Patient"}</p>
-              {entry.patient && <p className="text-xs text-slate-400">{entry.patient.mrn} · {entry.patient.phone}</p>}
-            </div>
-            <span className="font-mono font-black text-[#4982CF] text-sm flex-shrink-0">{entry.tokenNumber}</span>
-          </div>
-
-          {/* Line items */}
-          <div className="rounded-xl border border-slate-100 overflow-hidden">
-            <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-50 border-b border-slate-100">
-              <p className="col-span-6 text-[10px] font-bold uppercase tracking-widest text-slate-400">Service</p>
-              <p className="col-span-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-center">Qty</p>
-              <p className="col-span-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Unit</p>
-              <p className="col-span-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Total</p>
-            </div>
-            {cart.map((line, i) => (
-              <div key={line.uid} className={`grid grid-cols-12 gap-2 px-4 py-2.5 ${i < cart.length - 1 ? "border-b border-slate-50" : ""}`}>
-                <div className="col-span-6">
-                  <p className="text-xs font-semibold text-slate-800 leading-tight">{line.name}</p>
-                  <p className="text-[10px] text-slate-400">{line.catName}{line.discount > 0 ? ` · ${line.discount}% off` : ""}</p>
-                </div>
-                <p className="col-span-2 text-xs text-slate-600 text-center self-center">{line.qty}</p>
-                <p className="col-span-2 text-xs text-slate-600 text-right self-center">{fmt(line.price)}</p>
-                <p className="col-span-2 text-xs font-bold text-slate-900 text-right self-center">{fmt(lineTotal(line))}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Totals */}
-          <div className="rounded-xl border border-slate-100 overflow-hidden">
-            {totalDiscount > 0 && (
-              <div className="flex justify-between px-4 py-2 border-b border-slate-50">
-                <span className="text-xs text-slate-500">Subtotal</span>
-                <span className="text-xs text-slate-700">{fmt(grandTotal + Math.round(totalDiscount))}</span>
-              </div>
-            )}
-            {totalDiscount > 0 && (
-              <div className="flex justify-between px-4 py-2 border-b border-slate-50">
-                <span className="text-xs text-amber-600 font-semibold">Discount</span>
-                <span className="text-xs text-amber-600 font-bold">−{fmt(Math.round(totalDiscount))}</span>
-              </div>
-            )}
-            <div className="flex justify-between items-center px-4 py-3 bg-[#4982CF]/5">
-              <span className="text-sm font-bold text-slate-700">Grand Total</span>
-              <span className="text-base font-black text-[#4982CF]">{fmt(grandTotal)}</span>
-            </div>
-          </div>
-
-          {/* Payment summary */}
-          <div className="rounded-xl border border-slate-100 px-4 py-3 space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Payment Summary</p>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-500 font-semibold">Method</span>
-              <span className="font-bold text-slate-800 capitalize">{payType === "card" ? "Card / Transfer" : payType}</span>
-            </div>
-            {payType === "cash" && (
-              <>
-                <div className="flex justify-between text-xs"><span className="text-slate-500 font-semibold">Cash Received</span><span className="font-bold text-slate-800">{fmt(cashReceived)}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-slate-500 font-semibold">Change Returned</span><span className="font-bold text-green-600">{fmt(change)}</span></div>
-              </>
-            )}
-            {payType === "welfare" && (
-              <>
-                <div className="flex justify-between text-xs"><span className="text-slate-500 font-semibold">Patient Co-Pay</span><span className="font-bold text-slate-800">{fmt(coPay)}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-slate-500 font-semibold">Welfare Covered</span><span className="font-bold text-green-600">{fmt(welfareCovered)}</span></div>
-              </>
-            )}
-            {(payType === "corporate" || payType === "insurance") && refNum && (
-              <div className="flex justify-between text-xs"><span className="text-slate-500 font-semibold">Reference No.</span><span className="font-bold text-slate-800">{refNum}</span></div>
-            )}
-          </div>
-
-          {/* Print / Save actions */}
-          <div className="flex gap-2">
-            <button className="flex-1 flex items-center justify-center gap-2 h-9 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all">
-              <Printer className="h-3.5 w-3.5" /> Print Invoice
-            </button>
-            <button className="flex-1 flex items-center justify-center gap-2 h-9 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all">
-              <Receipt className="h-3.5 w-3.5" /> Save as PDF
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
-        <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }} onClick={onComplete}>
-          <ArrowRight className="h-4 w-4" /> Advance to Vitals
+          disabled={!canProceed()}
+          onClick={() => onComplete({
+            tokenNumber: entry.tokenNumber,
+            patientName: entry.patient?.name ?? "Walk-in Patient",
+            total: grandTotal,
+            payType: payType!,
+            items: cart,
+            invNo,
+            refNum,
+            cashReceived: Number(cashRx) || 0,
+            coPay: Number(coPayAmt) || 0,
+          })}>
+          <CheckCircle2 className="h-4 w-4" /> Generate Invoice &amp; Advance to Vitals
         </Button>
       </div>
     </div>
@@ -959,6 +862,7 @@ export function FrontDeskUser() {
   const [drawerType, setDrawerType]   = useState<DrawerType>(null);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   const [toast, setToast]             = useState<string | null>(null);
+  const [receipt, setReceipt]         = useState<ReceiptInfo | null>(null);
 
   const billingEnabled = (() => {
     try {
@@ -1001,11 +905,51 @@ export function FrontDeskUser() {
     closeDrawer();
     showToastMsg(`Patient ${drawerType === "reassign" ? "reassigned" : "registered"} — ${patient.name}`);
   }
-  function handleBillingComplete() {
+  function handleBillingComplete(r: ReceiptInfo) {
     if (!activeEntryId) return;
     fdCompleteBilling(activeEntryId);
     closeDrawer();
-    showToastMsg("Invoice finalised — token advancing to Vitals");
+    setReceipt(r);
+  }
+
+  function printThermalReceipt(r: ReceiptInfo) {
+    const now = new Date();
+    const dt = now.toLocaleString("en-PK", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const payLabel: Record<string, string> = { cash: "Cash", card: "Card / Transfer", corporate: "Corporate", insurance: "Insurance", welfare: "Welfare" };
+    const lines = r.items.map(l => {
+      const sub = Math.round(l.price * l.qty * (1 - l.discount / 100));
+      return `${l.name.padEnd(28).slice(0, 28)}  x${l.qty}  Rs.${sub.toLocaleString("en-PK")}`;
+    }).join("\n");
+    const html = `<!DOCTYPE html><html><head><title>Receipt ${r.invNo}</title><style>
+      body { font-family: 'Courier New', monospace; font-size: 11px; width: 72mm; margin: 0 auto; padding: 4mm; }
+      .center { text-align: center; } .bold { font-weight: bold; }
+      .sep { border-top: 1px dashed #000; margin: 4px 0; }
+      .logo { font-size: 18px; font-weight: 900; letter-spacing: 1px; }
+      .total { font-size: 14px; font-weight: 900; }
+    </style></head><body>
+      <div class="center logo">NovaDoc</div>
+      <div class="center" style="font-size:9px">EHR · Billing Receipt</div>
+      <div class="sep"></div>
+      <div>Invoice: <span class="bold">${r.invNo}</span></div>
+      <div>Token:   <span class="bold">${r.tokenNumber}</span></div>
+      <div>Patient: <span class="bold">${r.patientName}</span></div>
+      <div>${dt}</div>
+      <div class="sep"></div>
+      <pre>${lines}</pre>
+      <div class="sep"></div>
+      ${r.items.reduce((s, l) => s + l.price * l.qty * l.discount / 100, 0) > 0 ? `<div>Discount: -Rs.${Math.round(r.items.reduce((s,l)=>s+(l.price*l.qty*l.discount/100),0)).toLocaleString("en-PK")}</div>` : ""}
+      <div class="total">TOTAL: Rs.${r.total.toLocaleString("en-PK")}</div>
+      <div>Payment: <span class="bold">${payLabel[r.payType] ?? r.payType}</span></div>
+      ${r.payType === "cash" && r.cashReceived > r.total ? `<div>Cash Rcvd: Rs.${r.cashReceived.toLocaleString("en-PK")}</div><div>Change: Rs.${(r.cashReceived - r.total).toLocaleString("en-PK")}</div>` : ""}
+      ${r.payType === "welfare" ? `<div>Co-Pay: Rs.${r.coPay.toLocaleString("en-PK")}</div><div>Welfare: Rs.${(r.total - r.coPay).toLocaleString("en-PK")}</div>` : ""}
+      ${r.refNum ? `<div>Ref: ${r.refNum}</div>` : ""}
+      <div class="sep"></div>
+      <div class="center" style="font-size:9px">Thank you · Please proceed to Vitals</div>
+      <div class="center" style="font-size:9px">novadoc.health</div>
+      <script>window.onload=function(){ window.print(); window.close(); }</script>
+    </body></html>`;
+    const w = window.open("", "_blank", "width=340,height=600");
+    if (w) { w.document.write(html); w.document.close(); }
   }
   function handleSkip(id: string) { fdSkip(id); closeDrawer(); showToastMsg("Token skipped"); }
   function handleRecall(id: string, tokenNum: string) { fdRecall(id); showToastMsg(`Token ${tokenNum} recalled to queue`); }
@@ -1253,7 +1197,65 @@ export function FrontDeskUser() {
         </RightDrawer>
       )}
 
-      {/* TOAST */}
+      {/* RECEIPT TOAST CARD */}
+      {receipt && (
+        <div className="fixed bottom-6 right-6 z-[60] w-80 rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-3">
+          {/* Green header bar */}
+          <div className="h-1.5 w-full bg-green-500" />
+          <div className="px-4 pt-4 pb-3">
+            {/* Logo + title row */}
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-[#4982CF] flex items-center justify-center flex-shrink-0">
+                  <span className="text-white font-black text-xs">N</span>
+                </div>
+                <div>
+                  <p className="text-xs font-black text-slate-900 leading-tight">NovaDoc</p>
+                  <p className="text-[10px] text-green-600 font-bold">Receipt Ready · Invoice Finalized</p>
+                </div>
+              </div>
+              <button onClick={() => setReceipt(null)}
+                className="h-6 w-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center flex-shrink-0 transition-colors">
+                <X className="h-3 w-3 text-slate-500" />
+              </button>
+            </div>
+
+            {/* Token + patient */}
+            <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 mb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-black text-slate-900">{receipt.patientName}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{receipt.invNo}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-mono font-black text-[#4982CF] text-base">{receipt.tokenNumber}</p>
+                  <p className="text-xs font-bold text-slate-900">{fmt(receipt.total)}</p>
+                </div>
+              </div>
+              <div className="mt-2 pt-2 border-t border-slate-200 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                <p className="text-[10px] font-semibold text-slate-500">Advanced to Vitals queue</p>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => printThermalReceipt(receipt)}
+                className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl bg-[#4982CF] text-white text-xs font-bold hover:bg-blue-600 transition-colors">
+                <Printer className="h-3.5 w-3.5" /> Print Receipt
+              </button>
+              <button
+                onClick={() => printThermalReceipt(receipt)}
+                className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors">
+                <Receipt className="h-3.5 w-3.5" /> Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SIMPLE TOAST */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-[60] rounded-xl bg-slate-900 text-white px-4 py-2.5 text-sm font-semibold shadow-xl animate-in slide-in-from-bottom-2">
           {toast}
