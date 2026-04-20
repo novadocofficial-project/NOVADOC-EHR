@@ -974,12 +974,6 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
           )}
           <Button
             variant="outline"
-            className="h-9 px-4 text-xs font-bold gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 flex-shrink-0"
-            onClick={() => onSaveAndClose ? onSaveAndClose() : onClose()}>
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Save Draft & Close
-          </Button>
-          <Button
-            variant="outline"
             className="h-9 px-4 text-xs font-bold gap-2 border-slate-200 text-slate-500 hover:bg-slate-50 flex-shrink-0">
             <Printer className="h-3.5 w-3.5" /> Print to Review
           </Button>
