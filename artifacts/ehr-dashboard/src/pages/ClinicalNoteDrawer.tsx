@@ -58,8 +58,8 @@ const HPI_OPTIONS = [
 
 // ─── Timer hook ────────────────────────────────────────────────────────────────
 
-function useTimer() {
-  const [seconds,  setSeconds]  = useState(0);
+function useTimer(initialSeconds = 0) {
+  const [seconds,  setSeconds]  = useState(initialSeconds);
   const [running,  setRunning]  = useState(true);
   const ref = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -188,14 +188,16 @@ function TimerPill({ label, timer }: { label: string; timer: ReturnType<typeof u
 
 interface ClinicalNoteDrawerProps {
   patientName: string;
+  faceSheetOpenedAt?: number;
   onClose: () => void;
 }
 
-export function ClinicalNoteDrawer({ patientName, onClose }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: ClinicalNoteDrawerProps) {
   const [fullscreen, setFullscreen] = useState(false);
   const [note, setNote]             = useState<NoteState>(EMPTY_NOTE);
   const [hpiTags, setHpiTags]       = useState<string[]>([]);
-  const patientTimer   = useTimer();
+  const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
+  const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
   const progress = calcProgress(note);
 

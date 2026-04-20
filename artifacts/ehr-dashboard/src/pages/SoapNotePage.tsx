@@ -149,9 +149,10 @@ function ModuleDrawer({ label, Icon, fullscreen, onToggleFullscreen, onClose }: 
 interface SoapNotePageProps {
   entry: MultiEntry;
   onBack: () => void;
+  faceSheetOpenedAt?: number;
 }
 
-export function SoapNotePage({ entry, onBack }: SoapNotePageProps) {
+export function SoapNotePage({ entry, onBack, faceSheetOpenedAt }: SoapNotePageProps) {
   const [openDrawer, setOpenDrawer]             = useState<string | null>(null);
   const [drawerFullscreen, setDrawerFullscreen] = useState(false);
   const [showNoteDrawer, setShowNoteDrawer]     = useState(false);
@@ -440,6 +441,7 @@ export function SoapNotePage({ entry, onBack }: SoapNotePageProps) {
       {showNoteDrawer && (
         <ClinicalNoteDrawer
           patientName={name}
+          faceSheetOpenedAt={faceSheetOpenedAt}
           onClose={() => setShowNoteDrawer(false)}
         />
       )}

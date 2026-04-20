@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   ArrowLeft, FileEdit, AlertTriangle, Eye, ChevronRight,
   Activity, Heart, Thermometer, Droplets, User, Phone, MapPin,
@@ -259,7 +259,8 @@ export function PatientFaceSheet({
   const address = "House 14, Street 7, DHA Phase 3, Lahore";
 
   // ── SOAP Note page navigation ─────────────────────────────────────────────
-  const [showSoapPage, setShowSoapPage] = useState(false);
+  const [showSoapPage, setShowSoapPage]   = useState(false);
+  const faceSheetOpenedAt                 = useRef(Date.now());
 
   // ── No-SOAP modal state ────────────────────────────────────────────────────
   const [showNoSoapModal, setShowNoSoapModal] = useState(false);
@@ -299,6 +300,7 @@ export function PatientFaceSheet({
       <SoapNotePage
         entry={entry}
         onBack={() => setShowSoapPage(false)}
+        faceSheetOpenedAt={faceSheetOpenedAt.current}
       />
     );
   }
