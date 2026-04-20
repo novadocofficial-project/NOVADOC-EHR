@@ -1,9 +1,10 @@
+import { useState } from "react";
 import {
   ArrowLeft, FileEdit, AlertTriangle, Eye, ChevronRight,
   Activity, Heart, Thermometer, Droplets, User, Phone, MapPin,
   CalendarDays, Stethoscope, Pill, FlaskConical, FileText,
   FolderOpen, ClipboardList, CheckCircle2, Syringe, Zap,
-  ArrowUpRight, Scissors, ShieldCheck, ExternalLink,
+  ArrowUpRight, Scissors, ShieldCheck, ExternalLink, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
@@ -226,13 +227,28 @@ function VitalsTooltip({ active, payload, label }: any) {
 
 // ─── Main Face Sheet ──────────────────────────────────────────────────────────
 
+const NO_SOAP_REASONS = [
+  "Patient came without any complaint",
+  "Follow-up visit, no new findings",
+  "Patient refused consultation",
+  "Other",
+] as const;
+
+const NEXT_APPT_OPTIONS = ["1 Day", "3 Days", "1 Week", "1 Month", "Custom date"] as const;
+
 interface PatientFaceSheetProps {
   entry: MultiEntry;
+  soapNoteCreated: boolean;
   onBack: () => void;
+  onSoapNoteClick: (id: string) => void;
   onCompleteConsultation: (id: string) => void;
+  onCompleteWithoutSoap: (id: string, reason: string, nextAppt: string) => void;
 }
 
-export function PatientFaceSheet({ entry, onBack, onCompleteConsultation }: PatientFaceSheetProps) {
+export function PatientFaceSheet({
+  entry, soapNoteCreated, onBack,
+  onSoapNoteClick, onCompleteConsultation, onCompleteWithoutSoap,
+}: PatientFaceSheetProps) {
   const p = entry.patient;
   const name    = p?.name  ?? "Walk-in Patient";
   const mrn     = p?.mrn   ?? "—";
@@ -240,6 +256,38 @@ export function PatientFaceSheet({ entry, onBack, onCompleteConsultation }: Pati
   const phone   = p?.phone ?? "—";
   const gender  = p?.gender === "F" ? "Female" : "Male";
   const address = "House 14, Street 7, DHA Phase 3, Lahore";
+
+  // ── No-SOAP modal state ────────────────────────────────────────────────────
+  const [showNoSoapModal, setShowNoSoapModal] = useState(false);
+  const [noSoapReason,    setNoSoapReason]    = useState("");
+  const [noSoapOtherText, setNoSoapOtherText] = useState("");
+  const [noSoapNextAppt,  setNoSoapNextAppt]  = useState("");
+  const [noSoapCustomDate, setNoSoapCustomDate] = useState("");
+
+  const noSoapReasonFilled =
+    noSoapReason !== "" &&
+    (noSoapReason !== "Other" || noSoapOtherText.trim() !== "") &&
+    (noSoapNextAppt !== "" && (noSoapNextAppt !== "Custom date" || noSoapCustomDate !== ""));
+
+  function handleCompleteClick() {
+    if (soapNoteCreated) {
+      onCompleteConsultation(entry.id);
+    } else {
+      setNoSoapReason("");
+      setNoSoapOtherText("");
+      setNoSoapNextAppt("");
+      setNoSoapCustomDate("");
+      setShowNoSoapModal(true);
+    }
+  }
+
+  function confirmNoSoap() {
+    if (!noSoapReasonFilled) return;
+    const reason = noSoapReason === "Other" ? noSoapOtherText.trim() : noSoapReason;
+    const appt   = noSoapNextAppt === "Custom date" ? noSoapCustomDate : noSoapNextAppt;
+    setShowNoSoapModal(false);
+    onCompleteWithoutSoap(entry.id, reason, appt);
+  }
 
   return (
     <div className="flex h-screen flex-col bg-slate-50 overflow-hidden">
@@ -257,15 +305,22 @@ export function PatientFaceSheet({ entry, onBack, onCompleteConsultation }: Pati
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Consultation Face Sheet</span>
           <div className="flex-1" />
           {/* SOAP Note Button */}
-          <Button
-            variant="outline"
-            className="h-9 px-4 text-sm font-bold gap-2 border-[#4982CF] text-[#4982CF] hover:bg-blue-50">
-            <FileEdit className="h-4 w-4" /> SOAP Note
-          </Button>
+          {soapNoteCreated ? (
+            <div className="flex items-center gap-2 h-9 px-4 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold">
+              <CheckCircle2 className="h-4 w-4" /> SOAP Note Created
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="h-9 px-4 text-sm font-bold gap-2 border-[#4982CF] text-[#4982CF] hover:bg-blue-50"
+              onClick={() => onSoapNoteClick(entry.id)}>
+              <FileEdit className="h-4 w-4" /> SOAP Note
+            </Button>
+          )}
           <Button
             className="h-9 px-4 text-sm font-bold gap-2 text-white"
             style={{ backgroundColor: ACCENT }}
-            onClick={() => onCompleteConsultation(entry.id)}>
+            onClick={handleCompleteClick}>
             <CheckCircle2 className="h-4 w-4" /> Complete Consultation
           </Button>
         </div>
@@ -559,6 +614,96 @@ export function PatientFaceSheet({ entry, onBack, onCompleteConsultation }: Pati
 
         </div>
       </div>
+
+      {/* ── No SOAP Note Modal ───────────────────────────────────────────────── */}
+      {showNoSoapModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div>
+                <p className="text-base font-black text-slate-900">No SOAP Note Created</p>
+                <p className="text-xs text-slate-400 mt-0.5">Please provide a reason before completing the consultation.</p>
+              </div>
+              <button onClick={() => setShowNoSoapModal(false)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="px-5 py-4 space-y-4">
+
+              {/* Reason */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Reason <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={noSoapReason}
+                  onChange={e => { setNoSoapReason(e.target.value); setNoSoapOtherText(""); }}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent"
+                  style={{ ["--tw-ring-color" as any]: ACCENT }}>
+                  <option value="">Select a reason…</option>
+                  {NO_SOAP_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+                {noSoapReason === "Other" && (
+                  <textarea
+                    value={noSoapOtherText}
+                    onChange={e => setNoSoapOtherText(e.target.value)}
+                    placeholder="Describe the reason…"
+                    rows={3}
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 focus:border-transparent"
+                    style={{ ["--tw-ring-color" as any]: ACCENT }}
+                  />
+                )}
+              </div>
+
+              {/* Next appointment */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Schedule Next Appointment <span className="text-red-500">*</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {NEXT_APPT_OPTIONS.map(opt => (
+                    <button
+                      key={opt}
+                      onClick={() => { setNoSoapNextAppt(opt); setNoSoapCustomDate(""); }}
+                      className="px-3 py-1.5 rounded-full text-xs font-bold border transition-colors"
+                      style={noSoapNextAppt === opt
+                        ? { backgroundColor: ACCENT, borderColor: ACCENT, color: "#fff" }
+                        : { backgroundColor: "#f8fafc", borderColor: "#e2e8f0", color: "#475569" }}>
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+                {noSoapNextAppt === "Custom date" && (
+                  <input
+                    type="date"
+                    value={noSoapCustomDate}
+                    onChange={e => setNoSoapCustomDate(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent"
+                    style={{ ["--tw-ring-color" as any]: ACCENT }}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Modal footer */}
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-100">
+              <Button variant="outline" className="h-9 px-4 text-sm" onClick={() => setShowNoSoapModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={!noSoapReasonFilled}
+                className="h-9 px-5 text-sm font-bold text-white gap-2 disabled:opacity-40"
+                style={{ backgroundColor: ACCENT }}
+                onClick={confirmNoSoap}>
+                <CheckCircle2 className="h-4 w-4" /> Confirm & Complete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

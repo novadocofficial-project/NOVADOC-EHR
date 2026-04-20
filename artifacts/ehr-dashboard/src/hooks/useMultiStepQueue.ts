@@ -322,6 +322,12 @@ export function useMultiStepQueue() {
     }));
   }
 
+  function docMarkComplete(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, status: "completed", callTimestamp: null }
+    ));
+  }
+
   function docSkip(id: string) {
     setQueue(prev => prev.map(e =>
       e.id !== id ? e : { ...e, skipped: true, callTimestamp: null, status: "waiting" }
@@ -349,7 +355,7 @@ export function useMultiStepQueue() {
     // nursing
     nurseCall, nurseTimerExpire, nurseAtCounter, nurseCompleteVitals, nurseSkip, nurseRecall,
     // doctor
-    docCall, docTimerExpire, docAtCounter, docCompleteConsultation, docSkip, docRecall,
+    docCall, docTimerExpire, docAtCounter, docCompleteConsultation, docMarkComplete, docSkip, docRecall,
     addEntry,
   };
 }

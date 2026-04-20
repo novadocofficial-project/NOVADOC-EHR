@@ -26,13 +26,22 @@ function getSecsLeft(ts: number | null): number {
 export function DoctorUser() {
   const {
     queue,
-    docCall, docTimerExpire, docAtCounter, docCompleteConsultation, docSkip, docRecall,
+    docCall, docTimerExpire, docAtCounter,
+    docCompleteConsultation, docMarkComplete, docSkip, docRecall,
   } = useMultiStepQueue();
 
   const { toast } = useToast();
   const [tick, setTick] = useState(0);
   const [showSkipped, setShowSkipped] = useState(false);
   const [faceSheetEntry, setFaceSheetEntry] = useState<MultiEntry | null>(null);
+
+  // Tracks which token IDs had SOAP Note clicked this session
+  const [soapNoteDone, setSoapNoteDone] = useState<Set<string>>(new Set());
+
+  // Skip-reason modal state
+  const [skipModalId,    setSkipModalId]    = useState<string | null>(null);
+  const [skipReason,     setSkipReason]     = useState("");
+  const [skipOtherText,  setSkipOtherText]  = useState("");
 
   useEffect(() => {
     const t = setInterval(() => setTick(p => p + 1), 1000);
@@ -70,30 +79,57 @@ export function DoctorUser() {
     toast({ title: "Token called — 30 second window started" });
   }
 
+  function handleSoapNoteClick(id: string) {
+    setSoapNoteDone(prev => new Set([...prev, id]));
+    toast({ title: "SOAP Note marked as created" });
+  }
+
   function handleConsultation(entry: MultiEntry) {
     docAtCounter(entry.id);
     setFaceSheetEntry(entry);
     toast({ title: `${entry.tokenNumber} is now with the doctor` });
   }
 
-  function handleCompleteConsultation(id: string, tokenNum: string) {
-    docCompleteConsultation(id);
-    setFaceSheetEntry(null);
-    toast({ title: `Consultation complete — ${tokenNum} advanced to next step` });
-  }
-
   function handleOpenFaceSheet(entry: MultiEntry) {
     setFaceSheetEntry(entry);
   }
 
+  // With SOAP note — advance to next step
   function handleFaceSheetComplete(id: string) {
     const entry = queue.find(e => e.id === id);
-    handleCompleteConsultation(id, entry?.tokenNumber ?? id);
+    docCompleteConsultation(id);
+    setFaceSheetEntry(null);
+    toast({ title: `Consultation complete — ${entry?.tokenNumber ?? id} advanced to next step` });
   }
 
-  function handleSkip(id: string) {
-    docSkip(id);
-    toast({ title: "Token skipped" });
+  // Without SOAP note — mark as complete, don't advance
+  function handleCompleteWithoutSoap(id: string, reason: string, nextAppt: string) {
+    const entry = queue.find(e => e.id === id);
+    docMarkComplete(id);
+    setFaceSheetEntry(null);
+    toast({ title: `${entry?.tokenNumber ?? id} marked complete · Next appt: ${nextAppt}` });
+  }
+
+  function handleSkipClick(id: string) {
+    // If no SOAP note for this token, require a reason via modal
+    if (!soapNoteDone.has(id)) {
+      setSkipReason("");
+      setSkipOtherText("");
+      setSkipModalId(id);
+    } else {
+      docSkip(id);
+      toast({ title: "Token skipped" });
+    }
+  }
+
+  function confirmSkip() {
+    if (!skipModalId) return;
+    const reasonText = skipReason === "Other" ? skipOtherText.trim() : skipReason;
+    if (!reasonText) return;
+    docMarkComplete(skipModalId);
+    const entry = queue.find(e => e.id === skipModalId);
+    setSkipModalId(null);
+    toast({ title: `${entry?.tokenNumber ?? skipModalId} marked complete (skipped — no SOAP note)` });
   }
 
   function handleRecall(id: string, tokenNum: string) {
@@ -101,14 +137,21 @@ export function DoctorUser() {
     toast({ title: `Token ${tokenNum} recalled to queue` });
   }
 
+  const skipReasonFilled =
+    skipReason !== "" &&
+    (skipReason !== "Other" || skipOtherText.trim() !== "");
+
   // ── Face Sheet full-page view ─────────────────────────────────────────────
   if (faceSheetEntry) {
     const liveEntry = queue.find(e => e.id === faceSheetEntry.id) ?? faceSheetEntry;
     return (
       <PatientFaceSheet
         entry={liveEntry}
+        soapNoteCreated={soapNoteDone.has(liveEntry.id)}
         onBack={() => setFaceSheetEntry(null)}
+        onSoapNoteClick={handleSoapNoteClick}
         onCompleteConsultation={handleFaceSheetComplete}
+        onCompleteWithoutSoap={handleCompleteWithoutSoap}
       />
     );
   }
@@ -208,14 +251,8 @@ export function DoctorUser() {
                       </Button>
                       <Button
                         variant="outline" size="sm"
-                        className="h-8 px-3 text-xs border-slate-200 hover:border-[#4982CF] hover:text-[#4982CF] gap-1.5"
-                        onClick={() => handleCompleteConsultation(atCounterEntry.id, atCounterEntry.tokenNumber)}>
-                        <CheckCircle2 className="h-3 w-3" /> Complete
-                      </Button>
-                      <Button
-                        variant="outline" size="sm"
                         className="border-red-200 text-red-500 hover:bg-red-50 text-xs"
-                        onClick={() => handleSkip(atCounterEntry.id)}>
+                        onClick={() => handleSkipClick(atCounterEntry.id)}>
                         <SkipForward className="h-3 w-3 mr-1" /> Skip
                       </Button>
                     </div>
@@ -384,6 +421,67 @@ export function DoctorUser() {
           )}
         </div>
       </div>
+      {/* ── Skip-Reason Modal ────────────────────────────────────────────────── */}
+      {skipModalId && (() => {
+        const skipEntry = queue.find(e => e.id === skipModalId);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <div>
+                  <p className="text-base font-black text-slate-900">Skip Token — Reason Required</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {skipEntry?.tokenNumber} · {skipEntry?.patient?.name ?? "Walk-in Patient"} · No SOAP note created
+                  </p>
+                </div>
+                <button onClick={() => setSkipModalId(null)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="px-5 py-4">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Reason for skipping <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={skipReason}
+                  onChange={e => { setSkipReason(e.target.value); setSkipOtherText(""); }}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#4982CF] focus:border-transparent">
+                  <option value="">Select a reason…</option>
+                  <option>Patient came without any complaint</option>
+                  <option>Follow-up visit, no new findings</option>
+                  <option>Patient refused consultation</option>
+                  <option>Other</option>
+                </select>
+                {skipReason === "Other" && (
+                  <textarea
+                    value={skipOtherText}
+                    onChange={e => setSkipOtherText(e.target.value)}
+                    placeholder="Describe the reason…"
+                    rows={3}
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 focus:ring-[#4982CF] focus:border-transparent"
+                  />
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-100">
+                <Button variant="outline" className="h-9 px-4 text-sm" onClick={() => setSkipModalId(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  disabled={!skipReasonFilled}
+                  className="h-9 px-5 text-sm font-bold text-white gap-2 disabled:opacity-40 bg-red-500 hover:bg-red-600"
+                  onClick={confirmSkip}>
+                  <SkipForward className="h-4 w-4" /> Confirm Skip
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
