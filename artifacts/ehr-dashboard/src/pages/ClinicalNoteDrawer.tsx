@@ -14,6 +14,7 @@ import { CoughHistoryTemplate, CoughSummary, COUGH_EMPTY } from "@/pages/CoughHi
 import type { CoughState } from "@/pages/CoughHistoryTemplate";
 import { AllergySelector } from "@/pages/AllergySelector";
 import type { AllergyEntry } from "@/pages/AllergySelector";
+import { RosSystemSelector, PeChipsPanel, PeSystemDrawer } from "@/pages/RosPeSection";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -29,8 +30,7 @@ interface NoteState {
   psh:             string;
   fh:              string;
   sh:              string;
-  ros:             string;
-  pe:              string;
+  ros:             string[];
   pocLabs:         string;
   otherOrders:     string;
   visitNote:       string;
@@ -41,7 +41,7 @@ interface NoteState {
 const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
   pmh: "", psh: "", fh: "", sh: "",
-  ros: "", pe: "", pocLabs: "",
+  ros: [], pocLabs: "",
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
 };
@@ -435,7 +435,7 @@ function useTimer(initialSeconds = 0) {
 function calcProgress(note: NoteState): number {
   const fields: (string | string[] | AllergyEntry[])[] = [
     note.chiefComplaints, note.hpi, note.allergies,
-    note.pmh, note.ros, note.pe,
+    note.pmh, note.ros,
     note.planTags, note.visitNote, note.followUpDate,
   ];
   const filled = fields.filter(f => (Array.isArray(f) ? f.length > 0 : (f ?? "").trim() !== "")).length;
@@ -546,6 +546,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
   const [hpiDoneComplaints, setHpiDoneComplaints] = useState<string[]>([]);
   const [hpiSavedData,      setHpiSavedData]      = useState<Record<string, CoughState>>({});
+  const [peOpenSystem,      setPeOpenSystem]      = useState<string | null>(null);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -763,24 +764,30 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
             </div>
           </Section>
 
-          {/* 5. ROS + PE (2-col) */}
-          <Section title="Review of Systems & Physical Examination" icon={Stethoscope} color="#0ea5e9"
-            filled={note.ros.trim() !== "" || note.pe.trim() !== ""}
-            onImport={() => {
-              handleImport("ros", "General: No fever, no chills\nCardiac: No palpitations\nRespirator: Mild cough");
-              handleImport("pe", "BP 121/77, Pulse 76 bpm\nChest: Clear to auscultation\nAbdomen: Soft, non-tender");
-            }}>
-            <div className="grid grid-cols-2 gap-3">
-              {([
-                ["Review of Systems", "ros", "System-by-system review…"],
-                ["Physical Examination", "pe", "Examination findings…"],
-              ] as [string, keyof NoteState, string][]).map(([label, key, placeholder]) => (
-                <div key={key}>
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5">{label}</p>
-                  <NoteField value={note[key] as string} onChange={v => set(key, v)} placeholder={placeholder} rows={3} />
-                </div>
-              ))}
-            </div>
+          {/* 5. ROS */}
+          <Section
+            title="Review of Systems"
+            icon={Stethoscope} color="#0ea5e9"
+            filled={note.ros.length > 0}>
+            <RosSystemSelector
+              selected={note.ros}
+              onChange={systems => {
+                set("ros", systems);
+                if (peOpenSystem && !systems.includes(peOpenSystem)) setPeOpenSystem(null);
+              }}
+            />
+          </Section>
+
+          {/* 5b. Physical Examination (auto-synced from ROS) */}
+          <Section
+            title="Physical Examination"
+            icon={Stethoscope} color="#06b6d4"
+            filled={note.ros.length > 0}>
+            <PeChipsPanel
+              systems={note.ros}
+              onOpenSystem={id => setPeOpenSystem(prev => prev === id ? null : id)}
+              openSystemId={peOpenSystem}
+            />
           </Section>
 
           {/* 6. Point of Care Labs */}
@@ -900,6 +907,15 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
             savedData={hpiSavedData[hpiOpenComplaint]}
             onSave={state => handleHpiSave(hpiOpenComplaint, state)}
             onClose={() => setHpiOpenComplaint(null)}
+          />
+        )}
+
+        {/* ── PE System Drawer (slides in from right within the panel) ── */}
+        {peOpenSystem && (
+          <PeSystemDrawer
+            key={peOpenSystem}
+            systemId={peOpenSystem}
+            onClose={() => setPeOpenSystem(null)}
           />
         )}
 

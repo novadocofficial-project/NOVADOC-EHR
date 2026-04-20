@@ -1,0 +1,420 @@
+import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
+import {
+  Search, Plus, X, ChevronDown, ChevronLeft,
+  Stethoscope, CheckCircle2, ClipboardCheck,
+} from "lucide-react";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const ACCENT_PE = "#0ea5e9";
+
+// ─── Body Systems ─────────────────────────────────────────────────────────────
+
+export interface BodySystem {
+  id:    string;
+  label: string;
+  abbr:  string;
+}
+
+export const BODY_SYSTEMS: BodySystem[] = [
+  { id: "general",          label: "General",               abbr: "GEN"  },
+  { id: "heent",            label: "HEENT",                 abbr: "HENT" },
+  { id: "cardiovascular",   label: "Cardiovascular",        abbr: "CVS"  },
+  { id: "respiratory",      label: "Respiratory",           abbr: "RESP" },
+  { id: "gastrointestinal", label: "Gastrointestinal",      abbr: "GIT"  },
+  { id: "genitourinary",    label: "Genitourinary",         abbr: "GUS"  },
+  { id: "musculoskeletal",  label: "Musculoskeletal",       abbr: "MSK"  },
+  { id: "neurological",     label: "Neurological",          abbr: "NEURO"},
+  { id: "dermatology",      label: "Dermatology",           abbr: "DERM" },
+  { id: "psychiatric",      label: "Psychiatric",           abbr: "PSYC" },
+  { id: "endocrine",        label: "Endocrine",             abbr: "ENDO" },
+  { id: "hematologic",      label: "Hematologic",           abbr: "HEME" },
+  { id: "immunologic",      label: "Immunologic / Allergic",abbr: "IMM"  },
+];
+
+// ─── PE Templates (per system) ────────────────────────────────────────────────
+
+const PE_TEMPLATES: Record<string, { section: string; items: string[] }[]> = {
+  general: [
+    { section: "General Appearance",   items: ["Level of alertness / distress", "Build & nutritional status", "Hygiene & grooming"] },
+    { section: "Vital Signs",          items: ["Blood Pressure (mmHg)", "Heart Rate (bpm)", "Respiratory Rate (/min)", "Temperature (°C)", "SpO₂ (%)"] },
+    { section: "Anthropometrics",      items: ["Weight (kg)", "Height (cm)", "BMI"] },
+  ],
+  heent: [
+    { section: "Head & Scalp",         items: ["Head shape", "Scalp inspection", "Facial symmetry"] },
+    { section: "Eyes",                 items: ["Pupils (size / reactivity / symmetry)", "Extraocular movements", "Conjunctiva & sclera", "Fundoscopy (if done)"] },
+    { section: "Ears",                 items: ["External canal", "Tympanic membranes", "Hearing (gross test)"] },
+    { section: "Nose",                 items: ["Mucosa / septum", "Turbinates", "Discharge / polyps"] },
+    { section: "Throat & Mouth",       items: ["Lips & oral mucosa", "Tonsils & pharynx", "Uvula & palate", "Tongue & teeth"] },
+  ],
+  cardiovascular: [
+    { section: "Inspection",           items: ["Precordial bulge / pulsations", "Peripheral cyanosis / clubbing"] },
+    { section: "Palpation",            items: ["Apex beat (location)", "Heaves / thrills"] },
+    { section: "Auscultation",         items: ["Heart rate & rhythm", "S1 / S2 quality", "Extra sounds (S3 / S4)", "Murmurs (grade / location / radiation)"] },
+    { section: "Peripheral",           items: ["JVP estimation", "Peripheral pulses (radial / carotid / femoral / pedal)", "Capillary refill time", "Pedal / peripheral edema"] },
+  ],
+  respiratory: [
+    { section: "Inspection",           items: ["Respiratory rate & pattern", "Chest shape / symmetry", "Use of accessory muscles", "Intercostal recession"] },
+    { section: "Palpation",            items: ["Tracheal position", "Chest expansion (bilateral)", "Vocal fremitus"] },
+    { section: "Percussion",           items: ["Right lung fields", "Left lung fields", "Diaphragm level"] },
+    { section: "Auscultation",         items: ["Breath sounds (bilateral)", "Adventitious sounds (crackles / wheeze / rub)", "Air entry (upper / lower zones)"] },
+  ],
+  gastrointestinal: [
+    { section: "Inspection",           items: ["Abdominal contour", "Visible peristalsis / pulsations", "Scars / distension / caput medusae"] },
+    { section: "Auscultation",         items: ["Bowel sounds (character)", "Bruits"] },
+    { section: "Palpation",            items: ["Superficial tenderness / guarding", "Deep palpation findings", "Liver (size / edge)", "Spleen palpation", "Kidneys / other masses"] },
+    { section: "Percussion",           items: ["Liver dullness span", "Splenic dullness", "Shifting dullness / fluid thrill"] },
+    { section: "Other",                items: ["PR examination (if applicable)", "Hernia orifices"] },
+  ],
+  genitourinary: [
+    { section: "Bladder",              items: ["Suprapubic fullness / tenderness", "Bladder percussion"] },
+    { section: "Kidneys",              items: ["Renal angle (CVA) tenderness — Right", "Renal angle (CVA) tenderness — Left", "Ballotable kidneys"] },
+    { section: "External Genitalia",   items: ["External inspection (if applicable)", "Scrotal / penile / vulvar findings"] },
+  ],
+  musculoskeletal: [
+    { section: "Gait & Posture",       items: ["Gait pattern", "Posture & stance", "Station (Romberg)"] },
+    { section: "Joints",               items: ["Swelling / warmth / erythema", "Deformity / malalignment", "Tenderness on palpation"] },
+    { section: "Range of Motion",      items: ["Upper limbs (shoulder / elbow / wrist / fingers)", "Lower limbs (hip / knee / ankle / toes)", "Spine (flexion / extension / lateral)"] },
+    { section: "Muscle Strength",      items: ["Upper limb grip strength", "Lower limb power", "Muscle bulk / atrophy / fasciculations"] },
+  ],
+  neurological: [
+    { section: "Consciousness",        items: ["GCS (E / V / M)", "Orientation (person / place / time)"] },
+    { section: "Cranial Nerves",       items: ["CN I–II (smell / vision / fields)", "CN III–VI (pupils / EOMs / ptosis)", "CN VII (facial symmetry)", "CN VIII (hearing / balance)", "CN IX–X (gag / palate)", "CN XI–XII (SCM / tongue)"] },
+    { section: "Motor",                items: ["Tone (upper / lower)", "Power (upper / lower limbs)", "Abnormal movements (tremor / chorea)"] },
+    { section: "Sensory",              items: ["Light touch", "Pain (pinprick)", "Vibration sense", "Proprioception"] },
+    { section: "Reflexes",             items: ["Biceps / triceps / supinator", "Knee / ankle jerk", "Plantar reflex (Babinski)"] },
+    { section: "Cerebellar",           items: ["Finger-nose test", "Heel-shin test", "Dysdiadochokinesia", "Nystagmus"] },
+  ],
+  dermatology: [
+    { section: "Skin",                 items: ["Color (pallor / jaundice / cyanosis / erythema)", "Texture & turgor", "Moisture (dry / sweaty)"] },
+    { section: "Lesions",              items: ["Type (macule / papule / plaque / vesicle / etc.)", "Distribution & pattern", "Color & borders"] },
+    { section: "Nails & Hair",         items: ["Nail changes (clubbing / pitting / onycholysis)", "Hair distribution & texture", "Alopecia"] },
+    { section: "Mucous Membranes",     items: ["Oral mucosa hydration", "Conjunctival pallor"] },
+  ],
+  psychiatric: [
+    { section: "Appearance & Behavior",items: ["Appearance & personal hygiene", "Behavior & attitude", "Psychomotor activity (agitation / retardation)"] },
+    { section: "Speech",               items: ["Rate / volume / tone", "Fluency & coherence"] },
+    { section: "Mood & Affect",        items: ["Subjective mood (patient's report)", "Objective affect (examiner's observation)", "Affect range & appropriateness"] },
+    { section: "Thought",              items: ["Thought form (logical / tangential / flight of ideas)", "Thought content (delusions / obsessions / SI/HI)"] },
+    { section: "Cognition & Insight",  items: ["Orientation", "Memory (recent / remote)", "Insight into illness", "Judgment"] },
+  ],
+  endocrine: [
+    { section: "Thyroid",              items: ["Inspection (size / symmetry / swelling)", "Palpation (nodules / goitre grade)", "Auscultation for bruit"] },
+    { section: "Metabolic Signs",      items: ["Skin changes (acanthosis / diabetic dermopathy)", "Body habitus (truncal obesity / Cushingoid)", "Hair & nail changes"] },
+    { section: "Peripheral",           items: ["Peripheral neuropathy signs", "Foot inspection (diabetic foot)", "Retinal changes (if fundoscopy done)"] },
+  ],
+  hematologic: [
+    { section: "Lymph Nodes",          items: ["Cervical / submandibular", "Axillary", "Inguinal", "Epitrochlear / popliteal"] },
+    { section: "Organomegaly",         items: ["Spleen size (enlarged / just palpable / massive)", "Liver (if relevant)", "Testicular masses (if applicable)"] },
+    { section: "Signs of Anemia / Bleeding", items: ["Pallor (conjunctival / palmar)", "Jaundice / icterus", "Purpura / petechiae / ecchymoses"] },
+  ],
+  immunologic: [
+    { section: "Allergic Signs",       items: ["Allergic facies (shiners / salute crease)", "Conjunctival injection / tearing", "Nasal polyps / pale turbinates"] },
+    { section: "Skin Manifestations",  items: ["Urticaria / angioedema", "Eczema / dermatitis pattern", "Dermographism"] },
+    { section: "Respiratory",          items: ["Audible wheeze / stridor", "Prolonged expiration", "Accessory muscle use"] },
+  ],
+};
+
+// ─── ROS System Selector ──────────────────────────────────────────────────────
+
+interface RosSelectorProps {
+  selected: string[];
+  onChange: (systems: string[]) => void;
+}
+
+export function RosSystemSelector({ selected, onChange }: RosSelectorProps) {
+  const [open,   setOpen]   = useState(false);
+  const [search, setSearch] = useState("");
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  function openDrop() {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setDropPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 280) });
+    }
+    setOpen(true);
+    setSearch("");
+  }
+
+  function toggle(id: string) {
+    onChange(selected.includes(id) ? selected.filter(s => s !== id) : [...selected, id]);
+  }
+
+  function remove(id: string) {
+    onChange(selected.filter(s => s !== id));
+  }
+
+  const filtered = BODY_SYSTEMS.filter(
+    s => s.label.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-2">
+
+      {/* Selected system chips */}
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {BODY_SYSTEMS.filter(s => selected.includes(s.id)).map(sys => (
+            <div
+              key={sys.id}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all"
+              style={{ backgroundColor: `${ACCENT_PE}12`, borderColor: `${ACCENT_PE}35`, color: ACCENT_PE }}>
+              <span className="text-[9px] font-black px-1 py-0.5 rounded bg-sky-100 text-sky-600">{sys.abbr}</span>
+              {sys.label}
+              <button
+                onClick={() => remove(sys.id)}
+                className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Trigger */}
+      <button
+        ref={triggerRef}
+        onClick={openDrop}
+        className="flex items-center justify-between gap-2 w-full text-xs font-bold px-3 py-2.5 rounded-xl border-2 border-dashed border-sky-200 text-sky-500 hover:border-sky-400 hover:bg-sky-50/60 transition-all">
+        <div className="flex items-center gap-2">
+          <Plus className="h-3.5 w-3.5" />
+          {selected.length === 0 ? "Select systems to review…" : `${selected.length} system${selected.length > 1 ? "s" : ""} selected — add more`}
+        </div>
+        <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+      </button>
+
+      {/* Dropdown portal */}
+      {open && dropPos && createPortal(
+        <>
+          <div className="fixed inset-0 z-[998]" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-[999] bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
+            style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width, maxHeight: 320 }}>
+
+            {/* Search */}
+            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100 flex-shrink-0">
+              <Search className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+              <input
+                autoFocus
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search systems…"
+                className="flex-1 text-xs outline-none text-slate-700 placeholder-slate-300"
+              />
+            </div>
+
+            {/* System list */}
+            <div className="overflow-y-auto flex-1">
+              {filtered.map(sys => {
+                const isSelected = selected.includes(sys.id);
+                return (
+                  <button
+                    key={sys.id}
+                    onClick={() => toggle(sys.id)}
+                    className={[
+                      "w-full text-left px-4 py-2.5 flex items-center gap-3 text-xs transition-colors border-b border-slate-50 last:border-0",
+                      isSelected ? "bg-sky-50 text-sky-700" : "text-slate-700 hover:bg-slate-50",
+                    ].join(" ")}>
+                    <div className={[
+                      "h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all",
+                      isSelected ? "border-sky-500 bg-sky-500" : "border-slate-300",
+                    ].join(" ")}>
+                      {isSelected && <CheckCircle2 className="h-3 w-3 text-white" />}
+                    </div>
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 flex-shrink-0">{sys.abbr}</span>
+                    <span className="font-medium">{sys.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 flex-shrink-0">
+              <span className="text-[10px] text-slate-400">{selected.length} selected</span>
+              <button
+                onClick={() => setOpen(false)}
+                className="text-[11px] font-bold px-3 py-1 rounded-lg text-white"
+                style={{ backgroundColor: ACCENT_PE }}>
+                Done
+              </button>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+// ─── PE System Drawer ─────────────────────────────────────────────────────────
+
+interface PeSystemDrawerProps {
+  systemId:  string;
+  onClose:   () => void;
+}
+
+export function PeSystemDrawer({ systemId, onClose }: PeSystemDrawerProps) {
+  const sys      = BODY_SYSTEMS.find(s => s.id === systemId);
+  const template = PE_TEMPLATES[systemId] ?? [];
+
+  const [findings, setFindings] = useState<Record<string, string>>({});
+  const [done,     setDone]     = useState(false);
+
+  function setFinding(key: string, val: string) {
+    setFindings(prev => ({ ...prev, [key]: val }));
+  }
+
+  const totalItems  = template.reduce((acc, s) => acc + s.items.length, 0);
+  const filledItems = Object.values(findings).filter(v => v.trim()).length;
+  const pct         = totalItems > 0 ? Math.round((filledItems / totalItems) * 100) : 0;
+
+  return (
+    <div className="absolute inset-y-0 right-0 w-[65%] bg-white shadow-2xl border-l border-slate-200 flex flex-col z-20">
+
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
+        <button
+          onClick={onClose}
+          className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0">
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Physical Examination Template</p>
+          <p className="text-sm font-black text-slate-800 truncate">{sys?.label}</p>
+        </div>
+        {done ? (
+          <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
+            <CheckCircle2 className="h-3 w-3" /> Done
+          </span>
+        ) : (
+          <button
+            onClick={() => setDone(true)}
+            className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 flex-shrink-0"
+            style={{ backgroundColor: ACCENT_PE }}>
+            <ClipboardCheck className="h-3.5 w-3.5" /> Mark Done
+          </button>
+        )}
+        <button
+          onClick={onClose}
+          className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* System badge + progress */}
+      <div className="px-4 py-3 border-b border-slate-100 flex-shrink-0 bg-slate-50/60">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${ACCENT_PE}15` }}>
+            <Stethoscope className="h-3.5 w-3.5" style={{ color: ACCENT_PE }} />
+          </div>
+          <div className="flex-1">
+            <p className="text-[10px] text-slate-400 font-medium">Physical Examination</p>
+            <p className="text-xs font-black text-slate-800">{sys?.label}</p>
+          </div>
+          <span className="text-[10px] font-black text-slate-400">{filledItems}/{totalItems} items</span>
+        </div>
+        {/* Mini progress bar */}
+        <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{
+              width: `${pct}%`,
+              backgroundColor: pct < 33 ? "#f59e0b" : pct < 66 ? ACCENT_PE : "#10b981",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Scrollable template body */}
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        {template.map(group => (
+          <div key={group.section}>
+            {/* Section header */}
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
+              <span className="h-px flex-1 bg-slate-100" />
+              {group.section}
+              <span className="h-px flex-1 bg-slate-100" />
+            </p>
+            {/* Exam items */}
+            <div className="space-y-2">
+              {group.items.map(item => {
+                const key = `${group.section}__${item}`;
+                return (
+                  <div key={item}>
+                    <p className="text-[10px] font-bold text-slate-600 mb-1">{item}</p>
+                    <input
+                      value={findings[key] ?? ""}
+                      onChange={e => setFinding(key, e.target.value)}
+                      placeholder="Enter finding…"
+                      className="w-full text-xs text-slate-700 placeholder-slate-300 border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                      style={{ "--tw-ring-color": ACCENT_PE } as React.CSSProperties}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── PE Chips Panel ───────────────────────────────────────────────────────────
+
+interface PeChipsPanelProps {
+  systems:        string[];
+  onOpenSystem:   (id: string) => void;
+  openSystemId:   string | null;
+}
+
+export function PeChipsPanel({ systems, onOpenSystem, openSystemId }: PeChipsPanelProps) {
+  if (systems.length === 0) {
+    return (
+      <div className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
+        <Stethoscope className="h-4 w-4 text-slate-300 flex-shrink-0" />
+        <p className="text-xs text-slate-400">
+          Select systems in Review of Systems above — each will appear here for examination.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+        Click a system to open its examination template
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {BODY_SYSTEMS.filter(s => systems.includes(s.id)).map(sys => {
+          const isOpen = openSystemId === sys.id;
+          return (
+            <button
+              key={sys.id}
+              onClick={() => onOpenSystem(sys.id)}
+              className={[
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl border-2 text-xs font-bold transition-all",
+                isOpen
+                  ? "text-white shadow-md"
+                  : "text-slate-600 border-slate-200 bg-white hover:bg-sky-50/40",
+              ].join(" ")}
+              style={isOpen
+                ? { backgroundColor: ACCENT_PE, borderColor: ACCENT_PE }
+                : { borderColor: `${ACCENT_PE}50` }}>
+              <span
+                className="text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0"
+                style={isOpen
+                  ? { backgroundColor: "rgba(255,255,255,0.25)", color: "white" }
+                  : { backgroundColor: `${ACCENT_PE}15`, color: ACCENT_PE }}>
+                {sys.abbr}
+              </span>
+              {sys.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
