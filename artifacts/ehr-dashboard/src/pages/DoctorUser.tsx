@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import {
   PhoneCall, SkipForward, RotateCcw,
   ChevronUp, Clock, AlertCircle, X,
-  CheckCircle2, Stethoscope,
+  CheckCircle2, Stethoscope, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useToast } from "@/hooks/use-toast";
+import { PatientFaceSheet } from "@/pages/PatientFaceSheet";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ export function DoctorUser() {
   const { toast } = useToast();
   const [tick, setTick] = useState(0);
   const [showSkipped, setShowSkipped] = useState(false);
+  const [faceSheetEntry, setFaceSheetEntry] = useState<MultiEntry | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setTick(p => p + 1), 1000);
@@ -70,12 +72,23 @@ export function DoctorUser() {
 
   function handleConsultation(entry: MultiEntry) {
     docAtCounter(entry.id);
+    setFaceSheetEntry(entry);
     toast({ title: `${entry.tokenNumber} is now with the doctor` });
   }
 
   function handleCompleteConsultation(id: string, tokenNum: string) {
     docCompleteConsultation(id);
+    setFaceSheetEntry(null);
     toast({ title: `Consultation complete — ${tokenNum} advanced to next step` });
+  }
+
+  function handleOpenFaceSheet(entry: MultiEntry) {
+    setFaceSheetEntry(entry);
+  }
+
+  function handleFaceSheetComplete(id: string) {
+    const entry = queue.find(e => e.id === id);
+    handleCompleteConsultation(id, entry?.tokenNumber ?? id);
   }
 
   function handleSkip(id: string) {
@@ -86,6 +99,18 @@ export function DoctorUser() {
   function handleRecall(id: string, tokenNum: string) {
     docRecall(id);
     toast({ title: `Token ${tokenNum} recalled to queue` });
+  }
+
+  // ── Face Sheet full-page view ─────────────────────────────────────────────
+  if (faceSheetEntry) {
+    const liveEntry = queue.find(e => e.id === faceSheetEntry.id) ?? faceSheetEntry;
+    return (
+      <PatientFaceSheet
+        entry={liveEntry}
+        onBack={() => setFaceSheetEntry(null)}
+        onCompleteConsultation={handleFaceSheetComplete}
+      />
+    );
   }
 
   return (
@@ -178,8 +203,14 @@ export function DoctorUser() {
                       <Button
                         className="h-10 px-5 text-sm font-bold gap-2 text-white"
                         style={{ backgroundColor: ACCENT }}
+                        onClick={() => handleOpenFaceSheet(atCounterEntry)}>
+                        <FileText className="h-4 w-4" /> Open Face Sheet
+                      </Button>
+                      <Button
+                        variant="outline" size="sm"
+                        className="h-8 px-3 text-xs border-slate-200 hover:border-[#4982CF] hover:text-[#4982CF] gap-1.5"
                         onClick={() => handleCompleteConsultation(atCounterEntry.id, atCounterEntry.tokenNumber)}>
-                        <CheckCircle2 className="h-4 w-4" /> Complete Consultation
+                        <CheckCircle2 className="h-3 w-3" /> Complete
                       </Button>
                       <Button
                         variant="outline" size="sm"
