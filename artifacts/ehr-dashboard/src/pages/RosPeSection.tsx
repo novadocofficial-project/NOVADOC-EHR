@@ -35,7 +35,7 @@ export const BODY_SYSTEMS: BodySystem[] = [
 
 // ─── PE Templates (per system) ────────────────────────────────────────────────
 
-const PE_TEMPLATES: Record<string, { section: string; items: string[] }[]> = {
+export const PE_TEMPLATES: Record<string, { section: string; items: string[] }[]> = {
   general: [
     { section: "General Appearance",   items: ["Level of alertness / distress", "Build & nutritional status", "Hygiene & grooming"] },
     { section: "Vital Signs",          items: ["Blood Pressure (mmHg)", "Heart Rate (bpm)", "Respiratory Rate (/min)", "Temperature (°C)", "SpO₂ (%)"] },
@@ -115,6 +115,41 @@ const PE_TEMPLATES: Record<string, { section: string; items: string[] }[]> = {
     { section: "Respiratory",          items: ["Audible wheeze / stridor", "Prolonged expiration", "Accessory muscle use"] },
   ],
 };
+
+// ─── PE Summary card ──────────────────────────────────────────────────────────
+
+function PeSummary({ systemId, savedData }: { systemId: string; savedData: Record<string, string> }) {
+  const template = PE_TEMPLATES[systemId] ?? [];
+
+  const filledGroups = template
+    .map(group => ({
+      section: group.section,
+      items: group.items
+        .map(item => ({ item, value: (savedData[`${group.section}__${item}`] ?? "").trim() }))
+        .filter(({ value }) => value !== ""),
+    }))
+    .filter(g => g.items.length > 0);
+
+  if (filledGroups.length === 0) return null;
+
+  return (
+    <div className="mt-2 rounded-xl border border-cyan-100 bg-cyan-50/40 px-3 py-2.5 space-y-2">
+      {filledGroups.map(g => (
+        <div key={g.section}>
+          <p className="text-[9px] font-black uppercase tracking-wider text-cyan-500 mb-1">{g.section}</p>
+          <div className="space-y-0.5">
+            {g.items.map(({ item, value }) => (
+              <div key={item} className="flex gap-1.5 items-baseline">
+                <span className="text-[10px] font-bold text-slate-500 flex-shrink-0">{item}:</span>
+                <span className="text-[10px] text-slate-700 leading-relaxed">{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ─── ROS System Selector ──────────────────────────────────────────────────────
 
@@ -252,23 +287,31 @@ export function RosSystemSelector({ selected, onChange }: RosSelectorProps) {
 
 interface PeSystemDrawerProps {
   systemId:  string;
+  isDone:    boolean;
+  savedData: Record<string, string>;
+  onSave:    (findings: Record<string, string>) => void;
   onClose:   () => void;
 }
 
-export function PeSystemDrawer({ systemId, onClose }: PeSystemDrawerProps) {
+export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }: PeSystemDrawerProps) {
   const sys      = BODY_SYSTEMS.find(s => s.id === systemId);
   const template = PE_TEMPLATES[systemId] ?? [];
 
-  const [findings, setFindings] = useState<Record<string, string>>({});
-  const [done,     setDone]     = useState(false);
+  const [findings, setFindings] = useState<Record<string, string>>(savedData);
+
+  const isDirty = isDone && JSON.stringify(findings) !== JSON.stringify(savedData);
+
+  const totalItems  = template.reduce((acc, s) => acc + s.items.length, 0);
+  const filledItems = Object.values(findings).filter(v => v.trim()).length;
+  const pct         = totalItems > 0 ? Math.round((filledItems / totalItems) * 100) : 0;
 
   function setFinding(key: string, val: string) {
     setFindings(prev => ({ ...prev, [key]: val }));
   }
 
-  const totalItems  = template.reduce((acc, s) => acc + s.items.length, 0);
-  const filledItems = Object.values(findings).filter(v => v.trim()).length;
-  const pct         = totalItems > 0 ? Math.round((filledItems / totalItems) * 100) : 0;
+  function handleSave() {
+    onSave(findings);
+  }
 
   return (
     <div className="absolute inset-y-0 right-0 w-[65%] bg-white shadow-2xl border-l border-slate-200 flex flex-col z-20">
@@ -284,18 +327,28 @@ export function PeSystemDrawer({ systemId, onClose }: PeSystemDrawerProps) {
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Physical Examination Template</p>
           <p className="text-sm font-black text-slate-800 truncate">{sys?.label}</p>
         </div>
-        {done ? (
+
+        {/* Action: Done badge / Update / Mark Done */}
+        {isDone && !isDirty ? (
           <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
             <CheckCircle2 className="h-3 w-3" /> Done
           </span>
+        ) : isDirty ? (
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 flex-shrink-0"
+            style={{ backgroundColor: "#f59e0b" }}>
+            <ClipboardCheck className="h-3.5 w-3.5" /> Update
+          </button>
         ) : (
           <button
-            onClick={() => setDone(true)}
+            onClick={handleSave}
             className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 flex-shrink-0"
             style={{ backgroundColor: ACCENT_PE }}>
             <ClipboardCheck className="h-3.5 w-3.5" /> Mark Done
           </button>
         )}
+
         <button
           onClick={onClose}
           className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
@@ -314,8 +367,12 @@ export function PeSystemDrawer({ systemId, onClose }: PeSystemDrawerProps) {
             <p className="text-xs font-black text-slate-800">{sys?.label}</p>
           </div>
           <span className="text-[10px] font-black text-slate-400">{filledItems}/{totalItems} items</span>
+          {isDirty && (
+            <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
+              Unsaved changes
+            </span>
+          )}
         </div>
-        {/* Mini progress bar */}
         <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-500"
@@ -331,13 +388,11 @@ export function PeSystemDrawer({ systemId, onClose }: PeSystemDrawerProps) {
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
         {template.map(group => (
           <div key={group.section}>
-            {/* Section header */}
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
               <span className="h-px flex-1 bg-slate-100" />
               {group.section}
               <span className="h-px flex-1 bg-slate-100" />
             </p>
-            {/* Exam items */}
             <div className="space-y-2">
               {group.items.map(item => {
                 const key = `${group.section}__${item}`;
@@ -362,15 +417,17 @@ export function PeSystemDrawer({ systemId, onClose }: PeSystemDrawerProps) {
   );
 }
 
-// ─── PE Chips Panel ───────────────────────────────────────────────────────────
+// ─── PE Chips Panel (auto-synced from ROS) ────────────────────────────────────
 
 interface PeChipsPanelProps {
-  systems:        string[];
-  onOpenSystem:   (id: string) => void;
-  openSystemId:   string | null;
+  systems:       string[];
+  doneSystemIds: string[];
+  savedDataMap:  Record<string, Record<string, string>>;
+  onOpenSystem:  (id: string) => void;
+  openSystemId:  string | null;
 }
 
-export function PeChipsPanel({ systems, onOpenSystem, openSystemId }: PeChipsPanelProps) {
+export function PeChipsPanel({ systems, doneSystemIds = [], savedDataMap = {}, onOpenSystem, openSystemId }: PeChipsPanelProps) {
   if (systems.length === 0) {
     return (
       <div className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
@@ -387,9 +444,12 @@ export function PeChipsPanel({ systems, onOpenSystem, openSystemId }: PeChipsPan
       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
         Click a system to open its examination template
       </p>
+
+      {/* Chips */}
       <div className="flex flex-wrap gap-2">
         {BODY_SYSTEMS.filter(s => systems.includes(s.id)).map(sys => {
           const isOpen = openSystemId === sys.id;
+          const isDone = doneSystemIds.includes(sys.id);
           return (
             <button
               key={sys.id}
@@ -398,23 +458,50 @@ export function PeChipsPanel({ systems, onOpenSystem, openSystemId }: PeChipsPan
                 "flex items-center gap-2 px-3.5 py-2 rounded-xl border-2 text-xs font-bold transition-all",
                 isOpen
                   ? "text-white shadow-md"
-                  : "text-slate-600 border-slate-200 bg-white hover:bg-sky-50/40",
+                  : isDone
+                    ? "text-emerald-700 border-emerald-200 bg-emerald-50"
+                    : "text-slate-600 border-slate-200 bg-white",
               ].join(" ")}
               style={isOpen
                 ? { backgroundColor: ACCENT_PE, borderColor: ACCENT_PE }
-                : { borderColor: `${ACCENT_PE}50` }}>
+                : isDone
+                  ? {}
+                  : { borderColor: `${ACCENT_PE}50` }}>
               <span
                 className="text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0"
                 style={isOpen
                   ? { backgroundColor: "rgba(255,255,255,0.25)", color: "white" }
-                  : { backgroundColor: `${ACCENT_PE}15`, color: ACCENT_PE }}>
+                  : isDone
+                    ? { backgroundColor: "#d1fae5", color: "#065f46" }
+                    : { backgroundColor: `${ACCENT_PE}15`, color: ACCENT_PE }}>
                 {sys.abbr}
               </span>
               {sys.label}
+              {isDone && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />}
             </button>
           );
         })}
       </div>
+
+      {/* Summary cards for done systems */}
+      {BODY_SYSTEMS.filter(s => systems.includes(s.id) && doneSystemIds.includes(s.id)).map(sys => {
+        const saved = savedDataMap[sys.id];
+        if (!saved) return null;
+        return (
+          <div key={`summary-${sys.id}`}>
+            <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mt-3 mb-1">
+              {sys.label} — Examination Summary
+            </p>
+            <PeSummary systemId={sys.id} savedData={saved} />
+          </div>
+        );
+      })}
+
+      {doneSystemIds.filter(id => systems.includes(id)).length > 0 && (
+        <p className="text-[10px] text-slate-400 mt-1">
+          {doneSystemIds.filter(id => systems.includes(id)).length}/{systems.length} systems examined
+        </p>
+      )}
     </div>
   );
 }

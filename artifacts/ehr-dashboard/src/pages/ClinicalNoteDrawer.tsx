@@ -547,6 +547,8 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
   const [hpiDoneComplaints, setHpiDoneComplaints] = useState<string[]>([]);
   const [hpiSavedData,      setHpiSavedData]      = useState<Record<string, CoughState>>({});
   const [peOpenSystem,      setPeOpenSystem]      = useState<string | null>(null);
+  const [peDoneSystemIds,   setPeDoneSystemIds]   = useState<string[]>([]);
+  const [peSavedData,       setPeSavedData]       = useState<Record<string, Record<string, string>>>({});
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -566,6 +568,12 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
     setHpiSavedData(prev => ({ ...prev, [complaint]: state }));
     setHpiDoneComplaints(prev => prev.includes(complaint) ? prev : [...prev, complaint]);
     setHpiOpenComplaint(null);
+  }
+
+  function handlePeSave(systemId: string, findings: Record<string, string>) {
+    setPeSavedData(prev => ({ ...prev, [systemId]: findings }));
+    setPeDoneSystemIds(prev => prev.includes(systemId) ? prev : [...prev, systemId]);
+    setPeOpenSystem(null);
   }
 
   function handleImport(key: keyof NoteState, value: string) {
@@ -782,9 +790,11 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
           <Section
             title="Physical Examination"
             icon={Stethoscope} color="#06b6d4"
-            filled={note.ros.length > 0}>
+            filled={peDoneSystemIds.length > 0}>
             <PeChipsPanel
               systems={note.ros}
+              doneSystemIds={peDoneSystemIds}
+              savedDataMap={peSavedData}
               onOpenSystem={id => setPeOpenSystem(prev => prev === id ? null : id)}
               openSystemId={peOpenSystem}
             />
@@ -915,6 +925,9 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
           <PeSystemDrawer
             key={peOpenSystem}
             systemId={peOpenSystem}
+            isDone={peDoneSystemIds.includes(peOpenSystem)}
+            savedData={peSavedData[peOpenSystem] ?? {}}
+            onSave={findings => handlePeSave(peOpenSystem, findings)}
             onClose={() => setPeOpenSystem(null)}
           />
         )}
