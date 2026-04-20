@@ -96,7 +96,7 @@ const CHANNEL_NAME = "ehr-multistep-queue-v2";
 const LS_QUEUE_KEY = "ehr-queue-v2";
 const LS_NUMS_KEY  = "ehr-queue-nums-v2";
 const LS_VER_KEY   = "ehr-queue-ver";
-const QUEUE_VER    = "4"; // bump when seed schema changes
+const QUEUE_VER    = "5"; // bump when seed schema changes
 
 function loadQueue(): MultiEntry[] {
   try {
@@ -290,6 +290,50 @@ export function useMultiStepQueue() {
     ));
   }
 
+  // ── Doctor mutations ─────────────────────────────────────────────────────────
+
+  function docCall(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, callCount: e.callCount + 1, callTimestamp: Date.now() }
+    ));
+  }
+
+  function docTimerExpire(id: string) {
+    setQueue(prev => prev.map(e => {
+      if (e.id !== id) return e;
+      if (e.callCount >= 3) return { ...e, skipped: true, callTimestamp: null };
+      return { ...e, callTimestamp: null };
+    }));
+  }
+
+  function docAtCounter(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, status: "called", callTimestamp: null }
+    ));
+  }
+
+  function docCompleteConsultation(id: string) {
+    setQueue(prev => prev.map(e => {
+      if (e.id !== id) return e;
+      const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
+      const nextStep = e.step + 1;
+      if (nextStep > e.totalSteps) return { ...e, status: "completed" };
+      return { ...e, step: nextStep, stepLabel: vt.steps[nextStep - 1], status: "waiting", callCount: 0, callTimestamp: null };
+    }));
+  }
+
+  function docSkip(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, skipped: true, callTimestamp: null, status: "waiting" }
+    ));
+  }
+
+  function docRecall(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, skipped: false, callCount: 0, callTimestamp: null }
+    ));
+  }
+
   function addEntry(entry: MultiEntry) {
     setQueue(prev => [...prev, entry]);
   }
@@ -304,6 +348,8 @@ export function useMultiStepQueue() {
     fdBilling, fdCompleteBilling, fdSkip, fdRecall,
     // nursing
     nurseCall, nurseTimerExpire, nurseAtCounter, nurseCompleteVitals, nurseSkip, nurseRecall,
+    // doctor
+    docCall, docTimerExpire, docAtCounter, docCompleteConsultation, docSkip, docRecall,
     addEntry,
   };
 }
