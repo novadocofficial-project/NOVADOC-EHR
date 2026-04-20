@@ -1,0 +1,102 @@
+Build Patient Consultation Face Sheet (EHR Dashboard)
+
+Design and implement a Patient Face Sheet page that opens when the user clicks on Consultation.
+
+This page should function as an analytics-driven clinical dashboard showing a summarized view of patient health, history, and recent activity.
+
+📌 1. Patient Header (Top Section)
+
+Create a fixed top header with the following information:
+
+Patient Image (avatar)
+Full Name
+MR Number
+Date of Birth (DOB)
+Gender
+Phone Number
+Address
+Additional Highlights in Header:
+Today’s Vitals (quick summary view)
+History Taken By (with timestamp if available)
+🚨 2. Critical / Chronic Conditions (High Priority UI)
+
+If the patient has any previously diagnosed chronic or critical conditions, display them prominently at the top (above all sections).
+
+Requirements:
+Must be visually attention-grabbing (badge / alert strip / colored banner)
+Always visible on page load (above the fold)
+Fields:
+Condition Name
+Diagnosis Code
+Severity (e.g., Critical)
+Example:
+Fever, Unspecified — R50.9 (Critical)
+📊 3. Dashboard Behavior
+Each section should display maximum 3 recent records
+Include a “View All” or action icon for detailed view
+Use card-based layout (grid system)
+📂 4. Sections to Implement
+4.1 Patient Vitals
+Vital Name (BP, Pulse, etc.)
+Current Value
+Last Value
+Previous Value
+4.2 Allergies
+List of allergies
+Highlight clearly
+4.3 Previous Visits
+Visit Type (Consultation, Nutrition Clinic, etc.)
+Consultant Name
+Visit Date
+4.4 Physical Examination
+Date
+Time Taken
+Taken By (Doctor Name)
+Action Icon (View Details)
+4.5 Current Medications
+Medication Name
+Description
+Start Date
+4.6 Presenting Complaint
+Date
+Time Taken
+Chief Complaint (e.g., Fever, Headache)
+Recorded By
+Action Icon
+4.7 Investigations
+Date
+Investigation Type (e.g., CBC, Vitamin D)
+Advised By
+Action Icon
+4.8 Diagnosis
+Date
+Problem / Diagnosis Code
+Start Date
+4.9 Documents
+Date
+Folder Name (Lab Results, Radiology)
+Action Icon
+4.10 Patient History
+Date
+Recorded By (Nurse/Staff)
+Question
+Answer
+Action Icon
+🎯 5. UX & Layout Guidelines
+Use card-based UI with responsive grid
+Keep critical condition alert at the very top
+Maintain clean visual hierarchy (Header → Alert → Cards)
+Ensure fast readability for doctors (scan-friendly UI)
+Avoid clutter — prioritize summary over detail
+✅ Expected Outcome
+
+A high-performance, doctor-friendly EHR dashboard where:
+
+Critical conditions are instantly visible
+Patient summary is accessible at a glance
+Clinical data is structured and easy to navigate
+
+If needed, extend this with:
+
+Tabs (Overview / Clinical / History)
+Trend graphs for vitals
