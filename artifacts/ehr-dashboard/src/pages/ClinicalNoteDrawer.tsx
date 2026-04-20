@@ -5,6 +5,7 @@ import {
   Download, PenLine, FlaskConical, Scan, HeartPulse,
   Users, BookOpen, Stethoscope, ClipboardList, CalendarDays,
   CheckCircle2, AlertCircle, Printer, Trash2, Tag,
+  GripVertical, Check, Search, Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +16,7 @@ const ACCENT = "#4982CF";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface NoteState {
-  chiefComplaint:  string;
+  chiefComplaints: string[];
   hpi:             string;
   allergies:       string;
   pmh:             string;
@@ -32,7 +33,7 @@ interface NoteState {
 }
 
 const EMPTY_NOTE: NoteState = {
-  chiefComplaint: "", hpi: "", allergies: "",
+  chiefComplaints: [], hpi: "", allergies: "",
   pmh: "", psh: "", fh: "", sh: "",
   ros: "", pe: "", pocLabs: "",
   otherOrders: "", visitNote: "", followUpDate: "",
@@ -55,6 +56,209 @@ const HPI_OPTIONS = [
   "Acute onset", "Gradual onset", "Worsening", "Improving", "Stable",
   "Intermittent", "Constant", "Relieved by rest", "Worsened by activity",
 ];
+
+// ─── Complaint options ─────────────────────────────────────────────────────────
+
+const COMPLAINT_OPTIONS = [
+  "Fever", "Cough", "Sore Throat", "Headache", "Fatigue",
+  "Shortness of Breath", "Chest Pain", "Nausea / Vomiting",
+  "Abdominal Pain", "Back Pain", "Dizziness", "Rash",
+  "Joint Pain", "Loss of Appetite", "Diarrhea", "Constipation",
+  "Ear Pain / Earache", "Eye Redness / Pain", "Urinary Symptoms",
+  "Runny Nose / Congestion", "Muscle Aches", "Swelling / Edema",
+  "Palpitations", "Anxiety / Stress",
+];
+
+// ─── Chief Complaint Selector ──────────────────────────────────────────────────
+
+function ChiefComplaintSelector({
+  selected, onChange,
+}: {
+  selected: string[]; onChange: (items: string[]) => void;
+}) {
+  const [open,     setOpen]     = useState(false);
+  const [search,   setSearch]   = useState("");
+  const [custom,   setCustom]   = useState("");
+  const [dragIdx,  setDragIdx]  = useState<number | null>(null);
+  const [overIdx,  setOverIdx]  = useState<number | null>(null);
+  const containerRef            = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  function toggle(item: string) {
+    onChange(selected.includes(item) ? selected.filter(s => s !== item) : [...selected, item]);
+  }
+
+  function remove(item: string) { onChange(selected.filter(s => s !== item)); }
+
+  function addCustom() {
+    const val = custom.trim();
+    if (val && !selected.includes(val)) onChange([...selected, val]);
+    setCustom("");
+  }
+
+  function onDragStart(idx: number) { setDragIdx(idx); }
+  function onDragOver(e: React.DragEvent, idx: number) { e.preventDefault(); setOverIdx(idx); }
+  function onDrop(idx: number) {
+    if (dragIdx === null || dragIdx === idx) return;
+    const next = [...selected];
+    const [moved] = next.splice(dragIdx, 1);
+    next.splice(idx, 0, moved);
+    onChange(next);
+    setDragIdx(null); setOverIdx(null);
+  }
+  function onDragEnd() { setDragIdx(null); setOverIdx(null); }
+
+  const filtered = COMPLAINT_OPTIONS.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Trigger bar */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:border-[#4982CF]/50 transition-colors text-left">
+        {selected.length === 0 ? (
+          <span className="text-xs text-slate-300 flex-1">Select chief complaints…</span>
+        ) : (
+          <span className="text-xs font-semibold flex-1" style={{ color: ACCENT }}>
+            {selected.length} complaint{selected.length > 1 ? "s" : ""} selected
+          </span>
+        )}
+        <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden">
+
+          {/* Search bar */}
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100">
+            <Search className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+            <input
+              autoFocus
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search complaints…"
+              className="flex-1 text-xs outline-none text-slate-700 placeholder-slate-300 bg-transparent"
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="text-slate-300 hover:text-slate-500">
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Options */}
+          <div className="max-h-52 overflow-y-auto py-1">
+            {filtered.map(opt => {
+              const checked = selected.includes(opt);
+              const rank    = selected.indexOf(opt) + 1;
+              return (
+                <button
+                  key={opt}
+                  onClick={() => toggle(opt)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${checked ? "bg-blue-50/60" : "hover:bg-slate-50"}`}>
+                  <div
+                    className="h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all"
+                    style={checked ? { backgroundColor: ACCENT, borderColor: ACCENT } : { borderColor: "#cbd5e1" }}>
+                    {checked && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                  </div>
+                  <span className="text-xs text-slate-700 flex-1">{opt}</span>
+                  {checked && (
+                    <span
+                      className="text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center text-white flex-shrink-0"
+                      style={{ backgroundColor: ACCENT }}>
+                      {rank}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            {filtered.length === 0 && (
+              <p className="px-4 py-4 text-xs text-center text-slate-400">No matches — add as custom below</p>
+            )}
+          </div>
+
+          {/* Custom complaint */}
+          <div className="flex items-center gap-2 px-3 py-2.5 border-t border-slate-100 bg-slate-50/50">
+            <Plus className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+            <input
+              value={custom}
+              onChange={e => setCustom(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
+              placeholder="Add custom complaint…"
+              className="flex-1 text-xs outline-none text-slate-700 placeholder-slate-300 bg-transparent"
+            />
+            <button
+              onClick={addCustom}
+              disabled={!custom.trim()}
+              className="text-[10px] font-bold px-2.5 py-1 rounded-lg text-white transition-opacity disabled:opacity-30"
+              style={{ backgroundColor: ACCENT }}>
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Selected chips — drag-and-drop priority */}
+      {selected.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {selected.map((item, idx) => {
+            const isPrimary  = idx === 0;
+            const isDragging = dragIdx === idx;
+            const isOver     = overIdx === idx && dragIdx !== idx;
+            return (
+              <div
+                key={item}
+                draggable
+                onDragStart={() => onDragStart(idx)}
+                onDragOver={e => onDragOver(e, idx)}
+                onDrop={() => onDrop(idx)}
+                onDragEnd={onDragEnd}
+                className={[
+                  "flex items-center gap-2.5 px-3 py-2 rounded-xl border-2 cursor-grab active:cursor-grabbing select-none transition-all duration-150",
+                  isDragging ? "opacity-40 scale-[0.97]" : "",
+                  isOver     ? "border-[#4982CF] shadow-md scale-[1.02]" : "",
+                  isPrimary
+                    ? "bg-[#4982CF] text-white border-[#4982CF] shadow-sm"
+                    : "bg-blue-50 text-blue-800 border-blue-200",
+                ].join(" ")}>
+                <GripVertical className="h-3.5 w-3.5 opacity-50 flex-shrink-0" />
+                <span
+                  className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    isPrimary ? "bg-white/25 text-white" : "bg-[#4982CF] text-white"
+                  }`}>
+                  {idx + 1}
+                </span>
+                <span className="text-xs font-semibold flex-1">{item}</span>
+                {isPrimary && (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-white/20 text-white/90 flex-shrink-0">
+                    Primary
+                  </span>
+                )}
+                <button
+                  onClick={e => { e.stopPropagation(); remove(item); }}
+                  className={`hover:opacity-70 transition-opacity flex-shrink-0 ${isPrimary ? "text-white/70" : "text-blue-400"}`}>
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            );
+          })}
+          <p className="text-[10px] text-slate-400 flex items-center gap-1 pt-0.5">
+            <GripVertical className="h-3 w-3" />
+            Drag to reorder priority · <span className="font-semibold text-slate-500">Position 1 = Primary Complaint</span>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Timer hook ────────────────────────────────────────────────────────────────
 
@@ -86,11 +290,11 @@ function useTimer(initialSeconds = 0) {
 
 function calcProgress(note: NoteState): number {
   const fields: (string | string[])[] = [
-    note.chiefComplaint, note.hpi, note.allergies,
+    note.chiefComplaints, note.hpi, note.allergies,
     note.pmh, note.ros, note.pe,
     note.planTags, note.visitNote, note.followUpDate,
   ];
-  const filled = fields.filter(f => (Array.isArray(f) ? f.length > 0 : f.trim() !== "")).length;
+  const filled = fields.filter(f => (Array.isArray(f) ? f.length > 0 : (f ?? "").trim() !== "")).length;
   return Math.round((filled / fields.length) * 100);
 }
 
@@ -296,28 +500,11 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
 
           {/* 1. Chief Complaint */}
-          <Section title="Chief Complaint" icon={PenLine} color="#4982CF" required filled={note.chiefComplaint.trim() !== ""}>
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {["Fever", "Cough", "Chest Pain", "Headache", "Fatigue", "Shortness of Breath"].map(cc => (
-                  <button
-                    key={cc}
-                    onClick={() => set("chiefComplaint", cc)}
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all"
-                    style={note.chiefComplaint === cc
-                      ? { backgroundColor: ACCENT, color: "white", borderColor: ACCENT }
-                      : { borderColor: "#e2e8f0", color: "#64748b" }}>
-                    {cc}
-                  </button>
-                ))}
-              </div>
-              <NoteField
-                value={note.chiefComplaint}
-                onChange={v => set("chiefComplaint", v)}
-                placeholder="Reason for exam…"
-                rows={2}
-              />
-            </div>
+          <Section title="Chief Complaint" icon={PenLine} color="#4982CF" required filled={note.chiefComplaints.length > 0}>
+            <ChiefComplaintSelector
+              selected={note.chiefComplaints}
+              onChange={items => set("chiefComplaints", items)}
+            />
           </Section>
 
           {/* 2. HPI */}
