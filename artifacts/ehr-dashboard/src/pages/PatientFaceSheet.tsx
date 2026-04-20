@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
+import { SoapNotePage } from "@/pages/SoapNotePage";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, RadialBarChart, RadialBar,
@@ -257,6 +258,9 @@ export function PatientFaceSheet({
   const gender  = p?.gender === "F" ? "Female" : "Male";
   const address = "House 14, Street 7, DHA Phase 3, Lahore";
 
+  // ── SOAP Note page navigation ─────────────────────────────────────────────
+  const [showSoapPage, setShowSoapPage] = useState(false);
+
   // ── No-SOAP modal state ────────────────────────────────────────────────────
   const [showNoSoapModal, setShowNoSoapModal] = useState(false);
   const [noSoapReason,    setNoSoapReason]    = useState("");
@@ -289,6 +293,16 @@ export function PatientFaceSheet({
     onCompleteWithoutSoap(entry.id, reason, appt);
   }
 
+  // ── SOAP Note full-page view ──────────────────────────────────────────────
+  if (showSoapPage) {
+    return (
+      <SoapNotePage
+        entry={entry}
+        onBack={() => setShowSoapPage(false)}
+      />
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col bg-slate-50 overflow-hidden">
 
@@ -306,14 +320,16 @@ export function PatientFaceSheet({
           <div className="flex-1" />
           {/* SOAP Note Button */}
           {soapNoteCreated ? (
-            <div className="flex items-center gap-2 h-9 px-4 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold">
+            <button
+              className="flex items-center gap-2 h-9 px-4 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold hover:bg-emerald-100 transition-colors"
+              onClick={() => setShowSoapPage(true)}>
               <CheckCircle2 className="h-4 w-4" /> SOAP Note Created
-            </div>
+            </button>
           ) : (
             <Button
               variant="outline"
               className="h-9 px-4 text-sm font-bold gap-2 border-[#4982CF] text-[#4982CF] hover:bg-blue-50"
-              onClick={() => onSoapNoteClick(entry.id)}>
+              onClick={() => { onSoapNoteClick(entry.id); setShowSoapPage(true); }}>
               <FileEdit className="h-4 w-4" /> SOAP Note
             </Button>
           )}

@@ -1,0 +1,130 @@
+Design and implement a SOAP Notes Consultation Page that opens when the doctor clicks on SOAP Note.
+
+This page should be focused on clinical documentation + patient context, combining patient summary, alerts, and a structured notes workflow.
+
+📌 1. Patient Information Header (Top Bar)
+
+Create a fixed top header displaying:
+
+Patient Name
+MR ID
+Gender
+Date of Birth (DOB)
+Last Visit
+Address
+🚨 2. Alerts & Critical Information (High Priority)
+
+Immediately below or within the header, show:
+
+Critical / Chronic Conditions (high visibility)
+Allergies
+Requirements:
+Must be visually prominent (badges / alert strips)
+Should be visible at first glance (above the fold)
+❤️ 3. Vitals Snapshot
+
+Display a horizontal strip of key vitals:
+
+BP (Systolic / Diastolic)
+Pulse
+Temperature
+Weight
+Height
+Pain Score
+Other relevant indicators
+
+👉 This acts as a quick clinical snapshot for the doctor
+
+🧭 4. Quick Navigation Menu
+
+Add a horizontal navigation bar for patient-related modules:
+
+360 View (analytics & trends)
+Visits
+Medicines
+Diagnostics
+Nursing
+Prescription
+Staff
+Reports
+Scanned Documents
+Data Analytics
+
+Note: Detailed functionality of these modules will be designed later. For now, only UI placeholders/navigation are required.
+
+📝 5. Notes Section (Core Area)
+🔹 5.1 New Notes Panel
+
+This section should display the active/draft note.
+
+Behavior:
+When the doctor clicks on SOAP Note, a new draft note is automatically created and shown here
+UI Elements:
+Title: New Notes (count)
+Refresh button
+Draft Note Card:
+Date (e.g., Dec 11, 2024)
+Status: In Progress: Comprehensive Note
+Doctor Name
+🔹 5.2 All Records Section
+
+Displays previously completed notes.
+
+UI Elements:
+Title: All Records (count)
+Refresh button
+Sorting dropdown:
+Default: Order by Patient Event Date
+📋 6. Notes Timeline List
+
+Display a chronological list of past consultation notes.
+
+Each Row Should Include:
+Left: Date
+Center:
+Day & Time (e.g., Tuesday 10:55)
+Note Type (e.g., Comprehensive Note)
+Doctor Name
+Right:
+Expand button
+More options (3-dot menu)
+Example Records:
+Dec 10, 2024
+Tuesday 10:55 | Comprehensive Note
+By Dr. Asif Imam
+Nov 10, 2024 (Selected/Highlighted Row)
+Monday 08:10 | Comprehensive Note
+By Dr. Abc
+Actions:
+Expand
+More options
+Sept 25, 2024
+Wednesday 05:20 | Comprehensive Note
+By Dr. Xyz
+🎯 7. Key Behavior Logic
+On clicking SOAP Note:
+Open this page
+Automatically create a new draft note
+Show it in the New Notes Panel
+Previously completed notes:
+Display under All Records
+🎨 8. UX Guidelines
+Maintain clear hierarchy:
+Header → Alerts → Vitals → Navigation → Notes
+Ensure:
+Fast scanning for doctors
+Minimal cognitive load
+Clear separation between:
+Active note (New Notes)
+Historical notes (All Records)
+Highlight:
+Selected note row
+Active draft clearly
+✅ Expected Outcome
+
+A doctor-friendly SOAP Notes page where:
+
+Patient context is always visible
+Critical alerts are instantly noticeable
+A draft note is ready immediately on entry
+Past notes are easily accessible in timeline format
