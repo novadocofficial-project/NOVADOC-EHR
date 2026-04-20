@@ -103,6 +103,7 @@ export function QueueTokenMultiStep() {
   const called    = queue.filter(e => e.status === "called"    && !e.skipped);
   const waiting   = queue.filter(e => e.status === "waiting"   && !e.skipped);
   const completed = queue.filter(e => e.status === "completed" && !e.skipped);
+  const skipped   = queue.filter(e => e.skipped);
 
   const visibleQueue = filterStep === "all"
     ? queue.filter(e => e.status !== "completed" && !e.skipped)
@@ -365,7 +366,8 @@ export function QueueTokenMultiStep() {
             {[
               { label: "In Progress", value: called.length,    color: "text-[#4982CF]",  bg: "bg-blue-50   border-blue-200"   },
               { label: "Waiting",     value: waiting.length,   color: "text-amber-700",  bg: "bg-amber-50  border-amber-200"  },
-              { label: "Completed",   value: completed.length, color: "text-slate-600",  bg: "bg-slate-50  border-slate-200"  },
+              { label: "Completed",   value: completed.length, color: "text-emerald-700",bg: "bg-emerald-50 border-emerald-200"},
+              { label: "Skipped",     value: skipped.length,   color: "text-red-600",    bg: "bg-red-50    border-red-200"    },
             ].map(s => (
               <div key={s.label} className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 ${s.bg}`}>
                 <span className={`text-base font-black ${s.color}`}>{s.value}</span>
