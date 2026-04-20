@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
 import { Button } from "@/components/ui/button";
+import { ClinicalNoteDrawer } from "@/pages/ClinicalNoteDrawer";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -151,8 +152,9 @@ interface SoapNotePageProps {
 }
 
 export function SoapNotePage({ entry, onBack }: SoapNotePageProps) {
-  const [openDrawer, setOpenDrawer]       = useState<string | null>(null);
+  const [openDrawer, setOpenDrawer]             = useState<string | null>(null);
   const [drawerFullscreen, setDrawerFullscreen] = useState(false);
+  const [showNoteDrawer, setShowNoteDrawer]     = useState(false);
 
   const p       = entry.patient;
   const name    = p?.name  ?? "Walk-in Patient";
@@ -344,7 +346,8 @@ export function SoapNotePage({ entry, onBack }: SoapNotePageProps) {
                 </div>
                 <button
                   className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-2 rounded-xl text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: ACCENT }}>
+                  style={{ backgroundColor: ACCENT }}
+                  onClick={() => setShowNoteDrawer(true)}>
                   <FileText className="h-3.5 w-3.5" /> Open Note
                 </button>
               </div>
@@ -432,9 +435,19 @@ export function SoapNotePage({ entry, onBack }: SoapNotePageProps) {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
+          CLINICAL NOTE DRAWER (Open Note)
+      ═══════════════════════════════════════════════════════════════════════ */}
+      {showNoteDrawer && (
+        <ClinicalNoteDrawer
+          patientName={name}
+          onClose={() => setShowNoteDrawer(false)}
+        />
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════
           MODULE DRAWER (right-side overlay)
       ═══════════════════════════════════════════════════════════════════════ */}
-      {openDrawer && activeTabMeta && (
+      {!showNoteDrawer && openDrawer && activeTabMeta && (
         <ModuleDrawer
           label={openDrawer}
           Icon={activeTabMeta.Icon}

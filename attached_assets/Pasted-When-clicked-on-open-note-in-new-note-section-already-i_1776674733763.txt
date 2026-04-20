@@ -1,0 +1,111 @@
+When clicked on open note in new note section already in progress note a drawer opens from right side covering 50% of the screen with full screen option for detailed clinical note entry interface (SOAP / Consultation Note form) used by a doctor during a patient consultation.
+
+This is a doctor documentation screen where a clinician records the full consultation, including:
+* Chief complaint
+* Medical history
+* Examination findings
+* Diagnosis and plan
+It appears to be a comprehensive note template system with structured + free-text inputs.
+
+🔝 Top Action Bar
+At the top of the screen:
+* Add Note Template (button) → Allows loading predefined templates
+* Copy / Paste → For quick duplication of notes
+* Full Screen toggle
+* Close (X)
+⏱ Timers:
+Two timers are visible:
+* Time with Patient (e.g., 00:02:21)
+* Time Documenting (e.g., 00:00:00)
+Each has:
+* Stop
+* Pause
+👉 This is useful for audit, productivity tracking, or billing time logs
+
+📝 Clinical Input Sections
+1. Chief Complaint / Reason for Visit
+* Free text input
+* Placeholder: “Reason for exam…”
+
+2. History of Present Illness (HPI)
+* Dropdown-based selection (structured input)
+
+3. Allergies
+* Expandable section
+* Multiple allergy input fields
+* Status indicators:
+    * ✅ Green = valid/added
+    * ❌ Red = missing/invalid
+* Import Allergies option (likely from patient history)
+
+4. Past Medical History (PMH)
+* Free text
+* Import PMH option
+
+5. Surgical History (PSH)
+* Free text
+* Import PSH
+
+6. Family History (FH)
+* Free text
+* Import FH
+
+7. Social History (SH)
+* Free text
+* Import SH
+
+8. Review of Systems (ROS)
+* Free text
+* Editable (with edit icon)
+* Import ROS
+
+9. Physical Examination (PE)
+* Free text
+* Editable
+* Import PE
+
+10. Point of Care Labs
+* Free text input
+* Likely for quick lab observations during visit
+
+🧪 Assessment / Diagnosis / Plan Section
+This is a structured action-driven section using selectable tags/buttons:
+* Diagnosis
+* Formulary
+* Lab
+* Imaging
+* Care Manager
+* Health Education
+* Referrals
+* Procedures
+* Patient Goals
+👉 These likely trigger sub-workflows or order entry modules
+
+11. Other Orders
+* Free text input
+
+12. Visit Description Note
+* Summary / closing note of the visit
+
+13. Follow-Up Visit
+* Date picker (e.g., 02/05/2024)
+
+🔻 Bottom Action Buttons
+* Doctor’s Sign → Finalize and sign note
+* Save Draft & Close → Save without completing
+* Print To Review → Generate printable version
+* Discard → Delete changes
+
+🎯 UX Observations
+Strengths:
+* Very comprehensive clinical coverage
+* Supports both structured + unstructured data
+* Import options reduce duplicate data entry
+* Tag-based plan section is modular and scalable 
+Please address these Weaknesses (important for our system):
+* Too text-heavy → cognitive overload
+* No clear section prioritization (everything looks equal)
+* Repetitive “Import” links → UI clutter
+* Lacks progress indication (how much of note is complete)
+
+It’s designed for detailed documentation, and must be optimized for speed-first workflows.
