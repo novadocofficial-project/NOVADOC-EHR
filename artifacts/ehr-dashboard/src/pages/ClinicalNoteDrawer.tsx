@@ -543,10 +543,11 @@ interface ClinicalNoteDrawerProps {
   faceSheetOpenedAt?: number;
   awaitingLab?: boolean;
   onSendToLab?: () => void;
+  onSaveAndClose?: () => void;
   onClose: () => void;
 }
 
-export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, onSendToLab, onClose }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, onSendToLab, onSaveAndClose, onClose }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(EMPTY_NOTE);
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
@@ -974,7 +975,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
           <Button
             variant="outline"
             className="h-9 px-4 text-xs font-bold gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 flex-shrink-0"
-            onClick={onClose}>
+            onClick={() => onSaveAndClose ? onSaveAndClose() : onClose()}>
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Save Draft & Close
           </Button>
           <Button

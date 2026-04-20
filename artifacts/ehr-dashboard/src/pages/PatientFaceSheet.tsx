@@ -245,11 +245,12 @@ interface PatientFaceSheetProps {
   onCompleteConsultation: (id: string) => void;
   onCompleteWithoutSoap: (id: string, reason: string, nextAppt: string) => void;
   onSendToLab?: (id: string) => void;
+  onSaveAndClose?: () => void;
 }
 
 export function PatientFaceSheet({
   entry, soapNoteCreated, onBack,
-  onSoapNoteClick, onCompleteConsultation, onCompleteWithoutSoap, onSendToLab,
+  onSoapNoteClick, onCompleteConsultation, onCompleteWithoutSoap, onSendToLab, onSaveAndClose,
 }: PatientFaceSheetProps) {
   const p = entry.patient;
   const name    = p?.name  ?? "Walk-in Patient";
@@ -303,6 +304,7 @@ export function PatientFaceSheet({
         onBack={() => setShowSoapPage(false)}
         faceSheetOpenedAt={faceSheetOpenedAt.current}
         onSendToLab={onSendToLab ? () => onSendToLab(entry.id) : undefined}
+        onSaveAndClose={onSaveAndClose}
       />
     );
   }

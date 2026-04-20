@@ -161,6 +161,7 @@ export function DoctorUser() {
         onCompleteConsultation={handleFaceSheetComplete}
         onCompleteWithoutSoap={handleCompleteWithoutSoap}
         onSendToLab={handleSendToLab}
+        onSaveAndClose={() => setFaceSheetEntry(null)}
       />
     );
   }
