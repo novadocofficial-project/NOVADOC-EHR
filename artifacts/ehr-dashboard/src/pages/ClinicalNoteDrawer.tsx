@@ -10,7 +10,8 @@ import {
   ArrowRight, ClipboardCheck, ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CoughHistoryTemplate } from "@/pages/CoughHistoryTemplate";
+import { CoughHistoryTemplate, CoughSummary, COUGH_EMPTY } from "@/pages/CoughHistoryTemplate";
+import type { CoughState } from "@/pages/CoughHistoryTemplate";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -283,11 +284,20 @@ function ChiefComplaintSelector({
 interface HpiTemplateDrawerProps {
   complaint: string;
   isDone: boolean;
-  onMarkDone: () => void;
+  savedData?: CoughState;
+  onSave: (state: CoughState) => void;
   onClose: () => void;
 }
 
-function HpiTemplateDrawer({ complaint, isDone, onMarkDone, onClose }: HpiTemplateDrawerProps) {
+function HpiTemplateDrawer({ complaint, isDone, savedData, onSave, onClose }: HpiTemplateDrawerProps) {
+  const [localState, setLocalState] = useState<CoughState>(savedData ?? COUGH_EMPTY);
+
+  const isDirty = isDone && JSON.stringify(localState) !== JSON.stringify(savedData ?? COUGH_EMPTY);
+
+  function handleSave() {
+    onSave(localState);
+  }
+
   return (
     <div className="absolute inset-y-0 right-0 w-[65%] bg-white shadow-2xl border-l border-slate-200 flex flex-col z-20">
 
@@ -302,18 +312,28 @@ function HpiTemplateDrawer({ complaint, isDone, onMarkDone, onClose }: HpiTempla
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">History Taking Template</p>
           <p className="text-sm font-black text-slate-800 truncate">{complaint}</p>
         </div>
-        {isDone ? (
+
+        {/* Action button: Done badge / Update / Mark Done */}
+        {isDone && !isDirty ? (
           <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
             <CheckCircle2 className="h-3 w-3" /> Done
           </span>
+        ) : isDirty ? (
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 flex-shrink-0"
+            style={{ backgroundColor: "#f59e0b" }}>
+            <ClipboardCheck className="h-3.5 w-3.5" /> Update
+          </button>
         ) : (
           <button
-            onClick={onMarkDone}
+            onClick={handleSave}
             className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 flex-shrink-0"
             style={{ backgroundColor: ACCENT }}>
             <ClipboardCheck className="h-3.5 w-3.5" /> Mark Done
           </button>
         )}
+
         <button
           onClick={onClose}
           className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
@@ -331,13 +351,18 @@ function HpiTemplateDrawer({ complaint, isDone, onMarkDone, onClose }: HpiTempla
             <p className="text-[10px] text-slate-400 font-medium">Chief Complaint</p>
             <p className="text-xs font-black text-slate-800">{complaint}</p>
           </div>
+          {isDirty && (
+            <span className="ml-auto text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
+              Unsaved changes
+            </span>
+          )}
         </div>
       </div>
 
       {/* Template body — dynamic per complaint */}
       <div className="flex-1 overflow-y-auto px-5 py-4">
         {complaint === "Cough" ? (
-          <CoughHistoryTemplate />
+          <CoughHistoryTemplate state={localState} onChange={setLocalState} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
             <div
@@ -362,6 +387,14 @@ function HpiTemplateDrawer({ complaint, isDone, onMarkDone, onClose }: HpiTempla
                 </div>
               ))}
             </div>
+            {!isDone && (
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 mt-2"
+                style={{ backgroundColor: ACCENT }}>
+                <ClipboardCheck className="h-3.5 w-3.5" /> Mark Done
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -506,10 +539,11 @@ interface ClinicalNoteDrawerProps {
 }
 
 export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: ClinicalNoteDrawerProps) {
-  const [fullscreen,       setFullscreen]       = useState(false);
-  const [note,             setNote]             = useState<NoteState>(EMPTY_NOTE);
-  const [hpiOpenComplaint, setHpiOpenComplaint] = useState<string | null>(null);
-  const [hpiDoneComplaints,setHpiDoneComplaints]= useState<string[]>([]);
+  const [fullscreen,        setFullscreen]        = useState(false);
+  const [note,              setNote]              = useState<NoteState>(EMPTY_NOTE);
+  const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
+  const [hpiDoneComplaints, setHpiDoneComplaints] = useState<string[]>([]);
+  const [hpiSavedData,      setHpiSavedData]      = useState<Record<string, CoughState>>({});
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -525,8 +559,10 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
       : [...note.planTags, tag]);
   }
 
-  function markHpiDone(complaint: string) {
+  function handleHpiSave(complaint: string, state: CoughState) {
+    setHpiSavedData(prev => ({ ...prev, [complaint]: state }));
     setHpiDoneComplaints(prev => prev.includes(complaint) ? prev : [...prev, complaint]);
+    setHpiOpenComplaint(null);
   }
 
   function handleImport(key: keyof NoteState, value: string) {
@@ -635,6 +671,8 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
                   Click a complaint to open its history template
                 </p>
+
+                {/* Chips row */}
                 <div className="flex flex-wrap gap-2">
                   {note.chiefComplaints.map((complaint, idx) => {
                     const isDone = hpiDoneComplaints.includes(complaint);
@@ -665,6 +703,22 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
                     );
                   })}
                 </div>
+
+                {/* Summary cards per done complaint */}
+                {note.chiefComplaints.map(complaint => {
+                  const isDone = hpiDoneComplaints.includes(complaint);
+                  const saved  = hpiSavedData[complaint];
+                  if (!isDone || !saved) return null;
+                  return (
+                    <div key={`summary-${complaint}`}>
+                      <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mt-3 mb-1">
+                        {complaint} — History Summary
+                      </p>
+                      <CoughSummary state={saved} />
+                    </div>
+                  );
+                })}
+
                 {hpiDoneComplaints.length > 0 && (
                   <p className="text-[10px] text-slate-400 mt-1">
                     {hpiDoneComplaints.length}/{note.chiefComplaints.length} complaints documented
@@ -836,9 +890,11 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
         {/* ── HPI Template Drawer (slides in from right within the panel) ── */}
         {hpiOpenComplaint && (
           <HpiTemplateDrawer
+            key={hpiOpenComplaint}
             complaint={hpiOpenComplaint}
             isDone={hpiDoneComplaints.includes(hpiOpenComplaint)}
-            onMarkDone={() => markHpiDone(hpiOpenComplaint)}
+            savedData={hpiSavedData[hpiOpenComplaint]}
+            onSave={state => handleHpiSave(hpiOpenComplaint, state)}
             onClose={() => setHpiOpenComplaint(null)}
           />
         )}
