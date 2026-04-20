@@ -7,6 +7,7 @@ import {
   Users, BookOpen, Stethoscope, ClipboardList, CalendarDays,
   CheckCircle2, AlertCircle, Printer, Trash2, Tag,
   GripVertical, Check, Search, Plus,
+  ArrowRight, ClipboardCheck, ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -53,10 +54,6 @@ const PLAN_TAGS = [
   { label: "Patient Goals",   color: "#ec4899", Icon: CheckCircle2 },
 ];
 
-const HPI_OPTIONS = [
-  "Acute onset", "Gradual onset", "Worsening", "Improving", "Stable",
-  "Intermittent", "Constant", "Relieved by rest", "Worsened by activity",
-];
 
 // ─── Complaint options ─────────────────────────────────────────────────────────
 
@@ -280,6 +277,91 @@ function ChiefComplaintSelector({
   );
 }
 
+// ─── HPI Template Drawer ──────────────────────────────────────────────────────
+
+interface HpiTemplateDrawerProps {
+  complaint: string;
+  isDone: boolean;
+  onMarkDone: () => void;
+  onClose: () => void;
+}
+
+function HpiTemplateDrawer({ complaint, isDone, onMarkDone, onClose }: HpiTemplateDrawerProps) {
+  return (
+    <div className="absolute inset-y-0 right-0 w-[65%] bg-white shadow-2xl border-l border-slate-200 flex flex-col z-20">
+
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
+        <button
+          onClick={onClose}
+          className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0">
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">History Taking Template</p>
+          <p className="text-sm font-black text-slate-800 truncate">{complaint}</p>
+        </div>
+        {isDone ? (
+          <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
+            <CheckCircle2 className="h-3 w-3" /> Done
+          </span>
+        ) : (
+          <button
+            onClick={onMarkDone}
+            className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 flex-shrink-0"
+            style={{ backgroundColor: ACCENT }}>
+            <ClipboardCheck className="h-3.5 w-3.5" /> Mark Done
+          </button>
+        )}
+        <button
+          onClick={onClose}
+          className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Complaint badge */}
+      <div className="px-4 py-3 border-b border-slate-100 flex-shrink-0 bg-slate-50/60">
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${ACCENT}15` }}>
+            <ClipboardList className="h-3.5 w-3.5" style={{ color: ACCENT }} />
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-400 font-medium">Chief Complaint</p>
+            <p className="text-xs font-black text-slate-800">{complaint}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Template body — placeholder, ready for dynamic content */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <div
+          className="h-16 w-16 rounded-2xl flex items-center justify-center"
+          style={{ backgroundColor: `${ACCENT}10` }}>
+          <ClipboardList className="h-7 w-7" style={{ color: ACCENT }} />
+        </div>
+        <div>
+          <p className="text-sm font-black text-slate-700">History Template</p>
+          <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-xs">
+            The structured HPI template for <strong className="text-slate-600">{complaint}</strong> will load here.
+            <br />
+            Dynamic templates can be mapped per complaint type.
+          </p>
+        </div>
+        <div className="mt-2 w-full max-w-xs space-y-2">
+          {["Onset & Duration", "Location & Radiation", "Quality & Severity", "Modifying Factors", "Associated Symptoms"].map(field => (
+            <div key={field} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-left">
+              <div className="h-1.5 w-1.5 rounded-full bg-slate-300 flex-shrink-0" />
+              <span className="text-xs text-slate-400 flex-1">{field}</span>
+              <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide">Coming soon</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Timer hook ────────────────────────────────────────────────────────────────
 
 function useTimer(initialSeconds = 0) {
@@ -417,9 +499,10 @@ interface ClinicalNoteDrawerProps {
 }
 
 export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: ClinicalNoteDrawerProps) {
-  const [fullscreen, setFullscreen] = useState(false);
-  const [note, setNote]             = useState<NoteState>(EMPTY_NOTE);
-  const [hpiTags, setHpiTags]       = useState<string[]>([]);
+  const [fullscreen,       setFullscreen]       = useState(false);
+  const [note,             setNote]             = useState<NoteState>(EMPTY_NOTE);
+  const [hpiOpenComplaint, setHpiOpenComplaint] = useState<string | null>(null);
+  const [hpiDoneComplaints,setHpiDoneComplaints]= useState<string[]>([]);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -435,8 +518,8 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
       : [...note.planTags, tag]);
   }
 
-  function toggleHpi(opt: string) {
-    setHpiTags(prev => prev.includes(opt) ? prev.filter(t => t !== opt) : [...prev, opt]);
+  function markHpiDone(complaint: string) {
+    setHpiDoneComplaints(prev => prev.includes(complaint) ? prev : [...prev, complaint]);
   }
 
   function handleImport(key: keyof NoteState, value: string) {
@@ -527,26 +610,61 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
             />
           </Section>
 
-          {/* 2. HPI */}
-          <Section title="History of Present Illness" icon={ClipboardList} color="#8b5cf6" filled={hpiTags.length > 0}>
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-1.5">
-                {HPI_OPTIONS.map(opt => (
-                  <button
-                    key={opt}
-                    onClick={() => toggleHpi(opt)}
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all"
-                    style={hpiTags.includes(opt)
-                      ? { backgroundColor: "#8b5cf6", color: "white", borderColor: "#8b5cf6" }
-                      : { borderColor: "#e2e8f0", color: "#64748b" }}>
-                    {opt}
-                  </button>
-                ))}
+          {/* 2. HPI — driven by Chief Complaints */}
+          <Section
+            title="History of Present Illness"
+            icon={ClipboardList}
+            color="#8b5cf6"
+            filled={hpiDoneComplaints.length > 0}>
+            {note.chiefComplaints.length === 0 ? (
+              <div className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
+                <ClipboardList className="h-4 w-4 text-slate-300 flex-shrink-0" />
+                <p className="text-xs text-slate-400">
+                  Select Chief Complaints above — each will appear here as an HPI entry button.
+                </p>
               </div>
-              {hpiTags.length > 0 && (
-                <p className="text-[11px] text-slate-400 italic">Selected: {hpiTags.join(", ")}</p>
-              )}
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                  Click a complaint to open its history template
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {note.chiefComplaints.map((complaint, idx) => {
+                    const isDone = hpiDoneComplaints.includes(complaint);
+                    const isOpen = hpiOpenComplaint === complaint;
+                    return (
+                      <button
+                        key={complaint}
+                        onClick={() => setHpiOpenComplaint(isOpen ? null : complaint)}
+                        className={[
+                          "flex items-center gap-2 px-3.5 py-2 rounded-xl border-2 text-xs font-bold transition-all",
+                          isOpen
+                            ? "text-white border-[#8b5cf6] bg-[#8b5cf6] shadow-md"
+                            : isDone
+                              ? "text-emerald-700 border-emerald-200 bg-emerald-50"
+                              : "text-slate-600 border-slate-200 bg-white hover:border-[#8b5cf6]/50 hover:bg-purple-50/40",
+                        ].join(" ")}>
+                        <span className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          isOpen ? "bg-white/25 text-white" : isDone ? "bg-emerald-200 text-emerald-700" : "bg-slate-100 text-slate-500"
+                        }`}>
+                          {idx + 1}
+                        </span>
+                        {complaint}
+                        {isDone
+                          ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                          : <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />
+                        }
+                      </button>
+                    );
+                  })}
+                </div>
+                {hpiDoneComplaints.length > 0 && (
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {hpiDoneComplaints.length}/{note.chiefComplaints.length} complaints documented
+                  </p>
+                )}
+              </div>
+            )}
           </Section>
 
           {/* 3. Allergies */}
@@ -707,6 +825,17 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
             <Trash2 className="h-3.5 w-3.5" /> Discard
           </Button>
         </div>
+
+        {/* ── HPI Template Drawer (slides in from right within the panel) ── */}
+        {hpiOpenComplaint && (
+          <HpiTemplateDrawer
+            complaint={hpiOpenComplaint}
+            isDone={hpiDoneComplaints.includes(hpiOpenComplaint)}
+            onMarkDone={() => markHpiDone(hpiOpenComplaint)}
+            onClose={() => setHpiOpenComplaint(null)}
+          />
+        )}
+
       </div>
     </>
   );
