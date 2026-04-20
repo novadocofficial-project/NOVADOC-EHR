@@ -12,6 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { CoughHistoryTemplate, CoughSummary, COUGH_EMPTY } from "@/pages/CoughHistoryTemplate";
 import type { CoughState } from "@/pages/CoughHistoryTemplate";
+import { AllergySelector } from "@/pages/AllergySelector";
+import type { AllergyEntry } from "@/pages/AllergySelector";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -22,7 +24,7 @@ const ACCENT = "#4982CF";
 interface NoteState {
   chiefComplaints: string[];
   hpi:             string;
-  allergies:       string;
+  allergies:       AllergyEntry[];
   pmh:             string;
   psh:             string;
   fh:              string;
@@ -37,7 +39,7 @@ interface NoteState {
 }
 
 const EMPTY_NOTE: NoteState = {
-  chiefComplaints: [], hpi: "", allergies: "",
+  chiefComplaints: [], hpi: "", allergies: [],
   pmh: "", psh: "", fh: "", sh: "",
   ros: "", pe: "", pocLabs: "",
   otherOrders: "", visitNote: "", followUpDate: "",
@@ -431,7 +433,7 @@ function useTimer(initialSeconds = 0) {
 // ─── Progress bar ─────────────────────────────────────────────────────────────
 
 function calcProgress(note: NoteState): number {
-  const fields: (string | string[])[] = [
+  const fields: (string | string[] | AllergyEntry[])[] = [
     note.chiefComplaints, note.hpi, note.allergies,
     note.pmh, note.ros, note.pe,
     note.planTags, note.visitNote, note.followUpDate,
@@ -731,9 +733,11 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
           {/* 3. Allergies */}
           <Section
             title="Allergies" icon={AlertCircle} color="#ef4444"
-            required filled={note.allergies.trim() !== ""}
-            onImport={() => handleImport("allergies", "Penicillin — Severe\nSulfonamides — Moderate\nAspirin — Moderate")}>
-            <NoteField value={note.allergies} onChange={v => set("allergies", v)} placeholder="Enter allergies or import from chart…" rows={2} />
+            required filled={note.allergies.length > 0}>
+            <AllergySelector
+              entries={note.allergies}
+              onChange={entries => set("allergies", entries)}
+            />
           </Section>
 
           {/* 4. History group: PMH / PSH / FH / SH (2-col compact) */}
