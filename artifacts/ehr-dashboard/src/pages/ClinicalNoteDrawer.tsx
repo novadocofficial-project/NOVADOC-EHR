@@ -10,6 +10,7 @@ import {
   ArrowRight, ClipboardCheck, ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CoughHistoryTemplate } from "@/pages/CoughHistoryTemplate";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -333,30 +334,36 @@ function HpiTemplateDrawer({ complaint, isDone, onMarkDone, onClose }: HpiTempla
         </div>
       </div>
 
-      {/* Template body — placeholder, ready for dynamic content */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
-        <div
-          className="h-16 w-16 rounded-2xl flex items-center justify-center"
-          style={{ backgroundColor: `${ACCENT}10` }}>
-          <ClipboardList className="h-7 w-7" style={{ color: ACCENT }} />
-        </div>
-        <div>
-          <p className="text-sm font-black text-slate-700">History Template</p>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-xs">
-            The structured HPI template for <strong className="text-slate-600">{complaint}</strong> will load here.
-            <br />
-            Dynamic templates can be mapped per complaint type.
-          </p>
-        </div>
-        <div className="mt-2 w-full max-w-xs space-y-2">
-          {["Onset & Duration", "Location & Radiation", "Quality & Severity", "Modifying Factors", "Associated Symptoms"].map(field => (
-            <div key={field} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-left">
-              <div className="h-1.5 w-1.5 rounded-full bg-slate-300 flex-shrink-0" />
-              <span className="text-xs text-slate-400 flex-1">{field}</span>
-              <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide">Coming soon</span>
+      {/* Template body — dynamic per complaint */}
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        {complaint === "Cough" ? (
+          <CoughHistoryTemplate />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
+            <div
+              className="h-16 w-16 rounded-2xl flex items-center justify-center"
+              style={{ backgroundColor: `${ACCENT}10` }}>
+              <ClipboardList className="h-7 w-7" style={{ color: ACCENT }} />
             </div>
-          ))}
-        </div>
+            <div>
+              <p className="text-sm font-black text-slate-700">History Template</p>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-xs">
+                The structured HPI template for <strong className="text-slate-600">{complaint}</strong> will load here.
+                <br />
+                Dynamic templates can be mapped per complaint type.
+              </p>
+            </div>
+            <div className="mt-2 w-full max-w-xs space-y-2">
+              {["Onset & Duration", "Location & Radiation", "Quality & Severity", "Modifying Factors", "Associated Symptoms"].map(field => (
+                <div key={field} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-left">
+                  <div className="h-1.5 w-1.5 rounded-full bg-slate-300 flex-shrink-0" />
+                  <span className="text-xs text-slate-400 flex-1">{field}</span>
+                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide">Coming soon</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
