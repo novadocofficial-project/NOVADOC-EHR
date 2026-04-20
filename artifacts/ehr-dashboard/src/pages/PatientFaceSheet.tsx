@@ -98,7 +98,7 @@ const HISTORY_RECORDS = [
 const REFERRALS = [
   { date: "15 Mar 2025", type: "Cardiology",    location: "Punjab Cardiac Centre",       status: "Pending" },
   { date: "10 Feb 2025", type: "Ophthalmology", location: "Al-Shifa Eye Trust",          status: "Completed" },
-  { date: "05 Jan 2025", type: "Nephrology",    location: "SIMS / Services Hospital",    status: "Scheduled" },
+  { date: "05 Jan 2025", type: "Nephrology",    location: "SIMS / Services Clinic",    status: "Scheduled" },
 ];
 
 const SURGICAL_PROCEDURES = [

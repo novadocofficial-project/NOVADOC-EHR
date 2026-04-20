@@ -424,7 +424,7 @@ export function DoctorsModule({
                       <Input placeholder="+1 (555) 000-0000" value={form.phone} onChange={e => setField("phone", e.target.value)} className="h-9" />
                     </FormField>
                     <FormField label="Email">
-                      <Input type="email" placeholder="doctor@hospital.com" value={form.email} onChange={e => setField("email", e.target.value)} className="h-9" />
+                      <Input type="email" placeholder="doctor@clinic.com" value={form.email} onChange={e => setField("email", e.target.value)} className="h-9" />
                     </FormField>
                     <FormField label="Password">
                       <Input type="password" placeholder="Set initial password" className="h-9" />

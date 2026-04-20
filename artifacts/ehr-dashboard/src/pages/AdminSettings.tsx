@@ -511,7 +511,7 @@ export function AdminSettings() {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight text-slate-900">Departments & Sub-Departments</h1>
-                  <p className="mt-1 text-sm text-slate-500">Manage hospital departments and their active status for billing.</p>
+                  <p className="mt-1 text-sm text-slate-500">Manage clinic departments and their active status for billing.</p>
                 </div>
                 <div className="flex gap-2">
                   <Button

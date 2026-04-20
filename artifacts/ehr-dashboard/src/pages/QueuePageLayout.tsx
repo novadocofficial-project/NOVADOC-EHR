@@ -306,7 +306,7 @@ export function QueueNavDropdown() {
           </span>
           <div>
             <p className="text-sm font-semibold leading-tight">Multi-Step Visit</p>
-            <p className="text-[10px] text-slate-400 leading-tight">Hospital OPD</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Clinic OPD</p>
           </div>
         </DropdownMenuItem>
 

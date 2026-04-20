@@ -80,7 +80,7 @@ const TRANSACTIONS = [
     status: "Paid",
     paymentMode: "Insurance",
     doctorRevenue: 400,
-    hospitalShare: 750,
+    clinicShare: 750,
     deptRevenue: 500,
     subDeptRevenue: 250,
     paymentDate: "2023-10-24 09:30 AM",
@@ -107,7 +107,7 @@ const TRANSACTIONS = [
     status: "Pending",
     paymentMode: "Pending",
     doctorRevenue: 1500,
-    hospitalShare: 2800,
+    clinicShare: 2800,
     deptRevenue: 2000,
     subDeptRevenue: 800,
     paymentDate: "-",
@@ -134,7 +134,7 @@ const TRANSACTIONS = [
     status: "Paid",
     paymentMode: "Card",
     doctorRevenue: 150,
-    hospitalShare: 200,
+    clinicShare: 200,
     deptRevenue: 200,
     subDeptRevenue: 0,
     paymentDate: "2023-10-24 10:15 AM",
@@ -161,7 +161,7 @@ const TRANSACTIONS = [
     status: "Partial",
     paymentMode: "Cash",
     doctorRevenue: 80,
-    hospitalShare: 120,
+    clinicShare: 120,
     deptRevenue: 120,
     subDeptRevenue: 0,
     paymentDate: "2023-10-24 11:00 AM",
@@ -188,7 +188,7 @@ const TRANSACTIONS = [
     status: "Paid",
     paymentMode: "Online",
     doctorRevenue: 100,
-    hospitalShare: 650,
+    clinicShare: 650,
     deptRevenue: 400,
     subDeptRevenue: 250,
     paymentDate: "2023-10-24 11:45 AM",
@@ -358,7 +358,7 @@ function EditTransactionDrawer({
       discount,
       net,
       doctorRevenue,
-      hospitalShare: net * 0.5,
+      clinicShare: net * 0.5,
       departmentRevenue: net * 0.1,
       subDepartmentRevenue: net * 0.05,
     };
@@ -598,7 +598,7 @@ function EditTransactionDrawer({
             <DrawerSection title="Shares & Revenue">
               <div className="grid grid-cols-2 gap-3">
                 <MoneyInput label="Doctor Revenue" value={procedureTotals.doctorRevenue} />
-                <MoneyInput label="Hospital Share" value={procedureTotals.hospitalShare} />
+                <MoneyInput label="Clinic Share" value={procedureTotals.clinicShare} />
                 <MoneyInput label="Department Revenue" value={procedureTotals.departmentRevenue} />
                 <MoneyInput label="Sub-department Revenue" value={procedureTotals.subDepartmentRevenue} />
                 <FieldLabel label="Payment Date">
@@ -886,8 +886,8 @@ export function Dashboard() {
 
                 <div className="col-span-1 grid grid-cols-2 gap-x-3 gap-y-1 border-l-0 text-xs lg:col-span-3 lg:border-l lg:border-slate-100 lg:pl-4">
                   <div className="flex flex-col">
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400">Hospital Share</span>
-                    <span className="font-medium text-slate-700">{formatCurrency(trx.hospitalShare)}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-slate-400">Clinic Share</span>
+                    <span className="font-medium text-slate-700">{formatCurrency(trx.clinicShare)}</span>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] uppercase tracking-wider text-slate-400">Doctor Rev.</span>

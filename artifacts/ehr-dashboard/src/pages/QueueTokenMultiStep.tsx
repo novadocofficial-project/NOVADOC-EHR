@@ -123,7 +123,7 @@ export function QueueTokenMultiStep() {
           </div>
           <div>
             <h1 className="text-base font-bold text-slate-900">Multi-Step Visit</h1>
-            <p className="text-xs text-slate-400">Hospital OPD · Token follows patient through every step</p>
+            <p className="text-xs text-slate-400">Clinic OPD · Token follows patient through every step</p>
           </div>
           <Badge className="border-violet-200 bg-violet-50 text-violet-700 text-[10px]">OPD Active</Badge>
         </div>

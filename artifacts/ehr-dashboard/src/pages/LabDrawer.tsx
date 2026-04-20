@@ -183,7 +183,7 @@ const ORDER_SETS: OrderSet[] = [
   {
     id:          "pneumonia",
     name:        "Pneumonia Panel",
-    description: "Community-acquired / hospital-acquired pneumonia",
+    description: "Community-acquired / clinic-acquired pneumonia",
     testIds:     ["cbc", "crp", "pct", "ldh", "blood_cx", "sputum_cs"],
     color:       "#f97316",
   },

@@ -119,7 +119,7 @@ export function BranchModule() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Branch Management</h1>
-          <p className="mt-1 text-sm text-slate-500">Configure hospital branches, working hours, and token reset schedules.</p>
+          <p className="mt-1 text-sm text-slate-500">Configure clinic branches, working hours, and token reset schedules.</p>
         </div>
         <Button onClick={openAdd} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white gap-2">
           <Plus className="h-4 w-4" />Add Branch
