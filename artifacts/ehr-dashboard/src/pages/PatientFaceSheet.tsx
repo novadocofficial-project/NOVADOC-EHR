@@ -3,6 +3,7 @@ import {
   Activity, Heart, Thermometer, Droplets, User, Phone, MapPin,
   CalendarDays, Stethoscope, Pill, FlaskConical, FileText,
   FolderOpen, ClipboardList, CheckCircle2, Syringe, Zap,
+  ArrowUpRight, Scissors, ShieldCheck, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
@@ -92,6 +93,24 @@ const HISTORY_RECORDS = [
   { date: "29 Jan 2025", by: "Nurse Amina", question: "Alcohol / smoking history?",      answer: "Non-smoker, no alcohol" },
 ];
 
+const REFERRALS = [
+  { date: "15 Mar 2025", type: "Cardiology",    location: "Punjab Cardiac Centre",       status: "Pending" },
+  { date: "10 Feb 2025", type: "Ophthalmology", location: "Al-Shifa Eye Trust",          status: "Completed" },
+  { date: "05 Jan 2025", type: "Nephrology",    location: "SIMS / Services Hospital",    status: "Scheduled" },
+];
+
+const SURGICAL_PROCEDURES = [
+  { date: "12 Jun 2023", diagnosis: "Cholelithiasis",       procedure: "Laparoscopic Cholecystectomy", status: "Completed" },
+  { date: "20 Sep 2021", diagnosis: "Appendicitis (acute)", procedure: "Appendectomy",                 status: "Completed" },
+  { date: "08 Mar 2019", diagnosis: "Deviated Nasal Septum", procedure: "Septoplasty",                status: "Completed" },
+];
+
+const VACCINATIONS = [
+  { schedule: "Annual",    vaccine: "Influenza (Flu) Vaccine",        administeredOn: "01 Oct 2024", administeredBy: "Nurse Amina" },
+  { schedule: "Booster",   vaccine: "COVID-19 (Moderna XBB.1.5)",     administeredOn: "14 Mar 2024", administeredBy: "Nurse Sara"  },
+  { schedule: "Decennial", vaccine: "Tetanus-Diphtheria (Td) Booster", administeredOn: "22 Jan 2022", administeredBy: "Nurse Amina" },
+];
+
 // Donut chart data — medication categories
 const MED_CATEGORY_DATA = [
   { name: "Diabetes",     value: 2, color: "#4982CF" },
@@ -146,6 +165,43 @@ function ActionRow({ label, sub, right }: { label: string; sub?: string; right?:
         {sub && <p className="text-[10px] text-slate-400 leading-tight">{sub}</p>}
       </div>
       {right ?? <ChevronRight className="h-3.5 w-3.5 text-slate-300 flex-shrink-0" />}
+    </div>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    Completed: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    Pending:   "bg-amber-50  text-amber-700  border-amber-100",
+    Scheduled: "bg-blue-50   text-blue-700   border-blue-100",
+  };
+  return (
+    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${map[status] ?? "bg-slate-100 text-slate-500 border-slate-200"}`}>
+      {status}
+    </span>
+  );
+}
+
+function TableHeader({ cols }: { cols: string[] }) {
+  return (
+    <div className="grid gap-1 pb-1.5 border-b border-slate-100 mb-1" style={{ gridTemplateColumns: `repeat(${cols.length}, minmax(0, 1fr))` }}>
+      {cols.map(c => (
+        <p key={c} className="text-[9px] font-black uppercase tracking-wider text-slate-400">{c}</p>
+      ))}
+    </div>
+  );
+}
+
+function TableRow({ cells, last = false, action }: { cells: (string | React.ReactNode)[]; last?: boolean; action?: React.ReactNode }) {
+  return (
+    <div className={`grid gap-1 py-2 items-center ${!last ? "border-b border-slate-50" : ""}`}
+      style={{ gridTemplateColumns: action ? `repeat(${cells.length}, minmax(0, 1fr)) auto` : `repeat(${cells.length}, minmax(0, 1fr))` }}>
+      {cells.map((c, i) => (
+        typeof c === "string"
+          ? <p key={i} className="text-[11px] text-slate-700 font-medium leading-tight truncate">{c}</p>
+          : <div key={i}>{c}</div>
+      ))}
+      {action && <div className="flex justify-end">{action}</div>}
     </div>
   );
 }
@@ -428,7 +484,7 @@ export function PatientFaceSheet({ entry, onBack, onCompleteConsultation }: Pati
         </div>
 
         {/* ── ROW 3: Investigations + Documents + Previous Visits ───────────── */}
-        <div className="grid grid-cols-3 gap-4 pb-6">
+        <div className="grid grid-cols-3 gap-4">
           <SectionCard title="Investigations" icon={<FlaskConical className="h-4 w-4" />} badge={3} accentColor="#06b6d4">
             {INVESTIGATIONS.map((inv, i) => (
               <ActionRow key={i}
@@ -455,6 +511,52 @@ export function PatientFaceSheet({ entry, onBack, onCompleteConsultation }: Pati
               />
             ))}
           </SectionCard>
+        </div>
+
+        {/* ── ROW 4: Referrals + Surgical Procedures + Vaccination ─────────── */}
+        <div className="grid grid-cols-3 gap-4 pb-6">
+
+          {/* Referrals */}
+          <SectionCard title="Referrals" icon={<ArrowUpRight className="h-4 w-4" />} badge={REFERRALS.length} accentColor="#6366f1">
+            <TableHeader cols={["Date", "Type", "Location", "Status"]} />
+            {REFERRALS.map((r, i) => (
+              <TableRow
+                key={i}
+                last={i === REFERRALS.length - 1}
+                cells={[r.date, r.type, r.location, <StatusPill status={r.status} />]}
+                action={
+                  <button className="flex items-center gap-1 text-[10px] font-bold text-indigo-500 hover:text-indigo-700 transition-colors whitespace-nowrap">
+                    <ExternalLink className="h-3 w-3" /> View
+                  </button>
+                }
+              />
+            ))}
+          </SectionCard>
+
+          {/* Surgical Procedures */}
+          <SectionCard title="Surgical Procedures" icon={<Scissors className="h-4 w-4" />} badge={SURGICAL_PROCEDURES.length} accentColor="#ec4899">
+            <TableHeader cols={["Date", "Diagnosis", "Procedure", "Status"]} />
+            {SURGICAL_PROCEDURES.map((s, i) => (
+              <TableRow
+                key={i}
+                last={i === SURGICAL_PROCEDURES.length - 1}
+                cells={[s.date, s.diagnosis, s.procedure, <StatusPill status={s.status} />]}
+              />
+            ))}
+          </SectionCard>
+
+          {/* Vaccination */}
+          <SectionCard title="Vaccination" icon={<ShieldCheck className="h-4 w-4" />} badge={VACCINATIONS.length} accentColor="#10b981">
+            <TableHeader cols={["Schedule", "Vaccine", "Administered On", "By"]} />
+            {VACCINATIONS.map((v, i) => (
+              <TableRow
+                key={i}
+                last={i === VACCINATIONS.length - 1}
+                cells={[v.schedule, v.vaccine, v.administeredOn, v.administeredBy]}
+              />
+            ))}
+          </SectionCard>
+
         </div>
       </div>
     </div>
