@@ -10,6 +10,7 @@ export type MultiEntry = QueueEntry & {
   skipped: boolean;
   billingCompleted: boolean;
   callTimestamp: number | null;
+  pendingLab: boolean;
 };
 
 // ─── Seed Data ─────────────────────────────────────────────────────────────────
@@ -22,42 +23,42 @@ export const INITIAL_QUEUE: MultiEntry[] = [
     step: 5, totalSteps: 5, stepLabel: "Pharmacy",
     patient: SEED_PATIENTS[4], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 90 * 60000),
-    callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null,
+    callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
   },
   {
     id: "m-2", tokenNumber: "C104", displayNum: 104, status: "completed",
     step: 4, totalSteps: 5, stepLabel: "Lab / Sample",
     patient: SEED_PATIENTS[5], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 55 * 60000),
-    callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null,
+    callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
   },
   {
     id: "m-3", tokenNumber: "C105", displayNum: 105, status: "called",
     step: 3, totalSteps: 5, stepLabel: "Doctor Consultation",
     patient: SEED_PATIENTS[0], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 30 * 60000),
-    callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null,
+    callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
   },
   {
     id: "m-4", tokenNumber: "C106", displayNum: 106, status: "waiting",
     step: 1, totalSteps: 5, stepLabel: "Registration",
     patient: SEED_PATIENTS[1], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 12 * 60000),
-    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null,
+    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false,
   },
   {
     id: "m-5", tokenNumber: "C107", displayNum: 107, status: "waiting",
     step: 1, totalSteps: 5, stepLabel: "Registration",
     patient: SEED_PATIENTS[2], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 6 * 60000),
-    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null,
+    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false,
   },
   {
     id: "m-6", tokenNumber: "U001", displayNum: 1, status: "waiting",
     step: 1, totalSteps: 2, stepLabel: "Triage & Registration",
     patient: SEED_PATIENTS[3], visitTypeId: "vt-2",
     createdAt: new Date(now.getTime() - 8 * 60000),
-    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null,
+    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false,
   },
   {
     id: "m-7", tokenNumber: "C108", displayNum: 108, status: "waiting",
@@ -65,28 +66,28 @@ export const INITIAL_QUEUE: MultiEntry[] = [
     patient: null,
     visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 3 * 60000),
-    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null,
+    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false,
   },
   {
     id: "m-8", tokenNumber: "C109", displayNum: 109, status: "waiting",
     step: 2, totalSteps: 5, stepLabel: "Vitals",
     patient: SEED_PATIENTS[3], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 22 * 60000),
-    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null,
+    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
   },
   {
     id: "m-9", tokenNumber: "C110", displayNum: 110, status: "waiting",
     step: 2, totalSteps: 5, stepLabel: "Vitals",
     patient: SEED_PATIENTS[6], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 11 * 60000),
-    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null,
+    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
   },
   {
     id: "m-10", tokenNumber: "C111", displayNum: 111, status: "waiting",
     step: 2, totalSteps: 5, stepLabel: "Vitals",
     patient: SEED_PATIENTS[0], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 5 * 60000),
-    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null,
+    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
   },
 ];
 
@@ -96,7 +97,7 @@ const CHANNEL_NAME = "ehr-multistep-queue-v2";
 const LS_QUEUE_KEY = "ehr-queue-v2";
 const LS_NUMS_KEY  = "ehr-queue-nums-v2";
 const LS_VER_KEY   = "ehr-queue-ver";
-const QUEUE_VER    = "5"; // bump when seed schema changes
+const QUEUE_VER    = "6"; // bump when seed schema changes
 
 function loadQueue(): MultiEntry[] {
   try {
@@ -340,6 +341,12 @@ export function useMultiStepQueue() {
     ));
   }
 
+  function docSendToLab(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, pendingLab: true, status: "waiting", callTimestamp: null }
+    ));
+  }
+
   function addEntry(entry: MultiEntry) {
     setQueue(prev => [...prev, entry]);
   }
@@ -355,7 +362,7 @@ export function useMultiStepQueue() {
     // nursing
     nurseCall, nurseTimerExpire, nurseAtCounter, nurseCompleteVitals, nurseSkip, nurseRecall,
     // doctor
-    docCall, docTimerExpire, docAtCounter, docCompleteConsultation, docMarkComplete, docSkip, docRecall,
+    docCall, docTimerExpire, docAtCounter, docCompleteConsultation, docMarkComplete, docSkip, docRecall, docSendToLab,
     addEntry,
   };
 }

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   PhoneCall, SkipForward, RotateCcw,
   ChevronUp, Clock, AlertCircle, X,
-  CheckCircle2, Stethoscope, FileText,
+  CheckCircle2, Stethoscope, FileText, FlaskConical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
@@ -27,12 +27,13 @@ export function DoctorUser() {
   const {
     queue,
     docCall, docTimerExpire, docAtCounter,
-    docCompleteConsultation, docMarkComplete, docSkip, docRecall,
+    docCompleteConsultation, docMarkComplete, docSkip, docRecall, docSendToLab,
   } = useMultiStepQueue();
 
   const { toast } = useToast();
   const [tick, setTick] = useState(0);
   const [showSkipped, setShowSkipped] = useState(false);
+  const [showPendingLab, setShowPendingLab] = useState(false);
   const [faceSheetEntry, setFaceSheetEntry] = useState<MultiEntry | null>(null);
 
   // Tracks which token IDs had SOAP Note clicked this session
@@ -67,6 +68,7 @@ export function DoctorUser() {
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
   const skippedQueue   = queue.filter(e => e.step === 3 && e.skipped);
+  const pendingLabQueue = queue.filter(e => e.step === 3 && e.pendingLab && !e.skipped && e.status !== "completed");
   const atCounterEntry = docQueue.find(e => e.status === "called") ?? null;
   const activeCallEntry = docQueue.find(e => e.callTimestamp !== null && getSecsLeft(e.callTimestamp) > 0) ?? null;
   const waitingTokens  = docQueue.filter(e => e.status === "waiting" && !e.callTimestamp);
@@ -137,6 +139,13 @@ export function DoctorUser() {
     toast({ title: `Token ${tokenNum} recalled to queue` });
   }
 
+  function handleSendToLab(id: string) {
+    const entry = queue.find(e => e.id === id);
+    docSendToLab(id);
+    setFaceSheetEntry(null);
+    toast({ title: `Lab order sent — ${entry?.tokenNumber ?? id} moved to Pending Lab Results` });
+  }
+
   const skipReasonFilled =
     skipReason !== "" &&
     (skipReason !== "Other" || skipOtherText.trim() !== "");
@@ -152,6 +161,7 @@ export function DoctorUser() {
         onSoapNoteClick={handleSoapNoteClick}
         onCompleteConsultation={handleFaceSheetComplete}
         onCompleteWithoutSoap={handleCompleteWithoutSoap}
+        onSendToLab={handleSendToLab}
       />
     );
   }
@@ -181,9 +191,10 @@ export function DoctorUser() {
           <div className="p-4 border-b border-slate-100">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Queue Stats</p>
             {[
-              { label: "At Counter", value: docQueue.filter(e => e.status === "called").length, style: { color: ACCENT }, bg: "bg-blue-50 border-blue-200" },
-              { label: "Waiting",    value: waitingTokens.length, style: { color: "#b45309" }, bg: "bg-amber-50 border-amber-200" },
-              { label: "Skipped",    value: skippedQueue.length,  style: { color: "#dc2626" }, bg: "bg-red-50 border-red-200"     },
+              { label: "At Counter",  value: docQueue.filter(e => e.status === "called").length, style: { color: ACCENT }, bg: "bg-blue-50 border-blue-200"   },
+              { label: "Waiting",     value: waitingTokens.length,    style: { color: "#b45309" }, bg: "bg-amber-50 border-amber-200" },
+              { label: "Pending Lab", value: pendingLabQueue.length,   style: { color: "#0284c7" }, bg: "bg-sky-50 border-sky-200"     },
+              { label: "Skipped",     value: skippedQueue.length,      style: { color: "#dc2626" }, bg: "bg-red-50 border-red-200"     },
             ].map(s => (
               <div key={s.label} className={`flex items-center justify-between rounded-xl border px-4 py-2.5 mb-2 ${s.bg}`}>
                 <span className="text-xs font-semibold text-slate-500">{s.label}</span>
@@ -373,6 +384,55 @@ export function DoctorUser() {
               </div>
             </div>
           </div>
+
+          {/* PENDING LAB PANEL */}
+          {pendingLabQueue.length > 0 && (
+            <>
+              <button
+                onClick={() => setShowPendingLab(v => !v)}
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full border border-sky-200 bg-white shadow-lg px-4 py-2 text-xs font-bold text-sky-700 hover:bg-sky-50 transition-all z-10"
+                style={{ marginBottom: skippedQueue.length > 0 ? "2.5rem" : undefined }}>
+                <FlaskConical className="h-3.5 w-3.5" />
+                Pending Lab Results ({pendingLabQueue.length})
+                <ChevronUp className={`h-3.5 w-3.5 transition-transform ${showPendingLab ? "rotate-180" : ""}`} />
+              </button>
+              {showPendingLab && (
+                <div className="absolute bottom-0 left-0 right-0 bg-white border-t-2 border-sky-200 rounded-t-3xl shadow-2xl z-20 max-h-72 flex flex-col">
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                      <FlaskConical className="h-4 w-4 text-sky-500" />
+                      <p className="text-sm font-bold text-slate-900">Pending Lab Results</p>
+                    </div>
+                    <button onClick={() => setShowPendingLab(false)} className="h-7 w-7 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="overflow-y-auto flex-1 p-4 space-y-2">
+                    {pendingLabQueue.map(entry => (
+                      <div key={entry.id} className="flex items-center gap-3 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3">
+                        <div className="font-mono font-black text-sm text-sky-700 flex-shrink-0">{entry.tokenNumber}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-800 truncate">
+                            {entry.patient?.name ?? "Walk-in Patient"}
+                          </p>
+                          <p className="text-xs text-sky-600 flex items-center gap-1">
+                            <FlaskConical className="h-3 w-3" /> Awaiting lab results
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-3 text-xs border-sky-200 text-sky-700 gap-1.5 hover:border-sky-400 hover:bg-sky-50"
+                          onClick={() => { setFaceSheetEntry(entry); setShowPendingLab(false); }}>
+                          Open Note
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           {/* SKIPPED PANEL */}
           {skippedQueue.length > 0 && (

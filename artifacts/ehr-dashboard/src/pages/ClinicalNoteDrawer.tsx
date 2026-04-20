@@ -17,6 +17,8 @@ import type { AllergyEntry } from "@/pages/AllergySelector";
 import { RosSystemSelector, PeChipsPanel, PeSystemDrawer } from "@/pages/RosPeSection";
 import { DiagnosisDrawer, DiagnosisChipsPanel } from "@/pages/DiagnosisDrawer";
 import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
+import { LabDrawer, LabChipsPanel } from "@/pages/LabDrawer";
+import type { LabOrder } from "@/pages/LabDrawer";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -539,10 +541,12 @@ function TimerPill({ label, timer }: { label: string; timer: ReturnType<typeof u
 interface ClinicalNoteDrawerProps {
   patientName: string;
   faceSheetOpenedAt?: number;
+  awaitingLab?: boolean;
+  onSendToLab?: () => void;
   onClose: () => void;
 }
 
-export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, onSendToLab, onClose }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(EMPTY_NOTE);
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
@@ -554,6 +558,9 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
   const [diagnosisDone,     setDiagnosisDone]     = useState(false);
   const [diagnosisSaved,    setDiagnosisSaved]    = useState<DiagnosisEntry[]>([]);
   const [diagnosisOpen,     setDiagnosisOpen]     = useState(false);
+  const [labDone,           setLabDone]           = useState(false);
+  const [labSaved,          setLabSaved]          = useState<LabOrder | null>(null);
+  const [labOpen,           setLabOpen]           = useState(false);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -585,6 +592,19 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
     setDiagnosisSaved(entries);
     setDiagnosisDone(true);
     setDiagnosisOpen(false);
+  }
+
+  function handleLabSave(order: LabOrder) {
+    setLabSaved(order);
+    setLabDone(true);
+    setLabOpen(false);
+  }
+
+  function handleSendToLab(order: LabOrder) {
+    setLabSaved(order);
+    setLabDone(true);
+    setLabOpen(false);
+    onSendToLab?.();
   }
 
   function handleImport(key: keyof NoteState, value: string) {
@@ -838,11 +858,30 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
               />
             </div>
 
-            {/* 7b. Other plan action tags */}
+            {/* 7b. Lab Orders */}
+            <div className="mb-4">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <FlaskConical className="h-3 w-3 text-amber-500" />
+                Lab Orders
+                {labDone && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center gap-1">
+                    <CheckCircle2 className="h-2.5 w-2.5" /> {labSaved?.tests.length ?? 0} test{(labSaved?.tests.length ?? 0) !== 1 ? "s" : ""}
+                  </span>
+                )}
+                {awaitingLab && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-sky-100 text-sky-600 border border-sky-200 flex items-center gap-1">
+                    Sent to Lab
+                  </span>
+                )}
+              </p>
+              <LabChipsPanel order={labSaved} onOpen={() => setLabOpen(true)} />
+            </div>
+
+            {/* 7c. Other plan action tags */}
             <div>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Plan Actions</p>
               <div className="flex flex-wrap gap-2">
-                {PLAN_TAGS.filter(t => t.label !== "Diagnosis").map(({ label, color, Icon }) => {
+                {PLAN_TAGS.filter(t => t.label !== "Diagnosis" && t.label !== "Lab").map(({ label, color, Icon }) => {
                   const active = note.planTags.includes(label);
                   return (
                     <button
@@ -918,11 +957,20 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
 
         {/* ── Bottom action bar ─────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 py-3 border-t border-slate-100 bg-white flex-shrink-0">
-          <Button
-            className="h-9 px-5 text-xs font-black gap-2 text-white flex-shrink-0"
-            style={{ backgroundColor: ACCENT }}>
-            <PenLine className="h-3.5 w-3.5" /> Doctor's Sign
-          </Button>
+          {awaitingLab ? (
+            <Button
+              disabled
+              className="h-9 px-5 text-xs font-black gap-2 text-white flex-shrink-0 opacity-80 cursor-not-allowed"
+              style={{ backgroundColor: "#0ea5e9" }}>
+              <FlaskConical className="h-3.5 w-3.5" /> Awaiting Lab Results
+            </Button>
+          ) : (
+            <Button
+              className="h-9 px-5 text-xs font-black gap-2 text-white flex-shrink-0"
+              style={{ backgroundColor: ACCENT }}>
+              <PenLine className="h-3.5 w-3.5" /> Doctor's Sign
+            </Button>
+          )}
           <Button
             variant="outline"
             className="h-9 px-4 text-xs font-bold gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 flex-shrink-0"
@@ -973,6 +1021,17 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
             savedData={diagnosisSaved}
             onSave={handleDiagnosisSave}
             onClose={() => setDiagnosisOpen(false)}
+          />
+        )}
+
+        {/* ── Lab Order Drawer ── */}
+        {labOpen && (
+          <LabDrawer
+            isDone={labDone}
+            savedData={labSaved}
+            onSave={handleLabSave}
+            onSendToLab={handleSendToLab}
+            onClose={() => setLabOpen(false)}
           />
         )}
 

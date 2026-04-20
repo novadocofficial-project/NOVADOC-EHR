@@ -150,9 +150,10 @@ interface SoapNotePageProps {
   entry: MultiEntry;
   onBack: () => void;
   faceSheetOpenedAt?: number;
+  onSendToLab?: () => void;
 }
 
-export function SoapNotePage({ entry, onBack, faceSheetOpenedAt }: SoapNotePageProps) {
+export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab }: SoapNotePageProps) {
   const [openDrawer, setOpenDrawer]             = useState<string | null>(null);
   const [drawerFullscreen, setDrawerFullscreen] = useState(false);
   const [showNoteDrawer, setShowNoteDrawer]     = useState(false);
@@ -442,6 +443,8 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt }: SoapNotePageP
         <ClinicalNoteDrawer
           patientName={name}
           faceSheetOpenedAt={faceSheetOpenedAt}
+          awaitingLab={entry.pendingLab}
+          onSendToLab={onSendToLab}
           onClose={() => setShowNoteDrawer(false)}
         />
       )}
