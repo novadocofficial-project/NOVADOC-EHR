@@ -15,6 +15,8 @@ import type { CoughState } from "@/pages/CoughHistoryTemplate";
 import { AllergySelector } from "@/pages/AllergySelector";
 import type { AllergyEntry } from "@/pages/AllergySelector";
 import { RosSystemSelector, PeChipsPanel, PeSystemDrawer } from "@/pages/RosPeSection";
+import { DiagnosisDrawer, DiagnosisChipsPanel } from "@/pages/DiagnosisDrawer";
+import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -549,6 +551,9 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
   const [peOpenSystem,      setPeOpenSystem]      = useState<string | null>(null);
   const [peDoneSystemIds,   setPeDoneSystemIds]   = useState<string[]>([]);
   const [peSavedData,       setPeSavedData]       = useState<Record<string, Record<string, string>>>({});
+  const [diagnosisDone,     setDiagnosisDone]     = useState(false);
+  const [diagnosisSaved,    setDiagnosisSaved]    = useState<DiagnosisEntry[]>([]);
+  const [diagnosisOpen,     setDiagnosisOpen]     = useState(false);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -574,6 +579,12 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
     setPeSavedData(prev => ({ ...prev, [systemId]: findings }));
     setPeDoneSystemIds(prev => prev.includes(systemId) ? prev : [...prev, systemId]);
     setPeOpenSystem(null);
+  }
+
+  function handleDiagnosisSave(entries: DiagnosisEntry[]) {
+    setDiagnosisSaved(entries);
+    setDiagnosisDone(true);
+    setDiagnosisOpen(false);
   }
 
   function handleImport(key: keyof NoteState, value: string) {
@@ -806,30 +817,53 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
             <NoteField value={note.pocLabs} onChange={v => set("pocLabs", v)} placeholder="Quick lab observations during visit…" rows={2} />
           </Section>
 
-          {/* 7. Assessment / Plan tags */}
-          <Section title="Assessment & Plan" icon={Tag} color="#6366f1" required filled={note.planTags.length > 0}>
-            <div className="flex flex-wrap gap-2">
-              {PLAN_TAGS.map(({ label, color, Icon }) => {
-                const active = note.planTags.includes(label);
-                return (
-                  <button
-                    key={label}
-                    onClick={() => togglePlanTag(label)}
-                    className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-xl border-2 transition-all"
-                    style={active
-                      ? { backgroundColor: color, color: "white", borderColor: color }
-                      : { backgroundColor: `${color}10`, color, borderColor: `${color}30` }}>
-                    <Icon className="h-3 w-3" />
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-            {note.planTags.length > 0 && (
-              <p className="text-[11px] text-slate-400 mt-2 italic">
-                Active: {note.planTags.join(" · ")}
+          {/* 7. Assessment / Plan */}
+          <Section title="Assessment & Plan" icon={Tag} color="#6366f1" required
+            filled={diagnosisDone || note.planTags.length > 0}>
+
+            {/* 7a. Diagnosis (ICD Selection) */}
+            <div className="mb-4">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <Tag className="h-3 w-3 text-indigo-500" />
+                Diagnosis
+                {diagnosisDone && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center gap-1">
+                    <CheckCircle2 className="h-2.5 w-2.5" /> {diagnosisSaved.length} code{diagnosisSaved.length !== 1 ? "s" : ""}
+                  </span>
+                )}
               </p>
-            )}
+              <DiagnosisChipsPanel
+                diagnoses={diagnosisSaved}
+                onOpen={() => setDiagnosisOpen(true)}
+              />
+            </div>
+
+            {/* 7b. Other plan action tags */}
+            <div>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Plan Actions</p>
+              <div className="flex flex-wrap gap-2">
+                {PLAN_TAGS.filter(t => t.label !== "Diagnosis").map(({ label, color, Icon }) => {
+                  const active = note.planTags.includes(label);
+                  return (
+                    <button
+                      key={label}
+                      onClick={() => togglePlanTag(label)}
+                      className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-xl border-2 transition-all"
+                      style={active
+                        ? { backgroundColor: color, color: "white", borderColor: color }
+                        : { backgroundColor: `${color}10`, color, borderColor: `${color}30` }}>
+                      <Icon className="h-3 w-3" />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {note.planTags.length > 0 && (
+                <p className="text-[11px] text-slate-400 mt-2 italic">
+                  Active: {note.planTags.join(" · ")}
+                </p>
+              )}
+            </div>
           </Section>
 
           {/* 8. Other Orders + Visit Note (2-col) */}
@@ -929,6 +963,16 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, onClose }: 
             savedData={peSavedData[peOpenSystem] ?? {}}
             onSave={findings => handlePeSave(peOpenSystem, findings)}
             onClose={() => setPeOpenSystem(null)}
+          />
+        )}
+
+        {/* ── Diagnosis ICD Drawer ── */}
+        {diagnosisOpen && (
+          <DiagnosisDrawer
+            isDone={diagnosisDone}
+            savedData={diagnosisSaved}
+            onSave={handleDiagnosisSave}
+            onClose={() => setDiagnosisOpen(false)}
           />
         )}
 
