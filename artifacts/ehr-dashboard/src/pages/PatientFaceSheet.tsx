@@ -362,7 +362,7 @@ export function PatientFaceSheet({ entry, onBack, onCompleteConsultation }: Pati
           </div>
         </div>
 
-        {/* ── ROW 2: Allergies + Presenting Complaint + Physical Exam ──────── */}
+        {/* ── ROW 1: Allergies + Patient History + Current Medications ─────── */}
         <div className="grid grid-cols-3 gap-4">
           <SectionCard title="Allergies" icon={<Syringe className="h-4 w-4" />} badge={ALLERGIES.length} accentColor="#ef4444">
             <div className="space-y-2">
@@ -378,6 +378,27 @@ export function PatientFaceSheet({ entry, onBack, onCompleteConsultation }: Pati
             </div>
           </SectionCard>
 
+          <SectionCard title="Patient History" icon={<ClipboardList className="h-4 w-4" />} badge={3} accentColor="#8b5cf6">
+            {HISTORY_RECORDS.map((h, i) => (
+              <ActionRow key={i}
+                label={h.question}
+                sub={`${h.answer} · ${h.by} · ${h.date}`}
+              />
+            ))}
+          </SectionCard>
+
+          <SectionCard title="Current Medications" icon={<Pill className="h-4 w-4" />} badge={3} accentColor="#10b981">
+            {MEDICATIONS.map((m, i) => (
+              <ActionRow key={i}
+                label={m.name}
+                sub={`${m.desc} · Since ${m.start}`}
+              />
+            ))}
+          </SectionCard>
+        </div>
+
+        {/* ── ROW 2: Presenting Complaint + Physical Examination + Diagnosis ── */}
+        <div className="grid grid-cols-3 gap-4">
           <SectionCard title="Presenting Complaint" icon={<ClipboardList className="h-4 w-4" />} badge={3} accentColor="#f59e0b">
             {PRESENTING_COMPLAINTS.map((pc, i) => (
               <ActionRow key={i}
@@ -395,27 +416,6 @@ export function PatientFaceSheet({ entry, onBack, onCompleteConsultation }: Pati
               />
             ))}
           </SectionCard>
-        </div>
-
-        {/* ── ROW 3: Previous Visits + Investigations + Diagnosis ──────────── */}
-        <div className="grid grid-cols-3 gap-4">
-          <SectionCard title="Previous Visits" icon={<CalendarDays className="h-4 w-4" />} badge={3} accentColor="#8b5cf6">
-            {PREVIOUS_VISITS.map((v, i) => (
-              <ActionRow key={i}
-                label={v.type}
-                sub={`${v.doctor} · ${v.date}`}
-              />
-            ))}
-          </SectionCard>
-
-          <SectionCard title="Investigations" icon={<FlaskConical className="h-4 w-4" />} badge={3} accentColor="#06b6d4">
-            {INVESTIGATIONS.map((inv, i) => (
-              <ActionRow key={i}
-                label={inv.type}
-                sub={`${inv.date} · Advised by ${inv.advisor}`}
-              />
-            ))}
-          </SectionCard>
 
           <SectionCard title="Diagnosis" icon={<FileText className="h-4 w-4" />} badge={3} accentColor="#ef4444">
             {DIAGNOSES.map((d, i) => (
@@ -427,13 +427,13 @@ export function PatientFaceSheet({ entry, onBack, onCompleteConsultation }: Pati
           </SectionCard>
         </div>
 
-        {/* ── ROW 4: Current Medications + Documents + Patient History ─────── */}
+        {/* ── ROW 3: Investigations + Documents + Previous Visits ───────────── */}
         <div className="grid grid-cols-3 gap-4 pb-6">
-          <SectionCard title="Current Medications" icon={<Pill className="h-4 w-4" />} badge={3} accentColor="#10b981">
-            {MEDICATIONS.map((m, i) => (
+          <SectionCard title="Investigations" icon={<FlaskConical className="h-4 w-4" />} badge={3} accentColor="#06b6d4">
+            {INVESTIGATIONS.map((inv, i) => (
               <ActionRow key={i}
-                label={m.name}
-                sub={`${m.desc} · Since ${m.start}`}
+                label={inv.type}
+                sub={`${inv.date} · Advised by ${inv.advisor}`}
               />
             ))}
           </SectionCard>
@@ -447,11 +447,11 @@ export function PatientFaceSheet({ entry, onBack, onCompleteConsultation }: Pati
             ))}
           </SectionCard>
 
-          <SectionCard title="Patient History" icon={<ClipboardList className="h-4 w-4" />} badge={3} accentColor="#8b5cf6">
-            {HISTORY_RECORDS.map((h, i) => (
+          <SectionCard title="Previous Visits" icon={<CalendarDays className="h-4 w-4" />} badge={3} accentColor="#8b5cf6">
+            {PREVIOUS_VISITS.map((v, i) => (
               <ActionRow key={i}
-                label={h.question}
-                sub={`${h.answer} · ${h.by} · ${h.date}`}
+                label={v.type}
+                sub={`${v.doctor} · ${v.date}`}
               />
             ))}
           </SectionCard>
