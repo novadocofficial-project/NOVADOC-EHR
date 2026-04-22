@@ -64,7 +64,7 @@ export function DoctorUser() {
 
   // Filter to Doctor Consultation step (step 3)
   const docQueue = queue
-    .filter(e => e.step === 3 && e.status !== "completed" && !e.skipped)
+    .filter(e => e.step === 3 && e.status !== "completed" && !e.skipped && !e.pendingLab)
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
   const skippedQueue   = queue.filter(e => e.step === 3 && e.skipped);
