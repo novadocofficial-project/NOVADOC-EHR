@@ -317,7 +317,7 @@ export function DoctorUser() {
                         <Button
                           variant="outline" size="sm"
                           className="border-red-200 text-red-500 hover:bg-red-50 text-xs"
-                          onClick={() => handleSkip(activeCallEntry.id)}>
+                          onClick={() => handleSkipClick(activeCallEntry.id)}>
                           <SkipForward className="h-3 w-3 mr-1" /> Skip Token
                         </Button>
                       )}
