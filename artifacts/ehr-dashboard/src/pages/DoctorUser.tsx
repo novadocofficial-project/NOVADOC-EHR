@@ -428,7 +428,7 @@ export function DoctorUser() {
                           variant="outline"
                           className="h-8 px-3 text-xs border-sky-200 text-sky-700 gap-1.5 hover:border-sky-400 hover:bg-sky-50"
                           onClick={() => { setFaceSheetEntry(entry); setShowPendingLab(false); }}>
-                          Open Note
+                          Open Face Sheet
                         </Button>
                       </div>
                     ))}
