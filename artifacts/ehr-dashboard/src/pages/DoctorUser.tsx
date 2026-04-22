@@ -260,12 +260,14 @@ export function DoctorUser() {
                         onClick={() => handleOpenFaceSheet(atCounterEntry)}>
                         <FileText className="h-4 w-4" /> Open Face Sheet
                       </Button>
-                      <Button
-                        variant="outline" size="sm"
-                        className="border-red-200 text-red-500 hover:bg-red-50 text-xs"
-                        onClick={() => handleSkipClick(atCounterEntry.id)}>
-                        <SkipForward className="h-3 w-3 mr-1" /> Skip
-                      </Button>
+                      {!soapNoteDone.has(atCounterEntry.id) && (
+                        <Button
+                          variant="outline" size="sm"
+                          className="border-red-200 text-red-500 hover:bg-red-50 text-xs"
+                          onClick={() => handleSkipClick(atCounterEntry.id)}>
+                          <SkipForward className="h-3 w-3 mr-1" /> Skip
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -311,12 +313,14 @@ export function DoctorUser() {
                         onClick={() => handleConsultation(activeCallEntry)}>
                         <Stethoscope className="h-4 w-4" /> Consultation
                       </Button>
-                      <Button
-                        variant="outline" size="sm"
-                        className="border-red-200 text-red-500 hover:bg-red-50 text-xs"
-                        onClick={() => handleSkip(activeCallEntry.id)}>
-                        <SkipForward className="h-3 w-3 mr-1" /> Skip Token
-                      </Button>
+                      {!soapNoteDone.has(activeCallEntry.id) && (
+                        <Button
+                          variant="outline" size="sm"
+                          className="border-red-200 text-red-500 hover:bg-red-50 text-xs"
+                          onClick={() => handleSkip(activeCallEntry.id)}>
+                          <SkipForward className="h-3 w-3 mr-1" /> Skip Token
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
