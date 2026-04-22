@@ -339,12 +339,17 @@ export function PatientFaceSheet({
               <FileEdit className="h-4 w-4" /> SOAP Note
             </Button>
           )}
-          <Button
-            className="h-9 px-4 text-sm font-bold gap-2 text-white"
-            style={{ backgroundColor: ACCENT }}
-            onClick={handleCompleteClick}>
-            <CheckCircle2 className="h-4 w-4" /> Complete Consultation
-          </Button>
+          <span
+            title={entry.pendingLab ? "Lab results awaited." : undefined}
+            className={entry.pendingLab ? "cursor-not-allowed" : undefined}>
+            <Button
+              className="h-9 px-4 text-sm font-bold gap-2 text-white"
+              style={{ backgroundColor: entry.pendingLab ? "#94a3b8" : ACCENT }}
+              disabled={entry.pendingLab}
+              onClick={!entry.pendingLab ? handleCompleteClick : undefined}>
+              <CheckCircle2 className="h-4 w-4" /> Complete Consultation
+            </Button>
+          </span>
         </div>
 
         {/* Patient info row */}
