@@ -659,7 +659,6 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
       {!fullscreen && (
         <div
           className="absolute inset-0 bg-black/20 backdrop-blur-[1px] z-30"
-          onClick={onClose}
         />
       )}
 

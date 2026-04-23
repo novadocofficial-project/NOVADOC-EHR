@@ -89,7 +89,6 @@ function ModuleDrawer({ label, Icon, fullscreen, onToggleFullscreen, onClose }: 
       {!fullscreen && (
         <div
           className="absolute inset-0 bg-black/10 backdrop-blur-[1px] z-30"
-          onClick={onClose}
         />
       )}
 
