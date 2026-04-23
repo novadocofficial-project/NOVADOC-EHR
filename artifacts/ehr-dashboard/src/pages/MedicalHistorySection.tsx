@@ -446,12 +446,11 @@ export interface SurgicalEntry {
 // ─── Surgical row ─────────────────────────────────────────────────────────────
 
 function SurgicalRow({
-  entry, onUpdate, onRemove, onAdd,
+  entry, onUpdate, onRemove,
 }: {
   entry: SurgicalEntry;
   onUpdate: (id: string, field: keyof SurgicalEntry, val: string) => void;
   onRemove: (id: string) => void;
-  onAdd: () => void;
 }) {
   const [procOpen, setProcOpen]     = useState(false);
   const [compOpen, setCompOpen]     = useState(false);
@@ -599,18 +598,11 @@ function SurgicalRow({
         )}
       </div>
 
-      {/* Remove (subtle) */}
+      {/* Remove */}
       <button
         onClick={() => onRemove(entry.id)}
-        className="h-8 w-7 flex-shrink-0 flex items-center justify-center rounded-xl border border-transparent hover:border-red-100 hover:bg-red-50 text-slate-200 hover:text-red-400 transition-colors">
+        className="h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-xl border border-transparent hover:border-red-100 hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors">
         <X className="h-3.5 w-3.5" />
-      </button>
-
-      {/* Add row */}
-      <button
-        onClick={onAdd}
-        className="h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-full bg-[#4982CF] hover:bg-[#3a6bb5] text-white transition-colors shadow-sm">
-        <Plus className="h-4 w-4" />
       </button>
     </div>
   );
@@ -624,42 +616,38 @@ interface SurgicalHistoryPanelProps {
 }
 
 export function SurgicalHistoryPanel({ rows, onChange }: SurgicalHistoryPanelProps) {
-  const displayRows = rows.length === 0
-    ? [{ id: `surg-${Date.now()}`, procedure: "", date: "", complications: "" }]
-    : rows;
-
   function addRow() {
-    const newEntry: SurgicalEntry = { id: `surg-${Date.now()}`, procedure: "", date: "", complications: "" };
-    onChange([...(rows.length === 0 ? displayRows : rows), newEntry]);
+    onChange([...rows, { id: `surg-${Date.now()}`, procedure: "", date: "", complications: "" }]);
   }
   function removeRow(id: string) {
-    const next = rows.filter(r => r.id !== id);
-    onChange(next);
+    onChange(rows.filter(r => r.id !== id));
   }
   function updateRow(id: string, field: keyof SurgicalEntry, val: string) {
-    const base = rows.length === 0 ? displayRows : rows;
-    onChange(base.map(r => r.id === id ? { ...r, [field]: val } : r));
+    onChange(rows.map(r => r.id === id ? { ...r, [field]: val } : r));
   }
 
   return (
     <div className="space-y-2">
-      {/* Header labels */}
-      <div className="flex items-center gap-2 px-1">
-        <p className="flex-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">Procedure</p>
-        <p className="w-36 flex-shrink-0 text-[9px] font-black text-slate-400 uppercase tracking-widest">Date</p>
-        <p className="flex-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">Complications</p>
-        <div className="w-7 flex-shrink-0" />
-        <div className="w-8 flex-shrink-0" />
-      </div>
-      {displayRows.map(row => (
-        <SurgicalRow
-          key={row.id}
-          entry={row}
-          onUpdate={updateRow}
-          onRemove={removeRow}
-          onAdd={addRow}
-        />
-      ))}
+      {rows.length > 0 && (
+        <div className="space-y-2">
+          {/* Column headers */}
+          <div className="flex items-center gap-2 px-1">
+            <p className="flex-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">Procedure</p>
+            <p className="w-36 flex-shrink-0 text-[9px] font-black text-slate-400 uppercase tracking-widest">Date</p>
+            <p className="flex-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">Complications</p>
+            <div className="w-8 flex-shrink-0" />
+          </div>
+          {rows.map(row => (
+            <SurgicalRow key={row.id} entry={row} onUpdate={updateRow} onRemove={removeRow} />
+          ))}
+        </div>
+      )}
+
+      <button
+        onClick={addRow}
+        className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-blue-700 transition-colors px-2 py-1.5 rounded-lg hover:bg-blue-50">
+        <Plus className="h-3.5 w-3.5" /> Add Surgical History
+      </button>
     </div>
   );
 }
