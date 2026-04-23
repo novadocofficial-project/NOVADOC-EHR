@@ -347,6 +347,12 @@ export function useMultiStepQueue() {
     ));
   }
 
+  function docCancelLab(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, pendingLab: false }
+    ));
+  }
+
   function addEntry(entry: MultiEntry) {
     setQueue(prev => [...prev, entry]);
   }
@@ -362,7 +368,7 @@ export function useMultiStepQueue() {
     // nursing
     nurseCall, nurseTimerExpire, nurseAtCounter, nurseCompleteVitals, nurseSkip, nurseRecall,
     // doctor
-    docCall, docTimerExpire, docAtCounter, docCompleteConsultation, docMarkComplete, docSkip, docRecall, docSendToLab,
+    docCall, docTimerExpire, docAtCounter, docCompleteConsultation, docMarkComplete, docSkip, docRecall, docSendToLab, docCancelLab,
     addEntry,
   };
 }

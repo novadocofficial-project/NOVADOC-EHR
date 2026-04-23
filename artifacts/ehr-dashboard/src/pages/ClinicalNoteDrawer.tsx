@@ -576,11 +576,12 @@ interface ClinicalNoteDrawerProps {
   faceSheetOpenedAt?: number;
   awaitingLab?: boolean;
   onSendToLab?: () => void;
+  onDiscardLab?: () => void;
   onSaveAndClose?: () => void;
   onClose: () => void;
 }
 
-export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, onSendToLab, onSaveAndClose, onClose }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, onSendToLab, onDiscardLab, onSaveAndClose, onClose }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(EMPTY_NOTE);
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
@@ -629,6 +630,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
     setPeSavedData({});
     setDiagnosisDone(false);
     setDiagnosisSaved([]);
+    if (labDone || awaitingLab) onDiscardLab?.();
     setLabDone(false);
     setLabSaved(null);
     setDiscardConfirm(false);

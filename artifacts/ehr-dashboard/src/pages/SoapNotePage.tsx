@@ -150,10 +150,11 @@ interface SoapNotePageProps {
   onBack: () => void;
   faceSheetOpenedAt?: number;
   onSendToLab?: () => void;
+  onDiscardLab?: () => void;
   onSaveAndClose?: () => void;
 }
 
-export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, onSaveAndClose }: SoapNotePageProps) {
+export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, onDiscardLab, onSaveAndClose }: SoapNotePageProps) {
   const [openDrawer, setOpenDrawer]             = useState<string | null>(null);
   const [drawerFullscreen, setDrawerFullscreen] = useState(false);
   const [showNoteDrawer, setShowNoteDrawer]     = useState(false);
@@ -445,6 +446,7 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
           faceSheetOpenedAt={faceSheetOpenedAt}
           awaitingLab={entry.pendingLab}
           onSendToLab={onSendToLab}
+          onDiscardLab={onDiscardLab}
           onSaveAndClose={onSaveAndClose}
           onClose={() => setShowNoteDrawer(false)}
         />

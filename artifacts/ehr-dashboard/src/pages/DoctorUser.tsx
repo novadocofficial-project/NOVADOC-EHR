@@ -27,7 +27,7 @@ export function DoctorUser() {
   const {
     queue,
     docCall, docTimerExpire, docAtCounter,
-    docCompleteConsultation, docMarkComplete, docSkip, docRecall, docSendToLab,
+    docCompleteConsultation, docMarkComplete, docSkip, docRecall, docSendToLab, docCancelLab,
   } = useMultiStepQueue();
 
   const { toast } = useToast();
@@ -145,6 +145,10 @@ export function DoctorUser() {
     toast({ title: `Lab order sent — ${entry?.tokenNumber ?? id} moved to Pending Lab Results` });
   }
 
+  function handleCancelLab(id: string) {
+    docCancelLab(id);
+  }
+
   const skipReasonFilled =
     skipReason !== "" &&
     (skipReason !== "Other" || skipOtherText.trim() !== "");
@@ -161,6 +165,7 @@ export function DoctorUser() {
         onCompleteConsultation={handleFaceSheetComplete}
         onCompleteWithoutSoap={handleCompleteWithoutSoap}
         onSendToLab={handleSendToLab}
+        onDiscardLab={handleCancelLab}
         onSaveAndClose={() => setFaceSheetEntry(null)}
       />
     );
