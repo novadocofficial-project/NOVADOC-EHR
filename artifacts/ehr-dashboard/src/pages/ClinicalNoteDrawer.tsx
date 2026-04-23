@@ -29,6 +29,8 @@ import { CarePlanChipsPanel, CarePlanDrawer, EMPTY_CARE_PLAN } from "@/pages/Car
 import type { CarePlanData } from "@/pages/CarePlanSection";
 import { HealthEdChipsPanel, HealthEdDrawer, EMPTY_HEALTH_ED } from "@/pages/HealthEdSection";
 import type { HealthEdSelection } from "@/pages/HealthEdSection";
+import { ReferralChipsPanel, ReferralDrawer, EMPTY_REFERRAL_DATA } from "@/pages/ReferralSection";
+import type { ReferralData, ReferralMed } from "@/pages/ReferralSection";
 import {
   PastHistoryPanel, FamilyHistoryPanel,
   SurgicalHistoryPanel, SocialHistoryPanel,
@@ -58,6 +60,7 @@ interface NoteState {
   imaging:         ImagingData;
   carePlan:        CarePlanData;
   healthEd:        HealthEdSelection;
+  referrals:       ReferralData;
   otherOrders:     string;
   visitNote:       string;
   followUpDate:    string;
@@ -67,7 +70,7 @@ interface NoteState {
 const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [], fhGenetic: [], socialHistory: EMPTY_SOCIAL_HISTORY,
-  ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING, carePlan: EMPTY_CARE_PLAN, healthEd: EMPTY_HEALTH_ED,
+  ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING, carePlan: EMPTY_CARE_PLAN, healthEd: EMPTY_HEALTH_ED, referrals: EMPTY_REFERRAL_DATA,
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
 };
@@ -589,6 +592,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
   const [imagingOpen,       setImagingOpen]       = useState(false);
   const [carePlanOpen,      setCarePlanOpen]      = useState(false);
   const [healthEdOpen,      setHealthEdOpen]      = useState(false);
+  const [referralOpen,      setReferralOpen]      = useState(false);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -1015,7 +1019,24 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
               />
             </div>
 
-            {/* 7f. Health Education */}
+            {/* 7f. Referrals */}
+            <div className="mb-4">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <Users className="h-3 w-3 text-indigo-500" />
+                Referrals
+                {(note.referrals?.referrals?.length ?? 0) > 0 && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-600 border border-indigo-200 flex items-center gap-1">
+                    <CheckCircle2 className="h-2.5 w-2.5" /> {note.referrals.referrals.length} referral{note.referrals.referrals.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </p>
+              <ReferralChipsPanel
+                data={note.referrals ?? EMPTY_REFERRAL_DATA}
+                onOpen={() => setReferralOpen(true)}
+              />
+            </div>
+
+            {/* 7g. Health Education */}
             <div className="mb-4">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <BookOpen className="h-3 w-3 text-violet-500" />
@@ -1227,6 +1248,25 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             savedData={note.healthEd ?? EMPTY_HEALTH_ED}
             onSave={v => set("healthEd", v)}
             onClose={() => setHealthEdOpen(false)}
+          />
+        )}
+
+        {/* ── Referral Drawer ── */}
+        {referralOpen && (
+          <ReferralDrawer
+            savedData={note.referrals ?? EMPTY_REFERRAL_DATA}
+            patientAllergies={note.allergies ?? []}
+            patientMeds={(note.formulary?.medicines ?? []).map(m => ({
+              id:        m.brandId,
+              brand:     m.brand,
+              generic:   m.genericName,
+              strength:  m.strength,
+              frequency: m.frequency,
+              duration:  m.duration,
+              qty:       1,
+            } as ReferralMed))}
+            onSave={v => set("referrals", v)}
+            onClose={() => setReferralOpen(false)}
           />
         )}
 
