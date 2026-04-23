@@ -761,19 +761,6 @@ function RadioYesNo({ value, onChange }: { value: boolean; onChange: (v: boolean
   );
 }
 
-// ─── Social section row ───────────────────────────────────────────────────────
-
-function SocialRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold text-slate-600 mb-1.5">{label}:</p>
-      <div className="flex items-center gap-2 flex-wrap">
-        {children}
-      </div>
-    </div>
-  );
-}
-
 // ─── Social History Panel ─────────────────────────────────────────────────────
 
 interface SocialHistoryPanelProps {
@@ -795,142 +782,82 @@ export function SocialHistoryPanel({ value, onChange }: SocialHistoryPanelProps)
     onChange({ ...value, oral: { ...value.oral, ...patch } });
   }
 
+  // Compact single-line row: [label] [radios] [dropdowns...]
+  const rowCls = "flex items-center gap-2";
+  const labelCls = "w-[130px] flex-shrink-0 text-[11px] font-semibold text-slate-500";
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-1.5">
       {/* Tobacco */}
-      <SocialRow label="Tobacco Intake">
+      <div className={rowCls}>
+        <span className={labelCls}>Tobacco Intake</span>
         <RadioYesNo value={value.tobacco.active} onChange={v => setTobacco({ active: v })} />
         {value.tobacco.active && (
           <>
-            <SSelect
-              value={value.tobacco.intake}
-              onChange={v => setTobacco({ intake: v })}
-              placeholder="Select Daily Intake"
-              options={DAILY_INTAKE_OPTS}
-              className="flex-1 min-w-[120px]"
-            />
-            <SSelect
-              value={value.tobacco.years}
-              onChange={v => setTobacco({ years: v })}
-              placeholder="Select Years"
-              options={YEARS_OPTS}
-              className="w-32"
-            />
-            <SSelect
-              value={value.tobacco.quitWhen}
-              onChange={v => setTobacco({ quitWhen: v })}
-              placeholder="Select Quit When"
-              options={QUIT_WHEN_OPTS}
-              className="w-36"
-            />
+            <SSelect value={value.tobacco.intake}   onChange={v => setTobacco({ intake: v })}   placeholder="Daily Intake" options={DAILY_INTAKE_OPTS} className="flex-1" />
+            <SSelect value={value.tobacco.years}    onChange={v => setTobacco({ years: v })}    placeholder="Years"        options={YEARS_OPTS}        className="w-28" />
+            <SSelect value={value.tobacco.quitWhen} onChange={v => setTobacco({ quitWhen: v })} placeholder="Quit When"    options={QUIT_WHEN_OPTS}    className="w-32" />
           </>
         )}
-      </SocialRow>
+      </div>
 
       {/* Vaping */}
-      <SocialRow label="Vaping Intake">
+      <div className={rowCls}>
+        <span className={labelCls}>Vaping Intake</span>
         <RadioYesNo value={value.vaping.active} onChange={v => setVaping({ active: v })} />
         {value.vaping.active && (
           <>
-            <SSelect
-              value={value.vaping.intake}
-              onChange={v => setVaping({ intake: v })}
-              placeholder="Select Daily Intake"
-              options={DAILY_INTAKE_OPTS}
-              className="flex-1 min-w-[120px]"
-            />
-            <SSelect
-              value={value.vaping.years}
-              onChange={v => setVaping({ years: v })}
-              placeholder="Select Years"
-              options={YEARS_OPTS}
-              className="w-32"
-            />
-            <SSelect
-              value={value.vaping.quitWhen}
-              onChange={v => setVaping({ quitWhen: v })}
-              placeholder="Select Quit When"
-              options={QUIT_WHEN_OPTS}
-              className="w-36"
-            />
+            <SSelect value={value.vaping.intake}   onChange={v => setVaping({ intake: v })}   placeholder="Daily Intake" options={DAILY_INTAKE_OPTS} className="flex-1" />
+            <SSelect value={value.vaping.years}    onChange={v => setVaping({ years: v })}    placeholder="Years"        options={YEARS_OPTS}        className="w-28" />
+            <SSelect value={value.vaping.quitWhen} onChange={v => setVaping({ quitWhen: v })} placeholder="Quit When"    options={QUIT_WHEN_OPTS}    className="w-32" />
           </>
         )}
-      </SocialRow>
+      </div>
 
       {/* Alcohol */}
-      <SocialRow label="Alcohol Use">
+      <div className={rowCls}>
+        <span className={labelCls}>Alcohol Use</span>
         <RadioYesNo value={value.alcohol.active} onChange={v => setAlcohol({ active: v })} />
         {value.alcohol.active && (
           <>
-            <SSelect
-              value={value.alcohol.cage}
-              onChange={v => setAlcohol({ cage: v })}
-              placeholder="Select Cage Score"
-              options={CAGE_OPTS}
-              className="flex-1 min-w-[120px]"
-            />
-            <SSelect
-              value={value.alcohol.units}
-              onChange={v => setAlcohol({ units: v })}
-              placeholder="Select Units"
-              options={ALCOHOL_UNITS_OPTS}
-              className="w-40"
-            />
-            <SSelect
-              value={value.alcohol.frequency}
-              onChange={v => setAlcohol({ frequency: v })}
-              placeholder="Frequency"
-              options={ALCOHOL_FREQ_OPTS}
-              className="w-32"
-            />
+            <SSelect value={value.alcohol.cage}      onChange={v => setAlcohol({ cage: v })}      placeholder="CAGE Score" options={CAGE_OPTS}          className="flex-1" />
+            <SSelect value={value.alcohol.units}     onChange={v => setAlcohol({ units: v })}     placeholder="Units"      options={ALCOHOL_UNITS_OPTS} className="w-36" />
+            <SSelect value={value.alcohol.frequency} onChange={v => setAlcohol({ frequency: v })} placeholder="Frequency"  options={ALCOHOL_FREQ_OPTS}  className="w-28" />
           </>
         )}
-      </SocialRow>
+      </div>
 
       {/* Oral Intake */}
-      <SocialRow label="Oral Intake">
+      <div className={rowCls}>
+        <span className={labelCls}>Oral Intake</span>
         <RadioYesNo value={value.oral.active} onChange={v => setOral({ active: v })} />
         {value.oral.active && (
           <>
-            <SSelect
-              value={value.oral.type}
-              onChange={v => setOral({ type: v })}
-              placeholder="Select Type"
-              options={ORAL_TYPE_OPTS}
-              className="flex-1 min-w-[120px]"
-            />
-            <SSelect
-              value={value.oral.other}
-              onChange={v => setOral({ other: v })}
-              placeholder="Other Mention Here"
-              options={ORAL_OTHER_OPTS}
-              className="w-40"
-            />
+            <SSelect value={value.oral.type}  onChange={v => setOral({ type: v })}  placeholder="Select Type"         options={ORAL_TYPE_OPTS} className="flex-1" />
+            <SSelect value={value.oral.other} onChange={v => setOral({ other: v })} placeholder="Other mention here"  options={ORAL_OTHER_OPTS} className="w-36" />
           </>
         )}
-      </SocialRow>
+      </div>
 
-      {/* Physical Activity */}
-      <SocialRow label="Physical Activity">
+      {/* Physical Activity + Sleep on same line */}
+      <div className={rowCls}>
+        <span className={labelCls}>Physical Activity</span>
         <SSelect
           value={value.activity}
           onChange={v => onChange({ ...value, activity: v })}
-          placeholder="Select Physical Activity"
+          placeholder="Select activity level"
           options={ACTIVITY_OPTS}
           className="flex-1"
         />
-      </SocialRow>
-
-      {/* Sleep */}
-      <SocialRow label="Sleep">
+        <span className="flex-shrink-0 text-[11px] font-semibold text-slate-500 pl-2">Sleep</span>
         <SSelect
           value={value.sleep}
           onChange={v => onChange({ ...value, sleep: v })}
-          placeholder="Select Sleep"
+          placeholder="Hours"
           options={SLEEP_OPTS}
-          className="flex-1"
+          className="w-44"
         />
-      </SocialRow>
+      </div>
     </div>
   );
 }
