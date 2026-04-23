@@ -288,7 +288,7 @@ export function PocLabsDrawer({ savedTests, onSave, onClose }: PocLabsDrawerProp
       {/* ── Header ── */}
       <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
         <button
-          onClick={onClose}
+          onClick={() => { onSave(localTests); onClose(); }}
           className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0">
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -297,9 +297,11 @@ export function PocLabsDrawer({ savedTests, onSave, onClose }: PocLabsDrawerProp
           <p className="text-sm font-black text-slate-800">Point of Care Labs</p>
         </div>
         {allResulted ? (
-          <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
+          <button
+            onClick={() => { onSave(localTests); onClose(); }}
+            className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0 hover:bg-emerald-100 transition-colors">
             <CheckCircle2 className="h-3 w-3" /> Done
-          </span>
+          </button>
         ) : (
           <button
             onClick={() => { onSave(localTests); onClose(); }}
