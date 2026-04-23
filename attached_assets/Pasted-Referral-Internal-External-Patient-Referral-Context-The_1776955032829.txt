@@ -1,0 +1,124 @@
+Referral (Internal & External Patient Referral)
+Context
+
+The Referral module allows doctors to refer patients:
+
+Internally (within system/hospital)
+Externally (outside network)
+
+This module is part of the clinical workflow and follows:
+
+Drawer-based input
+Structured clinical form
+Reuse of existing components (medications, allergies)
+Clean EMR-style layout
+Functional Requirements
+1. Entry Point
+Add “Referral” button
+On click → open a right-side drawer
+2. Referral Type
+
+Provide selection:
+
+Internal Referral
+External Referral
+3. Referral To (Target Type)
+
+Dropdown options:
+
+Consultant
+Procedure
+ER
+Custom (free text input)
+4. Speciality → Consultant Mapping
+Field: Speciality (dropdown)
+Based on selected speciality:
+Dynamically filter Consultant Name dropdown
+
+Example:
+
+Select “Cardiology” → show cardiologists only
+5. Consultant Selection
+Field: Consultant Name
+Dependent on speciality
+Required for internal referrals
+6. Clinical Context Fields
+A. Co-morbidities
+Multi-select dropdown OR free-text tag input
+Allow multiple entries
+B. Current Medications
+Reuse Formulary / Medication Drawer functionality
+Provide:
+Options:
+Add Medication
+Opens same medication drawer (brand/generic, dose, frequency, etc.)
+Import Medications
+Pull from existing patient medication list
+C. Drug Allergies
+Allow multiple allergy entries
+Options:
+Add Allergy manually (same structure as allergy module)
+Import Allergies
+Pull from patient record
+
+Fields per allergy:
+
+Allergen name
+Reaction (optional)
+Severity (optional)
+7. Reason for Referral
+Field: Reason for Consultation
+Free text (required)
+
+Examples:
+
+“Uncontrolled hypertension”
+“Further cardiac evaluation”
+8. Clinical Summary
+Field: Brief Summary
+Free text (multiline)
+
+Purpose:
+
+Provide context to receiving doctor
+9. UI Representation (After Save)
+
+Referral appears as a card in main view:
+
+Displays:
+
+Referral type (Internal / External)
+Target (Consultant / Procedure / ER)
+Consultant name (if applicable)
+Speciality
+Short reason
+
+Actions:
+
+Edit (opens drawer)
+Remove (✕)
+10. Interaction Flow
+Click Referral
+Drawer opens
+Select:
+Referral type
+Referral target
+Choose:
+Speciality → Consultant auto-filtered
+Add:
+Comorbidities
+Medications (add/import)
+Allergies (add/import)
+Enter:
+Reason for referral
+Clinical summary
+Save
+Referral appears as card
+11. UI / UX Constraints
+❌ No drag-and-drop
+✅ Drawer-based workflow
+✅ Structured clinical form layout
+✅ Reuse existing components:
+Medication drawer
+Allergy module
+✅ Clean and fast data entry
