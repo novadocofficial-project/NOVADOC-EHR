@@ -1,0 +1,104 @@
+Imaging Requisition (Assessment & Plan)
+Context
+
+The Imaging Requisition module allows doctors to order radiology/imaging tests as part of the Assessment & Plan workflow.
+
+This follows the same system design principles:
+
+Drawer-based interaction
+Chip/card-based summary view
+Clean, structured EMR layout
+Fast selection with favourites support
+Functional Requirements
+1. Entry Point
+Provide an “Imaging” button in Assessment & Plan
+On click → open a right-side drawer
+2. Imaging Test Selection
+Inside drawer:
+Provide a searchable dropdown
+Doctor can:
+Search imaging tests
+Select from predefined list
+
+Example imaging tests (mock data):
+
+X-Ray Chest
+CT Scan Brain
+MRI Knee
+Ultrasound Abdomen
+CT Angiography
+3. Multiple Test Support
+Doctor can:
+Add multiple imaging tests in one requisition
+Each selected test becomes an item block inside the drawer
+4. Per-Test Fields
+
+Each imaging test must include:
+
+Test Name (from dropdown)
+Reason for Ordering (mandatory text or selectable templates)
+
+Example reasons:
+
+“Rule out infection”
+“Trauma evaluation”
+“Chronic pain assessment”
+5. Favourites System
+Allow doctor to mark imaging tests as Favourite (★)
+
+Behavior:
+
+Favourites appear:
+At top of dropdown OR
+In a separate “Favourites” section
+Enables quick repeat ordering
+6. Generic Instructions (Global)
+Provide a single “Instructions” field (global)
+
+Examples:
+
+“Patient fasting for 6 hours”
+“With contrast”
+“Urgent”
+
+Important:
+
+This is NOT per test
+Applies to the entire imaging requisition
+7. Add / Remove Tests
+User can:
+Add multiple tests
+Remove any test before saving
+Each test block should have:
+Remove (✕) option
+8. Save & UI Representation
+
+After saving:
+
+Imaging orders appear as chips/cards in main view
+
+Each chip/card displays:
+
+Test Name
+Short reason (truncated if long)
+
+Actions:
+
+Click → Edit (reopens drawer)
+Remove (✕)
+Interaction Flow
+Click Imaging
+Drawer opens
+Search & select imaging test
+Add reason for ordering
+Repeat for multiple tests
+Add global instructions
+Save
+Tests appear as chips/cards
+UI / UX Constraints
+❌ No drag-and-drop
+✅ Drawer-based input
+✅ Chip/card-based display
+✅ Clean EMR-style layout
+✅ Fast multi-test entry
+✅ Favourites for efficiency

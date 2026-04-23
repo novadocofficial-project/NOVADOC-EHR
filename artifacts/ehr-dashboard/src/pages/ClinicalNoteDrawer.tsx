@@ -7,7 +7,7 @@ import {
   Users, BookOpen, Stethoscope, ClipboardList, CalendarDays,
   CheckCircle2, AlertCircle, Printer, Trash2, Tag,
   GripVertical, Check, Search, Plus,
-  ArrowRight, ClipboardCheck, ChevronLeft, Pill,
+  ArrowRight, ClipboardCheck, ChevronLeft, Pill, ScanLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CoughHistoryTemplate, CoughSummary, COUGH_EMPTY } from "@/pages/CoughHistoryTemplate";
@@ -23,6 +23,8 @@ import { PocLabsChipsPanel, PocLabsDrawer } from "@/pages/PocLabsSection";
 import type { PocTestResult } from "@/pages/PocLabsSection";
 import { FormularyChipsPanel, FormularyDrawer, EMPTY_FORMULARY } from "@/pages/FormularySection";
 import type { FormularyData } from "@/pages/FormularySection";
+import { ImagingChipsPanel, ImagingDrawer, EMPTY_IMAGING } from "@/pages/ImagingSection";
+import type { ImagingData } from "@/pages/ImagingSection";
 import {
   PastHistoryPanel, FamilyHistoryPanel,
   SurgicalHistoryPanel, SocialHistoryPanel,
@@ -49,6 +51,7 @@ interface NoteState {
   ros:             string[];
   pocTests:        PocTestResult[];
   formulary:       FormularyData;
+  imaging:         ImagingData;
   otherOrders:     string;
   visitNote:       string;
   followUpDate:    string;
@@ -58,7 +61,7 @@ interface NoteState {
 const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [], fhGenetic: [], socialHistory: EMPTY_SOCIAL_HISTORY,
-  ros: [], pocTests: [], formulary: EMPTY_FORMULARY,
+  ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING,
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
 };
@@ -577,6 +580,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
   const [labOpen,           setLabOpen]           = useState(false);
   const [pocOpen,           setPocOpen]           = useState(false);
   const [formularyOpen,     setFormularyOpen]     = useState(false);
+  const [imagingOpen,       setImagingOpen]       = useState(false);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -969,7 +973,24 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
               />
             </div>
 
-            {/* 7d. Other plan action tags */}
+            {/* 7d. Imaging */}
+            <div className="mb-4">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <ScanLine className="h-3 w-3 text-cyan-500" />
+                Imaging
+                {(note.imaging?.orders?.length ?? 0) > 0 && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center gap-1">
+                    <CheckCircle2 className="h-2.5 w-2.5" /> {note.imaging.orders.length} order{note.imaging.orders.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </p>
+              <ImagingChipsPanel
+                data={note.imaging ?? EMPTY_IMAGING}
+                onOpen={() => setImagingOpen(true)}
+              />
+            </div>
+
+            {/* 7e. Other plan action tags */}
             <div>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Plan Actions</p>
               <div className="flex flex-wrap gap-2">
@@ -1137,6 +1158,15 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             patientAllergies={note.allergies ?? []}
             onSave={v => set("formulary", v)}
             onClose={() => setFormularyOpen(false)}
+          />
+        )}
+
+        {/* ── Imaging Drawer ── */}
+        {imagingOpen && (
+          <ImagingDrawer
+            savedData={note.imaging ?? EMPTY_IMAGING}
+            onSave={v => set("imaging", v)}
+            onClose={() => setImagingOpen(false)}
           />
         )}
 
