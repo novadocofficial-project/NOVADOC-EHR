@@ -33,6 +33,8 @@ import { ReferralChipsPanel, ReferralDrawer, EMPTY_REFERRAL_DATA } from "@/pages
 import type { ReferralData, ReferralMed } from "@/pages/ReferralSection";
 import { ProcedureOrdersChipsPanel, ProcedureOrdersDrawer, EMPTY_PROCEDURE_ORDERS } from "@/pages/ProcedureOrdersSection";
 import type { ProcedureOrdersData } from "@/pages/ProcedureOrdersSection";
+import { PatientGoalsChipsPanel, PatientGoalsDrawer, EMPTY_PATIENT_GOALS } from "@/pages/PatientGoalsSection";
+import type { PatientGoalsData } from "@/pages/PatientGoalsSection";
 import {
   PastHistoryPanel, FamilyHistoryPanel,
   SurgicalHistoryPanel, SocialHistoryPanel,
@@ -64,6 +66,7 @@ interface NoteState {
   healthEd:        HealthEdSelection;
   referrals:       ReferralData;
   procedureOrders: ProcedureOrdersData;
+  patientGoals:    PatientGoalsData;
   otherOrders:     string;
   visitNote:       string;
   followUpDate:    string;
@@ -73,7 +76,7 @@ interface NoteState {
 const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [], fhGenetic: [], socialHistory: EMPTY_SOCIAL_HISTORY,
-  ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING, carePlan: EMPTY_CARE_PLAN, healthEd: EMPTY_HEALTH_ED, referrals: EMPTY_REFERRAL_DATA, procedureOrders: EMPTY_PROCEDURE_ORDERS,
+  ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING, carePlan: EMPTY_CARE_PLAN, healthEd: EMPTY_HEALTH_ED, referrals: EMPTY_REFERRAL_DATA, procedureOrders: EMPTY_PROCEDURE_ORDERS, patientGoals: EMPTY_PATIENT_GOALS,
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
 };
@@ -597,6 +600,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
   const [healthEdOpen,      setHealthEdOpen]      = useState(false);
   const [referralOpen,      setReferralOpen]      = useState(false);
   const [procOrdersOpen,    setProcOrdersOpen]    = useState(false);
+  const [patientGoalsOpen,  setPatientGoalsOpen]  = useState(false);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -1057,7 +1061,24 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
               />
             </div>
 
-            {/* 7g. Health Education */}
+            {/* 7h. Patient Goals */}
+            <div className="mb-4">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <CheckCircle2 className="h-3 w-3 text-pink-500" />
+                Patient Goals
+                {(note.patientGoals?.goals?.length ?? 0) > 0 && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-pink-100 text-pink-600 border border-pink-200 flex items-center gap-1">
+                    <CheckCircle2 className="h-2.5 w-2.5" /> {note.patientGoals.goals.length} goal{note.patientGoals.goals.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </p>
+              <PatientGoalsChipsPanel
+                data={note.patientGoals ?? EMPTY_PATIENT_GOALS}
+                onOpen={() => setPatientGoalsOpen(true)}
+              />
+            </div>
+
+            {/* 7i. Health Education */}
             <div className="mb-4">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <BookOpen className="h-3 w-3 text-violet-500" />
@@ -1269,6 +1290,15 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             savedData={note.healthEd ?? EMPTY_HEALTH_ED}
             onSave={v => set("healthEd", v)}
             onClose={() => setHealthEdOpen(false)}
+          />
+        )}
+
+        {/* ── Patient Goals Drawer ── */}
+        {patientGoalsOpen && (
+          <PatientGoalsDrawer
+            savedData={note.patientGoals ?? EMPTY_PATIENT_GOALS}
+            onSave={v => set("patientGoals", v)}
+            onClose={() => setPatientGoalsOpen(false)}
           />
         )}
 
