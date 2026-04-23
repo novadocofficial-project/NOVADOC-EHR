@@ -261,9 +261,13 @@ function TemplatePicker({ onSelect }: { onSelect: (tpl: GoalTemplate | null) => 
 
 // ─── Goal Form ─────────────────────────────────────────────────────────────────
 
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 const EMPTY_GOAL_FORM = {
   title:      "",
-  startDate:  "",
+  startDate:  todayStr(),
   targetDate: "",
   priority:   "Normal" as PatientGoal["priority"],
   actions:    [] as string[],
@@ -539,7 +543,7 @@ export function PatientGoalsDrawer({ savedData, onSave, onClose }: PatientGoalsD
   const formInitial = pickedTpl
     ? {
         title:      editingGoal?.title      ?? pickedTpl.title,
-        startDate:  editingGoal?.startDate  ?? "",
+        startDate:  editingGoal?.startDate  ?? todayStr(),
         targetDate: editingGoal?.targetDate ?? "",
         priority:   editingGoal?.priority   ?? "Normal" as const,
         actions:    editingGoal?.actions    ?? pickedTpl.actions,
