@@ -1,0 +1,99 @@
+Care Plan (Task Assignment System)
+Context
+
+The Care Plan module is part of Assessment & Plan workflow.
+
+It allows doctors to create and assign clinical care tasks to care managers or staff.
+
+This module follows the same system design pattern:
+
+Drawer-based input
+Multi-select task creation
+Chip/card-based summary UI
+Favourite support for fast access
+Functional Requirements
+1. Entry Point
+Add “Care Plan” button in Assessment & Plan
+On click → open a right-side drawer
+2. Task Selection (Core Feature)
+
+Inside drawer:
+
+Task Dropdown (Multi-select)
+Doctor can select multiple predefined tasks such as:
+Guide patient for nasal drops
+Wound dressing instructions
+Physiotherapy guidance
+Medication adherence counseling
+Also allow:
+Custom task entry if not found in dropdown
+3. Task Structure (Each Task Item)
+
+Each selected task must support:
+
+Required Fields:
+Task Description (predefined or custom)
+Assignee (Care Manager / Staff selection dropdown)
+Show available staff list dynamically
+Due Date (date picker)
+Priority:
+Normal
+Urgent
+Notes / Specific Instructions (free text)
+4. Multiple Tasks Support
+Doctor can:
+Add multiple care plan tasks in one session
+Each task is handled as an independent object inside the drawer
+5. Favourites System
+Doctor can mark tasks as Favourite (★)
+
+Behavior:
+
+Favourites appear at top of task dropdown
+Used for quick re-selection in future
+Applies to both:
+Predefined tasks
+Custom tasks (optional save)
+6. Assignee Logic
+“Assign To” dropdown shows:
+Care managers
+Nursing staff
+Support staff (from system user list)
+7. UI Representation (After Save)
+
+Care plan tasks appear as chips/cards in main view:
+
+Each card shows:
+
+Task title
+Assignee name
+Due date
+Priority badge (Normal / Urgent)
+
+Actions:
+
+Edit (opens drawer)
+Remove (✕)
+8. Custom Task Handling
+If task not in dropdown:
+Doctor can type custom task
+It behaves like standard task object
+Can also be marked as favourite
+9. Interaction Flow
+Click Care Plan
+Drawer opens
+Select multiple tasks OR add custom task
+For each task:
+Assign staff
+Set due date
+Set priority
+Add notes
+Save
+Tasks appear as cards in Care Plan section
+10. UI / UX Constraints
+❌ No drag-and-drop
+✅ Drawer-based workflow
+✅ Chip/card-based task display
+✅ Multi-task support
+✅ Fast clinical workflow (minimum clicks)
+✅ Consistent with other modules (HPI, PE, Imaging, Formulary)

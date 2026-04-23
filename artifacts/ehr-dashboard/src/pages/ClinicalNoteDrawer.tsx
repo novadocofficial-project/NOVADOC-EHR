@@ -25,6 +25,8 @@ import { FormularyChipsPanel, FormularyDrawer, EMPTY_FORMULARY } from "@/pages/F
 import type { FormularyData } from "@/pages/FormularySection";
 import { ImagingChipsPanel, ImagingDrawer, EMPTY_IMAGING } from "@/pages/ImagingSection";
 import type { ImagingData } from "@/pages/ImagingSection";
+import { CarePlanChipsPanel, CarePlanDrawer, EMPTY_CARE_PLAN } from "@/pages/CarePlanSection";
+import type { CarePlanData } from "@/pages/CarePlanSection";
 import {
   PastHistoryPanel, FamilyHistoryPanel,
   SurgicalHistoryPanel, SocialHistoryPanel,
@@ -52,6 +54,7 @@ interface NoteState {
   pocTests:        PocTestResult[];
   formulary:       FormularyData;
   imaging:         ImagingData;
+  carePlan:        CarePlanData;
   otherOrders:     string;
   visitNote:       string;
   followUpDate:    string;
@@ -61,7 +64,7 @@ interface NoteState {
 const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [], fhGenetic: [], socialHistory: EMPTY_SOCIAL_HISTORY,
-  ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING,
+  ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING, carePlan: EMPTY_CARE_PLAN,
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
 };
@@ -581,6 +584,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
   const [pocOpen,           setPocOpen]           = useState(false);
   const [formularyOpen,     setFormularyOpen]     = useState(false);
   const [imagingOpen,       setImagingOpen]       = useState(false);
+  const [carePlanOpen,      setCarePlanOpen]      = useState(false);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -990,7 +994,24 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
               />
             </div>
 
-            {/* 7e. Other plan action tags */}
+            {/* 7e. Care Plan */}
+            <div className="mb-4">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <ClipboardList className="h-3 w-3 text-emerald-500" />
+                Care Plan
+                {(note.carePlan?.tasks?.length ?? 0) > 0 && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center gap-1">
+                    <CheckCircle2 className="h-2.5 w-2.5" /> {note.carePlan.tasks.length} task{note.carePlan.tasks.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </p>
+              <CarePlanChipsPanel
+                data={note.carePlan ?? EMPTY_CARE_PLAN}
+                onOpen={() => setCarePlanOpen(true)}
+              />
+            </div>
+
+            {/* 7f. Other plan action tags */}
             <div>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Plan Actions</p>
               <div className="flex flex-wrap gap-2">
@@ -1167,6 +1188,15 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             savedData={note.imaging ?? EMPTY_IMAGING}
             onSave={v => set("imaging", v)}
             onClose={() => setImagingOpen(false)}
+          />
+        )}
+
+        {/* ── Care Plan Drawer ── */}
+        {carePlanOpen && (
+          <CarePlanDrawer
+            savedData={note.carePlan ?? EMPTY_CARE_PLAN}
+            onSave={v => set("carePlan", v)}
+            onClose={() => setCarePlanOpen(false)}
           />
         )}
 
