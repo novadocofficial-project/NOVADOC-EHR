@@ -19,8 +19,12 @@ import { DiagnosisDrawer, DiagnosisChipsPanel } from "@/pages/DiagnosisDrawer";
 import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
 import { LabDrawer, LabChipsPanel } from "@/pages/LabDrawer";
 import type { LabOrder } from "@/pages/LabDrawer";
-import { PastHistoryPanel, FamilyHistoryPanel } from "@/pages/MedicalHistorySection";
-import type { FamilyRow } from "@/pages/MedicalHistorySection";
+import {
+  PastHistoryPanel, FamilyHistoryPanel,
+  SurgicalHistoryPanel, SocialHistoryPanel,
+  EMPTY_SOCIAL_HISTORY,
+} from "@/pages/MedicalHistorySection";
+import type { FamilyRow, SurgicalEntry, SocialHistory } from "@/pages/MedicalHistorySection";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -34,10 +38,10 @@ interface NoteState {
   allergies:       AllergyEntry[];
   pmhActive:       string[];
   pmhResolved:     string[];
-  psh:             string;
+  surgicalRows:    SurgicalEntry[];
   fhRows:          FamilyRow[];
   fhGenetic:       string[];
-  sh:              string;
+  socialHistory:   SocialHistory;
   ros:             string[];
   pocLabs:         string;
   otherOrders:     string;
@@ -48,7 +52,7 @@ interface NoteState {
 
 const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
-  pmhActive: [], pmhResolved: [], psh: "", fhRows: [], fhGenetic: [], sh: "",
+  pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [], fhGenetic: [], socialHistory: EMPTY_SOCIAL_HISTORY,
   ros: [], pocLabs: "",
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
@@ -789,17 +793,26 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
           <Section
             title="Medical, Surgical, Family & Social History"
             icon={Users} color="#10b981" defaultOpen={false}
-            filled={(note.pmhActive ?? []).length > 0 || (note.pmhResolved ?? []).length > 0 || (note.fhRows ?? []).length > 0 || (note.psh ?? "").trim() !== ""}
+            filled={(note.pmhActive ?? []).length > 0 || (note.pmhResolved ?? []).length > 0 || (note.surgicalRows ?? []).length > 0 || (note.fhRows ?? []).length > 0}
             onImport={() => {
               set("pmhActive",   ["Hypertension", "Type 2 Diabetes Mellitus"]);
               set("pmhResolved", ["Typhoid Fever", "Hepatitis A"]);
-              set("psh",        "Appendectomy (2015)");
+              set("surgicalRows", [
+                { id: "surg-imp-1", procedure: "Appendectomy", date: "2015-06-10", complications: "None" },
+              ]);
               set("fhRows", [
-                { id: "fhr-imp-1", condition: "Hypertension",              relation: "Father" },
-                { id: "fhr-imp-2", condition: "Type 2 Diabetes Mellitus",  relation: "Mother" },
+                { id: "fhr-imp-1", condition: "Hypertension",             relation: "Father" },
+                { id: "fhr-imp-2", condition: "Type 2 Diabetes Mellitus", relation: "Mother" },
               ]);
               set("fhGenetic",  ["Thalassemia"]);
-              set("sh",         "Non-smoker · Occasional alcohol · Office worker");
+              set("socialHistory", {
+                tobacco:  { active: false, intake: "",   years: "",          quitWhen: "" },
+                vaping:   { active: false, intake: "",   years: "",          quitWhen: "" },
+                alcohol:  { active: true,  cage: "1",   units: "Units/week", frequency: "Occasionally" },
+                oral:     { active: false, type: "",     other: "" },
+                activity: "Light (1–2 days/week)",
+                sleep:    "6–7 hours",
+              });
             }}>
 
             {/* Past Medical History */}
@@ -818,11 +831,14 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
 
             {/* Surgical History */}
             <div className="mb-5">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
                 <span className="inline-block w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" />
                 Surgical History
               </p>
-              <NoteField value={note.psh} onChange={v => set("psh", v)} placeholder="e.g. Appendectomy (2015), Caesarean section (2019)…" rows={2} />
+              <SurgicalHistoryPanel
+                rows={note.surgicalRows ?? []}
+                onChange={v => set("surgicalRows", v)}
+              />
             </div>
 
             {/* Family History */}
@@ -841,11 +857,14 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
 
             {/* Social History */}
             <div>
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
                 <span className="inline-block w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />
                 Social History
               </p>
-              <NoteField value={note.sh} onChange={v => set("sh", v)} placeholder="Smoking, alcohol, occupation, lifestyle…" rows={2} />
+              <SocialHistoryPanel
+                value={note.socialHistory ?? EMPTY_SOCIAL_HISTORY}
+                onChange={v => set("socialHistory", v)}
+              />
             </div>
           </Section>
 
