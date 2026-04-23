@@ -1,10 +1,11 @@
 import { useState } from "react";
 import {
-  ArrowLeft, RefreshCw, ChevronDown, MoreHorizontal, ChevronRight,
+  ArrowLeft, RefreshCw, ChevronDown, MoreHorizontal, ChevronRight, ChevronUp,
   AlertTriangle, Activity, Heart, Thermometer, User, Ruler, Zap,
   Edit3, FileText, CheckCircle2, Clock, X, Maximize2, Minimize2,
-  BarChart2, Calendar, Pill, FlaskConical, Stethoscope,
+  BarChart2, Calendar, Pill, FlaskConical, Stethoscope, PenLine,
   ClipboardList, Users, FileBarChart, ScanLine, TrendingUp,
+  Microscope, Eye, BookOpen, Target,
 } from "lucide-react";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,253 @@ export interface SignedRecord {
   type: string;
   doctor: string;
   signed: true;
+}
+
+// ─── SOAP Preview Dummy Data ───────────────────────────────────────────────────
+
+interface SoapDummyNote {
+  cc: string[];
+  hpi: string;
+  vitals: { bp: string; pulse: string; temp: string; spo2: string; weight: string };
+  ros: string[];
+  pe: string[];
+  diagnoses: { code: string; name: string; severity: "Low" | "Moderate" | "High" }[];
+  prescriptions: { drug: string; sig: string; qty: number }[];
+  labs: string[];
+  imaging: string[];
+  carePlan: string[];
+  followUp: string;
+  signedBy: string;
+  signedAt: string;
+}
+
+const SOAP_DUMMY: SoapDummyNote[] = [
+  {
+    cc: ["Productive cough", "Fever", "Sore throat"],
+    hpi: "55-year-old male presents with a 4-day history of productive cough with yellowish sputum, fever peaking at 38.7 °C, and mild sore throat. Onset was gradual. No known sick contacts. Patient reports poor appetite and generalised fatigue. No chest pain or shortness of breath at rest. Tried OTC paracetamol with partial relief.",
+    vitals: { bp: "128/84", pulse: "92", temp: "38.5", spo2: "97", weight: "72 kg" },
+    ros: ["Cough — productive, yellowish sputum", "Fever — present (38.5 °C)", "Sore throat — mild", "Shortness of breath — absent", "Chest pain — absent", "Nausea — mild"],
+    pe: ["General: Ill-appearing, febrile, not in severe distress", "ENT: Mild pharyngeal erythema, no exudate, no cervical lymphadenopathy", "Chest: Bilateral coarse crackles at both bases on auscultation", "CVS: Regular rate and rhythm, no murmur, no added sounds"],
+    diagnoses: [
+      { code: "J06.9", name: "Acute Upper Respiratory Infection", severity: "Moderate" },
+      { code: "J20.9", name: "Acute Bronchitis, unspecified", severity: "Low" },
+    ],
+    prescriptions: [
+      { drug: "Azithromycin 500 mg", sig: "Once daily × 5 days", qty: 5 },
+      { drug: "Paracetamol 500 mg", sig: "TID × 3 days PRN fever", qty: 9 },
+      { drug: "Salbutamol Inhaler 100 mcg", sig: "2 puffs TID", qty: 1 },
+    ],
+    labs: ["CBC with Differential", "CRP / ESR", "Throat swab C&S"],
+    imaging: [],
+    carePlan: ["Steam inhalation TID for 3 days", "Oral fluid intake ≥ 2 L/day", "Complete rest — avoid exertion for 48 h", "Return if fever > 48 h or dyspnoea develops"],
+    followUp: "14 Dec 2024",
+    signedBy: "Dr. Asif Imam",
+    signedAt: "10 Dec 2024, 11:20",
+  },
+  {
+    cc: ["Persistent headache", "Elevated blood pressure"],
+    hpi: "55-year-old male presents for routine hypertension follow-up. Reports persistent frontal headache for the past week, worse in the mornings. Home BP readings consistently 150–160 / 95–100 mmHg. Currently on Amlodipine 5 mg once daily — compliance reported as good. No recent dietary changes. Denies chest pain, palpitations, or visual disturbances. Mild bilateral ankle swelling noted.",
+    vitals: { bp: "158/98", pulse: "78", temp: "36.8", spo2: "99", weight: "75 kg" },
+    ros: ["Headache — frontal, morning predominance", "Visual disturbance — absent", "Chest pain — absent", "Palpitations — absent", "Ankle swelling — mild bilateral"],
+    pe: ["General: Alert, well-oriented, mildly distressed from headache", "CVS: S1 S2 heard, no S3; BP 158/98 both arms", "Neuro: No focal neurological deficit", "Extremities: Mild pitting oedema +1 bilaterally"],
+    diagnoses: [
+      { code: "I10", name: "Essential Hypertension — Stage 2", severity: "High" },
+      { code: "R51", name: "Headache (secondary to uncontrolled HTN)", severity: "Moderate" },
+    ],
+    prescriptions: [
+      { drug: "Amlodipine 10 mg", sig: "Once daily (dose increased from 5 mg)", qty: 30 },
+      { drug: "Hydrochlorothiazide 25 mg", sig: "Once daily — new addition", qty: 30 },
+    ],
+    labs: ["Electrolytes panel (Na / K / Cl)", "Renal function test (BUN / Creatinine)", "12-lead ECG"],
+    imaging: ["Chest X-ray (PA view) — cardiac silhouette assessment"],
+    carePlan: ["Low sodium diet — < 2 g NaCl / day", "Daily BP monitoring log — bring to next visit", "Reduce caffeine and alcohol", "Moderate aerobic exercise 30 min/day", "Daily weight monitoring for oedema"],
+    followUp: "17 Nov 2024",
+    signedBy: "Dr. Abc",
+    signedAt: "10 Nov 2024, 08:45",
+  },
+  {
+    cc: ["Fatigue", "Excessive thirst", "Blurred vision"],
+    hpi: "55-year-old male with known Type 2 Diabetes Mellitus presents for quarterly review. Reports increasing fatigue, polydipsia, and mild bilateral blurred vision over 3 weeks. Last HbA1c: 8.2 % (3 months ago). Home glucose: fasting 180–210 mg/dL, post-meal 240–280 mg/dL. On Metformin 500 mg BD. Compliance good. Denies polyuria or unexplained weight loss. Foot inspection reveals no active ulcer.",
+    vitals: { bp: "132/82", pulse: "80", temp: "36.9", spo2: "98", weight: "78 kg" },
+    ros: ["Fatigue — present, worsening gradually", "Polydipsia — present, significant", "Polyuria — mild", "Blurred vision — bilateral, intermittent", "Tingling in toes — present (peripheral neuropathy symptom)", "Chest pain — absent"],
+    pe: ["General: Overweight (BMI 29.4), no acute distress", "Fundoscopy: Early background retinopathy bilateral — dot haemorrhages noted", "Foot: Intact skin bilaterally; reduced monofilament sensation right > left; no ulcer", "CVS: Regular rate and rhythm, no murmur"],
+    diagnoses: [
+      { code: "E11.9", name: "Type 2 Diabetes Mellitus — Poorly Controlled", severity: "High" },
+      { code: "E11.36", name: "Diabetic Retinopathy — Background Stage", severity: "Moderate" },
+      { code: "E11.40", name: "Diabetic Peripheral Neuropathy", severity: "Low" },
+    ],
+    prescriptions: [
+      { drug: "Metformin 1000 mg", sig: "BD with meals (dose doubled)", qty: 60 },
+      { drug: "Sitagliptin 100 mg", sig: "Once daily — new addition", qty: 30 },
+      { drug: "Omega-3 Fatty Acids 1000 mg", sig: "Once daily with meal", qty: 30 },
+    ],
+    labs: ["HbA1c", "Fasting lipid panel", "Urine microalbumin / creatinine ratio", "Renal function test", "LFTs"],
+    imaging: ["Fundus photography — diabetic retinopathy grading"],
+    carePlan: ["Diabetic diet — low carbohydrate, low GI foods", "Target HbA1c < 7 %", "Daily foot inspection at home", "Refer to diabetic educator for self-management training", "Ophthalmology referral for retinopathy management", "Review in 4 weeks for glucose response"],
+    followUp: "05 Oct 2024",
+    signedBy: "Dr. Xyz",
+    signedAt: "25 Sep 2024, 05:45",
+  },
+];
+
+const SEV_COLOR: Record<string, string> = {
+  Low:      "bg-sky-50 text-sky-700 border-sky-200",
+  Moderate: "bg-amber-50 text-amber-700 border-amber-200",
+  High:     "bg-red-50 text-red-700 border-red-200",
+};
+
+function SoapNotePreview({ note }: { note: SoapDummyNote }) {
+  const Section = ({ icon, title, color, children }: { icon: React.ReactNode; title: string; color: string; children: React.ReactNode }) => (
+    <div className="mb-5">
+      <div className="flex items-center gap-2 mb-2.5">
+        <span style={{ color }}>{icon}</span>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{title}</p>
+      </div>
+      {children}
+    </div>
+  );
+
+  return (
+    <div className="px-6 py-5 bg-slate-50 border-t border-slate-100">
+
+      {/* ── Header vitals strip ── */}
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        {[
+          { label: "BP",     value: note.vitals.bp,     unit: "mmHg", color: "#4982CF" },
+          { label: "Pulse",  value: note.vitals.pulse,  unit: "bpm",  color: "#ef4444" },
+          { label: "Temp",   value: note.vitals.temp,   unit: "°C",   color: "#f59e0b" },
+          { label: "SpO₂",  value: note.vitals.spo2,   unit: "%",    color: "#10b981" },
+          { label: "Weight", value: note.vitals.weight, unit: "",     color: "#8b5cf6" },
+        ].map(v => (
+          <div key={v.label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm">
+            <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: v.color }}>{v.label}</span>
+            <span className="text-xs font-black text-slate-800">{v.value}</span>
+            {v.unit && <span className="text-[9px] text-slate-400">{v.unit}</span>}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-8">
+
+        {/* ── Left column ── */}
+        <div>
+          <Section icon={<ClipboardList className="h-3.5 w-3.5" />} title="Chief Complaint" color="#4982CF">
+            <div className="flex flex-wrap gap-1.5">
+              {note.cc.map(c => (
+                <span key={c} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">{c}</span>
+              ))}
+            </div>
+          </Section>
+
+          <Section icon={<FileText className="h-3.5 w-3.5" />} title="History of Present Illness" color="#6366f1">
+            <p className="text-[11px] leading-relaxed text-slate-600 bg-white border border-slate-200 rounded-lg px-3.5 py-2.5">{note.hpi}</p>
+          </Section>
+
+          <Section icon={<Activity className="h-3.5 w-3.5" />} title="Review of Systems" color="#0ea5e9">
+            <div className="space-y-1">
+              {note.ros.map((r, i) => {
+                const positive = r.toLowerCase().includes("present") || r.toLowerCase().includes("positive");
+                const absent   = r.toLowerCase().includes("absent") || r.toLowerCase().includes("negative");
+                return (
+                  <div key={i} className="flex items-start gap-2">
+                    <span className={`mt-0.5 h-1.5 w-1.5 rounded-full flex-shrink-0 ${positive ? "bg-amber-400" : absent ? "bg-emerald-400" : "bg-slate-300"}`} />
+                    <p className="text-[11px] text-slate-600">{r}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+
+          <Section icon={<Stethoscope className="h-3.5 w-3.5" />} title="Physical Examination" color="#8b5cf6">
+            <div className="space-y-1.5">
+              {note.pe.map((p, i) => (
+                <div key={i} className="flex items-start gap-2 bg-white border border-slate-100 rounded-lg px-3 py-2">
+                  <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-violet-400 flex-shrink-0" />
+                  <p className="text-[11px] text-slate-600">{p}</p>
+                </div>
+              ))}
+            </div>
+          </Section>
+        </div>
+
+        {/* ── Right column ── */}
+        <div>
+          <Section icon={<Target className="h-3.5 w-3.5" />} title="Assessment & Diagnosis" color="#ef4444">
+            <div className="space-y-2">
+              {note.diagnoses.map((d, i) => (
+                <div key={i} className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 ${SEV_COLOR[d.severity]}`}>
+                  <span className="text-[10px] font-black font-mono">{d.code}</span>
+                  <div className="w-px self-stretch bg-current opacity-20" />
+                  <p className="text-[11px] font-semibold flex-1">{d.name}</p>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-white/60">{d.severity}</span>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          <Section icon={<Pill className="h-3.5 w-3.5" />} title="Prescriptions" color="#8b5cf6">
+            <div className="space-y-2">
+              {note.prescriptions.map((rx, i) => (
+                <div key={i} className="bg-white border border-slate-200 rounded-lg px-3 py-2.5 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-black text-slate-800">{rx.drug}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{rx.sig}</p>
+                  </div>
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 flex-shrink-0">Qty: {rx.qty}</span>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          {note.labs.length > 0 && (
+            <Section icon={<Microscope className="h-3.5 w-3.5" />} title="Lab Orders" color="#f59e0b">
+              <div className="flex flex-wrap gap-1.5">
+                {note.labs.map(l => (
+                  <span key={l} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">{l}</span>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {note.imaging.length > 0 && (
+            <Section icon={<Eye className="h-3.5 w-3.5" />} title="Imaging" color="#0ea5e9">
+              <div className="space-y-1">
+                {note.imaging.map(img => (
+                  <div key={img} className="flex items-center gap-2 text-[11px] text-sky-700 bg-sky-50 border border-sky-200 rounded-lg px-3 py-1.5">
+                    <ScanLine className="h-3 w-3 flex-shrink-0" /> {img}
+                  </div>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          <Section icon={<BookOpen className="h-3.5 w-3.5" />} title="Care Plan" color="#10b981">
+            <div className="space-y-1.5">
+              {note.carePlan.map((c, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-slate-600">{c}</p>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          {/* ── Footer ── */}
+          <div className="flex items-center justify-between pt-3 border-t border-slate-200 mt-2">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3 w-3 text-slate-400" />
+              <span className="text-[10px] text-slate-500">Follow-up: <strong className="text-slate-700">{note.followUp}</strong></span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1">
+              <PenLine className="h-3 w-3 text-emerald-600" />
+              <span className="text-[10px] font-black text-emerald-700">{note.signedBy}</span>
+              <span className="text-[9px] text-emerald-500">· {note.signedAt}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -169,6 +417,7 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
   const [openDrawer, setOpenDrawer]             = useState<string | null>(null);
   const [drawerFullscreen, setDrawerFullscreen] = useState(false);
   const [showNoteDrawer, setShowNoteDrawer]     = useState(false);
+  const [expandedIndex, setExpandedIndex]       = useState<number | null>(null);
 
   const p       = entry.patient;
   const name    = p?.name  ?? "Walk-in Patient";
@@ -395,64 +644,97 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
                 </div>
 
                 <div>
-                  {allRows.map((note, i) => (
+                  {allRows.map((note, i) => {
+                    const isOpen   = expandedIndex === i;
+                    const dummyIdx = note.isNew ? -1 : i - signedRecords.length;
+                    const dummy    = dummyIdx >= 0 && dummyIdx < SOAP_DUMMY.length ? SOAP_DUMMY[dummyIdx] : null;
+                    return (
                     <div
                       key={i}
-                      className={`flex items-stretch transition-colors ${
-                        note.isNew ? "bg-emerald-50" : note.selected ? "bg-blue-50" : "hover:bg-slate-50"
-                      } ${i < allRows.length - 1 ? "border-b border-slate-100" : ""}`}>
+                      className={`transition-colors ${i < allRows.length - 1 ? "border-b border-slate-100" : ""}`}>
 
-                      <div
-                        className="w-1 flex-shrink-0"
-                        style={{ backgroundColor: note.isNew ? "#10b981" : note.selected ? ACCENT : "transparent" }}
-                      />
+                      {/* ── Row header ── */}
+                      <div className={`flex items-stretch ${note.isNew ? "bg-emerald-50" : note.selected ? "bg-blue-50" : isOpen ? "bg-slate-50" : "hover:bg-slate-50"}`}>
+                        <div
+                          className="w-1 flex-shrink-0"
+                          style={{ backgroundColor: note.isNew ? "#10b981" : note.selected ? ACCENT : "transparent" }}
+                        />
 
-                      <div className="flex items-center gap-5 px-5 py-4 flex-1 min-w-0">
-                        <div className="w-28 flex-shrink-0">
-                          <p className="text-xs font-black text-slate-800 leading-tight">
-                            {note.date.split(" ").slice(0, 2).join(" ")}
-                          </p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            {note.date.split(" ").slice(2).join(" ")}
-                          </p>
-                        </div>
-
-                        <div className="w-px self-stretch bg-slate-200 flex-shrink-0" />
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                            <span className="text-xs font-black text-slate-800">{note.day}</span>
-                            <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                              <Clock className="h-3 w-3" /> {note.time}
-                            </span>
-                            {note.isNew && (
-                              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                                <CheckCircle2 className="h-2.5 w-2.5" /> Signed
-                              </span>
-                            )}
-                            {!note.isNew && note.selected && (
-                              <span
-                                className="text-[9px] font-black px-2 py-0.5 rounded-full text-white"
-                                style={{ backgroundColor: ACCENT }}>
-                                Selected
-                              </span>
-                            )}
+                        <div className="flex items-center gap-5 px-5 py-4 flex-1 min-w-0">
+                          <div className="w-28 flex-shrink-0">
+                            <p className="text-xs font-black text-slate-800 leading-tight">
+                              {note.date.split(" ").slice(0, 2).join(" ")}
+                            </p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {note.date.split(" ").slice(2).join(" ")}
+                            </p>
                           </div>
-                          <p className="text-xs font-semibold text-slate-600">{note.type}</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">By {note.doctor}</p>
-                        </div>
 
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <button className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800 transition-colors bg-white">
-                            <ChevronRight className="h-3 w-3" /> Expand
-                          </button>
-                          <button className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-white transition-colors">
-                            <MoreHorizontal className="h-3.5 w-3.5" />
-                          </button>
+                          <div className="w-px self-stretch bg-slate-200 flex-shrink-0" />
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                              <span className="text-xs font-black text-slate-800">{note.day}</span>
+                              <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                                <Clock className="h-3 w-3" /> {note.time}
+                              </span>
+                              {note.isNew && (
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                  <CheckCircle2 className="h-2.5 w-2.5" /> Signed
+                                </span>
+                              )}
+                              {!note.isNew && note.selected && (
+                                <span
+                                  className="text-[9px] font-black px-2 py-0.5 rounded-full text-white"
+                                  style={{ backgroundColor: ACCENT }}>
+                                  Selected
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs font-semibold text-slate-600">{note.type}</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">By {note.doctor}</p>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => setExpandedIndex(isOpen ? null : i)}
+                              className={`flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border transition-colors ${
+                                isOpen
+                                  ? "border-slate-300 bg-slate-100 text-slate-700"
+                                  : "border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800 bg-white"
+                              }`}>
+                              {isOpen
+                                ? <><ChevronUp className="h-3 w-3" /> Collapse</>
+                                : <><ChevronRight className="h-3 w-3" /> Expand</>
+                              }
+                            </button>
+                            <button className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-white transition-colors">
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      </div>{/* end row header */}
+
+                      {/* ── Expand panel ── */}
+                      {isOpen && (
+                        dummy
+                          ? <SoapNotePreview note={dummy} />
+                          : (
+                            <div className="px-6 py-5 bg-slate-50 border-t border-slate-100 flex flex-col items-center gap-3 text-center">
+                              <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-black text-slate-800">Note Signed Successfully</p>
+                                <p className="text-[11px] text-slate-500 mt-1">Signed by <strong>{note.doctor}</strong> on {note.date} at {note.time}</p>
+                                <p className="text-[11px] text-slate-400 mt-1">This consultation note has been electronically signed and added to the patient record.</p>
+                              </div>
+                            </div>
+                          )
+                      )}
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               </div>
             );
