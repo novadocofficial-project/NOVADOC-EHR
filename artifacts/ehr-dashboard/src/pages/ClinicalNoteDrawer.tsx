@@ -19,6 +19,8 @@ import { DiagnosisDrawer, DiagnosisChipsPanel } from "@/pages/DiagnosisDrawer";
 import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
 import { LabDrawer, LabChipsPanel } from "@/pages/LabDrawer";
 import type { LabOrder } from "@/pages/LabDrawer";
+import { PocLabsPanel } from "@/pages/PocLabsSection";
+import type { PocTestResult } from "@/pages/PocLabsSection";
 import {
   PastHistoryPanel, FamilyHistoryPanel,
   SurgicalHistoryPanel, SocialHistoryPanel,
@@ -43,7 +45,7 @@ interface NoteState {
   fhGenetic:       string[];
   socialHistory:   SocialHistory;
   ros:             string[];
-  pocLabs:         string;
+  pocTests:        PocTestResult[];
   otherOrders:     string;
   visitNote:       string;
   followUpDate:    string;
@@ -53,7 +55,7 @@ interface NoteState {
 const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [], fhGenetic: [], socialHistory: EMPTY_SOCIAL_HISTORY,
-  ros: [], pocLabs: "",
+  ros: [], pocTests: [],
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
 };
@@ -898,8 +900,11 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
 
           {/* 6. Point of Care Labs */}
           <Section title="Point of Care Labs" icon={FlaskConical} color="#f59e0b" defaultOpen={false}
-            filled={note.pocLabs.trim() !== ""}>
-            <NoteField value={note.pocLabs} onChange={v => set("pocLabs", v)} placeholder="Quick lab observations during visit…" rows={2} />
+            filled={(note.pocTests ?? []).length > 0}>
+            <PocLabsPanel
+              tests={note.pocTests ?? []}
+              onChange={v => set("pocTests", v)}
+            />
           </Section>
 
           {/* 7. Assessment / Plan */}
