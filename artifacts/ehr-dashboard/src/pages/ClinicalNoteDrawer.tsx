@@ -575,13 +575,15 @@ interface ClinicalNoteDrawerProps {
   patientName: string;
   faceSheetOpenedAt?: number;
   awaitingLab?: boolean;
+  signed?: boolean;
   onSendToLab?: () => void;
   onDiscardLab?: () => void;
+  onDoctorSign?: () => void;
   onSaveAndClose?: () => void;
   onClose: () => void;
 }
 
-export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, onSendToLab, onDiscardLab, onSaveAndClose, onClose }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(EMPTY_NOTE);
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
@@ -1184,8 +1186,15 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
               style={{ backgroundColor: "#0ea5e9" }}>
               <FlaskConical className="h-3.5 w-3.5" /> Awaiting Lab Results
             </Button>
+          ) : signed ? (
+            <Button
+              disabled
+              className="h-9 px-5 text-xs font-black gap-2 flex-shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed opacity-90">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Note Signed
+            </Button>
           ) : (
             <Button
+              onClick={onDoctorSign}
               className="h-9 px-5 text-xs font-black gap-2 text-white flex-shrink-0"
               style={{ backgroundColor: ACCENT }}>
               <PenLine className="h-3.5 w-3.5" /> Doctor's Sign

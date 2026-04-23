@@ -247,11 +247,15 @@ interface PatientFaceSheetProps {
   onSendToLab?: (id: string) => void;
   onDiscardLab?: (id: string) => void;
   onSaveAndClose?: () => void;
+  doctorSigned?: boolean;
+  onDoctorSign?: () => void;
+  signedRecords?: import("@/pages/SoapNotePage").SignedRecord[];
 }
 
 export function PatientFaceSheet({
   entry, soapNoteCreated, onBack,
   onSoapNoteClick, onCompleteConsultation, onCompleteWithoutSoap, onSendToLab, onDiscardLab, onSaveAndClose,
+  doctorSigned = false, onDoctorSign, signedRecords = [],
 }: PatientFaceSheetProps) {
   const p = entry.patient;
   const name    = p?.name  ?? "Walk-in Patient";
@@ -307,6 +311,8 @@ export function PatientFaceSheet({
         onSendToLab={onSendToLab ? () => onSendToLab(entry.id) : undefined}
         onDiscardLab={onDiscardLab ? () => onDiscardLab(entry.id) : undefined}
         onSaveAndClose={onSaveAndClose}
+        onDoctorSign={onDoctorSign}
+        signedRecords={signedRecords}
       />
     );
   }
@@ -341,17 +347,26 @@ export function PatientFaceSheet({
               <FileEdit className="h-4 w-4" /> SOAP Note
             </Button>
           )}
-          <span
-            title={entry.pendingLab ? "Lab results awaited." : undefined}
-            className={entry.pendingLab ? "cursor-not-allowed" : undefined}>
-            <Button
-              className="h-9 px-4 text-sm font-bold gap-2 text-white"
-              style={{ backgroundColor: entry.pendingLab ? "#94a3b8" : ACCENT }}
-              disabled={entry.pendingLab}
-              onClick={!entry.pendingLab ? handleCompleteClick : undefined}>
-              <CheckCircle2 className="h-4 w-4" /> Complete Consultation
-            </Button>
-          </span>
+          {(() => {
+            const signBlocked = soapNoteCreated && !doctorSigned;
+            const isBlocked = entry.pendingLab || signBlocked;
+            const blockTitle = entry.pendingLab
+              ? "Lab results awaited."
+              : signBlocked
+              ? "Doctor must sign the note before completing consultation."
+              : undefined;
+            return (
+              <span title={blockTitle} className={isBlocked ? "cursor-not-allowed" : undefined}>
+                <Button
+                  className="h-9 px-4 text-sm font-bold gap-2 text-white"
+                  style={{ backgroundColor: isBlocked ? "#94a3b8" : ACCENT }}
+                  disabled={isBlocked}
+                  onClick={!isBlocked ? handleCompleteClick : undefined}>
+                  <CheckCircle2 className="h-4 w-4" /> Complete Consultation
+                </Button>
+              </span>
+            );
+          })()}
         </div>
 
         {/* Patient info row */}

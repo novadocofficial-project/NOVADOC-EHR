@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useToast } from "@/hooks/use-toast";
+import type { SignedRecord } from "@/pages/SoapNotePage";
 import { PatientFaceSheet } from "@/pages/PatientFaceSheet";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -38,6 +39,9 @@ export function DoctorUser() {
 
   // Tracks which token IDs had SOAP Note clicked this session
   const [soapNoteDone, setSoapNoteDone] = useState<Set<string>>(new Set());
+
+  // Tracks doctor-signed notes per entry
+  const [signedRecordsMap, setSignedRecordsMap] = useState<Map<string, SignedRecord[]>>(new Map());
 
   // Skip-reason modal state
   const [skipModalId,    setSkipModalId]    = useState<string | null>(null);
@@ -149,6 +153,24 @@ export function DoctorUser() {
     docCancelLab(id);
   }
 
+  function handleDoctorSign(id: string) {
+    const now = new Date();
+    const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const record: SignedRecord = {
+      date: now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+      day:  days[now.getDay()],
+      time: `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`,
+      type: "Consultation Note",
+      doctor: "Dr. Emily Wong",
+      signed: true,
+    };
+    setSignedRecordsMap(prev => {
+      const next = new Map(prev);
+      next.set(id, [...(next.get(id) ?? []), record]);
+      return next;
+    });
+  }
+
   const skipReasonFilled =
     skipReason !== "" &&
     (skipReason !== "Other" || skipOtherText.trim() !== "");
@@ -167,6 +189,9 @@ export function DoctorUser() {
         onSendToLab={handleSendToLab}
         onDiscardLab={handleCancelLab}
         onSaveAndClose={() => setFaceSheetEntry(null)}
+        doctorSigned={(signedRecordsMap.get(liveEntry.id)?.length ?? 0) > 0}
+        signedRecords={signedRecordsMap.get(liveEntry.id) ?? []}
+        onDoctorSign={() => handleDoctorSign(liveEntry.id)}
       />
     );
   }

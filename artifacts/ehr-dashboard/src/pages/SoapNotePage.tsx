@@ -52,17 +52,26 @@ const NAV_TABS: { label: string; Icon: React.ElementType }[] = [
 const NOTE_HISTORY = [
   {
     date: "Dec 10, 2024", day: "Tuesday",   time: "10:55",
-    type: "Comprehensive Note", doctor: "Dr. Asif Imam", selected: false,
+    type: "Comprehensive Note", doctor: "Dr. Asif Imam", selected: false, signed: false,
   },
   {
     date: "Nov 10, 2024", day: "Monday",    time: "08:10",
-    type: "Comprehensive Note", doctor: "Dr. Abc",       selected: true,
+    type: "Comprehensive Note", doctor: "Dr. Abc",       selected: true, signed: false,
   },
   {
     date: "Sep 25, 2024", day: "Wednesday", time: "05:20",
-    type: "Comprehensive Note", doctor: "Dr. Xyz",       selected: false,
+    type: "Comprehensive Note", doctor: "Dr. Xyz",       selected: false, signed: false,
   },
 ];
+
+export interface SignedRecord {
+  date: string;
+  day: string;
+  time: string;
+  type: string;
+  doctor: string;
+  signed: true;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -152,9 +161,11 @@ interface SoapNotePageProps {
   onSendToLab?: () => void;
   onDiscardLab?: () => void;
   onSaveAndClose?: () => void;
+  onDoctorSign?: () => void;
+  signedRecords?: SignedRecord[];
 }
 
-export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, onDiscardLab, onSaveAndClose }: SoapNotePageProps) {
+export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, onDiscardLab, onSaveAndClose, onDoctorSign, signedRecords = [] }: SoapNotePageProps) {
   const [openDrawer, setOpenDrawer]             = useState<string | null>(null);
   const [drawerFullscreen, setDrawerFullscreen] = useState(false);
   const [showNoteDrawer, setShowNoteDrawer]     = useState(false);
@@ -358,81 +369,94 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
           </div>
 
           {/* ─── All Records Section ────────────────────────────────────────── */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-black text-slate-800">All Records</p>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                  {NOTE_HISTORY.length}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-                  <RefreshCw className="h-3.5 w-3.5" />
-                </button>
-                <button className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 hover:text-slate-800 transition-colors">
-                  Order by Patient Event Date
-                  <ChevronDown className="h-3 w-3" />
-                </button>
-              </div>
-            </div>
-
-            <div>
-              {NOTE_HISTORY.map((note, i) => (
-                <div
-                  key={i}
-                  className={`flex items-stretch transition-colors ${
-                    note.selected ? "bg-blue-50" : "hover:bg-slate-50"
-                  } ${i < NOTE_HISTORY.length - 1 ? "border-b border-slate-50" : ""}`}>
-
-                  <div
-                    className="w-1 flex-shrink-0"
-                    style={{ backgroundColor: note.selected ? ACCENT : "transparent" }}
-                  />
-
-                  <div className="flex items-center gap-5 px-5 py-4 flex-1 min-w-0">
-                    <div className="w-28 flex-shrink-0">
-                      <p className="text-xs font-black text-slate-800 leading-tight">
-                        {note.date.split(" ").slice(0, 2).join(" ")}
-                      </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        {note.date.split(" ").slice(2).join(" ")}
-                      </p>
-                    </div>
-
-                    <div className="w-px self-stretch bg-slate-200 flex-shrink-0" />
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                        <span className="text-xs font-black text-slate-800">{note.day}</span>
-                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> {note.time}
-                        </span>
-                        {note.selected && (
-                          <span
-                            className="text-[9px] font-black px-2 py-0.5 rounded-full text-white"
-                            style={{ backgroundColor: ACCENT }}>
-                            Selected
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs font-semibold text-slate-600">{note.type}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">By {note.doctor}</p>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800 transition-colors bg-white">
-                        <ChevronRight className="h-3 w-3" /> Expand
-                      </button>
-                      <button className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-white transition-colors">
-                        <MoreHorizontal className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+          {(() => {
+            const allRows = [
+              ...signedRecords.map(r => ({ ...r, selected: false, isNew: true })).reverse(),
+              ...NOTE_HISTORY.map(r => ({ ...r, isNew: false })),
+            ];
+            return (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-black text-slate-800">All Records</p>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                      {allRows.length}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    </button>
+                    <button className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 hover:text-slate-800 transition-colors">
+                      Order by Patient Event Date
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
+
+                <div>
+                  {allRows.map((note, i) => (
+                    <div
+                      key={i}
+                      className={`flex items-stretch transition-colors ${
+                        note.isNew ? "bg-emerald-50" : note.selected ? "bg-blue-50" : "hover:bg-slate-50"
+                      } ${i < allRows.length - 1 ? "border-b border-slate-100" : ""}`}>
+
+                      <div
+                        className="w-1 flex-shrink-0"
+                        style={{ backgroundColor: note.isNew ? "#10b981" : note.selected ? ACCENT : "transparent" }}
+                      />
+
+                      <div className="flex items-center gap-5 px-5 py-4 flex-1 min-w-0">
+                        <div className="w-28 flex-shrink-0">
+                          <p className="text-xs font-black text-slate-800 leading-tight">
+                            {note.date.split(" ").slice(0, 2).join(" ")}
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            {note.date.split(" ").slice(2).join(" ")}
+                          </p>
+                        </div>
+
+                        <div className="w-px self-stretch bg-slate-200 flex-shrink-0" />
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                            <span className="text-xs font-black text-slate-800">{note.day}</span>
+                            <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                              <Clock className="h-3 w-3" /> {note.time}
+                            </span>
+                            {note.isNew && (
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                <CheckCircle2 className="h-2.5 w-2.5" /> Signed
+                              </span>
+                            )}
+                            {!note.isNew && note.selected && (
+                              <span
+                                className="text-[9px] font-black px-2 py-0.5 rounded-full text-white"
+                                style={{ backgroundColor: ACCENT }}>
+                                Selected
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs font-semibold text-slate-600">{note.type}</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">By {note.doctor}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800 transition-colors bg-white">
+                            <ChevronRight className="h-3 w-3" /> Expand
+                          </button>
+                          <button className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-white transition-colors">
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
         </div>
       </div>
@@ -448,6 +472,8 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
           onSendToLab={onSendToLab}
           onDiscardLab={onDiscardLab}
           onSaveAndClose={onSaveAndClose}
+          signed={signedRecords.length > 0}
+          onDoctorSign={() => { onDoctorSign?.(); setShowNoteDrawer(false); }}
           onClose={() => setShowNoteDrawer(false)}
         />
       )}
