@@ -8,6 +8,7 @@ import {
   CheckCircle2, AlertCircle, Printer, Trash2, Tag,
   GripVertical, Check, Search, Plus,
   ArrowRight, ClipboardCheck, ChevronLeft, Pill, ScanLine,
+  BookmarkPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CoughHistoryTemplate, CoughSummary, COUGH_EMPTY } from "@/pages/CoughHistoryTemplate";
@@ -35,6 +36,7 @@ import { ProcedureOrdersChipsPanel, ProcedureOrdersDrawer, EMPTY_PROCEDURE_ORDER
 import type { ProcedureOrdersData } from "@/pages/ProcedureOrdersSection";
 import { PatientGoalsChipsPanel, PatientGoalsDrawer, EMPTY_PATIENT_GOALS } from "@/pages/PatientGoalsSection";
 import type { PatientGoalsData } from "@/pages/PatientGoalsSection";
+import { TemplateDrawer } from "@/pages/SoapNoteTemplates";
 import {
   PastHistoryPanel, FamilyHistoryPanel,
   SurgicalHistoryPanel, SocialHistoryPanel,
@@ -48,7 +50,7 @@ const ACCENT = "#4982CF";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface NoteState {
+export interface NoteState {
   chiefComplaints: string[];
   hpi:             string;
   allergies:       AllergyEntry[];
@@ -601,6 +603,8 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
   const [referralOpen,      setReferralOpen]      = useState(false);
   const [procOrdersOpen,    setProcOrdersOpen]    = useState(false);
   const [patientGoalsOpen,  setPatientGoalsOpen]  = useState(false);
+  const [templateOpen,      setTemplateOpen]      = useState(false);
+  const [templateMode,      setTemplateMode]      = useState<"browse" | "save">("browse");
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -673,8 +677,16 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100 flex-shrink-0 bg-white">
 
           {/* Left: Template + Copy/Paste */}
-          <button className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors flex-shrink-0">
+          <button
+            onClick={() => { setTemplateMode("browse"); setTemplateOpen(true); }}
+            className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors flex-shrink-0">
             <FileText className="h-3.5 w-3.5" style={{ color: ACCENT }} /> Add Template
+          </button>
+          <button
+            onClick={() => { setTemplateMode("save"); setTemplateOpen(true); }}
+            className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-colors flex-shrink-0"
+            title="Save current note as template">
+            <BookmarkPlus className="h-3.5 w-3.5 text-blue-400" /> Save Template
           </button>
           <button className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors" title="Copy">
             <Copy className="h-3.5 w-3.5" />
@@ -1263,6 +1275,16 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             savedData={note.healthEd ?? EMPTY_HEALTH_ED}
             onSave={v => set("healthEd", v)}
             onClose={() => setHealthEdOpen(false)}
+          />
+        )}
+
+        {/* ── Template Drawer ── */}
+        {templateOpen && (
+          <TemplateDrawer
+            note={note}
+            initialMode={templateMode}
+            onImport={newNote => setNote(newNote)}
+            onClose={() => setTemplateOpen(false)}
           />
         )}
 
