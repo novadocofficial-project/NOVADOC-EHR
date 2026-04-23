@@ -1,0 +1,138 @@
+SOAP Note Templates (Prebuilt + Doctor Custom Templates)
+Context
+
+The SOAP Note Template feature allows doctors to quickly apply a predefined or self-created SOAP structure into the current note.
+
+Templates are essentially:
+
+“Saved snapshots of a SOAP note (full or partial)”
+
+This supports:
+
+Faster documentation
+Standardized care patterns
+Reuse of frequently used workflows
+Functional Requirements
+1. Entry Point
+Add “Add Template” button inside SOAP Note drawer
+On click → open a template selection drawer/modal
+2. Template Sections
+
+Inside template selection UI, show 2 sections:
+
+A. System Templates
+Prebuilt by system
+Read-only base templates
+Can be viewed and copied
+B. My Templates (Doctor Templates)
+Created and saved by doctor
+Fully editable
+Personal reusable templates
+3. Template Structure
+
+Each template represents a full or partial SOAP note, including:
+
+Chief Complaint
+HPI
+ROS
+Physical Examination
+Diagnosis
+Formulary (Medications)
+Imaging
+Procedures
+Care Plan
+Health Education
+Goals
+Referral (optional)
+
+Important:
+
+Templates can contain:
+Full data
+OR selective sections only
+4. Template Actions
+
+For each template:
+
+A. Select Template
+Imports all stored data into current SOAP note
+B. Preview Template
+Open a read-only preview
+Show structured SOAP sections
+C. Edit Template
+For Doctor Templates:
+Edit directly and save
+For System Templates:
+Cannot edit original
+On edit:
+Create a copy under doctor profile
+Then allow editing
+D. Delete Template
+Only for doctor templates
+5. Import Behavior (Critical Logic)
+
+When a template is selected:
+
+Data is mapped and injected into SOAP note
+Only fields present in template are imported
+Existing SOAP data handling:
+
+👉 Option 1 (recommended):
+
+Ask user:
+Replace existing data
+OR merge with current data
+
+👉 Option 2:
+
+Auto-merge (non-destructive)
+6. Template Creation Flow
+
+Doctor can create templates by:
+
+Option A:
+From current SOAP note:
+Click “Save as Template”
+Option B:
+Create from scratch
+Template Save Options:
+Template Name
+Select which sections to include:
+(Checkbox-based selection)
+
+Example:
+
+Only save:
+Diagnosis + Medications
+Or full SOAP
+7. UI Representation
+Template List Item:
+
+Each template shows:
+
+Template name
+Short description (optional)
+Sections included (tags)
+
+Example:
+
+“URTI Standard Template”
+Tags: CC, HPI, Medications
+8. Interaction Flow
+Click Add Template
+Open template drawer
+Browse:
+System Templates
+My Templates
+Preview / Select / Edit
+On select:
+Import into SOAP note
+Continue editing SOAP note
+9. UI / UX Constraints
+❌ No drag-and-drop
+✅ Drawer or modal-based selection
+✅ Section-based preview
+✅ Clean structured layout
+✅ Fast application of templates
+✅ Clear distinction:
+System vs Doctor templates
