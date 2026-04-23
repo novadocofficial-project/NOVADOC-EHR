@@ -1,0 +1,112 @@
+Procedure Orders (Doctor → Nursing / Clinical Staff Instructions)
+Context
+
+The Procedure module in SOAP is used by doctors to order or instruct procedures, not document execution.
+
+Execution details (technique, findings, complications) will be handled separately by nursing/clinical staff.
+
+This module should be:
+
+Quick to use
+Structured for clarity
+Actionable for downstream teams
+Functional Requirements
+1. Entry Point
+Add “Procedure” button in Assessment & Plan
+On click → open a right-side drawer
+2. Procedure Selection
+Searchable dropdown:
+Predefined procedures (mock dataset)
+Example:
+Nebulization
+IV Cannulation
+Wound Dressing
+Catheterization
+Suturing
+Allow:
+Custom procedure entry
+3. Multiple Procedure Support
+Doctor can add multiple procedures in one session
+Each procedure becomes an item block inside drawer
+4. Per-Procedure Fields
+
+Each procedure instruction must include:
+
+A. Procedure Name
+From dropdown or custom
+B. Indication / Reason
+Why the procedure is required
+Short free text
+
+Example:
+
+“Shortness of breath”
+“Open wound care”
+C. Priority
+Normal
+Urgent
+D. Timing
+Immediate
+Scheduled (date/time picker)
+Once / Repeat (optional toggle)
+E. Special Instructions
+Free text field
+
+Examples:
+
+“Use sterile technique”
+“Monitor vitals during procedure”
+“Do before medication”
+F. Assign To
+Dropdown:
+Nursing staff
+Specific department (optional future)
+Optional (can be unassigned)
+5. Favourites System
+Doctor can mark procedures as Favourite (★)
+
+Behavior:
+
+Favourites appear at top of dropdown
+Enables quick repeat ordering
+6. Add / Remove Procedures
+Add multiple procedures
+Remove any before saving
+Edit existing → reopen drawer
+7. UI Representation (After Save)
+
+Each procedure appears as a card/chip:
+
+Displays:
+
+Procedure name
+Priority badge (Normal / Urgent)
+Timing (Immediate / Scheduled)
+Short indication
+
+Actions:
+
+Edit (click)
+Remove (✕)
+8. Interaction Flow
+Click Procedure
+Drawer opens
+Select procedure(s)
+For each:
+Add indication
+Set priority
+Set timing
+Add instructions
+Assign staff (optional)
+Save
+Procedures appear as cards
+9. UI / UX Constraints
+❌ No drag-and-drop
+✅ Drawer-based workflow
+✅ Multi-procedure support
+✅ Chip/card-based output
+✅ Fast order entry (critical for doctors)
+✅ Consistent with:
+Imaging
+Care Plan
+Formulary

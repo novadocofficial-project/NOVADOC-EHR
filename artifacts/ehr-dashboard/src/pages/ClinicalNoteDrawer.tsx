@@ -31,6 +31,8 @@ import { HealthEdChipsPanel, HealthEdDrawer, EMPTY_HEALTH_ED } from "@/pages/Hea
 import type { HealthEdSelection } from "@/pages/HealthEdSection";
 import { ReferralChipsPanel, ReferralDrawer, EMPTY_REFERRAL_DATA } from "@/pages/ReferralSection";
 import type { ReferralData, ReferralMed } from "@/pages/ReferralSection";
+import { ProcedureOrdersChipsPanel, ProcedureOrdersDrawer, EMPTY_PROCEDURE_ORDERS } from "@/pages/ProcedureOrdersSection";
+import type { ProcedureOrdersData } from "@/pages/ProcedureOrdersSection";
 import {
   PastHistoryPanel, FamilyHistoryPanel,
   SurgicalHistoryPanel, SocialHistoryPanel,
@@ -61,6 +63,7 @@ interface NoteState {
   carePlan:        CarePlanData;
   healthEd:        HealthEdSelection;
   referrals:       ReferralData;
+  procedureOrders: ProcedureOrdersData;
   otherOrders:     string;
   visitNote:       string;
   followUpDate:    string;
@@ -70,7 +73,7 @@ interface NoteState {
 const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [], fhGenetic: [], socialHistory: EMPTY_SOCIAL_HISTORY,
-  ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING, carePlan: EMPTY_CARE_PLAN, healthEd: EMPTY_HEALTH_ED, referrals: EMPTY_REFERRAL_DATA,
+  ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING, carePlan: EMPTY_CARE_PLAN, healthEd: EMPTY_HEALTH_ED, referrals: EMPTY_REFERRAL_DATA, procedureOrders: EMPTY_PROCEDURE_ORDERS,
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
 };
@@ -593,6 +596,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
   const [carePlanOpen,      setCarePlanOpen]      = useState(false);
   const [healthEdOpen,      setHealthEdOpen]      = useState(false);
   const [referralOpen,      setReferralOpen]      = useState(false);
+  const [procOrdersOpen,    setProcOrdersOpen]    = useState(false);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -1019,7 +1023,24 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
               />
             </div>
 
-            {/* 7f. Referrals */}
+            {/* 7f. Procedure Orders */}
+            <div className="mb-4">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <Stethoscope className="h-3 w-3 text-teal-500" />
+                Procedure Orders
+                {(note.procedureOrders?.orders?.length ?? 0) > 0 && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-teal-100 text-teal-600 border border-teal-200 flex items-center gap-1">
+                    <CheckCircle2 className="h-2.5 w-2.5" /> {note.procedureOrders.orders.length} order{note.procedureOrders.orders.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </p>
+              <ProcedureOrdersChipsPanel
+                data={note.procedureOrders ?? EMPTY_PROCEDURE_ORDERS}
+                onOpen={() => setProcOrdersOpen(true)}
+              />
+            </div>
+
+            {/* 7g. Referrals */}
             <div className="mb-4">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <Users className="h-3 w-3 text-indigo-500" />
@@ -1248,6 +1269,15 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             savedData={note.healthEd ?? EMPTY_HEALTH_ED}
             onSave={v => set("healthEd", v)}
             onClose={() => setHealthEdOpen(false)}
+          />
+        )}
+
+        {/* ── Procedure Orders Drawer ── */}
+        {procOrdersOpen && (
+          <ProcedureOrdersDrawer
+            savedData={note.procedureOrders ?? EMPTY_PROCEDURE_ORDERS}
+            onSave={v => set("procedureOrders", v)}
+            onClose={() => setProcOrdersOpen(false)}
           />
         )}
 

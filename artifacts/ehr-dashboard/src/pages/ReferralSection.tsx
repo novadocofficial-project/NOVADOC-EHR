@@ -139,54 +139,54 @@ const SPECIALITIES = Object.keys(SPECIALITY_MAP).sort();
 
 // ─── Procedure List ────────────────────────────────────────────────────────────
 
-interface ProcedureDef { id: string; name: string; category: string; }
+interface ProcedureDef { id: string; name: string; category: string; cpt: string; }
 
 const PROCEDURES: ProcedureDef[] = [
   // Surgical
-  { id: "appendectomy",       name: "Appendectomy",                       category: "Surgical"     },
-  { id: "cholecystectomy",    name: "Laparoscopic Cholecystectomy",       category: "Surgical"     },
-  { id: "hernia-repair",      name: "Inguinal Hernia Repair",             category: "Surgical"     },
-  { id: "thyroidectomy",      name: "Thyroidectomy",                      category: "Surgical"     },
-  { id: "tonsillectomy",      name: "Tonsillectomy & Adenoidectomy",      category: "Surgical"     },
-  { id: "mastectomy",         name: "Mastectomy",                         category: "Surgical"     },
-  { id: "colostomy",          name: "Colostomy",                          category: "Surgical"     },
-  { id: "bypass-surgery",     name: "Coronary Artery Bypass Grafting",    category: "Surgical"     },
-  { id: "hip-replacement",    name: "Total Hip Replacement",              category: "Surgical"     },
-  { id: "knee-replacement",   name: "Total Knee Replacement",             category: "Surgical"     },
-  { id: "spinal-fusion",      name: "Spinal Fusion",                      category: "Surgical"     },
+  { id: "appendectomy",       name: "Appendectomy",                       category: "Surgical",       cpt: "44950"  },
+  { id: "cholecystectomy",    name: "Laparoscopic Cholecystectomy",       category: "Surgical",       cpt: "47562"  },
+  { id: "hernia-repair",      name: "Inguinal Hernia Repair",             category: "Surgical",       cpt: "49505"  },
+  { id: "thyroidectomy",      name: "Thyroidectomy",                      category: "Surgical",       cpt: "60240"  },
+  { id: "tonsillectomy",      name: "Tonsillectomy & Adenoidectomy",      category: "Surgical",       cpt: "42820"  },
+  { id: "mastectomy",         name: "Mastectomy",                         category: "Surgical",       cpt: "19303"  },
+  { id: "colostomy",          name: "Colostomy",                          category: "Surgical",       cpt: "44320"  },
+  { id: "bypass-surgery",     name: "Coronary Artery Bypass Grafting",    category: "Surgical",       cpt: "33533"  },
+  { id: "hip-replacement",    name: "Total Hip Replacement",              category: "Surgical",       cpt: "27130"  },
+  { id: "knee-replacement",   name: "Total Knee Replacement",             category: "Surgical",       cpt: "27447"  },
+  { id: "spinal-fusion",      name: "Spinal Fusion",                      category: "Surgical",       cpt: "22612"  },
   // Diagnostic
-  { id: "echo",               name: "Echocardiogram",                     category: "Diagnostic"   },
-  { id: "stress-test",        name: "Cardiac Stress Test",                category: "Diagnostic"   },
-  { id: "spirometry",         name: "Spirometry / PFT",                   category: "Diagnostic"   },
-  { id: "eeg",                name: "Electroencephalogram (EEG)",          category: "Diagnostic"   },
-  { id: "emg",                name: "Electromyography (EMG)",              category: "Diagnostic"   },
-  { id: "sleep-study",        name: "Polysomnography (Sleep Study)",      category: "Diagnostic"   },
-  { id: "bone-density",       name: "Bone Density Scan (DEXA)",           category: "Diagnostic"   },
-  { id: "audiometry",         name: "Audiometry",                         category: "Diagnostic"   },
+  { id: "echo",               name: "Echocardiogram",                     category: "Diagnostic",     cpt: "93306"  },
+  { id: "stress-test",        name: "Cardiac Stress Test",                category: "Diagnostic",     cpt: "93015"  },
+  { id: "spirometry",         name: "Spirometry / PFT",                   category: "Diagnostic",     cpt: "94010"  },
+  { id: "eeg",                name: "Electroencephalogram (EEG)",          category: "Diagnostic",     cpt: "95816"  },
+  { id: "emg",                name: "Electromyography (EMG)",              category: "Diagnostic",     cpt: "95860"  },
+  { id: "sleep-study",        name: "Polysomnography (Sleep Study)",      category: "Diagnostic",     cpt: "95810"  },
+  { id: "bone-density",       name: "Bone Density Scan (DEXA)",           category: "Diagnostic",     cpt: "77080"  },
+  { id: "audiometry",         name: "Audiometry",                         category: "Diagnostic",     cpt: "92557"  },
   // Endoscopic
-  { id: "colonoscopy",        name: "Colonoscopy",                        category: "Endoscopic"   },
-  { id: "gastroscopy",        name: "Upper GI Endoscopy (Gastroscopy)",   category: "Endoscopic"   },
-  { id: "bronchoscopy",       name: "Bronchoscopy",                       category: "Endoscopic"   },
-  { id: "ercp",               name: "ERCP",                               category: "Endoscopic"   },
-  { id: "cystoscopy",         name: "Cystoscopy",                         category: "Endoscopic"   },
-  // Therapeutic / Interventional
-  { id: "angioplasty",        name: "Percutaneous Coronary Angioplasty",  category: "Interventional"},
-  { id: "pacemaker",          name: "Pacemaker Implantation",             category: "Interventional"},
-  { id: "ablation",           name: "Cardiac Ablation",                   category: "Interventional"},
-  { id: "dialysis",           name: "Hemodialysis",                       category: "Interventional"},
-  { id: "lumbar-puncture",    name: "Lumbar Puncture",                    category: "Interventional"},
-  { id: "joint-injection",    name: "Joint Injection / Aspiration",       category: "Interventional"},
-  { id: "biopsy",             name: "Tissue Biopsy",                      category: "Interventional"},
-  { id: "iv-therapy",         name: "IV Therapy / Infusion",              category: "Interventional"},
-  // Obstetrics & Gynecology
-  { id: "colposcopy",         name: "Colposcopy",                         category: "OB/GYN"       },
-  { id: "hysteroscopy",       name: "Hysteroscopy",                       category: "OB/GYN"       },
-  { id: "caesarean",          name: "Caesarean Section",                  category: "OB/GYN"       },
-  { id: "amniocentesis",      name: "Amniocentesis",                      category: "OB/GYN"       },
+  { id: "colonoscopy",        name: "Colonoscopy",                        category: "Endoscopic",     cpt: "45378"  },
+  { id: "gastroscopy",        name: "Upper GI Endoscopy (Gastroscopy)",   category: "Endoscopic",     cpt: "43239"  },
+  { id: "bronchoscopy",       name: "Bronchoscopy",                       category: "Endoscopic",     cpt: "31622"  },
+  { id: "ercp",               name: "ERCP",                               category: "Endoscopic",     cpt: "43260"  },
+  { id: "cystoscopy",         name: "Cystoscopy",                         category: "Endoscopic",     cpt: "52000"  },
+  // Interventional
+  { id: "angioplasty",        name: "Percutaneous Coronary Angioplasty",  category: "Interventional", cpt: "92982"  },
+  { id: "pacemaker",          name: "Pacemaker Implantation",             category: "Interventional", cpt: "33206"  },
+  { id: "ablation",           name: "Cardiac Ablation",                   category: "Interventional", cpt: "93656"  },
+  { id: "dialysis",           name: "Hemodialysis",                       category: "Interventional", cpt: "90935"  },
+  { id: "lumbar-puncture",    name: "Lumbar Puncture",                    category: "Interventional", cpt: "62270"  },
+  { id: "joint-injection",    name: "Joint Injection / Aspiration",       category: "Interventional", cpt: "20600"  },
+  { id: "biopsy",             name: "Tissue Biopsy",                      category: "Interventional", cpt: "20200"  },
+  { id: "iv-therapy",         name: "IV Therapy / Infusion",              category: "Interventional", cpt: "96365"  },
+  // OB/GYN
+  { id: "colposcopy",         name: "Colposcopy",                         category: "OB/GYN",         cpt: "57454"  },
+  { id: "hysteroscopy",       name: "Hysteroscopy",                       category: "OB/GYN",         cpt: "58558"  },
+  { id: "caesarean",          name: "Caesarean Section",                  category: "OB/GYN",         cpt: "59510"  },
+  { id: "amniocentesis",      name: "Amniocentesis",                      category: "OB/GYN",         cpt: "59000"  },
   // Ophthalmology
-  { id: "lasik",              name: "LASIK / Refractive Surgery",         category: "Ophthalmology"},
-  { id: "cataract-surgery",   name: "Cataract Surgery",                   category: "Ophthalmology"},
-  { id: "retinal-laser",      name: "Retinal Laser Photocoagulation",     category: "Ophthalmology"},
+  { id: "lasik",              name: "LASIK / Refractive Surgery",         category: "Ophthalmology",  cpt: "65771"  },
+  { id: "cataract-surgery",   name: "Cataract Surgery",                   category: "Ophthalmology",  cpt: "66984"  },
+  { id: "retinal-laser",      name: "Retinal Laser Photocoagulation",     category: "Ophthalmology",  cpt: "67228"  },
 ];
 
 const PROCEDURE_CATEGORIES = [...new Set(PROCEDURES.map(p => p.category))];
@@ -660,7 +660,7 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
                   : { color: "#334155" }}
                 onClick={() => onChange({ ...entry, procedureName: p.name, procedureCategory: p.category })}>
                 <span className="flex-1 font-medium">{p.name}</span>
-                <span className="text-[9px] text-slate-400 flex-shrink-0 bg-white px-1.5 py-0.5 rounded-full border">{p.category}</span>
+                <span className="text-[9px] text-indigo-500 font-mono flex-shrink-0 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">CPT {p.cpt}</span>
                 {entry.procedureName === p.name && <CheckCircle2 className="h-3 w-3 text-indigo-500 flex-shrink-0" />}
               </button>
             ))}
