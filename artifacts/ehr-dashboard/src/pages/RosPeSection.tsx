@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   Search, Plus, X, ChevronDown, ChevronLeft,
-  Stethoscope, CheckCircle2, ClipboardCheck,
+  Stethoscope, CheckCircle2, ClipboardCheck, ShieldCheck,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -313,6 +313,26 @@ export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }:
     onSave(findings);
   }
 
+  /** Fill every field in this system with "Normal" */
+  function handleMarkAllNormal() {
+    const allNormal: Record<string, string> = {};
+    for (const group of template) {
+      for (const item of group.items) {
+        allNormal[`${group.section}__${item}`] = "Normal";
+      }
+    }
+    setFindings(allNormal);
+  }
+
+  /** Fill every field in one section with "Normal" */
+  function handleSectionNormal(section: string, items: string[]) {
+    setFindings(prev => {
+      const next = { ...prev };
+      for (const item of items) next[`${section}__${item}`] = "Normal";
+      return next;
+    });
+  }
+
   return (
     <div className="absolute inset-y-0 right-0 w-[65%] bg-white shadow-2xl border-l border-slate-200 flex flex-col z-20">
 
@@ -327,6 +347,14 @@ export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }:
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Physical Examination Template</p>
           <p className="text-sm font-black text-slate-800 truncate">{sys?.label}</p>
         </div>
+
+        {/* All Normal button */}
+        <button
+          onClick={handleMarkAllNormal}
+          title="Fill all fields with 'Normal'"
+          className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors flex-shrink-0">
+          <ShieldCheck className="h-3.5 w-3.5" /> All Normal
+        </button>
 
         {/* Action: Done badge / Update / Mark Done */}
         {isDone && !isDirty ? (
@@ -386,32 +414,56 @@ export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }:
 
       {/* Scrollable template body */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-        {template.map(group => (
-          <div key={group.section}>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
-              <span className="h-px flex-1 bg-slate-100" />
-              {group.section}
-              <span className="h-px flex-1 bg-slate-100" />
-            </p>
-            <div className="space-y-2">
-              {group.items.map(item => {
-                const key = `${group.section}__${item}`;
-                return (
-                  <div key={item}>
-                    <p className="text-[10px] font-bold text-slate-600 mb-1">{item}</p>
-                    <input
-                      value={findings[key] ?? ""}
-                      onChange={e => setFinding(key, e.target.value)}
-                      placeholder="Enter finding…"
-                      className="w-full text-xs text-slate-700 placeholder-slate-300 border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
-                      style={{ "--tw-ring-color": ACCENT_PE } as React.CSSProperties}
-                    />
-                  </div>
-                );
-              })}
+        {template.map(group => {
+          const sectionAllNormal = group.items.every(
+            item => (findings[`${group.section}__${item}`] ?? "").trim() === "Normal"
+          );
+          return (
+            <div key={group.section}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="h-px flex-1 bg-slate-100" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 whitespace-nowrap">
+                  {group.section}
+                </p>
+                {/* Per-section Normal button */}
+                <button
+                  onClick={() => handleSectionNormal(group.section, group.items)}
+                  title={`Mark all "${group.section}" findings as Normal`}
+                  className={`flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full border transition-colors flex-shrink-0 ${
+                    sectionAllNormal
+                      ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                      : "bg-slate-100 border-slate-200 text-slate-400 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700"
+                  }`}>
+                  <ShieldCheck className="h-2.5 w-2.5" /> Normal
+                </button>
+                <span className="h-px flex-1 bg-slate-100" />
+              </div>
+              <div className="space-y-2">
+                {group.items.map(item => {
+                  const key = `${group.section}__${item}`;
+                  const val = findings[key] ?? "";
+                  const isNormal = val.trim() === "Normal";
+                  return (
+                    <div key={item}>
+                      <p className="text-[10px] font-bold text-slate-600 mb-1">{item}</p>
+                      <input
+                        value={val}
+                        onChange={e => setFinding(key, e.target.value)}
+                        placeholder="Enter finding…"
+                        className={`w-full text-xs text-slate-700 placeholder-slate-300 border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                          isNormal
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                            : "bg-slate-50 border-slate-200"
+                        }`}
+                        style={{ "--tw-ring-color": ACCENT_PE } as React.CSSProperties}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
