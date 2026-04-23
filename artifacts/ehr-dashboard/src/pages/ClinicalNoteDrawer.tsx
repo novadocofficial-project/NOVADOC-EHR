@@ -7,7 +7,7 @@ import {
   Users, BookOpen, Stethoscope, ClipboardList, CalendarDays,
   CheckCircle2, AlertCircle, Printer, Trash2, Tag,
   GripVertical, Check, Search, Plus,
-  ArrowRight, ClipboardCheck, ChevronLeft,
+  ArrowRight, ClipboardCheck, ChevronLeft, Pill,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CoughHistoryTemplate, CoughSummary, COUGH_EMPTY } from "@/pages/CoughHistoryTemplate";
@@ -21,6 +21,8 @@ import { LabDrawer, LabChipsPanel } from "@/pages/LabDrawer";
 import type { LabOrder } from "@/pages/LabDrawer";
 import { PocLabsChipsPanel, PocLabsDrawer } from "@/pages/PocLabsSection";
 import type { PocTestResult } from "@/pages/PocLabsSection";
+import { FormularyChipsPanel, FormularyDrawer } from "@/pages/FormularySection";
+import type { MedicineEntry } from "@/pages/FormularySection";
 import {
   PastHistoryPanel, FamilyHistoryPanel,
   SurgicalHistoryPanel, SocialHistoryPanel,
@@ -46,6 +48,7 @@ interface NoteState {
   socialHistory:   SocialHistory;
   ros:             string[];
   pocTests:        PocTestResult[];
+  medicines:       MedicineEntry[];
   otherOrders:     string;
   visitNote:       string;
   followUpDate:    string;
@@ -55,7 +58,7 @@ interface NoteState {
 const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [], fhGenetic: [], socialHistory: EMPTY_SOCIAL_HISTORY,
-  ros: [], pocTests: [],
+  ros: [], pocTests: [], medicines: [],
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
 };
@@ -573,6 +576,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
   const [labSaved,          setLabSaved]          = useState<LabOrder | null>(null);
   const [labOpen,           setLabOpen]           = useState(false);
   const [pocOpen,           setPocOpen]           = useState(false);
+  const [formularyOpen,     setFormularyOpen]     = useState(false);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -948,7 +952,24 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
               <LabChipsPanel order={labSaved} onOpen={() => setLabOpen(true)} />
             </div>
 
-            {/* 7c. Other plan action tags */}
+            {/* 7c. Formulary / Prescriptions */}
+            <div className="mb-4">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <Pill className="h-3 w-3 text-indigo-400" />
+                Prescriptions
+                {(note.medicines ?? []).length > 0 && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center gap-1">
+                    <CheckCircle2 className="h-2.5 w-2.5" /> {note.medicines.length} med{note.medicines.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </p>
+              <FormularyChipsPanel
+                medicines={note.medicines ?? []}
+                onOpen={() => setFormularyOpen(true)}
+              />
+            </div>
+
+            {/* 7d. Other plan action tags */}
             <div>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Plan Actions</p>
               <div className="flex flex-wrap gap-2">
@@ -1106,6 +1127,16 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             savedTests={note.pocTests ?? []}
             onSave={v => set("pocTests", v)}
             onClose={() => setPocOpen(false)}
+          />
+        )}
+
+        {/* ── Formulary Drawer ── */}
+        {formularyOpen && (
+          <FormularyDrawer
+            savedMedicines={note.medicines ?? []}
+            patientAllergies={note.allergies ?? []}
+            onSave={v => set("medicines", v)}
+            onClose={() => setFormularyOpen(false)}
           />
         )}
 

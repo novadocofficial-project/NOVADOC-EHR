@@ -1,0 +1,82 @@
+Formulary (Medication Management) – Assessment & Plan
+Context
+
+The Formulary section allows doctors to prescribe medications as part of the Assessment & Plan workflow.
+
+This module follows the same design principles used across the system:
+
+Chip-based selection UI
+Drawer-based detailed input forms
+Clean, structured clinical layout
+
+Reference: Pharma Guide-style search (brand + generic), but no actual API integration required for now (use mock/sample data).
+
+Functional Requirements
+1. Add Medication (Entry Point)
+Provide an “Add Medicine” button
+On click → open a right-side drawer
+2. Medicine Search (Inside Drawer)
+Search field for medicines:
+Supports brand name + generic name search
+Use mock/sample medicine dataset (simulate Pharma Guide behavior)
+
+Example sample medicines:
+
+Paracetamol (Acetaminophen)
+Amoxicillin
+Ibuprofen
+Azithromycin
+3. Medicine Form Fields
+
+Each selected medicine must include:
+
+Medicine Name (auto-filled from selection)
+Dosage (e.g., 500 mg)
+Route (e.g., Oral, IV, IM)
+Frequency (e.g., BID, TID, once daily)
+Duration (e.g., 5 days)
+Special Instructions (free text)
+4. Drug Allergy Handling
+When drawer opens:
+Display patient drug allergies (if available) at the top
+If selected medicine conflicts with allergy:
+Show a clear alert/warning message
+Alert should be non-blocking (doctor can still proceed if needed)
+
+Example:
+
+“⚠ Patient is allergic to Penicillin – Amoxicillin may cause reaction”
+5. Add / Remove Medicines
+User can:
+Add multiple medicines
+Remove any medicine easily
+After saving:
+Medicines appear as structured chips/cards in the main view
+6. UI Representation (After Adding)
+
+Each medicine chip/card should display:
+
+Medicine name
+Dosage + frequency
+Duration
+Optional indicator if special instructions exist
+
+Include:
+
+Remove (✕) action on each chip
+Click to edit → reopens drawer
+Interaction Flow
+Click Add Medicine
+Drawer opens with:
+Search medicines
+Allergy info (if any)
+Select medicine → fill details
+Save medicine
+Medicine appears as chip/card
+Repeat for multiple medicines
+UI / UX Constraints
+❌ No drag-and-drop functionality
+✅ Use chip-based UI for added medicines
+✅ Use drawer-based form for input/edit
+✅ Maintain clean, EMR-style structured layout
+✅ Ensure fast data entry (minimal clicks)
