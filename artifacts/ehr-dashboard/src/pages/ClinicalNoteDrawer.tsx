@@ -1095,32 +1095,6 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
               />
             </div>
 
-            {/* 7g. Other plan action tags */}
-            <div>
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Plan Actions</p>
-              <div className="flex flex-wrap gap-2">
-                {PLAN_TAGS.filter(t => t.label !== "Diagnosis" && t.label !== "Lab").map(({ label, color, Icon }) => {
-                  const active = note.planTags.includes(label);
-                  return (
-                    <button
-                      key={label}
-                      onClick={() => togglePlanTag(label)}
-                      className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-xl border-2 transition-all"
-                      style={active
-                        ? { backgroundColor: color, color: "white", borderColor: color }
-                        : { backgroundColor: `${color}10`, color, borderColor: `${color}30` }}>
-                      <Icon className="h-3 w-3" />
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-              {note.planTags.length > 0 && (
-                <p className="text-[11px] text-slate-400 mt-2 italic">
-                  Active: {note.planTags.join(" · ")}
-                </p>
-              )}
-            </div>
           </Section>
 
           {/* 8. Other Orders + Visit Note (2-col) */}
