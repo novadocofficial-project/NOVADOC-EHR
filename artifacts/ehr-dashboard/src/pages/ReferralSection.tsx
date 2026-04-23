@@ -27,8 +27,16 @@ export interface ReferralEntry {
   referralType:     ReferralType;
   referralTarget:   ReferralTarget;
   customTarget:     string;
+  // Consultant target
   speciality:       string;
   consultantName:   string;
+  // Procedure target
+  procedureName:    string;
+  procedureCategory:string;
+  // ER target
+  facilityName:     string;
+  erService:        string;
+  // shared
   comorbidities:    string[];
   medications:      ReferralMed[];
   allergies:        AllergyEntry[];
@@ -129,6 +137,148 @@ const SPECIALITY_MAP: Record<string, ConsultantDef[]> = {
 
 const SPECIALITIES = Object.keys(SPECIALITY_MAP).sort();
 
+// ─── Procedure List ────────────────────────────────────────────────────────────
+
+interface ProcedureDef { id: string; name: string; category: string; }
+
+const PROCEDURES: ProcedureDef[] = [
+  // Surgical
+  { id: "appendectomy",       name: "Appendectomy",                       category: "Surgical"     },
+  { id: "cholecystectomy",    name: "Laparoscopic Cholecystectomy",       category: "Surgical"     },
+  { id: "hernia-repair",      name: "Inguinal Hernia Repair",             category: "Surgical"     },
+  { id: "thyroidectomy",      name: "Thyroidectomy",                      category: "Surgical"     },
+  { id: "tonsillectomy",      name: "Tonsillectomy & Adenoidectomy",      category: "Surgical"     },
+  { id: "mastectomy",         name: "Mastectomy",                         category: "Surgical"     },
+  { id: "colostomy",          name: "Colostomy",                          category: "Surgical"     },
+  { id: "bypass-surgery",     name: "Coronary Artery Bypass Grafting",    category: "Surgical"     },
+  { id: "hip-replacement",    name: "Total Hip Replacement",              category: "Surgical"     },
+  { id: "knee-replacement",   name: "Total Knee Replacement",             category: "Surgical"     },
+  { id: "spinal-fusion",      name: "Spinal Fusion",                      category: "Surgical"     },
+  // Diagnostic
+  { id: "echo",               name: "Echocardiogram",                     category: "Diagnostic"   },
+  { id: "stress-test",        name: "Cardiac Stress Test",                category: "Diagnostic"   },
+  { id: "spirometry",         name: "Spirometry / PFT",                   category: "Diagnostic"   },
+  { id: "eeg",                name: "Electroencephalogram (EEG)",          category: "Diagnostic"   },
+  { id: "emg",                name: "Electromyography (EMG)",              category: "Diagnostic"   },
+  { id: "sleep-study",        name: "Polysomnography (Sleep Study)",      category: "Diagnostic"   },
+  { id: "bone-density",       name: "Bone Density Scan (DEXA)",           category: "Diagnostic"   },
+  { id: "audiometry",         name: "Audiometry",                         category: "Diagnostic"   },
+  // Endoscopic
+  { id: "colonoscopy",        name: "Colonoscopy",                        category: "Endoscopic"   },
+  { id: "gastroscopy",        name: "Upper GI Endoscopy (Gastroscopy)",   category: "Endoscopic"   },
+  { id: "bronchoscopy",       name: "Bronchoscopy",                       category: "Endoscopic"   },
+  { id: "ercp",               name: "ERCP",                               category: "Endoscopic"   },
+  { id: "cystoscopy",         name: "Cystoscopy",                         category: "Endoscopic"   },
+  // Therapeutic / Interventional
+  { id: "angioplasty",        name: "Percutaneous Coronary Angioplasty",  category: "Interventional"},
+  { id: "pacemaker",          name: "Pacemaker Implantation",             category: "Interventional"},
+  { id: "ablation",           name: "Cardiac Ablation",                   category: "Interventional"},
+  { id: "dialysis",           name: "Hemodialysis",                       category: "Interventional"},
+  { id: "lumbar-puncture",    name: "Lumbar Puncture",                    category: "Interventional"},
+  { id: "joint-injection",    name: "Joint Injection / Aspiration",       category: "Interventional"},
+  { id: "biopsy",             name: "Tissue Biopsy",                      category: "Interventional"},
+  { id: "iv-therapy",         name: "IV Therapy / Infusion",              category: "Interventional"},
+  // Obstetrics & Gynecology
+  { id: "colposcopy",         name: "Colposcopy",                         category: "OB/GYN"       },
+  { id: "hysteroscopy",       name: "Hysteroscopy",                       category: "OB/GYN"       },
+  { id: "caesarean",          name: "Caesarean Section",                  category: "OB/GYN"       },
+  { id: "amniocentesis",      name: "Amniocentesis",                      category: "OB/GYN"       },
+  // Ophthalmology
+  { id: "lasik",              name: "LASIK / Refractive Surgery",         category: "Ophthalmology"},
+  { id: "cataract-surgery",   name: "Cataract Surgery",                   category: "Ophthalmology"},
+  { id: "retinal-laser",      name: "Retinal Laser Photocoagulation",     category: "Ophthalmology"},
+];
+
+const PROCEDURE_CATEGORIES = [...new Set(PROCEDURES.map(p => p.category))];
+
+// ─── ER Facilities ─────────────────────────────────────────────────────────────
+
+interface ErService { id: string; name: string; }
+interface ErFacility { name: string; type: "Hospital" | "Clinic"; services: ErService[]; }
+
+const ER_FACILITIES: ErFacility[] = [
+  {
+    name: "Hamad General Hospital", type: "Hospital",
+    services: [
+      { id: "hgh-er",       name: "Emergency Department (Adult)"       },
+      { id: "hgh-trauma",   name: "Trauma & Critical Care Unit"        },
+      { id: "hgh-cardiac",  name: "Cardiac Emergency (STEMI Network)"  },
+      { id: "hgh-stroke",   name: "Stroke Response Unit"               },
+      { id: "hgh-burn",     name: "Burns Emergency Unit"               },
+      { id: "hgh-tox",      name: "Toxicology & Overdose Services"     },
+    ],
+  },
+  {
+    name: "Al Wakra Hospital", type: "Hospital",
+    services: [
+      { id: "awh-er",       name: "Emergency Department"               },
+      { id: "awh-ped",      name: "Pediatric Emergency"                },
+      { id: "awh-obs",      name: "Obstetric Emergency"                },
+      { id: "awh-trauma",   name: "Trauma Services"                    },
+      { id: "awh-cardiac",  name: "Cardiac Emergency"                  },
+    ],
+  },
+  {
+    name: "Al Khor Hospital", type: "Hospital",
+    services: [
+      { id: "akh-er",       name: "Emergency Department"               },
+      { id: "akh-ped",      name: "Pediatric Emergency"                },
+      { id: "akh-trauma",   name: "Minor Trauma & Fracture Clinic"     },
+      { id: "akh-obs",      name: "Obstetric Emergency"                },
+    ],
+  },
+  {
+    name: "The Cuban Hospital", type: "Hospital",
+    services: [
+      { id: "cub-er",       name: "Emergency Department"               },
+      { id: "cub-ped",      name: "Pediatric Emergency"                },
+      { id: "cub-obs",      name: "Obstetric & Maternity Emergency"    },
+    ],
+  },
+  {
+    name: "Sidra Medicine", type: "Hospital",
+    services: [
+      { id: "sid-ped-er",   name: "Pediatric Emergency Department"     },
+      { id: "sid-nicu",     name: "Neonatal Intensive Care (NICU)"     },
+      { id: "sid-obs",      name: "Obstetric Emergency & Labour"       },
+      { id: "sid-trauma",   name: "Pediatric Trauma Unit"              },
+    ],
+  },
+  {
+    name: "Aster Medical Centre", type: "Clinic",
+    services: [
+      { id: "ast-uc",       name: "Urgent Care"                        },
+      { id: "ast-minor",    name: "Minor Injuries & Wound Care"        },
+      { id: "ast-iv",       name: "IV Drip & Infusion Therapy"         },
+    ],
+  },
+  {
+    name: "Medicover Clinic", type: "Clinic",
+    services: [
+      { id: "med-uc",       name: "Urgent Care Walk-In"                },
+      { id: "med-minor",    name: "Minor Procedures & Laceration Repair"},
+      { id: "med-obs",      name: "Occupational Health Emergency"      },
+    ],
+  },
+  {
+    name: "Prime Medical Centre", type: "Clinic",
+    services: [
+      { id: "prime-uc",     name: "Urgent Care"                        },
+      { id: "prime-minor",  name: "Minor Injuries"                     },
+      { id: "prime-iv",     name: "IV Therapy"                         },
+      { id: "prime-peds",   name: "Pediatric Urgent Care"              },
+    ],
+  },
+  {
+    name: "Qatar Medical Centre", type: "Clinic",
+    services: [
+      { id: "qmc-uc",       name: "24-Hour Urgent Care"                },
+      { id: "qmc-trauma",   name: "Minor Trauma & X-Ray Services"      },
+      { id: "qmc-iv",       name: "IV Hydration & Infusion"            },
+    ],
+  },
+];
+
 const COMORBIDITY_OPTIONS = [
   "Hypertension", "Type 2 Diabetes", "Type 1 Diabetes", "Hyperlipidaemia",
   "Asthma", "COPD", "Chronic Kidney Disease", "Heart Failure",
@@ -158,6 +308,8 @@ function blankEntry(): ReferralEntry {
   return {
     id: uid(), referralType: "Internal", referralTarget: "Consultant",
     customTarget: "", speciality: "", consultantName: "",
+    procedureName: "", procedureCategory: "",
+    facilityName: "", erService: "",
     comorbidities: [], medications: [], allergies: [],
     reason: "", summary: "",
   };
@@ -352,7 +504,16 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
 
   const set = (k: keyof ReferralEntry, v: unknown) => onChange({ ...entry, [k]: v } as ReferralEntry);
 
-  const consultants = entry.speciality ? (SPECIALITY_MAP[entry.speciality] ?? []) : [];
+  const consultants       = entry.speciality ? (SPECIALITY_MAP[entry.speciality] ?? []) : [];
+  const erFacility        = ER_FACILITIES.find(f => f.name === entry.facilityName);
+  const erServices        = erFacility?.services ?? [];
+  const [procSearch,      setProcSearch]      = useState("");
+  const [procCategory,    setProcCategory]    = useState("");
+
+  const filteredProcs = PROCEDURES.filter(p =>
+    (procCategory ? p.category === procCategory : true) &&
+    (procSearch   ? p.name.toLowerCase().includes(procSearch.toLowerCase()) : true)
+  );
 
   const filteredComorbidities = COMORBIDITY_OPTIONS.filter(c =>
     c.toLowerCase().includes(comorbInput.toLowerCase()) && !entry.comorbidities.includes(c)
@@ -376,8 +537,14 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
     set("medications", [...entry.medications, ...toAdd]);
   }
 
-  const isValid = (entry.referralTarget !== "Custom" || entry.customTarget.trim()) &&
-    entry.speciality && entry.consultantName && entry.reason.trim();
+  const isValid = (() => {
+    if (!entry.reason.trim()) return false;
+    if (entry.referralTarget === "Consultant") return !!(entry.speciality && entry.consultantName);
+    if (entry.referralTarget === "Procedure")  return !!entry.procedureName;
+    if (entry.referralTarget === "ER")         return !!(entry.facilityName && entry.erService);
+    if (entry.referralTarget === "Custom")     return !!entry.customTarget.trim();
+    return true;
+  })();
 
   return (
     <div className="space-y-5">
@@ -420,31 +587,133 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
         )}
       </div>
 
-      {/* Speciality */}
-      <div>
-        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Speciality</p>
-        <select className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
-          value={entry.speciality}
-          onChange={e => { set("speciality", e.target.value); onChange({ ...entry, speciality: e.target.value, consultantName: "" }); }}>
-          <option value="">— Select speciality —</option>
-          {SPECIALITIES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-      </div>
-
-      {/* Consultant */}
-      {entry.speciality && (
+      {/* ── Consultant fields ── */}
+      {entry.referralTarget === "Consultant" && (<>
         <div>
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Consultant Name</p>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Speciality</p>
           <select className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
-            value={entry.consultantName}
-            onChange={e => set("consultantName", e.target.value)}>
-            <option value="">— Select consultant —</option>
-            {consultants.map(c => (
-              <option key={c.name} value={c.name}>{c.name} — {c.qualifier}</option>
-            ))}
+            value={entry.speciality}
+            onChange={e => onChange({ ...entry, speciality: e.target.value, consultantName: "" })}>
+            <option value="">— Select speciality —</option>
+            {SPECIALITIES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
+        {entry.speciality && (
+          <div>
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Consultant Name</p>
+            <select className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
+              value={entry.consultantName}
+              onChange={e => set("consultantName", e.target.value)}>
+              <option value="">— Select consultant —</option>
+              {consultants.map(c => (
+                <option key={c.name} value={c.name}>{c.name} — {c.qualifier}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </>)}
+
+      {/* ── Procedure picker ── */}
+      {entry.referralTarget === "Procedure" && (
+        <div>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Procedure</p>
+          {entry.procedureName && (
+            <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-xl bg-teal-50 border border-teal-100">
+              <CheckCircle2 className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
+              <span className="text-xs font-bold text-teal-700 flex-1">{entry.procedureName}</span>
+              <span className="text-[9px] text-teal-500 bg-teal-100 px-2 py-0.5 rounded-full">{entry.procedureCategory}</span>
+              <button className="text-slate-300 hover:text-red-400 ml-1"
+                onClick={() => onChange({ ...entry, procedureName: "", procedureCategory: "" })}>
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+          {/* Category filter */}
+          <div className="flex gap-1.5 flex-wrap mb-2">
+            <button onClick={() => setProcCategory("")}
+              className="text-[9px] font-bold px-2 py-1 rounded-full border transition-all"
+              style={procCategory === "" ? { background: "#6366f1", color: "white", borderColor: "#6366f1" } : { borderColor: "#e2e8f0", color: "#64748b" }}>
+              All
+            </button>
+            {PROCEDURE_CATEGORIES.map(cat => (
+              <button key={cat} onClick={() => setProcCategory(cat === procCategory ? "" : cat)}
+                className="text-[9px] font-bold px-2 py-1 rounded-full border transition-all"
+                style={procCategory === cat ? { background: "#6366f1", color: "white", borderColor: "#6366f1" } : { borderColor: "#e2e8f0", color: "#64748b" }}>
+                {cat}
+              </button>
+            ))}
+          </div>
+          {/* Search */}
+          <div className="relative mb-2">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+            <input className="w-full pl-7 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none"
+              placeholder="Search procedure…" value={procSearch}
+              onChange={e => setProcSearch(e.target.value)} />
+          </div>
+          {/* List */}
+          <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50 divide-y divide-slate-100">
+            {filteredProcs.map(p => (
+              <button key={p.id}
+                className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-all"
+                style={entry.procedureName === p.name
+                  ? { background: "#6366f110", color: "#4f46e5" }
+                  : { color: "#334155" }}
+                onClick={() => onChange({ ...entry, procedureName: p.name, procedureCategory: p.category })}>
+                <span className="flex-1 font-medium">{p.name}</span>
+                <span className="text-[9px] text-slate-400 flex-shrink-0 bg-white px-1.5 py-0.5 rounded-full border">{p.category}</span>
+                {entry.procedureName === p.name && <CheckCircle2 className="h-3 w-3 text-indigo-500 flex-shrink-0" />}
+              </button>
+            ))}
+            {filteredProcs.length === 0 && (
+              <p className="text-xs text-slate-400 text-center py-4">No procedures match</p>
+            )}
+          </div>
+        </div>
       )}
+
+      {/* ── ER: Facility → Services ── */}
+      {entry.referralTarget === "ER" && (<>
+        <div>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Facility</p>
+          <div className="grid grid-cols-1 gap-1.5 max-h-44 overflow-y-auto pr-1">
+            {ER_FACILITIES.map(f => (
+              <button key={f.name}
+                className="w-full text-left px-3 py-2 rounded-xl border-2 text-xs flex items-center gap-2 transition-all"
+                style={entry.facilityName === f.name
+                  ? { borderColor: "#ef4444", background: "#fef2f2", color: "#dc2626" }
+                  : { borderColor: "#e2e8f0", background: "#f8fafc",  color: "#475569" }}
+                onClick={() => onChange({ ...entry, facilityName: f.name, erService: "" })}>
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${f.type === "Hospital" ? "bg-red-100 text-red-600" : "bg-orange-100 text-orange-600"}`}>
+                  {f.type}
+                </span>
+                <span className="font-bold flex-1">{f.name}</span>
+                {entry.facilityName === f.name && <CheckCircle2 className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />}
+              </button>
+            ))}
+          </div>
+        </div>
+        {entry.facilityName && (
+          <div>
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">
+              ER / Urgent Care Service
+              <span className="text-slate-400 font-normal ml-1">— {entry.facilityName}</span>
+            </p>
+            <div className="space-y-1.5">
+              {erServices.map(s => (
+                <button key={s.id}
+                  className="w-full text-left px-3 py-2 rounded-xl border-2 text-xs flex items-center gap-2 transition-all"
+                  style={entry.erService === s.name
+                    ? { borderColor: "#ef4444", background: "#fef2f2", color: "#dc2626" }
+                    : { borderColor: "#e2e8f0", background: "#f8fafc",  color: "#475569" }}
+                  onClick={() => set("erService", s.name)}>
+                  <span className="flex-1 font-medium">{s.name}</span>
+                  {entry.erService === s.name && <CheckCircle2 className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </>)}
 
       {/* Co-morbidities */}
       <div>
@@ -628,17 +897,33 @@ function ReferralCard({ entry, onEdit, onDelete }: ReferralCardProps) {
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
               {entry.referralTarget === "Custom" ? entry.customTarget : entry.referralTarget}
             </span>
-            {entry.speciality && (
+            {entry.referralTarget === "Consultant" && entry.speciality && (
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">
                 {entry.speciality}
               </span>
             )}
+            {entry.referralTarget === "Procedure" && entry.procedureCategory && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-600">
+                {entry.procedureCategory}
+              </span>
+            )}
+            {entry.referralTarget === "ER" && entry.facilityName && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">
+                {entry.facilityName}
+              </span>
+            )}
           </div>
-          {entry.consultantName && (
+          {entry.referralTarget === "Consultant" && entry.consultantName && (
             <p className="text-xs font-bold text-slate-700 mt-1.5 flex items-center gap-1">
               <Users className="h-3 w-3 text-indigo-400" />
               {entry.consultantName}
             </p>
+          )}
+          {entry.referralTarget === "Procedure" && entry.procedureName && (
+            <p className="text-xs font-bold text-teal-700 mt-1.5">{entry.procedureName}</p>
+          )}
+          {entry.referralTarget === "ER" && entry.erService && (
+            <p className="text-xs font-bold text-red-700 mt-1.5">{entry.erService}</p>
           )}
           {entry.reason && (
             <p className="text-[10px] text-slate-500 mt-1 italic truncate">{entry.reason}</p>
@@ -824,14 +1109,21 @@ export function ReferralChipsPanel({ data, onOpen }: ReferralChipsPanelProps) {
     <div className="flex flex-wrap gap-2">
       {data.referrals.map(r => {
         const typeColor = r.referralType === "Internal" ? "#6366f1" : "#0ea5e9";
+        const label = r.referralTarget === "Consultant"
+          ? (r.speciality || "Consultant")
+          : r.referralTarget === "Procedure"
+          ? (r.procedureName || "Procedure")
+          : r.referralTarget === "ER"
+          ? (r.erService || r.facilityName || "ER")
+          : (r.customTarget || "Custom");
         return (
           <button key={r.id} onClick={onOpen}
             className="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-xl border-2 transition-all hover:opacity-80"
             style={{ background: `${typeColor}10`, color: typeColor, borderColor: `${typeColor}30` }}>
             <Users className="h-3 w-3" />
             <span>{r.referralType}</span>
-            {r.speciality && <><ArrowRight className="h-2.5 w-2.5 opacity-50" /><span>{r.speciality}</span></>}
-            {r.consultantName && <><span className="opacity-40">·</span><span className="opacity-70 truncate max-w-[120px]">{r.consultantName.replace("Dr. ", "Dr ")}</span></>}
+            <ArrowRight className="h-2.5 w-2.5 opacity-50" />
+            <span className="truncate max-w-[140px]">{label}</span>
           </button>
         );
       })}
