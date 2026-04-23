@@ -1,0 +1,100 @@
+Health Education (Patient Printable Material Selection)
+Context
+
+The Health Education module allows doctors to assign printable educational material to patients as part of the care workflow.
+
+It is structured into three categories:
+
+Handouts
+Patient Education
+Non-Pharma Guidance
+
+This module follows the same system pattern:
+
+Drawer-based selection
+Multi-select support
+Chip/card-based summary
+Favourite-first prioritization
+Preview-first document viewing
+Functional Requirements
+1. Entry Point
+Add “Health Education” button in the system workflow
+On click → open a right-side drawer
+2. Document Categories
+
+Inside drawer, show 3 structured sections:
+
+Handouts
+Patient Education
+Non-Pharma Guidance
+
+Each section contains multiple documents.
+
+3. Document Structure
+
+Each document must display:
+
+Document Title
+Short Brief / Description (1–2 lines max)
+Helps doctor understand content quickly
+Category label (auto-assigned)
+
+Example:
+
+“Asthma Care at Home”
+Brief: “Instructions for managing asthma symptoms and inhaler use at home”
+4. Favorites System
+Doctor can mark any document as Favourite (★)
+
+Behavior:
+
+Favourites appear at the top of each category
+Helps quick access for frequently used materials
+5. Multi-Select Support
+Doctor can select multiple documents
+Selected documents are added to a selection list inside drawer
+6. Document Preview Feature
+Each document has a “Preview” option
+On click:
+Open a preview modal / window
+Display document content (read-only view)
+
+Preview must include:
+
+Document title
+Full content rendering (text format for now)
+Clean readable layout (patient-friendly format)
+7. Selection Behavior
+Selecting a document does NOT automatically open preview
+Preview is optional and separate action
+Doctor can:
+Preview first → then select
+Or directly select without preview
+8. UI Representation (After Selection)
+
+Selected documents appear as chips/cards in main workflow:
+
+Each chip shows:
+
+Document title
+Category tag (Handout / Education / Non-Pharma)
+
+Actions:
+
+Remove (✕)
+Preview again (optional click)
+9. Interaction Flow
+Click Health Education
+Drawer opens with 3 categories
+Browse documents (favourites on top)
+Click preview (optional)
+Select multiple documents
+Save selection
+Documents appear as chips/cards in main view
+10. UI / UX Constraints
+❌ No drag-and-drop
+✅ Drawer-based selection
+✅ Modal-based preview
+✅ Chip-based selected items
+✅ Clean clinical document browsing experience
+✅ Fast selection for doctors
