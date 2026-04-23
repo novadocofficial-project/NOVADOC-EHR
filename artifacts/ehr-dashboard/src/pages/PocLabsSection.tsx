@@ -445,21 +445,6 @@ export function PocLabsDrawer({ savedTests, onSave, onClose }: PocLabsDrawerProp
             ))}
           </div>
 
-          {/* Footer buttons */}
-          <div className="px-3 pb-3 pt-2 border-t border-slate-100 flex gap-2 flex-shrink-0">
-            <button
-              onClick={() => onSave(localTests)}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-black hover:bg-amber-100 transition-colors">
-              <ClipboardCheck className="h-3.5 w-3.5" />
-              Save Draft
-            </button>
-            <button
-              onClick={() => { onSave(localTests); onClose(); }}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#f59e0b] text-white text-xs font-black hover:bg-amber-500 transition-colors">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Done
-            </button>
-          </div>
         </div>
       )}
 
