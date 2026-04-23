@@ -19,7 +19,7 @@ import { DiagnosisDrawer, DiagnosisChipsPanel } from "@/pages/DiagnosisDrawer";
 import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
 import { LabDrawer, LabChipsPanel } from "@/pages/LabDrawer";
 import type { LabOrder } from "@/pages/LabDrawer";
-import { PocLabsPanel } from "@/pages/PocLabsSection";
+import { PocLabsChipsPanel, PocLabsDrawer } from "@/pages/PocLabsSection";
 import type { PocTestResult } from "@/pages/PocLabsSection";
 import {
   PastHistoryPanel, FamilyHistoryPanel,
@@ -572,6 +572,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
   const [labDone,           setLabDone]           = useState(false);
   const [labSaved,          setLabSaved]          = useState<LabOrder | null>(null);
   const [labOpen,           setLabOpen]           = useState(false);
+  const [pocOpen,           setPocOpen]           = useState(false);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -901,9 +902,9 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
           {/* 6. Point of Care Labs */}
           <Section title="Point of Care Labs" icon={FlaskConical} color="#f59e0b" defaultOpen={false}
             filled={(note.pocTests ?? []).length > 0}>
-            <PocLabsPanel
+            <PocLabsChipsPanel
               tests={note.pocTests ?? []}
-              onChange={v => set("pocTests", v)}
+              onOpen={() => setPocOpen(true)}
             />
           </Section>
 
@@ -1096,6 +1097,15 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             onSave={handleLabSave}
             onSendToLab={handleSendToLab}
             onClose={() => setLabOpen(false)}
+          />
+        )}
+
+        {/* ── POC Labs Drawer ── */}
+        {pocOpen && (
+          <PocLabsDrawer
+            savedTests={note.pocTests ?? []}
+            onSave={v => set("pocTests", v)}
+            onClose={() => setPocOpen(false)}
           />
         )}
 
