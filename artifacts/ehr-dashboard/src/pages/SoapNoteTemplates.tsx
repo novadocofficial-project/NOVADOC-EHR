@@ -560,6 +560,286 @@ function SaveTemplateDialog({ note, onSave, onClose }: {
   );
 }
 
+// ─── Section-specific editors ─────────────────────────────────────────────────
+
+function StringArrayEditor({ label, value, onChange, placeholder, color }: {
+  label: string; value: string[]; onChange: (v: string[]) => void;
+  placeholder: string; color: string;
+}) {
+  const [input, setInput] = useState("");
+  function add() {
+    const v = input.trim();
+    if (!v || value.includes(v)) return;
+    onChange([...value, v]);
+    setInput("");
+  }
+  function remove(i: number) { onChange(value.filter((_, idx) => idx !== i)); }
+  return (
+    <div className="space-y-2">
+      {value.map((v, i) => (
+        <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-100 bg-slate-50 group">
+          <span className="flex-1 text-xs text-slate-700">{v}</span>
+          <button onClick={() => remove(i)}
+            className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-300 hover:text-red-400 transition-colors flex-shrink-0">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <input value={input} onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+          placeholder={placeholder}
+          className="flex-1 text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 outline-none transition-all"
+          style={{ "--tw-ring-color": `${color}30` } as React.CSSProperties}
+        />
+        <button onClick={add} disabled={!input.trim()}
+          className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-lg text-white disabled:opacity-40 transition-colors"
+          style={{ background: input.trim() ? color : undefined, backgroundColor: !input.trim() ? "#e2e8f0" : undefined }}>
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CarePlanEditor({ value, onChange }: { value: CarePlanData; onChange: (v: CarePlanData) => void }) {
+  const [newTitle, setNewTitle] = useState("");
+  function addTask() {
+    const t = newTitle.trim();
+    if (!t) return;
+    onChange({ tasks: [...value.tasks, { uid: uid(), taskId: "custom", title: t, assignee: "", dueDate: "", priority: "Normal", notes: "" }] });
+    setNewTitle("");
+  }
+  function removeTask(i: number) { onChange({ tasks: value.tasks.filter((_, idx) => idx !== i) }); }
+  function editTitle(i: number, title: string) {
+    onChange({ tasks: value.tasks.map((t, idx) => idx === i ? { ...t, title } : t) });
+  }
+  function togglePriority(i: number) {
+    onChange({ tasks: value.tasks.map((t, idx) => idx === i ? { ...t, priority: t.priority === "Urgent" ? "Normal" : "Urgent" } : t) });
+  }
+  return (
+    <div className="space-y-2">
+      {value.tasks.map((t, i) => (
+        <div key={t.uid} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-100 bg-emerald-50/30 group">
+          <button onClick={() => togglePriority(i)}
+            className={`text-[8px] font-black px-1.5 py-0.5 rounded flex-shrink-0 ${t.priority === "Urgent" ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-400"}`}>
+            {t.priority === "Urgent" ? "URG" : "NRM"}
+          </button>
+          <input value={t.title} onChange={e => editTitle(i, e.target.value)}
+            className="flex-1 text-xs text-slate-700 bg-transparent outline-none border-b border-transparent focus:border-emerald-300 transition-colors" />
+          <button onClick={() => removeTask(i)}
+            className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-300 hover:text-red-400 transition-colors flex-shrink-0">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <input value={newTitle} onChange={e => setNewTitle(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTask(); } }}
+          placeholder="Add task title…"
+          className="flex-1 text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 outline-none" />
+        <button onClick={addTask} disabled={!newTitle.trim()}
+          className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-lg bg-emerald-500 text-white disabled:opacity-40">
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProcedureOrdersEditor({ value, onChange }: { value: ProcedureOrdersData; onChange: (v: ProcedureOrdersData) => void }) {
+  const [newName, setNewName] = useState("");
+  function addOrder() {
+    const n = newName.trim();
+    if (!n) return;
+    onChange({ orders: [...value.orders, { uid: uid(), procId: "custom", name: n, cpt: "", isCustom: true, indication: "", priority: "Normal", timing: "Immediate", scheduledAt: "", repeat: false, instructions: "", assignedTo: "" }] });
+    setNewName("");
+  }
+  function removeOrder(i: number) { onChange({ orders: value.orders.filter((_, idx) => idx !== i) }); }
+  function editField(i: number, field: string, val: string) {
+    onChange({ orders: value.orders.map((o, idx) => idx === i ? { ...o, [field]: val } : o) });
+  }
+  function togglePriority(i: number) {
+    onChange({ orders: value.orders.map((o, idx) => idx === i ? { ...o, priority: o.priority === "Urgent" ? "Normal" : "Urgent" } : o) });
+  }
+  return (
+    <div className="space-y-2">
+      {value.orders.map((o, i) => (
+        <div key={o.uid} className="rounded-lg border border-teal-100 bg-teal-50/20 overflow-hidden group">
+          <div className="flex items-center gap-2 px-2.5 py-1.5">
+            <button onClick={() => togglePriority(i)}
+              className={`text-[8px] font-black px-1.5 py-0.5 rounded flex-shrink-0 ${o.priority === "Urgent" ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-400"}`}>
+              {o.priority === "Urgent" ? "URG" : "NRM"}
+            </button>
+            <input value={o.name} onChange={e => editField(i, "name", e.target.value)}
+              className="flex-1 text-xs font-semibold text-slate-700 bg-transparent outline-none border-b border-transparent focus:border-teal-300 transition-colors" />
+            {o.cpt && (
+              <span className="font-mono text-[9px] text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100 flex-shrink-0">
+                CPT {o.cpt}
+              </span>
+            )}
+            <button onClick={() => removeOrder(i)}
+              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-300 hover:text-red-400 transition-colors flex-shrink-0">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+          <div className="px-2.5 pb-1.5">
+            <input value={o.indication} onChange={e => editField(i, "indication", e.target.value)}
+              placeholder="Indication / reason…"
+              className="w-full text-[10px] text-slate-500 bg-transparent outline-none placeholder:text-slate-300 border-b border-transparent focus:border-teal-200 transition-colors" />
+          </div>
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <input value={newName} onChange={e => setNewName(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addOrder(); } }}
+          placeholder="Add procedure name…"
+          className="flex-1 text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 outline-none" />
+        <button onClick={addOrder} disabled={!newName.trim()}
+          className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-lg bg-teal-500 text-white disabled:opacity-40">
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PatientGoalsEditor({ value, onChange }: { value: PatientGoalsData; onChange: (v: PatientGoalsData) => void }) {
+  const [newTitle, setNewTitle] = useState("");
+  function addGoal() {
+    const t = newTitle.trim();
+    if (!t) return;
+    onChange({ goals: [...value.goals, { uid: uid(), title: t, startDate: "", targetDate: "", priority: "Normal", actions: [] }] });
+    setNewTitle("");
+  }
+  function removeGoal(i: number) { onChange({ goals: value.goals.filter((_, idx) => idx !== i) }); }
+  function editTitle(i: number, title: string) {
+    onChange({ goals: value.goals.map((g, idx) => idx === i ? { ...g, title } : g) });
+  }
+  function addAction(i: number, action: string) {
+    onChange({ goals: value.goals.map((g, idx) => idx === i ? { ...g, actions: [...g.actions, action] } : g) });
+  }
+  function removeAction(gi: number, ai: number) {
+    onChange({ goals: value.goals.map((g, idx) => idx === gi ? { ...g, actions: g.actions.filter((_, aidx) => aidx !== ai) } : g) });
+  }
+  return (
+    <div className="space-y-3">
+      {value.goals.map((g, i) => (
+        <GoalEditCard key={g.uid} goal={g} onEditTitle={t => editTitle(i, t)}
+          onRemove={() => removeGoal(i)} onAddAction={a => addAction(i, a)}
+          onRemoveAction={ai => removeAction(i, ai)} />
+      ))}
+      <div className="flex gap-2">
+        <input value={newTitle} onChange={e => setNewTitle(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addGoal(); } }}
+          placeholder="Add goal title…"
+          className="flex-1 text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 outline-none" />
+        <button onClick={addGoal} disabled={!newTitle.trim()}
+          className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-lg bg-pink-500 text-white disabled:opacity-40">
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GoalEditCard({ goal, onEditTitle, onRemove, onAddAction, onRemoveAction }: {
+  goal: { uid: string; title: string; actions: string[] };
+  onEditTitle: (t: string) => void;
+  onRemove: () => void;
+  onAddAction: (a: string) => void;
+  onRemoveAction: (i: number) => void;
+}) {
+  const [newAction, setNewAction] = useState("");
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-lg border border-pink-100 bg-pink-50/20 overflow-hidden">
+      <div className="flex items-center gap-2 px-2.5 py-1.5 group">
+        <input value={goal.title} onChange={e => onEditTitle(e.target.value)}
+          className="flex-1 text-xs font-semibold text-slate-700 bg-transparent outline-none border-b border-transparent focus:border-pink-300 transition-colors" />
+        <button onClick={() => setOpen(o => !o)}
+          className="p-0.5 rounded text-slate-300 hover:text-pink-400 transition-colors flex-shrink-0 text-[9px] font-bold">
+          {goal.actions.length} step{goal.actions.length !== 1 ? "s" : ""}
+          {open ? <ChevronUp className="h-3 w-3 inline ml-0.5" /> : <ChevronDown className="h-3 w-3 inline ml-0.5" />}
+        </button>
+        <button onClick={onRemove}
+          className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-300 hover:text-red-400 transition-colors flex-shrink-0">
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+      {open && (
+        <div className="px-2.5 pb-2 border-t border-pink-100 pt-1.5 space-y-1">
+          {goal.actions.map((a, i) => (
+            <div key={i} className="flex items-center gap-1.5 group/action">
+              <span className="text-[10px] font-black text-pink-400 flex-shrink-0">{i + 1}.</span>
+              <span className="flex-1 text-[10px] text-slate-600">{a}</span>
+              <button onClick={() => onRemoveAction(i)}
+                className="opacity-0 group-hover/action:opacity-100 p-0.5 rounded text-slate-200 hover:text-red-400 transition-colors flex-shrink-0">
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          ))}
+          <div className="flex gap-1.5 mt-1">
+            <input value={newAction} onChange={e => setNewAction(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && newAction.trim()) { e.preventDefault(); onAddAction(newAction.trim()); setNewAction(""); } }}
+              placeholder="Add action step…"
+              className="flex-1 text-[10px] text-slate-600 bg-white border border-pink-100 rounded px-2 py-1 outline-none" />
+            <button onClick={() => { if (newAction.trim()) { onAddAction(newAction.trim()); setNewAction(""); } }}
+              className="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded bg-pink-400 text-white disabled:opacity-40">
+              <Plus className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionContentEditor({ sectionKey, value, onChange }: {
+  sectionKey: TemplateSectionKey;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const m = SECTION_META[sectionKey];
+
+  if (sectionKey === "hpi" || sectionKey === "otherOrders" || sectionKey === "visitNote") {
+    return (
+      <textarea
+        value={(value as string) ?? ""}
+        onChange={e => onChange(e.target.value)}
+        rows={4}
+        className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 outline-none resize-none leading-relaxed"
+      />
+    );
+  }
+  if (sectionKey === "chiefComplaints") {
+    return <StringArrayEditor label="CC" value={(value as string[]) ?? []} onChange={onChange as (v: string[]) => void}
+      placeholder="Add complaint and press Enter…" color={m.color} />;
+  }
+  if (sectionKey === "ros") {
+    return <StringArrayEditor label="ROS" value={(value as string[]) ?? []} onChange={onChange as (v: string[]) => void}
+      placeholder="Add system finding and press Enter…" color={m.color} />;
+  }
+  if (sectionKey === "carePlan") {
+    return <CarePlanEditor value={(value as CarePlanData) ?? { tasks: [] }} onChange={onChange as (v: CarePlanData) => void} />;
+  }
+  if (sectionKey === "procedureOrders") {
+    return <ProcedureOrdersEditor value={(value as ProcedureOrdersData) ?? { orders: [] }} onChange={onChange as (v: ProcedureOrdersData) => void} />;
+  }
+  if (sectionKey === "patientGoals") {
+    return <PatientGoalsEditor value={(value as PatientGoalsData) ?? { goals: [] }} onChange={onChange as (v: PatientGoalsData) => void} />;
+  }
+  // Complex sections: formulary, imaging, healthEd, referrals — show read-only summary
+  return (
+    <div className="px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-100">
+      <p className="text-[10px] text-amber-700 font-medium">
+        This section contains structured data that can't be edited here directly.
+        To modify it, apply this template to your note, edit the section there, and save it as a new template.
+      </p>
+    </div>
+  );
+}
+
 // ─── Edit template dialog (doctor templates) ──────────────────────────────────
 
 function EditTemplateDialog({ tpl, onSave, onClose }: {
@@ -567,12 +847,22 @@ function EditTemplateDialog({ tpl, onSave, onClose }: {
   onSave: (updated: SoapTemplate) => void;
   onClose: () => void;
 }) {
-  const [name, setName] = useState(tpl.name);
-  const [desc, setDesc] = useState(tpl.description);
+  const [name,      setName]      = useState(tpl.name);
+  const [desc,      setDesc]      = useState(tpl.description);
+  const [localData, setLocalData] = useState<Partial<NoteState>>({ ...tpl.data });
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  function setSection(key: TemplateSectionKey, val: unknown) {
+    setLocalData(prev => ({ ...prev, [key]: val }));
+  }
+
+  function toggleCollapse(key: string) {
+    setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+  }
 
   function handleSave() {
     if (!name.trim()) return;
-    onSave({ ...tpl, name: name.trim(), description: desc.trim() });
+    onSave({ ...tpl, name: name.trim(), description: desc.trim(), data: localData });
   }
 
   return (
@@ -583,31 +873,58 @@ function EditTemplateDialog({ tpl, onSave, onClose }: {
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">My Templates</p>
-          <p className="text-sm font-black text-slate-800">Edit Template</p>
+          <p className="text-sm font-black text-slate-800 truncate">Edit: {tpl.name}</p>
         </div>
         <button onClick={handleSave} disabled={!name.trim()}
           className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-lg bg-blue-500 text-white hover:bg-blue-400 disabled:opacity-40 transition-colors flex-shrink-0">
-          <Check className="h-3.5 w-3.5" /> Update
+          <Check className="h-3.5 w-3.5" /> Save
         </button>
       </div>
+
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        <div>
-          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Name</label>
-          <input value={name} onChange={e => setName(e.target.value)}
-            className="w-full text-sm font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-blue-400/50 focus:ring-1 focus:ring-blue-400/20 transition-all" />
-        </div>
-        <div>
-          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Description</label>
-          <input value={desc} onChange={e => setDesc(e.target.value)}
-            className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400/50 focus:ring-1 focus:ring-blue-400/20 transition-all" />
-        </div>
-        <div>
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-wide mb-2">Sections included</p>
-          <div className="flex flex-wrap gap-1.5">
-            {tpl.sections.map(k => <SectionTag key={k} k={k} />)}
+
+        {/* Name + description */}
+        <div className="space-y-2 pb-3 border-b border-slate-100">
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Template Name</label>
+            <input value={name} onChange={e => setName(e.target.value)}
+              className="w-full text-sm font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-blue-400/50 focus:ring-1 focus:ring-blue-400/20 transition-all" />
           </div>
-          <p className="text-[10px] text-slate-400 italic mt-2">To change sections, delete this template and save a new one from your note.</p>
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Description</label>
+            <input value={desc} onChange={e => setDesc(e.target.value)}
+              placeholder="Optional short description…"
+              className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400/50 focus:ring-1 focus:ring-blue-400/20 transition-all" />
+          </div>
         </div>
+
+        {/* Section editors */}
+        {tpl.sections.map(key => {
+          const m = SECTION_META[key];
+          const isOpen = !collapsed[key];
+          return (
+            <div key={key} className="border border-slate-100 rounded-xl overflow-hidden">
+              <button onClick={() => toggleCollapse(key)}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-slate-50 hover:bg-slate-100 transition-colors text-left">
+                <span className="inline-block text-[8.5px] font-black px-1.5 py-0.5 rounded flex-shrink-0"
+                  style={{ background: `${m.color}18`, color: m.color, border: `1px solid ${m.color}30` }}>
+                  {m.tag}
+                </span>
+                <span className="flex-1 text-xs font-black text-slate-700">{m.label}</span>
+                {isOpen ? <ChevronUp className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />}
+              </button>
+              {isOpen && (
+                <div className="px-3 py-3">
+                  <SectionContentEditor
+                    sectionKey={key}
+                    value={(localData as any)[key]}
+                    onChange={val => setSection(key, val)}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
