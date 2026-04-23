@@ -8,7 +8,7 @@ import {
   CheckCircle2, AlertCircle, Printer, Trash2, Tag,
   GripVertical, Check, Search, Plus,
   ArrowRight, ClipboardCheck, ChevronLeft, Pill, ScanLine,
-  BookmarkPlus,
+  BookmarkPlus, RotateCcw, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CoughHistoryTemplate, CoughSummary, COUGH_EMPTY } from "@/pages/CoughHistoryTemplate";
@@ -605,6 +605,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
   const [patientGoalsOpen,  setPatientGoalsOpen]  = useState(false);
   const [templateOpen,      setTemplateOpen]      = useState(false);
   const [templateMode,      setTemplateMode]      = useState<"browse" | "save">("browse");
+  const [discardConfirm,    setDiscardConfirm]    = useState(false);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -618,6 +619,20 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
     set("planTags", note.planTags.includes(tag)
       ? note.planTags.filter(t => t !== tag)
       : [...note.planTags, tag]);
+  }
+
+  function handleDiscard() {
+    setNote(EMPTY_NOTE);
+    setHpiDoneComplaints([]);
+    setHpiSavedData({});
+    setPeDoneSystemIds([]);
+    setPeSavedData({});
+    setDiagnosisDone(false);
+    setDiagnosisSaved([]);
+    setLabDone(false);
+    setLabSaved(null);
+    setDiscardConfirm(false);
+    onClose();
   }
 
   function handleHpiSave(complaint: string, state: CoughState) {
@@ -1182,8 +1197,9 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
           <div className="flex-1" />
           <Button
             variant="ghost"
+            onClick={() => setDiscardConfirm(true)}
             className="h-9 px-4 text-xs font-bold gap-2 text-red-400 hover:text-red-600 hover:bg-red-50 flex-shrink-0">
-            <Trash2 className="h-3.5 w-3.5" /> Discard
+            <RotateCcw className="h-3.5 w-3.5" /> Discard
           </Button>
         </div>
 
@@ -1323,6 +1339,40 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             onSave={v => set("referrals", v)}
             onClose={() => setReferralOpen(false)}
           />
+        )}
+
+        {/* ── Discard Confirmation Overlay ── */}
+        {discardConfirm && (
+          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
+            <div className="bg-white rounded-xl shadow-2xl w-[380px] mx-4 overflow-hidden">
+              <div className="flex items-start gap-3 p-5 border-b border-slate-100">
+                <div className="flex-shrink-0 mt-0.5 h-9 w-9 rounded-full bg-red-50 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">Discard all changes?</p>
+                  <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                    All selections, entries, and filled sections in this note will be permanently reset. This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 px-5 py-3 bg-slate-50">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDiscardConfirm(false)}
+                  className="h-8 px-4 text-xs font-medium border-slate-200 text-slate-600 hover:bg-white">
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleDiscard}
+                  className="h-8 px-4 text-xs font-bold gap-1.5 bg-red-500 hover:bg-red-600 text-white border-0">
+                  <RotateCcw className="h-3.5 w-3.5" /> Yes, discard
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
       </div>
