@@ -1,0 +1,118 @@
+Patient Goals (Goal Setting & Action Planning)
+Context
+
+The Patient Goals module allows doctors to define measurable health goals for patients and attach actionable steps.
+
+This is part of long-term care planning and should support:
+
+Structured goal definition
+Step-by-step action planning
+Templates for reuse
+Multi-goal management
+
+Follows system design principles:
+
+Drawer-based input
+Chip/card-based summary
+Template + custom hybrid workflow
+Functional Requirements
+1. Entry Point
+Add “Patient Goals” button
+On click → open a right-side drawer
+2. Goal Selection / Creation
+
+Inside drawer:
+
+Goal Input Options:
+Select from predefined templates
+OR Add custom goal
+
+Examples:
+
+Lose weight by 5 kg
+Control blood sugar levels
+Improve mobility
+Reduce blood pressure
+3. Goal Structure (Each Goal)
+
+Each goal must include:
+
+A. Goal Title / Description
+Either:
+Selected from template
+OR custom entered
+Editable text field
+B. Start Date
+Date picker
+C. Target Date
+Date picker
+D. Priority
+Low
+Normal
+High
+E. Recommended Actions (Core Feature)
+Add multiple step-by-step actions
+
+Each action:
+
+Free text input
+Example:
+“Walk 30 minutes daily”
+“Avoid sugary drinks”
+“Take medication regularly”
+
+Support:
+
+Add multiple actions
+Remove actions
+4. Multiple Goals Support
+Doctor can:
+Add multiple goals in one session
+Each goal is an independent structured object
+5. Goal Templates System
+Predefined Templates:
+Stored goals with predefined:
+Title
+Optional recommended actions
+Custom Template Creation:
+Doctor can:
+Save a custom goal as template for future use
+6. Add / Remove / Edit Goals
+Add multiple goals
+Remove any goal
+Edit existing → reopen drawer
+7. UI Representation (After Save)
+
+Each goal appears as a card/chip:
+
+Displays:
+
+Goal title
+Target date
+Priority badge
+Action count (e.g., “3 steps”)
+
+Actions:
+
+Edit (click)
+Remove (✕)
+8. Interaction Flow
+Click Patient Goals
+Drawer opens
+Select template OR create custom goal
+Enter:
+Description
+Start date
+Target date
+Priority
+Add recommended actions (step-by-step)
+Save goal
+Repeat for multiple goals
+Goals appear as cards
+9. UI / UX Constraints
+❌ No drag-and-drop
+✅ Drawer-based input
+✅ Multi-goal support
+✅ Step-based action input
+✅ Template + custom flexibility
+✅ Clean structured layout
