@@ -19,6 +19,8 @@ import { DiagnosisDrawer, DiagnosisChipsPanel } from "@/pages/DiagnosisDrawer";
 import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
 import { LabDrawer, LabChipsPanel } from "@/pages/LabDrawer";
 import type { LabOrder } from "@/pages/LabDrawer";
+import { PastHistoryPanel, FamilyHistoryPanel } from "@/pages/MedicalHistorySection";
+import type { FamilyRow } from "@/pages/MedicalHistorySection";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -30,9 +32,11 @@ interface NoteState {
   chiefComplaints: string[];
   hpi:             string;
   allergies:       AllergyEntry[];
-  pmh:             string;
+  pmhActive:       string[];
+  pmhResolved:     string[];
   psh:             string;
-  fh:              string;
+  fhRows:          FamilyRow[];
+  fhGenetic:       string[];
   sh:              string;
   ros:             string[];
   pocLabs:         string;
@@ -44,7 +48,7 @@ interface NoteState {
 
 const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
-  pmh: "", psh: "", fh: "", sh: "",
+  pmhActive: [], pmhResolved: [], psh: "", fhRows: [], fhGenetic: [], sh: "",
   ros: [], pocLabs: "",
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
@@ -437,9 +441,9 @@ function useTimer(initialSeconds = 0) {
 // ─── Progress bar ─────────────────────────────────────────────────────────────
 
 function calcProgress(note: NoteState): number {
-  const fields: (string | string[] | AllergyEntry[])[] = [
+  const fields: (string | string[] | AllergyEntry[] | FamilyRow[])[] = [
     note.chiefComplaints, note.hpi, note.allergies,
-    note.pmh, note.ros,
+    note.pmhActive, note.ros,
     note.planTags, note.visitNote, note.followUpDate,
   ];
   const filled = fields.filter(f => (Array.isArray(f) ? f.length > 0 : (f ?? "").trim() !== "")).length;
@@ -781,26 +785,67 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             />
           </Section>
 
-          {/* 4. History group: PMH / PSH / FH / SH (2-col compact) */}
-          <Section title="Medical, Surgical, Family & Social History" icon={Users} color="#10b981" defaultOpen={false}
+          {/* 4. History group */}
+          <Section
+            title="Medical, Surgical, Family & Social History"
+            icon={Users} color="#10b981" defaultOpen={false}
+            filled={(note.pmhActive ?? []).length > 0 || (note.pmhResolved ?? []).length > 0 || (note.fhRows ?? []).length > 0 || (note.psh ?? "").trim() !== ""}
             onImport={() => {
-              handleImport("pmh", "Hypertension (2018), Type 2 Diabetes (2020)");
-              handleImport("psh", "Appendectomy (2015)");
-              handleImport("fh", "Father: HTN, CAD · Mother: DM");
-              handleImport("sh", "Non-smoker · Occasional alcohol · Office worker");
+              set("pmhActive",   ["Hypertension", "Type 2 Diabetes Mellitus"]);
+              set("pmhResolved", ["Typhoid Fever", "Hepatitis A"]);
+              set("psh",        "Appendectomy (2015)");
+              set("fhRows", [
+                { id: "fhr-imp-1", condition: "Hypertension",              relation: "Father" },
+                { id: "fhr-imp-2", condition: "Type 2 Diabetes Mellitus",  relation: "Mother" },
+              ]);
+              set("fhGenetic",  ["Thalassemia"]);
+              set("sh",         "Non-smoker · Occasional alcohol · Office worker");
             }}>
-            <div className="grid grid-cols-2 gap-3">
-              {([
-                ["Past Medical History", "pmh", "Known medical conditions…"],
-                ["Surgical History",     "psh", "Previous surgeries…"],
-                ["Family History",       "fh",  "Family medical history…"],
-                ["Social History",       "sh",  "Lifestyle, occupation…"],
-              ] as [string, keyof NoteState, string][]).map(([label, key, placeholder]) => (
-                <div key={key}>
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5">{label}</p>
-                  <NoteField value={note[key] as string} onChange={v => set(key, v)} placeholder={placeholder} rows={2} />
-                </div>
-              ))}
+
+            {/* Past Medical History */}
+            <div className="mb-5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                Past Medical History
+              </p>
+              <PastHistoryPanel
+                active={note.pmhActive ?? []}
+                resolved={note.pmhResolved ?? []}
+                onActiveChange={v => set("pmhActive", v)}
+                onResolvedChange={v => set("pmhResolved", v)}
+              />
+            </div>
+
+            {/* Surgical History */}
+            <div className="mb-5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" />
+                Surgical History
+              </p>
+              <NoteField value={note.psh} onChange={v => set("psh", v)} placeholder="e.g. Appendectomy (2015), Caesarean section (2019)…" rows={2} />
+            </div>
+
+            {/* Family History */}
+            <div className="mb-5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                Family History
+              </p>
+              <FamilyHistoryPanel
+                rows={note.fhRows ?? []}
+                genetic={note.fhGenetic ?? []}
+                onRowsChange={v => set("fhRows", v)}
+                onGeneticChange={v => set("fhGenetic", v)}
+              />
+            </div>
+
+            {/* Social History */}
+            <div>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />
+                Social History
+              </p>
+              <NoteField value={note.sh} onChange={v => set("sh", v)} placeholder="Smoking, alcohol, occupation, lifestyle…" rows={2} />
             </div>
           </Section>
 
