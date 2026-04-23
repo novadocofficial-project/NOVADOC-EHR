@@ -1,0 +1,113 @@
+Formulary (Medication Management) – Enhanced Selection & Workflow
+Context
+
+The Formulary module allows doctors to prescribe medicines using a brand-first selection approach, while still supporting generic-based search.
+
+This module mimics a Pharma Guide-style experience:
+
+Search by generic name → shows available brands
+Doctor selects brand + strength (fixed)
+Doctor inputs dose (number of units), not mg strength
+Functional Requirements
+1. Medicine Search (Generic → Brand Mapping)
+Search input supports:
+Generic name (e.g., Paracetamol)
+Brand name (e.g., Panadol, Tylenol)
+When searching by generic:
+Show grouped results:
+Generic → List of available brands with strengths
+
+Example structure:
+
+Paracetamol
+  - Panadol 500 mg
+  - Panadol 250 mg
+  - Tylenol 500 mg
+  - Tylenol 250 mg
+When selecting:
+User selects brand + strength (predefined)
+Generic name is stored in background
+2. Selection Model
+
+Each medicine selection includes:
+
+Brand Name (Primary display)
+Strength (fixed, not editable)
+Generic Name (secondary info)
+3. Dosage Input (Important Constraint)
+DO NOT allow entering dosage like "500 mg"
+Instead, allow:
+Dose (number of units) → e.g., 1 tablet, 2 tablets
+
+Fields:
+
+Dose (numeric: 1, 2, 3…)
+Frequency (BID, TID, OD, etc.)
+Route (Oral, IV, IM)
+Duration (e.g., 5 days)
+4. Favourite Medicines
+Allow doctors to mark medicines as Favourite (★)
+
+Behavior:
+
+Favourites appear:
+At top of search results OR
+In a separate “Favourites” section
+Enables quick re-selection without repeated search
+5. Drug Allergy Handling
+Show patient drug allergies at top of drawer
+If selected medicine conflicts:
+Show alert:
+“⚠ Allergy conflict detected”
+Logic can be simple (generic name match)
+6. Add / Remove Medicines
+Add multiple medicines
+Remove easily from list
+Edit by clicking existing medicine → opens drawer
+7. UI Representation (Main View)
+
+Each medicine appears as a chip/card:
+
+Displays:
+
+Brand Name + Strength (e.g., Panadol 500 mg)
+Dose + Frequency (e.g., 1 tablet BID)
+Duration
+
+Actions:
+
+Edit (click)
+Remove (✕)
+8. Pharmacist Instructions (Global, Not Per Medicine)
+Provide a single “Pharmacist Instructions” text area
+Positioned:
+Below medicines list OR
+As a separate section in Formulary
+
+Examples:
+
+“Dispense after food”
+“Substitute allowed”
+“Avoid NSAIDs”
+Interaction Flow
+Click Add Medicine
+Drawer opens:
+Search (generic/brand)
+Favourites section
+Allergy info
+Select brand + strength
+Enter:
+Dose (number of tablets)
+Frequency
+Route
+Duration
+Save → appears as chip
+Add more / edit / remove
+Add Pharmacist Instructions globally
+UI / UX Constraints
+❌ No drag-and-drop
+✅ Chip-based medicine display
+✅ Drawer-based input
+✅ Brand-first selection clarity
+✅ Clean EMR-style structured layout
+✅ Fast prescribing workflow (minimum clicks)

@@ -21,8 +21,8 @@ import { LabDrawer, LabChipsPanel } from "@/pages/LabDrawer";
 import type { LabOrder } from "@/pages/LabDrawer";
 import { PocLabsChipsPanel, PocLabsDrawer } from "@/pages/PocLabsSection";
 import type { PocTestResult } from "@/pages/PocLabsSection";
-import { FormularyChipsPanel, FormularyDrawer } from "@/pages/FormularySection";
-import type { MedicineEntry } from "@/pages/FormularySection";
+import { FormularyChipsPanel, FormularyDrawer, EMPTY_FORMULARY } from "@/pages/FormularySection";
+import type { FormularyData } from "@/pages/FormularySection";
 import {
   PastHistoryPanel, FamilyHistoryPanel,
   SurgicalHistoryPanel, SocialHistoryPanel,
@@ -48,7 +48,7 @@ interface NoteState {
   socialHistory:   SocialHistory;
   ros:             string[];
   pocTests:        PocTestResult[];
-  medicines:       MedicineEntry[];
+  formulary:       FormularyData;
   otherOrders:     string;
   visitNote:       string;
   followUpDate:    string;
@@ -58,7 +58,7 @@ interface NoteState {
 const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [], fhGenetic: [], socialHistory: EMPTY_SOCIAL_HISTORY,
-  ros: [], pocTests: [], medicines: [],
+  ros: [], pocTests: [], formulary: EMPTY_FORMULARY,
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
 };
@@ -957,14 +957,14 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <Pill className="h-3 w-3 text-indigo-400" />
                 Prescriptions
-                {(note.medicines ?? []).length > 0 && (
+                {(note.formulary?.medicines?.length ?? 0) > 0 && (
                   <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center gap-1">
-                    <CheckCircle2 className="h-2.5 w-2.5" /> {note.medicines.length} med{note.medicines.length !== 1 ? "s" : ""}
+                    <CheckCircle2 className="h-2.5 w-2.5" /> {note.formulary.medicines.length} med{note.formulary.medicines.length !== 1 ? "s" : ""}
                   </span>
                 )}
               </p>
               <FormularyChipsPanel
-                medicines={note.medicines ?? []}
+                data={note.formulary ?? EMPTY_FORMULARY}
                 onOpen={() => setFormularyOpen(true)}
               />
             </div>
@@ -1133,9 +1133,9 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
         {/* ── Formulary Drawer ── */}
         {formularyOpen && (
           <FormularyDrawer
-            savedMedicines={note.medicines ?? []}
+            savedData={note.formulary ?? EMPTY_FORMULARY}
             patientAllergies={note.allergies ?? []}
-            onSave={v => set("medicines", v)}
+            onSave={v => set("formulary", v)}
             onClose={() => setFormularyOpen(false)}
           />
         )}
