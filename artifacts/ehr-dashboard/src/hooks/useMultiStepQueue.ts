@@ -349,7 +349,7 @@ export function useMultiStepQueue() {
 
   function docCancelLab(id: string) {
     setQueue(prev => prev.map(e =>
-      e.id !== id ? e : { ...e, pendingLab: false }
+      e.id !== id ? e : { ...e, pendingLab: false, status: "called" }
     ));
   }
 
