@@ -4,7 +4,7 @@ import {
   Activity, Heart, Thermometer, Droplets, User, Phone, MapPin,
   CalendarDays, Stethoscope, Pill, FlaskConical, FileText,
   FolderOpen, ClipboardList, CheckCircle2, Syringe, Zap,
-  ArrowUpRight, Scissors, ShieldCheck, ExternalLink, X,
+  ArrowUpRight, Scissors, ShieldCheck, ExternalLink, X, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
@@ -269,6 +269,17 @@ export function PatientFaceSheet({
   const [showSoapPage, setShowSoapPage]   = useState(false);
   const faceSheetOpenedAt                 = useRef(Date.now());
 
+  // ── Back-to-queue prompt (shown when signed & soapNoteCreated) ─────────────
+  const [showBackPrompt, setShowBackPrompt] = useState(false);
+
+  function handleBackClick() {
+    if (soapNoteCreated && doctorSigned) {
+      setShowBackPrompt(true);
+    } else {
+      onBack();
+    }
+  }
+
   // ── No-SOAP modal state ────────────────────────────────────────────────────
   const [showNoSoapModal, setShowNoSoapModal] = useState(false);
   const [noSoapReason,    setNoSoapReason]    = useState("");
@@ -325,7 +336,7 @@ export function PatientFaceSheet({
 
         {/* Top bar */}
         <div className="flex items-center gap-4 px-5 py-3 border-b border-slate-100">
-          <button onClick={onBack}
+          <button onClick={handleBackClick}
             className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors">
             <ArrowLeft className="h-4 w-4" /> Doctor Queue
           </button>
@@ -334,11 +345,19 @@ export function PatientFaceSheet({
           <div className="flex-1" />
           {/* SOAP Note Button */}
           {soapNoteCreated ? (
-            <button
-              className="flex items-center gap-2 h-9 px-4 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold hover:bg-emerald-100 transition-colors"
-              onClick={() => setShowSoapPage(true)}>
-              <CheckCircle2 className="h-4 w-4" /> SOAP Note Created
-            </button>
+            doctorSigned ? (
+              <button
+                className="flex items-center gap-2 h-9 px-4 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold hover:bg-emerald-100 transition-colors"
+                onClick={() => setShowSoapPage(true)}>
+                <CheckCircle2 className="h-4 w-4" /> SOAP Note · Signed
+              </button>
+            ) : (
+              <button
+                className="flex items-center gap-2 h-9 px-4 rounded-md bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold hover:bg-amber-100 transition-colors"
+                onClick={() => setShowSoapPage(true)}>
+                <Clock className="h-4 w-4" /> SOAP Note · In Progress
+              </button>
+            )
           ) : (
             <Button
               variant="outline"
@@ -743,6 +762,42 @@ export function PatientFaceSheet({
                 style={{ backgroundColor: ACCENT }}
                 onClick={confirmNoSoap}>
                 <CheckCircle2 className="h-4 w-4" /> Confirm & Complete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Back-to-Queue Confirmation Modal ─────────────────────────────── */}
+      {showBackPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[340px] max-w-[92vw]">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="h-10 w-10 rounded-full flex-shrink-0 flex items-center justify-center"
+                style={{ backgroundColor: `${ACCENT}15` }}>
+                <CheckCircle2 className="h-5 w-5" style={{ color: ACCENT }} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-900">Mark consultation as complete?</p>
+                <p className="text-xs text-slate-400 mt-0.5">The SOAP note has been signed by the doctor.</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+              Would you like to complete this consultation and move the patient out of the queue?
+              Selecting <strong>No</strong> keeps the patient in the queue with the facesheet accessible.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 h-9 text-sm"
+                onClick={() => { setShowBackPrompt(false); onBack(); }}>
+                No, Keep in Queue
+              </Button>
+              <Button
+                className="flex-1 h-9 text-sm font-bold text-white gap-1.5"
+                style={{ backgroundColor: ACCENT }}
+                onClick={() => { setShowBackPrompt(false); onCompleteConsultation(entry.id); }}>
+                <CheckCircle2 className="h-4 w-4" /> Yes, Complete
               </Button>
             </div>
           </div>

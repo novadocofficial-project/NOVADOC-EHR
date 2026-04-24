@@ -463,7 +463,7 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
           <Button
             className="h-8 px-4 text-xs font-bold gap-1.5 text-white"
             style={{ backgroundColor: ACCENT }}
-            onClick={() => onSaveAndClose ? onSaveAndClose() : onBack()}>
+            onClick={onBack}>
             <CheckCircle2 className="h-3.5 w-3.5" /> Save & Close
           </Button>
         </div>

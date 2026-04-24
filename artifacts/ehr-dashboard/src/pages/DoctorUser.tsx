@@ -275,13 +275,26 @@ export function DoctorUser() {
                       ) : (
                         <p className="text-base font-black text-slate-500">Walk-in Patient</p>
                       )}
-                      <div className="flex items-center gap-1.5 mt-1">
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                         <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: ACCENT }} />
                         <span className="text-xs font-semibold" style={{ color: ACCENT }}>In Consultation</span>
                         <span className="text-slate-300">·</span>
                         <Clock className="h-3 w-3 text-slate-300" />
                         <span className="text-xs text-slate-400">{timeAgo(atCounterEntry.createdAt)}</span>
                       </div>
+                      {soapNoteDone.has(atCounterEntry.id) && (
+                        (signedRecordsMap.get(atCounterEntry.id)?.length ?? 0) > 0 ? (
+                          <div className="flex items-center gap-1 mt-1">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            <span className="text-[11px] font-semibold text-emerald-600">SOAP Note Signed</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Clock className="h-3 w-3 text-amber-500" />
+                            <span className="text-[11px] font-semibold text-amber-600">SOAP Note In Progress</span>
+                          </div>
+                        )
+                      )}
                     </div>
                     <div className="flex flex-col gap-2 flex-shrink-0">
                       <Button

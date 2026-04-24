@@ -636,7 +636,6 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
     setLabDone(false);
     setLabSaved(null);
     setDiscardConfirm(false);
-    onClose();
   }
 
   function handleHpiSave(complaint: string, state: CoughState) {
@@ -1206,12 +1205,14 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             <Printer className="h-3.5 w-3.5" /> Print to Review
           </Button>
           <div className="flex-1" />
-          <Button
-            variant="ghost"
-            onClick={() => setDiscardConfirm(true)}
-            className="h-9 px-4 text-xs font-bold gap-2 text-red-400 hover:text-red-600 hover:bg-red-50 flex-shrink-0">
-            <RotateCcw className="h-3.5 w-3.5" /> Discard
-          </Button>
+          {!signed && (
+            <Button
+              variant="ghost"
+              onClick={() => setDiscardConfirm(true)}
+              className="h-9 px-4 text-xs font-bold gap-2 text-red-400 hover:text-red-600 hover:bg-red-50 flex-shrink-0">
+              <RotateCcw className="h-3.5 w-3.5" /> Discard
+            </Button>
+          )}
         </div>
 
         {/* ── HPI Template Drawer (slides in from right within the panel) ── */}
