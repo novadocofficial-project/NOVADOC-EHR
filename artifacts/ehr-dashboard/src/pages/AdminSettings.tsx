@@ -4,6 +4,8 @@ import {
   Activity,
   Banknote,
   Bell,
+  FileText,
+  Sliders,
   Building2,
   ChevronDown,
   ChevronRight,
@@ -42,6 +44,7 @@ import { CorporatePricingModule } from "@/pages/CorporatePricingModule";
 import { InsurancePricingModule } from "@/pages/InsurancePricingModule";
 import { PackagesModule } from "@/pages/PackagesModule";
 import { BranchModule } from "@/pages/BranchModule";
+import { SoapConfigModule } from "@/pages/SoapConfigModule";
 import { QueueModule } from "@/pages/QueueModule";
 import type { QueueSection } from "@/pages/QueueModule";
 import { UsersManagementModule } from "@/pages/UsersManagementModule";
@@ -156,6 +159,7 @@ type ActiveModule =
   | "branches"
   | "visit-types" | "workflow-config" | "counter-types" | "counters"
   | "token-settings" | "queue-behavior" | "locking-settings" | "display-settings" | "doctor-partitions"
+  | "soap-note-structure" | "soap-vitals-config"
   | "users-counters";
 
 export function AdminSettings() {
@@ -170,6 +174,7 @@ export function AdminSettings() {
     billing: !initSection || !queueSections.includes(initSection as ActiveModule),
     branches: false,
     queue: !!initSection && queueSections.includes(initSection as ActiveModule),
+    soapConfig: false,
     users: false,
   });
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DATA);
@@ -450,6 +455,23 @@ export function AdminSettings() {
               </div>
             )}
 
+            {/* ── SOAP Configuration Group ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("soapConfig")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <ClipboardList className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">SOAP Configuration</span>
+              {navExpanded.soapConfig ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.soapConfig && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("soap-note-structure", <FileText className="h-3.5 w-3.5" />, "Note Structure")}
+                {subNavItem("soap-vitals-config",  <Sliders className="h-3.5 w-3.5" />, "Vitals Config")}
+              </div>
+            )}
+
             {/* ── Users Management Group ── */}
             <button
               type="button"
@@ -505,6 +527,13 @@ export function AdminSettings() {
           {activeModule === "routing-rules" && <RoutingRulesModule />}
 
           {activeModule === "users-counters" && <UsersManagementModule />}
+
+          {(activeModule === "soap-note-structure" || activeModule === "soap-vitals-config") && (
+            <SoapConfigModule
+              activeSubModule={activeModule === "soap-note-structure" ? "note-structure" : "vitals-config"}
+              departments={departments}
+            />
+          )}
 
           {activeModule === "departments" && (
             <div className="mx-auto max-w-4xl space-y-6">
