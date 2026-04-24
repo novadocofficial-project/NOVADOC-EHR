@@ -301,7 +301,7 @@ function Sel({ value, onChange, children }: {
 
 // ─── Care Plan Drawer ─────────────────────────────────────────────────────────
 
-const EMPTY_FORM = { title: "", taskId: "", assignee: "", dueDate: "", priority: "Normal" as const, notes: "" };
+const EMPTY_FORM: { title: string; taskId: string; assignee: string; dueDate: string; priority: "Normal" | "Urgent"; notes: string } = { title: "", taskId: "", assignee: "", dueDate: "", priority: "Normal", notes: "" };
 
 interface CarePlanDrawerProps {
   savedData: CarePlanData;

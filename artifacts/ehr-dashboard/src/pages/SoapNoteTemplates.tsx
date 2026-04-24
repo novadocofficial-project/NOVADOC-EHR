@@ -225,8 +225,11 @@ function mergeFormulary(a: FormularyData, b: FormularyData): FormularyData {
 }
 
 function mergeImaging(a: ImagingData, b: ImagingData): ImagingData {
+  const aa = a as any;
+  const bb = b as any;
   const combined: any = { ...a };
-  if (b.studies && a.studies) combined.studies = [...a.studies, ...b.studies.map((s: any) => ({ ...s, uid: uid() }))];
+  if (bb.studies && aa.studies) combined.studies = [...aa.studies, ...bb.studies.map((s: any) => ({ ...s, uid: uid() }))];
+  if (bb.orders && aa.orders) combined.orders = [...aa.orders, ...bb.orders.map((s: any) => ({ ...s, uid: uid() }))];
   return combined;
 }
 

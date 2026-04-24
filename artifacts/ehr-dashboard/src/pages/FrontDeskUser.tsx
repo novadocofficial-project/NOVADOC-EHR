@@ -881,6 +881,7 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
       </div>
     </div>
   );
+  return null;
 }
 
 // ─── Front Desk User Page ─────────────────────────────────────────────────────

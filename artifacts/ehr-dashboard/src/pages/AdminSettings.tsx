@@ -164,7 +164,7 @@ type ActiveModule =
   | "service-types" | "service-pricing" | "corporate-pricing" | "insurance-pricing" | "packages"
   | "branches"
   | "visit-types" | "workflow-config" | "counter-types" | "counters"
-  | "token-settings" | "queue-behavior" | "locking-settings" | "display-settings" | "doctor-partitions"
+  | "token-settings" | "queue-behavior" | "locking-settings" | "display-settings" | "doctor-partitions" | "routing-rules"
   | "soap-note-structure" | "soap-vitals-config" | "hpi-templates"
   | "clinical-complaints" | "clinical-icd10" | "clinical-poc" | "clinical-ros"
   | "clinical-allergies" | "clinical-med-surgical" | "clinical-family" | "clinical-social"
