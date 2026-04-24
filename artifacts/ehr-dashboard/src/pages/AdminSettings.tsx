@@ -176,7 +176,7 @@ export function AdminSettings() {
   const [, setLocation] = useLocation();
   const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const initSection = searchParams.get("section") as ActiveModule | null;
-  const queueSections: ActiveModule[] = ["visit-types","workflow-config","counter-types","counters","token-settings","queue-behavior","locking-settings","display-settings","doctor-partitions"];
+  const queueSections: ActiveModule[] = ["visit-types","workflow-config","counter-types","counters","token-settings","queue-behavior","locking-settings","display-settings","doctor-partitions","routing-rules"];
   const [activeModule, setActiveModule] = useState<ActiveModule>(initSection ?? "departments");
   const [navExpanded, setNavExpanded] = useState({
     departments: !initSection || !queueSections.includes(initSection as ActiveModule),
