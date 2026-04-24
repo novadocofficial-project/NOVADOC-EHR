@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   ArrowLeft, RefreshCw, ChevronDown, MoreHorizontal, ChevronRight, ChevronUp,
   AlertTriangle, Activity, Heart, Thermometer, User, Ruler, Zap,
@@ -8,10 +8,20 @@ import {
   Microscope, Eye, BookOpen, Target,
   ShieldAlert, Scissors, Send, BookMarked, ListChecks, MessageSquare,
   TestTube, HeartPulse, UserCheck, Home,
+  Printer, FilePenLine, GitBranch,
 } from "lucide-react";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
 import { Button } from "@/components/ui/button";
 import { ClinicalNoteDrawer } from "@/pages/ClinicalNoteDrawer";
+import type { NoteState } from "@/pages/ClinicalNoteDrawer";
+import { EMPTY_FORMULARY } from "@/pages/FormularySection";
+import { EMPTY_IMAGING } from "@/pages/ImagingSection";
+import { EMPTY_CARE_PLAN } from "@/pages/CarePlanSection";
+import { EMPTY_HEALTH_ED } from "@/pages/HealthEdSection";
+import { EMPTY_REFERRAL_DATA } from "@/pages/ReferralSection";
+import { EMPTY_PROCEDURE_ORDERS } from "@/pages/ProcedureOrdersSection";
+import { EMPTY_PATIENT_GOALS } from "@/pages/PatientGoalsSection";
+import { EMPTY_SOCIAL_HISTORY } from "@/pages/MedicalHistorySection";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -75,6 +85,53 @@ export interface SignedRecord {
   type: string;
   doctor: string;
   signed: true;
+}
+
+export interface AddendumRow {
+  date: string;
+  day: string;
+  time: string;
+  type: string;
+  doctor: string;
+  selected: false;
+  isNew: true;
+  isAddendum: true;
+  amendedFromDate: string;
+}
+
+function soapDummyToNoteState(dummy: SoapDummyNote): NoteState {
+  return {
+    chiefComplaints: dummy.cc,
+    hpi: dummy.hpi,
+    allergies: dummy.allergies.map((a, i) => ({
+      id: `allergy-${i}`,
+      name: a.name,
+      allergenType: "Drug",
+      date: "",
+      reaction: a.reaction,
+      onset: "",
+      severity: a.severity.toLowerCase() as "severe" | "moderate" | "mild",
+    })),
+    pmhActive:       dummy.medicalHistory,
+    pmhResolved:     [],
+    surgicalRows:    [],
+    fhRows:          dummy.familyHistory.map((h, i) => ({ id: `fh-${i}`, condition: h, relation: "" })),
+    fhGenetic:       [],
+    socialHistory:   EMPTY_SOCIAL_HISTORY,
+    ros:             dummy.ros,
+    pocTests:        [],
+    formulary:       EMPTY_FORMULARY,
+    imaging:         EMPTY_IMAGING,
+    carePlan:        EMPTY_CARE_PLAN,
+    healthEd:        EMPTY_HEALTH_ED,
+    referrals:       EMPTY_REFERRAL_DATA,
+    procedureOrders: EMPTY_PROCEDURE_ORDERS,
+    patientGoals:    EMPTY_PATIENT_GOALS,
+    otherOrders:     dummy.otherOrders.join("\n"),
+    visitNote:       dummy.visitDescription,
+    followUpDate:    dummy.followUp,
+    planTags:        [],
+  };
 }
 
 // ─── SOAP Preview Dummy Data ───────────────────────────────────────────────────
@@ -664,6 +721,21 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
   const [drawerFullscreen, setDrawerFullscreen] = useState(false);
   const [showNoteDrawer, setShowNoteDrawer]     = useState(false);
   const [expandedIndex, setExpandedIndex]       = useState<number | null>(null);
+  const [openMenuIdx, setOpenMenuIdx]           = useState<number | null>(null);
+  const [editingDummyIdx, setEditingDummyIdx]   = useState<number | null>(null);
+  const [addendumRows, setAddendumRows]         = useState<AddendumRow[]>([]);
+  const menuRef                                 = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (openMenuIdx === null) return;
+    function onDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuIdx(null);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [openMenuIdx]);
 
   const p       = entry.patient;
   const name    = p?.name  ?? "Walk-in Patient";
@@ -830,7 +902,42 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
               </button>
             </div>
 
-            <div className="p-5">
+            <div className="p-5 flex flex-col gap-3">
+              {/* Addendum In Progress card */}
+              {editingDummyIdx !== null && (
+                <div
+                  className="flex items-start justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4"
+                  style={{ borderLeftWidth: 4, borderLeftColor: "#f59e0b" }}>
+                  <div className="flex items-start gap-4">
+                    <div className="h-10 w-10 rounded-xl flex-shrink-0 flex items-center justify-center shadow bg-amber-500">
+                      <GitBranch className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="text-sm font-black text-slate-900">{today}</p>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                          In Progress
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-slate-700">
+                        Addendum · {editingDummyIdx >= 0 && editingDummyIdx < SOAP_DUMMY.length
+                          ? NOTE_HISTORY[editingDummyIdx]?.date ?? ""
+                          : "Signed Note"}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> Being edited by Dr. Asif Imam
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-2 rounded-xl text-white transition-opacity hover:opacity-90 bg-amber-500"
+                    onClick={() => setEditingDummyIdx(null)}>
+                    <X className="h-3.5 w-3.5" /> Discard
+                  </button>
+                </div>
+              )}
+
+              {/* Regular note card */}
               {signedRecords.length > 0 ? (
                 <div className="flex flex-col items-center justify-center py-6 gap-2 text-slate-400">
                   <CheckCircle2 className="h-8 w-8 text-emerald-300" />
@@ -874,8 +981,9 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
           {/* ─── All Records Section ────────────────────────────────────────── */}
           {(() => {
             const allRows = [
-              ...signedRecords.map(r => ({ ...r, selected: false, isNew: true })).reverse(),
-              ...NOTE_HISTORY.map(r => ({ ...r, isNew: false })),
+              ...addendumRows,
+              ...signedRecords.map(r => ({ ...r, selected: false, isNew: true, isAddendum: false as const })).reverse(),
+              ...NOTE_HISTORY.map(r => ({ ...r, isNew: false, isAddendum: false as const })),
             ];
             return (
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -900,18 +1008,21 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
                 <div>
                   {allRows.map((note, i) => {
                     const isOpen   = expandedIndex === i;
-                    const dummyIdx = note.isNew ? -1 : i - signedRecords.length;
+                    const isAddendum = (note as AddendumRow).isAddendum === true;
+                    const dummyOffset = addendumRows.length + signedRecords.length;
+                    const dummyIdx = (!note.isNew && !isAddendum) ? i - dummyOffset : -1;
                     const dummy    = dummyIdx >= 0 && dummyIdx < SOAP_DUMMY.length ? SOAP_DUMMY[dummyIdx] : null;
+                    const menuOpen = openMenuIdx === i;
                     return (
                     <div
                       key={i}
                       className={`transition-colors ${i < allRows.length - 1 ? "border-b border-slate-100" : ""}`}>
 
                       {/* ── Row header ── */}
-                      <div className={`flex items-stretch ${note.isNew ? "bg-emerald-50" : note.selected ? "bg-blue-50" : isOpen ? "bg-slate-50" : "hover:bg-slate-50"}`}>
+                      <div className={`flex items-stretch ${isAddendum ? "bg-amber-50" : note.isNew ? "bg-emerald-50" : (note as {selected?: boolean}).selected ? "bg-blue-50" : isOpen ? "bg-slate-50" : "hover:bg-slate-50"}`}>
                         <div
                           className="w-1 flex-shrink-0"
-                          style={{ backgroundColor: note.isNew ? "#10b981" : note.selected ? ACCENT : "transparent" }}
+                          style={{ backgroundColor: isAddendum ? "#f59e0b" : note.isNew ? "#10b981" : (note as {selected?: boolean}).selected ? ACCENT : "transparent" }}
                         />
 
                         <div className="flex items-center gap-5 px-5 py-4 flex-1 min-w-0">
@@ -932,12 +1043,17 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
                               <span className="text-[11px] text-slate-400 flex items-center gap-1">
                                 <Clock className="h-3 w-3" /> {note.time}
                               </span>
-                              {note.isNew && (
+                              {isAddendum && (
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1">
+                                  <GitBranch className="h-2.5 w-2.5" /> Addendum
+                                </span>
+                              )}
+                              {!isAddendum && note.isNew && (
                                 <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1">
                                   <CheckCircle2 className="h-2.5 w-2.5" /> Signed
                                 </span>
                               )}
-                              {!note.isNew && note.selected && (
+                              {!isAddendum && !note.isNew && (note as {selected?: boolean}).selected && (
                                 <span
                                   className="text-[9px] font-black px-2 py-0.5 rounded-full text-white"
                                   style={{ backgroundColor: ACCENT }}>
@@ -947,6 +1063,12 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
                             </div>
                             <p className="text-xs font-semibold text-slate-600">{note.type}</p>
                             <p className="text-[11px] text-slate-400 mt-0.5">By {note.doctor}</p>
+                            {isAddendum && (
+                              <p className="text-[10px] text-amber-600 mt-0.5 flex items-center gap-1">
+                                <GitBranch className="h-2.5 w-2.5" />
+                                Addendum to: {(note as AddendumRow).amendedFromDate}
+                              </p>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-2 flex-shrink-0">
@@ -962,9 +1084,34 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
                                 : <><ChevronRight className="h-3 w-3" /> Expand</>
                               }
                             </button>
-                            <button className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-white transition-colors">
-                              <MoreHorizontal className="h-3.5 w-3.5" />
-                            </button>
+                            {/* ── 3-dot menu ── */}
+                            <div className="relative" ref={menuOpen ? menuRef : undefined}>
+                              <button
+                                onClick={() => setOpenMenuIdx(menuOpen ? null : i)}
+                                className={`p-1.5 rounded-lg border transition-colors ${menuOpen ? "border-slate-300 bg-slate-100 text-slate-700" : "border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-white"}`}>
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                              </button>
+                              {menuOpen && (
+                                <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                                  <button
+                                    onClick={() => { setOpenMenuIdx(null); window.open("about:blank", "_blank"); }}
+                                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                                    <Printer className="h-3.5 w-3.5 text-slate-400" /> Print
+                                  </button>
+                                  {!isAddendum && (
+                                    <button
+                                      onClick={() => {
+                                        setOpenMenuIdx(null);
+                                        setEditingDummyIdx(dummy !== null ? dummyIdx : -99);
+                                        setShowNoteDrawer(false);
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors border-t border-slate-100">
+                                      <FilePenLine className="h-3.5 w-3.5 text-slate-400" /> Edit Note
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>{/* end row header */}
@@ -1013,6 +1160,45 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
           onClose={() => setShowNoteDrawer(false)}
         />
       )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          ADDENDUM DRAWER (Edit Note → Addendum mode)
+      ═══════════════════════════════════════════════════════════════════════ */}
+      {editingDummyIdx !== null && (() => {
+        const srcDummy = editingDummyIdx >= 0 && editingDummyIdx < SOAP_DUMMY.length
+          ? SOAP_DUMMY[editingDummyIdx]
+          : null;
+        const amendedDate = editingDummyIdx >= 0 && editingDummyIdx < NOTE_HISTORY.length
+          ? NOTE_HISTORY[editingDummyIdx].date
+          : today;
+        return (
+          <ClinicalNoteDrawer
+            patientName={name}
+            isAddendumMode
+            initialNote={srcDummy ? soapDummyToNoteState(srcDummy) : undefined}
+            onAddendum={(filledNote) => {
+              const now = new Date();
+              const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+              const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+              const newRow: AddendumRow = {
+                date: `${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`,
+                day:  days[now.getDay()],
+                time: now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+                type: "Addendum Note",
+                doctor: "Dr. Asif Imam",
+                selected: false,
+                isNew: true,
+                isAddendum: true,
+                amendedFromDate: amendedDate,
+              };
+              setAddendumRows(prev => [newRow, ...prev]);
+              setEditingDummyIdx(null);
+              void filledNote;
+            }}
+            onClose={() => setEditingDummyIdx(null)}
+          />
+        );
+      })()}
 
       {/* ═══════════════════════════════════════════════════════════════════════
           MODULE DRAWER (right-side overlay)

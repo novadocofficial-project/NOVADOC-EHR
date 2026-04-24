@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
-  X, Maximize2, Minimize2, Copy, ClipboardPaste, FileText,
+  X, Maximize2, Minimize2, FileText,
   StopCircle, PauseCircle, PlayCircle, ChevronDown, ChevronUp,
   Download, PenLine, FlaskConical, Scan, HeartPulse,
   Users, BookOpen, Stethoscope, ClipboardList, CalendarDays,
@@ -581,11 +581,14 @@ interface ClinicalNoteDrawerProps {
   onDoctorSign?: () => void;
   onSaveAndClose?: () => void;
   onClose: () => void;
+  initialNote?: NoteState;
+  isAddendumMode?: boolean;
+  onAddendum?: (note: NoteState) => void;
 }
 
-export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, isAddendumMode = false, onAddendum }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
-  const [note,              setNote]              = useState<NoteState>(EMPTY_NOTE);
+  const [note,              setNote]              = useState<NoteState>(() => initialNote ?? EMPTY_NOTE);
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
   const [hpiDoneComplaints, setHpiDoneComplaints] = useState<string[]>([]);
   const [hpiSavedData,      setHpiSavedData]      = useState<Record<string, CoughState>>({});
@@ -694,7 +697,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
         {/* ── Top action bar ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100 flex-shrink-0 bg-white">
 
-          {/* Left: Template + Copy/Paste */}
+          {/* Left: Template */}
           <button
             onClick={() => { setTemplateMode("browse"); setTemplateOpen(true); }}
             className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors flex-shrink-0">
@@ -705,12 +708,6 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-colors flex-shrink-0"
             title="Save current note as template">
             <BookmarkPlus className="h-3.5 w-3.5 text-blue-400" /> Save Template
-          </button>
-          <button className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors" title="Copy">
-            <Copy className="h-3.5 w-3.5" />
-          </button>
-          <button className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors" title="Paste">
-            <ClipboardPaste className="h-3.5 w-3.5" />
           </button>
 
           {/* Center: Timers */}
@@ -1178,7 +1175,14 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
 
         {/* ── Bottom action bar ─────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 py-3 border-t border-slate-100 bg-white flex-shrink-0">
-          {awaitingLab ? (
+          {isAddendumMode ? (
+            <Button
+              onClick={() => { onAddendum?.(note); }}
+              className="h-9 px-5 text-xs font-black gap-2 text-white flex-shrink-0"
+              style={{ backgroundColor: "#f59e0b" }}>
+              <PenLine className="h-3.5 w-3.5" /> Addendum
+            </Button>
+          ) : awaitingLab ? (
             <Button
               disabled
               className="h-9 px-5 text-xs font-black gap-2 text-white flex-shrink-0 opacity-80 cursor-not-allowed"
