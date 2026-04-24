@@ -575,8 +575,8 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
                 <p className="text-sm font-black text-slate-800">New Notes</p>
                 <span
                   className="text-[10px] font-black px-2 py-0.5 rounded-full text-white"
-                  style={{ backgroundColor: ACCENT }}>
-                  1
+                  style={{ backgroundColor: signedRecords.length > 0 ? "#94a3b8" : ACCENT }}>
+                  {signedRecords.length > 0 ? 0 : 1}
                 </span>
               </div>
               <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
@@ -585,35 +585,43 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
             </div>
 
             <div className="p-5">
-              <div
-                className="flex items-start justify-between gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-4"
-                style={{ borderLeftWidth: 4, borderLeftColor: ACCENT }}>
-                <div className="flex items-start gap-4">
-                  <div
-                    className="h-10 w-10 rounded-xl flex-shrink-0 flex items-center justify-center shadow"
-                    style={{ backgroundColor: ACCENT }}>
-                    <Edit3 className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <p className="text-sm font-black text-slate-900">{today}</p>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
-                        In Progress
-                      </span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-700">Comprehensive Note</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> Auto-created on entry · By Dr. James Wilson
-                    </p>
-                  </div>
+              {signedRecords.length > 0 ? (
+                <div className="flex flex-col items-center justify-center py-6 gap-2 text-slate-400">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-300" />
+                  <p className="text-sm font-semibold text-slate-500">Note signed and saved to All Records</p>
+                  <p className="text-xs text-slate-400">No new notes in progress</p>
                 </div>
-                <button
-                  className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-2 rounded-xl text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: ACCENT }}
-                  onClick={() => setShowNoteDrawer(true)}>
-                  <FileText className="h-3.5 w-3.5" /> Open Note
-                </button>
-              </div>
+              ) : (
+                <div
+                  className="flex items-start justify-between gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-4"
+                  style={{ borderLeftWidth: 4, borderLeftColor: ACCENT }}>
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="h-10 w-10 rounded-xl flex-shrink-0 flex items-center justify-center shadow"
+                      style={{ backgroundColor: ACCENT }}>
+                      <Edit3 className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="text-sm font-black text-slate-900">{today}</p>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                          In Progress
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-slate-700">Comprehensive Note</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> Auto-created on entry · By Dr. James Wilson
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-2 rounded-xl text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: ACCENT }}
+                    onClick={() => setShowNoteDrawer(true)}>
+                    <FileText className="h-3.5 w-3.5" /> Open Note
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
