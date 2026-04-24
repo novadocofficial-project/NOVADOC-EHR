@@ -8,7 +8,7 @@ import {
   ArrowUpRight, Scissors, ShieldCheck, ExternalLink, X, Clock,
   Maximize2, Minimize2, ChevronDown,
 } from "lucide-react";
-import { SOAP_DUMMY } from "@/pages/SoapNotePage";
+import { SOAP_DUMMY } from "@/data/soapDummy";
 import { Button } from "@/components/ui/button";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
 import { SoapNotePage } from "@/pages/SoapNotePage";
