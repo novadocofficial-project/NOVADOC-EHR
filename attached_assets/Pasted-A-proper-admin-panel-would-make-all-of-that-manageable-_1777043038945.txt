@@ -1,0 +1,99 @@
+A proper admin panel would make all of that manageable without touching code.
+
+1. Note Structure — "What sections appear and in what order"
+* Per-specialty toggle: enable or disable any SOAP section (HPI, ROS, PE, Imaging, etc.)
+* Drag-to-reorder sections for each specialty
+* Mark sections as Required, Optional, or Hidden
+* Rename section labels (e.g. rename "Care Plan" → "Management Plan")
+
+
+2. Template Manager — "Ready-made note skeletons"
+* Full CRUD for global note templates (create, edit, rename, delete, clone)
+* Assign templates to departments or specialties
+* Preview exactly what a template populates before saving
+* Set a "default" template per specialty that auto-loads when the doctor opens a note
+
+
+3. Clinical Libraries — "The pick-lists doctors use inside the note"
+Each one is its own sub-tab:
+* Chief Complaint Library — add/edit/delete complaints, tag by specialty
+* ICD-10 Catalogue — manage codes, group them into specialty bundles, mark favourites
+* Lab Order Sets — build named panels (e.g. "Fever Workup"), assign to departments
+* Imaging Presets — study types + common clinical reasons
+* Care Plan Tasks — categorised task library
+* Health Education Handouts — title, description, specialty tags
+
+
+4. Physical Exam Builder — "Customise the PE template per specialty"
+* 13 body systems already exist — allow toggling which show up per specialty
+* Edit the normal/abnormal finding options inside each system
+* Add new finding options or remove irrelevant ones
+
+5. Vitals Configuration — "Which vitals are captured and when"
+* Mark each vital (BP, Pulse, Temp, SpO₂, Weight, Height, BMI, Pain) as required or optional per visit type
+* Set normal reference ranges for colour-coding alerts in the note
+* Configure custom vitals per specialty (e.g. Peak Flow for Pulmonology)
+
+
+6. Permissions & Signing Rules
+* Which roles can open a SOAP note (Doctor, Nurse, Admin)
+* Who is allowed to sign / co-sign
+* Whether co-signature is required for certain note types
+* Whether a note can be discarded after signing
+* Auto-lock after signing (prevent further edits)
+* enable disable option to enter custom conditions
+
+How It Fits Into the Current App
+It would live as a new top-level section inside Admin Settings — a SOAP Configuration group in the left sidebar, right after Queue & Workflow. Each module above becomes a sidebar item with its own content panel. The pattern and component style already established in Admin Settings.tsx (the CRUD panels, modal flows, toggle rows) would be reused throughout, keeping the UI consistent.
+
+Would you like me to build this? I can scope it into separate tasks — one per module — so each can be reviewed independently, or bundle the most impactful ones into a first release. Let me know how you'd like to proceed and I'll put together a plan.
+
+
+In above your plan history of present illness templates are missing. I can build template for HPI after adding chief complaints. In hip template I can select chief complaint for which I am building templates then I can enter heading then enter multiple options of that as multi select or radio button which I can configure on my own.
+
+Allergies management is missing. We can add allergies, and its allergen type so that it can be pulled up be default when selecting in soap note. Onset options and allergic reactions managed separately.
+
+Medical, Surgical, Family and Social History Management
+
+Past medical history
+For active chronic conditions , resolved illnesses
+We can add, edit delete multiple conditions. 
+Surgical history
+We can add, edit, delete multiple surgery procedures and complications.
+
+Family history
+We can add, edit and delete multiple conditions, enter relationships.
+
+Enter genetic diseases in the system
+
+Social history
+Where we can make dynamic questions, for example tobacco intake select no or yes radio button - if yes then select first drop down daily intake (dynamic options), second drop down dynamic years (dynamic options), 3rd drop down dynamic quit when (dynamic options)
+With dynamic I mean I can name dropdown name and place holder also name the options my self.
+
+Physical activity only dynamic dropdown activity level (enter dynamic options)
+
+Sleep (Hours)
+
+I want this section to designed in such a way that we can easily design our questions and make arrangements.
+
+
+Review of systems can be added - system suggests the sub for it for example Endocrine = ENDO , Immunologic / Allergic = IMM but editable can enter max 4 words
+
+
+POC test build up section is missing from soap note configuration. Look poc for soap note then suggest how we will build it.
+
+
+Make lab section in admin panel where we can enter a list of labs as per different haematology, blood chemistry. We can also make these sections on our own. the list of lab can be printed in excel form. The labs doesn’t have base pricing rather than it depends on pricing set as per laboratory. For example we will add new lab hashmani system will ask select labs from the list we have in system and select which hashmani is offering by check box and set the pricing or import the excel file with lab names and prices. Importer will check the names update, the pricing for match lab names once importer completed will show mismatched labs. Upon saving system has lab pricing of hashmani. Hashmani labs can be printed on pdf and excel. We also enter discounts for a specific hashmani lab or make a bulk update by increase or decrease in value and percentage. Lab test can be enable disable per lab. We can add result templates on master lab list. For example we can add cbc result template where we will add cbc fields if we want to group some fields in a section we can do that as well. Add normal ranges for that field. Add, edit, delete Enable disable options. Hospital can configure these master templates on their own they can’t add/ edit or delete the field they can only enable and disable it.
+
+
+Enter care plan task in the system group them into multiple sections. mark favourite, configure them to appear entered date wise ascending descending but also sort them alphabetical wise.
+
+
+Make procedure section in admin panel separately as procedures configuration where we can enter a list of procedures along with CPT codes. Two options system generate codes or manual as per different respiratory, wound care, urinary. We can also make these sections on our own. the list of procedures can be printed in excel form. The list doesn’t have base pricing rather than it depends on pricing set as per clinic or doctor. For example we will add new clinic Aafiyah in system, system will ask select procedures from the list we have in system and select which Aafiyah  is offering by check box and set the pricing or import the excel file with procedure names, cpt codes and prices. Importer will check the names update, the pricing for match procedure names once importer completed will show mismatched procedures. Upon saving system has procedures pricing of aafiyah. aafiyah procedures can be printed on pdf and excel. We also enter discounts for a specific aafiyah procedures or make a bulk update by increase or decrease in value and percentage. Enable disable procedure per clinic. We can have mapping field for cpt codes with clinic because if other clinic have different cpt codes then they can enter their own also and have the option to toggle use system cpt or own.
+
+Comorbidities management.
+
+
+Referral Destinations — er referrals - enter facility name mention category hospital or clinic and enter their services.
+
+Patient goals management - goal title and add their recommended actions.
