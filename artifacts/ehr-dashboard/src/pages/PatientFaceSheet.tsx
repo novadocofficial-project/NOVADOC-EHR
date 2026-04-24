@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import {
-  ArrowLeft, FileEdit, AlertTriangle, Eye, ChevronRight,
+  ArrowLeft, FileEdit, AlertTriangle, Eye,
   Activity, Heart, Thermometer, Droplets, User, Phone, MapPin,
   CalendarDays, Stethoscope, Pill, FlaskConical, FileText,
   FolderOpen, ClipboardList, CheckCircle2, Syringe, Zap,
@@ -203,7 +203,7 @@ function ActionRow({ label, sub, right }: { label: string; sub?: string; right?:
         <p className="text-xs font-semibold text-slate-800 leading-tight truncate">{label}</p>
         {sub && <p className="text-[10px] text-slate-400 leading-tight">{sub}</p>}
       </div>
-      {right ?? <ChevronRight className="h-3.5 w-3.5 text-slate-300 flex-shrink-0" />}
+      {right}
     </div>
   );
 }
