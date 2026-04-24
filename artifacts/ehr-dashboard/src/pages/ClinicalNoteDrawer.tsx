@@ -584,9 +584,10 @@ interface ClinicalNoteDrawerProps {
   initialNote?: NoteState;
   isAddendumMode?: boolean;
   onAddendum?: (note: NoteState) => void;
+  onCancel?: () => void;
 }
 
-export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, isAddendumMode = false, onAddendum }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, isAddendumMode = false, onAddendum, onCancel }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(() => initialNote ?? EMPTY_NOTE);
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
@@ -1176,12 +1177,20 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
         {/* ── Bottom action bar ─────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 py-3 border-t border-slate-100 bg-white flex-shrink-0">
           {isAddendumMode ? (
-            <Button
-              onClick={() => { onAddendum?.(note); }}
-              className="h-9 px-5 text-xs font-black gap-2 text-white flex-shrink-0"
-              style={{ backgroundColor: "#f59e0b" }}>
-              <PenLine className="h-3.5 w-3.5" /> Addendum
-            </Button>
+            <>
+              <Button
+                onClick={() => { onAddendum?.(note); }}
+                className="h-9 px-5 text-xs font-black gap-2 text-white flex-shrink-0"
+                style={{ backgroundColor: "#f59e0b" }}>
+                <PenLine className="h-3.5 w-3.5" /> Addendum
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => { onCancel?.(); }}
+                className="h-9 px-4 text-xs font-bold gap-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 flex-shrink-0">
+                <X className="h-3.5 w-3.5" /> Cancel Addendum
+              </Button>
+            </>
           ) : awaitingLab ? (
             <Button
               disabled

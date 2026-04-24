@@ -723,6 +723,7 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
   const [expandedIndex, setExpandedIndex]       = useState<number | null>(null);
   const [openMenuIdx, setOpenMenuIdx]           = useState<number | null>(null);
   const [editingDummyIdx, setEditingDummyIdx]   = useState<number | null>(null);
+  const [showAddendumDrawer, setShowAddendumDrawer] = useState(false);
   const [addendumRows, setAddendumRows]         = useState<AddendumRow[]>([]);
   const menuRef                                 = useRef<HTMLDivElement | null>(null);
 
@@ -931,8 +932,8 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
                   </div>
                   <button
                     className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-2 rounded-xl text-white transition-opacity hover:opacity-90 bg-amber-500"
-                    onClick={() => setEditingDummyIdx(null)}>
-                    <X className="h-3.5 w-3.5" /> Discard
+                    onClick={() => setShowAddendumDrawer(true)}>
+                    <FilePenLine className="h-3.5 w-3.5" /> Open
                   </button>
                 </div>
               )}
@@ -1103,6 +1104,7 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
                                       onClick={() => {
                                         setOpenMenuIdx(null);
                                         setEditingDummyIdx(dummy !== null ? dummyIdx : -99);
+                                        setShowAddendumDrawer(true);
                                         setShowNoteDrawer(false);
                                       }}
                                       className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors border-t border-slate-100">
@@ -1164,7 +1166,7 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
       {/* ═══════════════════════════════════════════════════════════════════════
           ADDENDUM DRAWER (Edit Note → Addendum mode)
       ═══════════════════════════════════════════════════════════════════════ */}
-      {editingDummyIdx !== null && (() => {
+      {editingDummyIdx !== null && showAddendumDrawer && (() => {
         const srcDummy = editingDummyIdx >= 0 && editingDummyIdx < SOAP_DUMMY.length
           ? SOAP_DUMMY[editingDummyIdx]
           : null;
@@ -1193,9 +1195,11 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
               };
               setAddendumRows(prev => [newRow, ...prev]);
               setEditingDummyIdx(null);
+              setShowAddendumDrawer(false);
               void filledNote;
             }}
-            onClose={() => setEditingDummyIdx(null)}
+            onClose={() => setShowAddendumDrawer(false)}
+            onCancel={() => { setEditingDummyIdx(null); setShowAddendumDrawer(false); }}
           />
         );
       })()}
