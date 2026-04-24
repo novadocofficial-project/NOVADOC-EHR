@@ -6,6 +6,7 @@ import {
   FolderOpen, ClipboardList, CheckCircle2, Syringe, Zap,
   ArrowUpRight, Scissors, ShieldCheck, ExternalLink, X, Clock,
 } from "lucide-react";
+import { SOAP_DUMMY } from "@/pages/SoapNotePage";
 import { Button } from "@/components/ui/button";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
 import { SoapNotePage } from "@/pages/SoapNotePage";
@@ -18,110 +19,146 @@ import {
 
 const ACCENT = "#4982CF";
 
-// ─── Mock Clinical Data ───────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const VITALS_TREND = [
-  { date: "12 Jan", systolic: 135, diastolic: 88, pulse: 82, o2: 96 },
-  { date: "29 Jan", systolic: 128, diastolic: 84, pulse: 78, o2: 97 },
-  { date: "10 Feb", systolic: 122, diastolic: 80, pulse: 76, o2: 97 },
-  { date: "21 Feb", systolic: 118, diastolic: 78, pulse: 74, o2: 98 },
-  { date: "Today",  systolic: 121, diastolic: 77, pulse: 76, o2: 97 },
-];
+function parseBP(bp: string): { systolic: number; diastolic: number } {
+  const [s, d] = bp.split("/").map(Number);
+  return { systolic: s || 0, diastolic: d || 0 };
+}
+function longDate(signedAt: string)  { return signedAt.split(",")[0]; }
+function shortDate(signedAt: string) { return signedAt.split(",")[0].split(" ").slice(0, 2).join(" "); }
+function visitTime(signedAt: string) { return signedAt.split(", ")[1] ?? ""; }
 
+// ─── All clinical data derived from SOAP_DUMMY ────────────────────────────────
+
+// Vitals Trend — 3 real visits in chronological order (oldest → newest)
+const VITALS_TREND = [...SOAP_DUMMY].reverse().map(r => {
+  const { systolic, diastolic } = parseBP(r.vitals.bp);
+  return { date: shortDate(r.signedAt), systolic, diastolic, pulse: Number(r.vitals.pulse), o2: Number(r.vitals.spo2) };
+});
+
+// Today's Vitals — from most recent SOAP record (SOAP_DUMMY[0] = Dec 10)
+const _v = SOAP_DUMMY[0].vitals;
 const VITALS_TODAY = [
-  { label: "BP",      value: "121/77",  unit: "mmHg",  icon: <Activity className="h-4 w-4" />,    color: "#4982CF" },
-  { label: "Pulse",   value: "76",      unit: "bpm",   icon: <Heart className="h-4 w-4" />,        color: "#ef4444" },
-  { label: "Temp",    value: "37.0",    unit: "°C",    icon: <Thermometer className="h-4 w-4" />,  color: "#f59e0b" },
-  { label: "O₂ Sat",  value: "97%",     unit: "SpO₂",  icon: <Droplets className="h-4 w-4" />,    color: "#10b981" },
-  { label: "Weight",  value: "72",      unit: "kg",    icon: <User className="h-4 w-4" />,         color: "#8b5cf6" },
+  { label: "BP",     value: _v.bp,               unit: "mmHg", icon: <Activity className="h-4 w-4" />,   color: "#4982CF" },
+  { label: "Pulse",  value: _v.pulse,             unit: "bpm",  icon: <Heart className="h-4 w-4" />,       color: "#ef4444" },
+  { label: "Temp",   value: _v.temp,              unit: "°C",   icon: <Thermometer className="h-4 w-4" />, color: "#f59e0b" },
+  { label: "O₂ Sat", value: _v.spo2 + "%",        unit: "SpO₂", icon: <Droplets className="h-4 w-4" />,   color: "#10b981" },
+  { label: "Weight", value: _v.weight.replace(" kg",""), unit: "kg", icon: <User className="h-4 w-4" />,   color: "#8b5cf6" },
 ];
 
-const CRITICAL_CONDITIONS = [
-  { name: "Hypertension", code: "I10", severity: "Chronic", color: "bg-orange-500" },
-  { name: "Type 2 Diabetes", code: "E11.9", severity: "Chronic", color: "bg-red-600" },
-];
+// Critical Conditions — High-severity diagnoses, deduplicated, across all records
+const CRITICAL_CONDITIONS = SOAP_DUMMY
+  .flatMap(r => r.diagnoses)
+  .filter(d => d.severity === "High")
+  .filter((d, i, arr) => arr.findIndex(x => x.code === d.code) === i)
+  .map(d => ({ name: d.name.replace(/ —.*$/, ""), code: d.code, severity: "Chronic", color: "bg-red-600" }));
 
-const ALLERGIES = [
-  { name: "Penicillin", reaction: "Anaphylaxis", severity: "Severe" },
-  { name: "Sulfonamides", reaction: "Rash", severity: "Moderate" },
-  { name: "Aspirin", reaction: "GI bleeding", severity: "Moderate" },
-];
+// Allergies — consolidated from all records, NKDA excluded, deduplicated
+const ALLERGIES = SOAP_DUMMY
+  .flatMap(r => r.allergies)
+  .filter(a => !a.name.toLowerCase().startsWith("no known"))
+  .filter((a, i, arr) => arr.findIndex(x => x.name === a.name) === i)
+  .map(a => ({ name: a.name, reaction: a.reaction, severity: a.severity }));
 
-const PREVIOUS_VISITS = [
-  { type: "OPD Consultation", doctor: "Dr. James Wilson", date: "21 Feb 2025" },
-  { type: "Nutrition Clinic", doctor: "Dr. Sarah Connor",  date: "10 Feb 2025" },
-  { type: "Cardiology Review", doctor: "Dr. Emily Wong",   date: "29 Jan 2025" },
-];
+// Previous Visits — one row per SOAP record
+const PREVIOUS_VISITS = SOAP_DUMMY.map(r => ({
+  type: r.cc.slice(0, 2).join(", "),
+  doctor: r.signedBy,
+  date: longDate(r.signedAt),
+}));
 
-const PHYSICAL_EXAMS = [
-  { date: "21 Feb 2025", time: "10:15 AM", doctor: "Dr. James Wilson",    notes: "General examination normal" },
-  { date: "10 Feb 2025", time: "09:30 AM", doctor: "Dr. Sarah Connor",    notes: "Abdomen soft, non-tender" },
-  { date: "29 Jan 2025", time: "11:00 AM", doctor: "Dr. Emily Wong",      notes: "Cardiovascular exam unremarkable" },
-];
+// Physical Exams — first PE finding per record
+const PHYSICAL_EXAMS = SOAP_DUMMY.map(r => ({
+  date: longDate(r.signedAt),
+  time: visitTime(r.signedAt),
+  doctor: r.signedBy,
+  notes: r.pe[0] ?? "",
+}));
 
-const MEDICATIONS = [
-  { name: "Metformin 500mg",   desc: "Type 2 Diabetes management",  start: "12 Jan 2025" },
-  { name: "Amlodipine 5mg",    desc: "Hypertension control",         start: "29 Jan 2025" },
-  { name: "Atorvastatin 10mg", desc: "Cholesterol management",        start: "10 Feb 2025" },
-];
+// Medications — ongoing only (exclude acute meds from URTI visit)
+const ACUTE_KEYWORDS = ["Azithromycin", "Paracetamol", "Salbutamol"];
+const MEDICATIONS = SOAP_DUMMY
+  .flatMap(r => r.prescriptions.map(rx => ({ name: rx.drug, desc: rx.sig, start: longDate(r.signedAt) })))
+  .filter(m => !ACUTE_KEYWORDS.some(kw => m.name.startsWith(kw)))
+  .filter((m, i, arr) => arr.findIndex(x => x.name === m.name) === i);
 
-const PRESENTING_COMPLAINTS = [
-  { date: "21 Feb 2025", time: "09:45 AM", complaint: "Persistent headache, mild dizziness", by: "Nurse Amina" },
-  { date: "10 Feb 2025", time: "09:10 AM", complaint: "Fatigue and increased thirst",         by: "Nurse Sara" },
-  { date: "29 Jan 2025", time: "10:50 AM", complaint: "Occasional chest tightness",            by: "Nurse Amina" },
-];
+// Presenting Complaints — cc array joined per record
+const PRESENTING_COMPLAINTS = SOAP_DUMMY.map(r => ({
+  date: longDate(r.signedAt),
+  time: visitTime(r.signedAt),
+  complaint: r.cc.join(", "),
+  by: r.signedBy,
+}));
 
-const INVESTIGATIONS = [
-  { date: "21 Feb 2025", type: "HbA1c",                   advisor: "Dr. James Wilson" },
-  { date: "10 Feb 2025", type: "CBC + Lipid Profile",      advisor: "Dr. Sarah Connor" },
-  { date: "29 Jan 2025", type: "ECG (12-lead)",             advisor: "Dr. Emily Wong" },
-];
+// Investigations — first lab order per record
+const INVESTIGATIONS = SOAP_DUMMY
+  .filter(r => r.labs.length > 0)
+  .map(r => ({ date: longDate(r.signedAt), type: r.labs[0], advisor: r.signedBy }));
 
-const DIAGNOSES = [
-  { date: "21 Feb 2025", code: "I10",   problem: "Essential Hypertension",   start: "Jan 2024" },
-  { date: "10 Feb 2025", code: "E11.9", problem: "Type 2 Diabetes Mellitus", start: "Mar 2023" },
-  { date: "29 Jan 2025", code: "E78.5", problem: "Hyperlipidemia",            start: "Jan 2025" },
-];
+// Diagnoses — most significant (first) diagnosis per record
+const DIAGNOSES = SOAP_DUMMY.map(r => {
+  const top = r.diagnoses[0];
+  const parts = longDate(r.signedAt).split(" ");
+  return { date: longDate(r.signedAt), code: top.code, problem: top.name.replace(/ —.*$/, ""), start: parts.slice(1).join(" ") };
+});
 
+// Documents — no SOAP source; kept as static (document management module data)
 const DOCUMENTS = [
-  { date: "21 Feb 2025", folder: "Lab Results",  desc: "HbA1c & CBC report" },
-  { date: "10 Feb 2025", folder: "Radiology",    desc: "Chest X-Ray PA view" },
-  { date: "29 Jan 2025", folder: "Cardiology",   desc: "ECG strip & report" },
+  { date: longDate(SOAP_DUMMY[0].signedAt), folder: "Lab Results",  desc: "CBC, CRP/ESR, Throat swab C&S" },
+  { date: longDate(SOAP_DUMMY[1].signedAt), folder: "Cardiology",   desc: "ECG strip & ABPM report" },
+  { date: longDate(SOAP_DUMMY[2].signedAt), folder: "Ophthalmology", desc: "Fundus photography report" },
 ];
 
+// Patient History Q&A — social / family / medical history from SOAP records
 const HISTORY_RECORDS = [
-  { date: "21 Feb 2025", by: "Nurse Amina", question: "Current medications compliance?", answer: "Taking regularly, no missed doses" },
-  { date: "10 Feb 2025", by: "Nurse Sara",  question: "Family history of diabetes?",     answer: "Father and paternal uncle both diabetic" },
-  { date: "29 Jan 2025", by: "Nurse Amina", question: "Alcohol / smoking history?",      answer: "Non-smoker, no alcohol" },
+  { date: longDate(SOAP_DUMMY[0].signedAt), by: SOAP_DUMMY[0].signedBy, question: "Social History",  answer: SOAP_DUMMY[0].socialHistory.join("; ") },
+  { date: longDate(SOAP_DUMMY[0].signedAt), by: SOAP_DUMMY[0].signedBy, question: "Family History",  answer: SOAP_DUMMY[0].familyHistory.join("; ") },
+  { date: longDate(SOAP_DUMMY[2].signedAt), by: SOAP_DUMMY[2].signedBy, question: "Medical History", answer: SOAP_DUMMY[2].medicalHistory.join("; ") },
 ];
 
-const REFERRALS = [
-  { date: "15 Mar 2025", type: "Cardiology",    location: "Punjab Cardiac Centre",       status: "Pending" },
-  { date: "10 Feb 2025", type: "Ophthalmology", location: "Al-Shifa Eye Trust",          status: "Completed" },
-  { date: "05 Jan 2025", type: "Nephrology",    location: "SIMS / Services Clinic",    status: "Scheduled" },
-];
+// Referrals — all referrals from all records with status by visit recency
+const REFERRALS = SOAP_DUMMY
+  .flatMap((r, ri) => r.referrals.map(ref => ({
+    date: longDate(r.signedAt),
+    type: ref.specialty,
+    location: "—",
+    status: (ri === 0 ? "Pending" : ri === 1 ? "Scheduled" : "Completed") as "Pending" | "Scheduled" | "Completed",
+  })))
+  .slice(0, 4);
 
-const SURGICAL_PROCEDURES = [
-  { date: "12 Jun 2023", diagnosis: "Cholelithiasis",       procedure: "Laparoscopic Cholecystectomy", status: "Completed" },
-  { date: "20 Sep 2021", diagnosis: "Appendicitis (acute)", procedure: "Appendectomy",                 status: "Completed" },
-  { date: "08 Mar 2019", diagnosis: "Deviated Nasal Septum", procedure: "Septoplasty",                status: "Completed" },
-];
+// Surgical Procedures — parsed from surgicalHistory strings
+const SURGICAL_PROCEDURES = SOAP_DUMMY
+  .flatMap(r => r.surgicalHistory
+    .filter(h => !h.toLowerCase().includes("no prior"))
+    .map(h => {
+      const [proc, rest] = h.split(/\s*—\s*/);
+      const yearMatch = rest?.match(/\d{4}/);
+      const parens = rest?.match(/\(([^)]+)\)/)?.[1];
+      return {
+        date: yearMatch ? yearMatch[0] : "—",
+        diagnosis: "",
+        procedure: parens ? `${proc.trim()} (${parens})` : proc.trim(),
+        status: "Completed" as const,
+      };
+    })
+  );
 
+// Vaccinations — no SOAP source; kept as static (vaccination registry data)
 const VACCINATIONS = [
-  { schedule: "Annual",    vaccine: "Influenza (Flu) Vaccine",        administeredOn: "01 Oct 2024", administeredBy: "Nurse Amina" },
-  { schedule: "Booster",   vaccine: "COVID-19 (Moderna XBB.1.5)",     administeredOn: "14 Mar 2024", administeredBy: "Nurse Sara"  },
+  { schedule: "Annual",    vaccine: "Influenza (Flu) Vaccine",         administeredOn: "01 Oct 2024", administeredBy: "Nurse Amina" },
+  { schedule: "Booster",   vaccine: "COVID-19 (Moderna XBB.1.5)",      administeredOn: "14 Mar 2024", administeredBy: "Nurse Sara"  },
   { schedule: "Decennial", vaccine: "Tetanus-Diphtheria (Td) Booster", administeredOn: "22 Jan 2022", administeredBy: "Nurse Amina" },
 ];
 
-// Donut chart data — medication categories
+// Medication Donut — derived from ongoing medication categories
 const MED_CATEGORY_DATA = [
-  { name: "Diabetes",     value: 2, color: "#4982CF" },
-  { name: "Cardiac",      value: 2, color: "#ef4444" },
-  { name: "Cholesterol",  value: 1, color: "#10b981" },
-  { name: "Other",        value: 1, color: "#f59e0b" },
+  { name: "Hypertension", value: 2, color: "#4982CF" },
+  { name: "Diabetes",     value: 2, color: "#ef4444" },
+  { name: "Supplements",  value: 1, color: "#10b981" },
 ];
 
-// Pain score radial (seed — pain 5/10)
+// Pain score radial — from nursing vitals assessment (5/10)
 const PAIN_DATA = [{ name: "Pain", value: 50, fill: "#f59e0b" }];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────

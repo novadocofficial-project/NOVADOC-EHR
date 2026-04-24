@@ -35,8 +35,9 @@ const CONDITIONS = [
 
 const ALLERGIES_LIST = [
   { name: "Penicillin",   severity: "Severe"   },
+  { name: "NSAIDs",       severity: "Moderate" },
   { name: "Sulfonamides", severity: "Moderate" },
-  { name: "Aspirin",      severity: "Moderate" },
+  { name: "Latex",        severity: "Mild"      },
 ];
 
 const NAV_TABS: { label: string; Icon: React.ElementType }[] = [
@@ -78,7 +79,7 @@ export interface SignedRecord {
 
 // ─── SOAP Preview Dummy Data ───────────────────────────────────────────────────
 
-interface SoapDummyNote {
+export interface SoapDummyNote {
   cc: string[];
   hpi: string;
   vitals: { bp: string; pulse: string; temp: string; spo2: string; weight: string };
@@ -106,7 +107,7 @@ interface SoapDummyNote {
   signedAt: string;
 }
 
-const SOAP_DUMMY: SoapDummyNote[] = [
+export const SOAP_DUMMY: SoapDummyNote[] = [
   {
     // ── Record 1: URTI — Dec 10, 2024 ──────────────────────────────────────
     cc: ["Productive cough", "Fever", "Sore throat"],
@@ -855,7 +856,7 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
                       </div>
                       <p className="text-xs font-bold text-slate-700">Comprehensive Note</p>
                       <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> Auto-created on entry · By Dr. James Wilson
+                        <Clock className="h-3 w-3" /> Auto-created on entry · By Dr. Asif Imam
                       </p>
                     </div>
                   </div>
