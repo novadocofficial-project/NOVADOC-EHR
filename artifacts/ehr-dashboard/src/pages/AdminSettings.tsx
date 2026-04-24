@@ -4,7 +4,9 @@ import {
   Activity,
   Banknote,
   Bell,
+  BookOpen,
   FileText,
+  FlaskConical,
   Sliders,
   Building2,
   ChevronDown,
@@ -45,6 +47,10 @@ import { InsurancePricingModule } from "@/pages/InsurancePricingModule";
 import { PackagesModule } from "@/pages/PackagesModule";
 import { BranchModule } from "@/pages/BranchModule";
 import { SoapConfigModule } from "@/pages/SoapConfigModule";
+import { HpiTemplatesModule } from "@/pages/HpiTemplatesModule";
+import { ClinicalLibrariesModule } from "@/pages/ClinicalLibrariesModule";
+import { LabCatalogModule, SEED_SECTIONS as LAB_SEED_SECTIONS, SEED_PROVIDERS as LAB_SEED_PROVIDERS, type LabSection, type LabProvider } from "@/pages/LabCatalogModule";
+import { ProcedureCatalogModule, INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS, type ProcedureSection, type ProcedurePartner } from "@/pages/ProcedureCatalogModule";
 import { QueueModule } from "@/pages/QueueModule";
 import type { QueueSection } from "@/pages/QueueModule";
 import { UsersManagementModule } from "@/pages/UsersManagementModule";
@@ -159,7 +165,11 @@ type ActiveModule =
   | "branches"
   | "visit-types" | "workflow-config" | "counter-types" | "counters"
   | "token-settings" | "queue-behavior" | "locking-settings" | "display-settings" | "doctor-partitions"
-  | "soap-note-structure" | "soap-vitals-config"
+  | "soap-note-structure" | "soap-vitals-config" | "hpi-templates"
+  | "clinical-complaints" | "clinical-icd10" | "clinical-poc" | "clinical-ros"
+  | "clinical-allergies" | "clinical-med-surgical" | "clinical-family" | "clinical-social"
+  | "lab-master" | "lab-providers"
+  | "proc-master" | "proc-partners"
   | "users-counters";
 
 export function AdminSettings() {
@@ -175,6 +185,9 @@ export function AdminSettings() {
     branches: false,
     queue: !!initSection && queueSections.includes(initSection as ActiveModule),
     soapConfig: false,
+    clinicalLibraries: false,
+    labCatalog: false,
+    procedureCatalog: false,
     users: false,
   });
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DATA);
@@ -185,6 +198,10 @@ export function AdminSettings() {
   const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>(INITIAL_SERVICE_TYPES);
   const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
+  const [labSections, setLabSections] = useState<LabSection[]>(LAB_SEED_SECTIONS);
+  const [labProviders, setLabProviders] = useState<LabProvider[]>(LAB_SEED_PROVIDERS);
+  const [procSections, setProcSections] = useState<ProcedureSection[]>(INITIAL_PROC_SECTIONS);
+  const [procPartners, setProcPartners] = useState<ProcedurePartner[]>(INITIAL_PROC_PARTNERS);
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
     d1: true, d2: true, d3: false, d4: true,
@@ -469,6 +486,64 @@ export function AdminSettings() {
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
                 {subNavItem("soap-note-structure", <FileText className="h-3.5 w-3.5" />, "Note Structure")}
                 {subNavItem("soap-vitals-config",  <Sliders className="h-3.5 w-3.5" />, "Vitals Config")}
+                {subNavItem("hpi-templates",       <ClipboardList className="h-3.5 w-3.5" />, "HPI Templates")}
+              </div>
+            )}
+
+            {/* ── Clinical Libraries Group ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("clinicalLibraries")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <BookOpen className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Clinical Libraries</span>
+              {navExpanded.clinicalLibraries ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.clinicalLibraries && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("clinical-complaints",   <Activity className="h-3.5 w-3.5" />, "Chief Complaints")}
+                {subNavItem("clinical-icd10",        <FileText className="h-3.5 w-3.5" />, "ICD-10 Codes")}
+                {subNavItem("clinical-poc",          <FlaskConical className="h-3.5 w-3.5" />, "POC Tests")}
+                {subNavItem("clinical-ros",          <ClipboardList className="h-3.5 w-3.5" />, "ROS Config")}
+                {subNavItem("clinical-allergies",    <Bell className="h-3.5 w-3.5" />, "Allergies")}
+                {subNavItem("clinical-med-surgical", <Stethoscope className="h-3.5 w-3.5" />, "Med/Surgical History")}
+                {subNavItem("clinical-family",       <Users className="h-3.5 w-3.5" />, "Family History")}
+                {subNavItem("clinical-social",       <UserRound className="h-3.5 w-3.5" />, "Social History")}
+              </div>
+            )}
+
+            {/* ── Lab Catalog Group ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("labCatalog")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <FlaskConical className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Lab Catalog</span>
+              {navExpanded.labCatalog ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.labCatalog && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("lab-master",    <FileText className="h-3.5 w-3.5" />, "Lab Test Master List")}
+                {subNavItem("lab-providers", <FlaskConical className="h-3.5 w-3.5" />, "Lab Providers")}
+              </div>
+            )}
+
+            {/* ── Procedure Catalog Group ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("procedureCatalog")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Stethoscope className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Procedure Catalog</span>
+              {navExpanded.procedureCatalog ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.procedureCatalog && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("proc-master",   <FileText className="h-3.5 w-3.5" />, "Procedure Master List")}
+                {subNavItem("proc-partners", <Stethoscope className="h-3.5 w-3.5" />, "Procedure Partners")}
               </div>
             )}
 
@@ -518,7 +593,12 @@ export function AdminSettings() {
             <PackagesModule services={services} serviceTypes={serviceTypes} />
           )}
 
-          {activeModule === "branches" && <BranchModule />}
+          {activeModule === "branches" && (
+            <BranchModule
+              labProviders={labProviders}
+              procPartners={procPartners}
+            />
+          )}
 
           {(["visit-types","workflow-config","counter-types","counters","token-settings","queue-behavior","locking-settings","display-settings","doctor-partitions"] as const).map(s =>
             activeModule === s ? <QueueModule key={s} section={s as QueueSection} /> : null
@@ -532,6 +612,50 @@ export function AdminSettings() {
             <SoapConfigModule
               activeSubModule={activeModule === "soap-note-structure" ? "note-structure" : "vitals-config"}
               departments={departments}
+            />
+          )}
+
+          {activeModule === "hpi-templates" && <HpiTemplatesModule />}
+
+          {(activeModule === "clinical-complaints"
+            || activeModule === "clinical-icd10"
+            || activeModule === "clinical-poc"
+            || activeModule === "clinical-ros"
+            || activeModule === "clinical-allergies"
+            || activeModule === "clinical-med-surgical"
+            || activeModule === "clinical-family"
+            || activeModule === "clinical-social") && (
+            <ClinicalLibrariesModule
+              initialTab={
+                activeModule === "clinical-complaints"   ? "complaints"
+                : activeModule === "clinical-icd10"      ? "icd10"
+                : activeModule === "clinical-poc"        ? "poc"
+                : activeModule === "clinical-ros"        ? "ros"
+                : activeModule === "clinical-allergies"  ? "allergies"
+                : activeModule === "clinical-med-surgical"? "med-surgical"
+                : activeModule === "clinical-family"     ? "family-history"
+                : "social-history"
+              }
+            />
+          )}
+
+          {(activeModule === "lab-master" || activeModule === "lab-providers") && (
+            <LabCatalogModule
+              sections={labSections}
+              setSections={setLabSections}
+              providers={labProviders}
+              setProviders={setLabProviders}
+              initialView={activeModule === "lab-providers" ? "providers" : "master"}
+            />
+          )}
+
+          {(activeModule === "proc-master" || activeModule === "proc-partners") && (
+            <ProcedureCatalogModule
+              sections={procSections}
+              setSections={setProcSections}
+              partners={procPartners}
+              setPartners={setProcPartners}
+              initialView={activeModule === "proc-partners" ? "partners" : "master"}
             />
           )}
 
