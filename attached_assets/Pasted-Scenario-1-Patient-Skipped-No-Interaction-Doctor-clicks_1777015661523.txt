@@ -1,0 +1,107 @@
+Scenario 1: Patient Skipped (No Interaction)
+Doctor clicks “Consultation” from Doctor Queue
+Patient facesheet opens
+Doctor does not open SOAP Note
+Patient does not show up
+
+Action:
+
+Doctor clicks “Skip Patient”
+Selects a reason for skipping
+
+System Behavior:
+
+Patient is removed from Doctor Queue
+Patient journey is ended
+Scenario 2: Consultation Completed Without SOAP Note
+Doctor clicks “Consultation”
+Facesheet opens
+Doctor does not open SOAP Note
+Patient is seen
+
+Action:
+
+Doctor clicks “Complete Consultation”
+Selects a completion reason
+
+System Behavior:
+
+Patient is removed from Doctor Queue
+Patient journey is ended
+Scenario 3A: SOAP Note Started but Not Signed
+Doctor clicks “Consultation”
+Opens Facesheet
+Opens SOAP Note
+SOAP Note is created
+
+Action:
+
+Doctor does not send to lab
+Doctor does not sign the note
+Clicks “Save & Close”
+
+System Behavior:
+
+Redirects to Facesheet
+SOAP Note status = “In Progress”
+“Complete Consultation” is disabled
+Patient remains in Doctor Queue
+Queue shows “Open Facesheet” option
+Scenario 3B: SOAP Note + Sent to Lab (Awaiting Results)
+Doctor clicks “Consultation”
+Opens Facesheet → SOAP Note
+SOAP Note is created
+
+Action:
+
+Doctor selects labs (POC or Main Lab)
+Clicks “Send to Lab”
+Doctor does NOT sign
+Clicks “Save & Close”
+
+System Behavior:
+
+SOAP Note status = “In Progress (Awaiting Results)”
+Doctor Queue → Patient moves to “Pending Lab” section
+Patient still has “Open Facesheet”
+Inside Facesheet:
+“Complete Consultation” is disabled
+Completion requires doctor signature after results
+Scenario 4: SOAP Note Completed & Signed
+Doctor clicks “Consultation”
+Opens Facesheet → SOAP Note
+SOAP Note is created
+
+Action:
+
+Doctor fills all data
+(Optional) Adds labs but does not send to lab
+Clicks “Doctor Sign”
+SOAP Note is saved in All Records
+Clicks “Save & Close”
+
+System Behavior:
+
+SOAP Note status = “Completed”
+“Complete Consultation” button is enabled
+Exit Behavior from This State
+
+Case A: Doctor clicks “Back to Queue”
+
+System prompts:
+👉 “Would you like to mark the consultation as complete?”
+If YES:
+Patient is removed from Doctor Queue
+If NO:
+Patient remains in Doctor Queue
+Shows “Open Facesheet”
+
+Case B: Doctor completes from Facesheet
+
+Doctor clicks “Complete Consultation”
+
+System Behavior:
+
+No reason required (already signed)
+Facesheet closes
+Doctor Queue updates
