@@ -1193,7 +1193,18 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
             </Button>
           ) : (
             <Button
-              onClick={onDoctorSign}
+              onClick={() => {
+                onDoctorSign?.();
+                setNote(EMPTY_NOTE);
+                setHpiDoneComplaints([]);
+                setHpiSavedData({});
+                setPeDoneSystemIds([]);
+                setPeSavedData({});
+                setDiagnosisDone(false);
+                setDiagnosisSaved([]);
+                setLabDone(false);
+                setLabSaved(null);
+              }}
               className="h-9 px-5 text-xs font-black gap-2 text-white flex-shrink-0"
               style={{ backgroundColor: ACCENT }}>
               <PenLine className="h-3.5 w-3.5" /> Doctor's Sign
