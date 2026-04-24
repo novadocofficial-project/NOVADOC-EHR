@@ -1,0 +1,94 @@
+Labs (Sub-header → Side Drawer 50%)
+Drawer Behavior
+Opens from right
+Covers 50% width
+Background (patient record) stays visible for context
+Supports inline navigation (no full page reloads)
+Top Section (Sticky Header inside Drawer)
+Title: Labs
+Filters (optional but powerful):
+Date range
+Status (Pending / Completed)
+Performing Lab
+Search (Test name)
+Main Content Structure (Critical Improvement)
+
+Don’t show everything flat.
+👉 Group by Order (Doctor + Date)
+
+Order Card (Primary Grouping)
+
+Each lab order = one card:
+
+Header
+
+Ordered by: Dr. X
+Order Date & Time
+Sample Collected by: Name
+Collection Date & Time
+Inside Each Order (Tests List)
+
+Each test displayed as a row:
+
+1. CBC
+   Lab: ABC Lab
+   Status: Completed
+   [View] [Files]
+
+2. LFT
+   Lab: XYZ Diagnostics
+   Status: Pending
+   [Disabled View]
+Status Logic
+Pending
+“View” disabled
+Show subtle tag: Awaiting Results
+Completed
+“View” enabled
+“Files” visible if attachments exist
+Action Behavior (Important UX Detail)
+When clicking “View”
+Open inline panel inside the same drawer (not a new modal)
+Panel slides or replaces right side (split inside drawer if possible)
+Inline Result View Layout
+
+Header
+
+Test Name
+Lab Name
+Date Updated
+[Print] button
+[Back] button
+Tabs inside Result View
+1. Results
+Structured values (table format)
+Units + reference ranges
+Highlight abnormal values
+2. Files
+Uploaded reports (PDF / images)
+Click → preview inside drawer (no download first)
+Option to open full screen if needed
+Navigation Flow (Smooth Movement)
+Back button returns to same scroll position in test list
+User can click next test without closing drawer
+No reloads anywhere
+Serial Number Handling
+Serial number should reset per order, not globally
+(More intuitive for doctors reviewing a single visit/order)
+Edge Cases to Handle
+No sample collected
+→ Show: “Sample not collected yet”
+No files uploaded
+→ Hide Files tab OR show empty state
+Multiple labs in one order
+→ Keep per test lab name (don’t assume same lab)
+Microcopy Suggestions
+“View Result” instead of just “View”
+“Awaiting Results” instead of “Pending”
+“Collected by” instead of “Sample collected by”
+Why this structure works
+Matches real workflow:
+Doctor orders → Lab processes → Results come per test
+Keeps context intact (who ordered + when)
+Avoids overwhelming long flat lists
+Enables fast comparison between tests

@@ -13,6 +13,7 @@ import {
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
 import { Button } from "@/components/ui/button";
 import { View360Drawer } from "@/pages/View360Drawer";
+import { LabsDrawer } from "@/pages/LabsDrawer";
 import { ClinicalNoteDrawer } from "@/pages/ClinicalNoteDrawer";
 import type { NoteState } from "@/pages/ClinicalNoteDrawer";
 import { EMPTY_FORMULARY } from "@/pages/FormularySection";
@@ -58,7 +59,7 @@ const NAV_TABS: { label: string; Icon: React.ElementType }[] = [
   { label: "360 View",          Icon: BarChart2     },
   { label: "Visits",            Icon: Calendar      },
   { label: "Medicines",         Icon: Pill          },
-  { label: "Diagnostics",       Icon: FlaskConical  },
+  { label: "Labs",               Icon: FlaskConical  },
   { label: "Nursing",           Icon: Stethoscope   },
   { label: "Prescription",      Icon: ClipboardList },
   { label: "Staff",             Icon: Users         },
@@ -1046,10 +1047,20 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
       {/* ═══════════════════════════════════════════════════════════════════════
           MODULE DRAWER (right-side overlay)
       ═══════════════════════════════════════════════════════════════════════ */}
-      {!showNoteDrawer && openDrawer && openDrawer !== "360 View" && activeTabMeta && (
+      {!showNoteDrawer && openDrawer && openDrawer !== "360 View" && openDrawer !== "Labs" && activeTabMeta && (
         <ModuleDrawer
           label={openDrawer}
           Icon={activeTabMeta.Icon}
+          fullscreen={drawerFullscreen}
+          onToggleFullscreen={() => setDrawerFullscreen(f => !f)}
+          onClose={closeDrawer}
+        />
+      )}
+
+      {/* Labs drawer */}
+      {!showNoteDrawer && openDrawer === "Labs" && (
+        <LabsDrawer
+          entry={entry}
           fullscreen={drawerFullscreen}
           onToggleFullscreen={() => setDrawerFullscreen(f => !f)}
           onClose={closeDrawer}
