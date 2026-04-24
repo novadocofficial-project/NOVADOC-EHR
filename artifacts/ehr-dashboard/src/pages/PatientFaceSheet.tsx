@@ -1,10 +1,12 @@
 import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowLeft, FileEdit, AlertTriangle, Eye,
   Activity, Heart, Thermometer, Droplets, User, Phone, MapPin,
   CalendarDays, Stethoscope, Pill, FlaskConical, FileText,
   FolderOpen, ClipboardList, CheckCircle2, Syringe, Zap,
   ArrowUpRight, Scissors, ShieldCheck, ExternalLink, X, Clock,
+  Maximize2, Minimize2, ChevronDown,
 } from "lucide-react";
 import { SOAP_DUMMY } from "@/pages/SoapNotePage";
 import { Button } from "@/components/ui/button";
@@ -161,13 +163,215 @@ const MED_CATEGORY_DATA = [
 // Pain score radial — from nursing vitals assessment (5/10)
 const PAIN_DATA = [{ name: "Pain", value: 50, fill: "#f59e0b" }];
 
+// ─── Presenting Complaints Drawer data ────────────────────────────────────────
+
+interface VisitComplaintRecord {
+  date:       string;
+  time:       string;
+  doctor:     string;
+  visitType:  string;
+  hpi:        string;
+  complaints: { name: string; priority: number }[];
+}
+
+const VISIT_COMPLAINTS: VisitComplaintRecord[] = SOAP_DUMMY.map(r => {
+  const [datePart, timePart] = r.signedAt.split(", ");
+  return {
+    date:       datePart ?? "",
+    time:       timePart ?? "",
+    doctor:     r.signedBy,
+    visitType:  "OPD",
+    hpi:        r.hpi,
+    complaints: r.cc.map((name, i) => ({ name, priority: i + 1 })),
+  };
+});
+
+// ─── Presenting Complaints Drawer ─────────────────────────────────────────────
+
+function PresentingComplaintsDrawer({ onClose }: { onClose: () => void }) {
+  const [fullscreen,   setFullscreen]   = useState(false);
+  const [expandedIdx,  setExpandedIdx]  = useState<number | null>(null);
+
+  return createPortal(
+    <>
+      {/* Backdrop */}
+      {!fullscreen && (
+        <div
+          className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[9000]"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Drawer panel */}
+      <div className={[
+        "fixed top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-[9001] transition-all duration-300",
+        fullscreen ? "w-full" : "w-1/2 border-l border-slate-200",
+      ].join(" ")}>
+
+        {/* ── Header ── */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 flex-shrink-0 bg-white">
+          <div
+            className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: "#f59e0b18" }}>
+            <ClipboardList className="h-4 w-4" style={{ color: "#f59e0b" }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Patient Record</p>
+            <p className="text-sm font-black text-slate-800">Presenting Complaints</p>
+          </div>
+          <span
+            className="text-[10px] font-black px-2 py-0.5 rounded-full text-white flex-shrink-0"
+            style={{ backgroundColor: "#f59e0b" }}>
+            {VISIT_COMPLAINTS.length} visits
+          </span>
+          <button
+            onClick={() => setFullscreen(f => !f)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors flex-shrink-0"
+            title={fullscreen ? "Exit fullscreen" : "Fullscreen"}>
+            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* ── Sub-header ── */}
+        <div className="px-5 py-2 bg-amber-50 border-b border-amber-100 flex-shrink-0">
+          <p className="text-[10px] text-amber-700 font-semibold">
+            Sorted most recent first · Priority order preserved per visit · Click a visit to expand
+          </p>
+        </div>
+
+        {/* ── Visit cards ── */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-3">
+          {VISIT_COMPLAINTS.map((visit, i) => {
+            const isExpanded  = expandedIdx === i;
+            const extraCount  = visit.complaints.length - 1;
+            const primary     = visit.complaints[0];
+            const [day, month, year] = visit.date.split(" ");
+
+            return (
+              <div
+                key={i}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+
+                {/* Card header — always visible, click to expand */}
+                <button
+                  onClick={() => setExpandedIdx(isExpanded ? null : i)}
+                  className="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-slate-50 transition-colors">
+
+                  {/* Date block */}
+                  <div className="w-16 flex-shrink-0 text-center">
+                    <p className="text-xs font-black text-slate-800 leading-tight">{day} {month}</p>
+                    <p className="text-[10px] text-slate-400">{year}</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5">{visit.time}</p>
+                  </div>
+
+                  <div className="w-px self-stretch bg-slate-200 flex-shrink-0" />
+
+                  {/* Visit info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span
+                        className="text-[9px] font-black px-1.5 py-0.5 rounded-full text-white"
+                        style={{ backgroundColor: "#f59e0b" }}>
+                        {visit.visitType}
+                      </span>
+                      <span className="text-[10px] text-slate-500">{visit.doctor}</span>
+                    </div>
+                    {/* Collapsed summary */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {primary && (
+                        <span className="text-xs font-bold text-slate-800">{primary.name}</span>
+                      )}
+                      {!isExpanded && extraCount > 0 && (
+                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">
+                          +{extraCount} more
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {visit.complaints.length} complaint{visit.complaints.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+
+                  {/* Chevron */}
+                  <ChevronDown
+                    className={`h-4 w-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {/* Expanded view */}
+                {isExpanded && (
+                  <div className="border-t border-slate-100 bg-slate-50/40 px-4 py-4 space-y-4">
+
+                    {/* HPI block */}
+                    <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-blue-400 mb-1.5">
+                        History of Present Illness
+                      </p>
+                      <p className="text-[11px] text-blue-800 leading-relaxed">{visit.hpi}</p>
+                    </div>
+
+                    {/* Numbered complaints */}
+                    <div className="space-y-2.5">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                        Complaint Priority
+                      </p>
+                      {visit.complaints.map((c, j) => (
+                        <div key={j} className="flex items-start gap-3 bg-white rounded-xl border border-slate-100 px-3.5 py-3 shadow-sm">
+                          {/* Priority number */}
+                          <span
+                            className="h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-black text-white flex-shrink-0 mt-0.5"
+                            style={{ backgroundColor: j === 0 ? "#f59e0b" : "#94a3b8" }}>
+                            {c.priority}
+                          </span>
+
+                          {/* Complaint detail */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-slate-800">{c.name}</p>
+                            {j === 0 ? (
+                              <p className="text-[10px] text-slate-500 mt-0.5 italic">
+                                Primary complaint — detailed in HPI above
+                              </p>
+                            ) : (
+                              <p className="text-[10px] text-slate-400 mt-0.5 italic">
+                                Associated presenting complaint
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Primary badge */}
+                          {j === 0 && (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 flex-shrink-0 self-start">
+                              Primary
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>,
+    document.body
+  );
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SectionCard({
-  title, icon, badge, children, accentColor = ACCENT,
+  title, icon, badge, children, accentColor = ACCENT, onViewAll,
 }: {
   title: string; icon: React.ReactNode; badge?: number;
-  children: React.ReactNode; accentColor?: string;
+  children: React.ReactNode; accentColor?: string; onViewAll?: () => void;
 }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
@@ -179,7 +383,9 @@ function SectionCard({
             <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: accentColor }}>{badge}</span>
           )}
         </div>
-        <button className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
+        <button
+          onClick={onViewAll}
+          className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
           <Eye className="h-3 w-3" /> View All
         </button>
       </div>
@@ -303,8 +509,11 @@ export function PatientFaceSheet({
   const address = "House 14, Street 7, DHA Phase 3, Lahore";
 
   // ── SOAP Note page navigation ─────────────────────────────────────────────
-  const [showSoapPage, setShowSoapPage]   = useState(false);
-  const faceSheetOpenedAt                 = useRef(Date.now());
+  const [showSoapPage,          setShowSoapPage]          = useState(false);
+  const faceSheetOpenedAt                                 = useRef(Date.now());
+
+  // ── Presenting Complaints drawer ───────────────────────────────────────────
+  const [showComplaintsDrawer,  setShowComplaintsDrawer]  = useState(false);
 
   // ── Back-to-queue prompt (shown when signed & soapNoteCreated) ─────────────
   const [showBackPrompt, setShowBackPrompt] = useState(false);
@@ -610,7 +819,12 @@ export function PatientFaceSheet({
 
         {/* ── ROW 2: Presenting Complaint + Physical Examination + Diagnosis ── */}
         <div className="grid grid-cols-3 gap-4">
-          <SectionCard title="Presenting Complaint" icon={<ClipboardList className="h-4 w-4" />} badge={3} accentColor="#f59e0b">
+          <SectionCard
+            title="Presenting Complaint"
+            icon={<ClipboardList className="h-4 w-4" />}
+            badge={3}
+            accentColor="#f59e0b"
+            onViewAll={() => setShowComplaintsDrawer(true)}>
             {PRESENTING_COMPLAINTS.map((pc, i) => (
               <ActionRow key={i}
                 label={pc.complaint}
@@ -618,6 +832,10 @@ export function PatientFaceSheet({
               />
             ))}
           </SectionCard>
+
+          {showComplaintsDrawer && (
+            <PresentingComplaintsDrawer onClose={() => setShowComplaintsDrawer(false)} />
+          )}
 
           <SectionCard title="Physical Examination" icon={<Stethoscope className="h-4 w-4" />} badge={3}>
             {PHYSICAL_EXAMS.map((pe, i) => (
