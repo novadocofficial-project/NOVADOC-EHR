@@ -732,9 +732,9 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
   );
 
   // ─────────────────────────────────────────────────────────────────
-  // STEP: PAYMENT
+  // STEP: PAYMENT  (step is narrowed to "payment" here)
   // ─────────────────────────────────────────────────────────────────
-  if (step === "payment") return (
+  return (
     <div className="flex flex-col h-full">
       <BillingStepBar step="payment" />
 
@@ -881,7 +881,6 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
       </div>
     </div>
   );
-  return null;
 }
 
 // ─── Front Desk User Page ─────────────────────────────────────────────────────

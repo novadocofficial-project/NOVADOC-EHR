@@ -225,12 +225,11 @@ function mergeFormulary(a: FormularyData, b: FormularyData): FormularyData {
 }
 
 function mergeImaging(a: ImagingData, b: ImagingData): ImagingData {
-  const aa = a as any;
-  const bb = b as any;
-  const combined: any = { ...a };
-  if (bb.studies && aa.studies) combined.studies = [...aa.studies, ...bb.studies.map((s: any) => ({ ...s, uid: uid() }))];
-  if (bb.orders && aa.orders) combined.orders = [...aa.orders, ...bb.orders.map((s: any) => ({ ...s, uid: uid() }))];
-  return combined;
+  const existingUids = new Set(a.orders.map(o => o.uid));
+  const freshOrders = b.orders
+    .filter(o => !existingUids.has(o.uid))
+    .map(o => ({ ...o, uid: uid() }));
+  return { ...a, orders: [...a.orders, ...freshOrders] };
 }
 
 function mergeHealthEd(a: HealthEdSelection, b: HealthEdSelection): HealthEdSelection {
