@@ -473,11 +473,11 @@ function ReasonTemplatesTab() {
         <p className="text-xs text-slate-500 flex-1">
           Manage indication templates available when ordering imaging tests. Drag to reorder.
         </p>
-        <Button size="sm" onClick={confirmSave}
-          className={`h-8 text-xs gap-1.5 transition-all ${!saved ? "text-white" : "bg-white text-slate-400 border border-slate-200"}`}
+        <Button size="sm" onClick={confirmSave} disabled={saved}
+          className={`h-8 text-xs gap-1.5 transition-all ${!saved ? "text-white" : "bg-white text-slate-400 border border-slate-200 cursor-default"}`}
           style={!saved ? { background: ACCENT } : {}}>
           <Save className="h-3.5 w-3.5" />
-          {!saved ? "Saved" : "Up to date"}
+          {!saved ? "Save" : "Up to date"}
         </Button>
       </div>
 
