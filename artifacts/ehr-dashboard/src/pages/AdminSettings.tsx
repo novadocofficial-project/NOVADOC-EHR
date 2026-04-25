@@ -24,6 +24,7 @@ import {
   MapPin,
   Monitor,
   Package,
+  Pill,
   Plus,
   Receipt,
   Search,
@@ -57,6 +58,7 @@ import { TemplateManagerModule } from "@/pages/TemplateManagerModule";
 import { ClinicalLibrariesModule } from "@/pages/ClinicalLibrariesModule";
 import { ClinicalGoalsLibraryModule } from "@/pages/ClinicalGoalsLibraryModule";
 import { PermissionsModule } from "@/pages/PermissionsModule";
+import { FormularyManagementModule } from "@/pages/FormularyManagementModule";
 import { LabCatalogModule, SEED_SECTIONS as LAB_SEED_SECTIONS, SEED_PROVIDERS as LAB_SEED_PROVIDERS, type LabSection, type LabProvider } from "@/pages/LabCatalogModule";
 import { ProcedureCatalogModule, INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS, type ProcedureSection, type ProcedurePartner } from "@/pages/ProcedureCatalogModule";
 import { QueueModule } from "@/pages/QueueModule";
@@ -180,6 +182,7 @@ type ActiveModule =
   | "lab-master" | "lab-providers"
   | "proc-master" | "proc-partners"
   | "permissions" | "signing-rules"
+  | "formulary-catalogue" | "formulary-defaults"
   | "users-counters";
 
 export function AdminSettings() {
@@ -198,6 +201,7 @@ export function AdminSettings() {
     clinicalLibraries: false,
     labCatalog: false,
     procedureCatalog: false,
+    formulary: false,
     permissions: false,
     users: false,
   });
@@ -564,6 +568,23 @@ export function AdminSettings() {
               </div>
             )}
 
+            {/* ── Formulary Management Group ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("formulary")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Pill className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Formulary</span>
+              {navExpanded.formulary ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.formulary && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("formulary-catalogue", <Pill className="h-3.5 w-3.5" />, "Medicine Catalogue")}
+                {subNavItem("formulary-defaults",  <Tag className="h-3.5 w-3.5" />,  "Prescription Defaults")}
+              </div>
+            )}
+
             {/* ── Permissions & Security Group ── */}
             <button
               type="button"
@@ -600,7 +621,7 @@ export function AdminSettings() {
         </aside>
 
         {/* Right Content */}
-        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","care-plan-library","goals-library","referral-destinations","comorbidities","permissions","signing-rules"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
+        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","care-plan-library","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
 
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
@@ -715,6 +736,10 @@ export function AdminSettings() {
 
           {(activeModule === "permissions" || activeModule === "signing-rules") && (
             <PermissionsModule initialTab={activeModule === "signing-rules" ? "signing-rules" : "role-access"} />
+          )}
+
+          {(activeModule === "formulary-catalogue" || activeModule === "formulary-defaults") && (
+            <FormularyManagementModule initialTab={activeModule === "formulary-defaults" ? "defaults" : "catalogue"} />
           )}
 
           {activeModule === "departments" && (
