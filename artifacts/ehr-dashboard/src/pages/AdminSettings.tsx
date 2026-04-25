@@ -37,6 +37,7 @@ import {
   Tag,
   Target,
   Ticket,
+  Truck,
   Trash2,
   UserRound,
   Users,
@@ -64,6 +65,7 @@ import { FormularyManagementModule } from "@/pages/FormularyManagementModule";
 import { FormularyPartnersModule } from "@/pages/FormularyPartnersModule";
 import { ImagingCatalogModule } from "@/pages/ImagingCatalogModule";
 import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
+import { ConsumablesModule } from "@/pages/ConsumablesModule";
 import { LabCatalogModule, SEED_SECTIONS as LAB_SEED_SECTIONS, SEED_PROVIDERS as LAB_SEED_PROVIDERS, type LabSection, type LabProvider } from "@/pages/LabCatalogModule";
 import { ProcedureCatalogModule, INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS, type ProcedureSection, type ProcedurePartner } from "@/pages/ProcedureCatalogModule";
 import { QueueModule } from "@/pages/QueueModule";
@@ -189,6 +191,7 @@ type ActiveModule =
   | "permissions" | "signing-rules"
   | "formulary-catalogue" | "formulary-defaults" | "formulary-partners"
   | "imaging-tests" | "imaging-reasons" | "imaging-partners"
+  | "consumables-master" | "consumables-providers"
   | "users-counters";
 
 export function AdminSettings() {
@@ -209,6 +212,7 @@ export function AdminSettings() {
     procedureCatalog: false,
     formulary: false,
     imagingCatalog: false,
+    consumables: false,
     permissions: false,
     users: false,
   });
@@ -631,6 +635,23 @@ export function AdminSettings() {
               </div>
             )}
 
+            {/* ── Consumables Group ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("consumables")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Package className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Consumables</span>
+              {navExpanded.consumables ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.consumables && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("consumables-master",    <Package className="h-3.5 w-3.5" />, "Consumable Items")}
+                {subNavItem("consumables-providers", <Truck className="h-3.5 w-3.5" />,   "Consumable Providers")}
+              </div>
+            )}
+
             {/* ── Permissions & Security Group ── */}
             <button
               type="button"
@@ -667,7 +688,7 @@ export function AdminSettings() {
         </aside>
 
         {/* Right Content */}
-        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","care-plan-library","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","formulary-partners","imaging-tests","imaging-reasons","imaging-partners"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
+        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","care-plan-library","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","formulary-partners","imaging-tests","imaging-reasons","imaging-partners","consumables-master","consumables-providers"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
 
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
@@ -795,6 +816,10 @@ export function AdminSettings() {
 
           {(activeModule === "imaging-tests" || activeModule === "imaging-reasons" || activeModule === "imaging-partners") && (
             <ImagingCatalogModule initialTab={activeModule === "imaging-reasons" ? "reasons" : activeModule === "imaging-partners" ? "partners" : "tests"} />
+          )}
+
+          {(activeModule === "consumables-master" || activeModule === "consumables-providers") && (
+            <ConsumablesModule initialTab={activeModule === "consumables-providers" ? "providers" : "items"} />
           )}
 
           {activeModule === "departments" && (
