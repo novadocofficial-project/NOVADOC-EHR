@@ -46,14 +46,13 @@ function exportToCSV(
 
   if (hasPivot) {
     const headers = [
-      "Service Name", "Service Type", "Dept", "Base Price (Rs.)", "Taxable", "Status",
+      "Service Name", "Service Type", "Dept", "Taxable", "Status",
       ...providers.map(p => `${p.name} (Rs.)`),
     ];
     const rows = services.map(s => [
       s.name,
       getSTName(s.serviceTypeId),
       getDeptName(s.departmentId),
-      s.basePrice != null ? s.basePrice : "",
       s.taxable ? "Yes" : "No",
       s.active ? "Active" : "Inactive",
       ...providers.map(p => s.providerPrices?.[p.id] ?? ""),
@@ -61,10 +60,10 @@ function exportToCSV(
     const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(",")).join("\n");
     triggerDownload(csv, "service_pricing.csv");
   } else {
-    const headers = ["Service Name", "Service Type", "Dept", "Base Price (Rs.)", "Taxable", "Status", "Created"];
+    const headers = ["Service Name", "Service Type", "Dept", "Taxable", "Status", "Created"];
     const rows = services.map(s => [
       s.name, getSTName(s.serviceTypeId), getDeptName(s.departmentId),
-      s.basePrice, s.taxable ? "Yes" : "No", s.active ? "Active" : "Inactive", fmtDate(s.createdAt),
+      s.taxable ? "Yes" : "No", s.active ? "Active" : "Inactive", fmtDate(s.createdAt),
     ]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(",")).join("\n");
     triggerDownload(csv, "service_pricing.csv");
@@ -92,20 +91,19 @@ function exportToPrint(
   let tbody: string;
 
   if (hasPivot) {
-    thead = `<tr><th>Service Name</th><th>Type</th><th>Dept</th><th>Base Price</th><th>Taxable</th><th>Status</th>${
+    thead = `<tr><th>Service Name</th><th>Type</th><th>Dept</th><th>Taxable</th><th>Status</th>${
       providers.map(p => `<th>${p.name}</th>`).join("")
     }</tr>`;
     tbody = services.map(s => `<tr>
       <td>${s.name}</td><td>${getSTName(s.serviceTypeId)}</td><td>${getDeptName(s.departmentId)}</td>
-      <td>Rs. ${s.basePrice.toLocaleString()}</td><td>${s.taxable ? "Yes" : "No"}</td><td>${s.active ? "Active" : "Inactive"}</td>
+      <td>${s.taxable ? "Yes" : "No"}</td><td>${s.active ? "Active" : "Inactive"}</td>
       ${providers.map(p => `<td>${s.providerPrices?.[p.id] != null ? `Rs. ${s.providerPrices[p.id].toLocaleString()}` : "—"}</td>`).join("")}
     </tr>`).join("");
   } else {
-    thead = `<tr><th>Service Name</th><th>Type</th><th>Dept</th><th>Base Price</th><th>Taxable</th><th>Status</th><th>Created</th></tr>`;
+    thead = `<tr><th>Service Name</th><th>Type</th><th>Dept</th><th>Taxable</th><th>Status</th><th>Created</th></tr>`;
     tbody = services.map(s => `<tr>
       <td>${s.name}</td><td>${getSTName(s.serviceTypeId)}</td><td>${getDeptName(s.departmentId)}</td>
-      <td>Rs. ${s.basePrice.toLocaleString()}</td><td>${s.taxable ? "Yes" : "No"}</td>
-      <td>${s.active ? "Active" : "Inactive"}</td><td>${fmtDate(s.createdAt)}</td>
+      <td>${s.taxable ? "Yes" : "No"}</td><td>${s.active ? "Active" : "Inactive"}</td><td>${fmtDate(s.createdAt)}</td>
     </tr>`).join("");
   }
 
@@ -173,7 +171,6 @@ function PriceCell({
 type FormState = {
   name: string;
   serviceTypeId: string;
-  basePrice: string;
   departmentId: string;
   subDepartmentId: string;
   active: boolean;
@@ -181,7 +178,7 @@ type FormState = {
 };
 
 function blankForm(): FormState {
-  return { name: "", serviceTypeId: "", basePrice: "", departmentId: "", subDepartmentId: "", active: true, taxable: false };
+  return { name: "", serviceTypeId: "", departmentId: "", subDepartmentId: "", active: true, taxable: false };
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -247,7 +244,7 @@ export function ServicePricingModule({
   const openAdd = () => { setForm(blankForm()); setEditingId(null); setShowForm(true); };
   const openEdit = (s: Service) => {
     setForm({
-      name: s.name, serviceTypeId: s.serviceTypeId, basePrice: String(s.basePrice),
+      name: s.name, serviceTypeId: s.serviceTypeId,
       departmentId: s.departmentId, subDepartmentId: s.subDepartmentId, active: s.active, taxable: s.taxable,
     });
     setEditingId(s.id);
@@ -256,16 +253,14 @@ export function ServicePricingModule({
 
   const saveForm = () => {
     const name = form.name.trim();
-    const basePriceRaw = parseFloat(form.basePrice);
-    const basePrice = isNaN(basePriceRaw) ? 0 : basePriceRaw;
     if (!name || !form.serviceTypeId || !form.departmentId) return;
     if (editingId) {
       setServices(prev => prev.map(s => s.id === editingId
-        ? { ...s, name, serviceTypeId: form.serviceTypeId, basePrice, departmentId: form.departmentId, subDepartmentId: form.subDepartmentId, active: form.active, taxable: form.taxable }
+        ? { ...s, name, serviceTypeId: form.serviceTypeId, departmentId: form.departmentId, subDepartmentId: form.subDepartmentId, active: form.active, taxable: form.taxable }
         : s));
     } else {
       const newS: Service = {
-        id: `svc-${Date.now()}`, name, serviceTypeId: form.serviceTypeId, basePrice,
+        id: `svc-${Date.now()}`, name, serviceTypeId: form.serviceTypeId, basePrice: 0,
         providerPrices: {},
         departmentId: form.departmentId, subDepartmentId: form.subDepartmentId,
         active: form.active, taxable: form.taxable, createdAt: new Date().toISOString(),
@@ -307,7 +302,7 @@ export function ServicePricingModule({
             <p className="mt-0.5 text-sm text-slate-500">
               {hasPivot
                 ? "Compare provider prices side-by-side. Click any price cell to edit inline."
-                : "Manage all billable services and their base prices."}
+                : "Manage all billable services. Switch to a service type tab to configure provider prices."}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -419,18 +414,6 @@ export function ServicePricingModule({
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-semibold text-slate-600">Base / Self-Pay Price (Rs.) <span className="text-slate-400 font-normal">(optional)</span></Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">Rs.</span>
-                <Input
-                  type="number" min={0} placeholder="0"
-                  value={form.basePrice}
-                  onChange={e => setForm(f => ({ ...f, basePrice: e.target.value }))}
-                  className="pl-10"
-                />
-              </div>
-            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label className="text-xs font-semibold text-slate-600">Department <span className="text-rose-500">*</span></Label>
@@ -512,14 +495,14 @@ function FlatTable({
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="grid grid-cols-[2fr_1fr_1.5fr_1fr_80px_120px_140px_80px] items-center border-b border-slate-100 bg-slate-50/80 px-5 py-2.5">
-        {["Service Name", "Service Type", "Dept / Sub-Dept", "Base Price", "Taxable", "Status", "Created", ""].map(h => (
+      <div className="grid grid-cols-[2fr_1fr_1.5fr_80px_120px_140px_80px] items-center border-b border-slate-100 bg-slate-50/80 px-5 py-2.5">
+        {["Service Name", "Service Type", "Dept / Sub-Dept", "Taxable", "Status", "Created", ""].map(h => (
           <span key={h} className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{h}</span>
         ))}
       </div>
       <div className="divide-y divide-slate-100">
         {services.map(s => (
-          <div key={s.id} className="grid grid-cols-[2fr_1fr_1.5fr_1fr_80px_120px_140px_80px] items-center px-5 py-3 hover:bg-slate-50/60 transition-colors">
+          <div key={s.id} className="grid grid-cols-[2fr_1fr_1.5fr_80px_120px_140px_80px] items-center px-5 py-3 hover:bg-slate-50/60 transition-colors">
             <span className="font-semibold text-slate-800 truncate pr-2">{s.name}</span>
             <Badge variant="outline" className="w-fit text-[10px] font-semibold text-[#4982CF] border-[#4982CF]/30 bg-[#4982CF]/5">
               {getSTName(s.serviceTypeId)}
@@ -528,7 +511,6 @@ function FlatTable({
               <p className="truncate text-xs font-medium text-slate-700">{getDeptName(s.departmentId)}</p>
               {s.subDepartmentId && <p className="truncate text-[10px] text-slate-400">{getSubDeptName(s.departmentId, s.subDepartmentId)}</p>}
             </div>
-            <span className="text-sm font-bold text-slate-800">Rs. {s.basePrice.toLocaleString()}</span>
             <Badge className={s.taxable ? "bg-amber-500/10 text-amber-700 border-amber-200 text-[10px] w-fit" : "bg-slate-100 text-slate-500 border-slate-200 text-[10px] w-fit"}>
               {s.taxable ? "Yes" : "No"}
             </Badge>
@@ -580,7 +562,7 @@ function PivotTable({
 
   const MIN_COL_W = 120;
   const providerColsStyle = `repeat(${providers.length}, minmax(${MIN_COL_W}px, 1fr))`;
-  const gridTemplate = `minmax(200px,2fr) 90px 70px 110px ${providerColsStyle} 80px`;
+  const gridTemplate = `minmax(200px,2fr) 70px 110px ${providerColsStyle} 80px`;
 
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -590,7 +572,6 @@ function PivotTable({
         style={{ gridTemplateColumns: gridTemplate }}
       >
         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Service Name</span>
-        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Base Price</span>
         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Taxable</span>
         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Status</span>
         {providers.map(p => (
@@ -613,11 +594,6 @@ function PivotTable({
               <p className="font-semibold text-sm text-slate-800 truncate">{s.name}</p>
               <p className="text-[10px] text-slate-400">{getSTName(s.serviceTypeId)}</p>
             </div>
-
-            {/* Base price */}
-            <span className="text-xs font-bold text-slate-700">
-              {s.basePrice != null ? `Rs. ${s.basePrice.toLocaleString()}` : "—"}
-            </span>
 
             {/* Taxable */}
             <Badge className={s.taxable ? "bg-amber-500/10 text-amber-700 border-amber-200 text-[10px] w-fit" : "bg-slate-100 text-slate-500 border-slate-200 text-[10px] w-fit"}>
