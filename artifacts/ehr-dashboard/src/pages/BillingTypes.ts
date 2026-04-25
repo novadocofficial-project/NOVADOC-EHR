@@ -56,10 +56,6 @@ export const INITIAL_SERVICE_TYPES: ServiceType[] = [
 
 export const INITIAL_SERVICES: Service[] = [
   // ── Consultation ──────────────────────────────────────────────────────────
-  { id: "svc-1",  name: "General Consultation",       serviceTypeId: "st-1", basePrice: 500,   departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
-  { id: "svc-2",  name: "Specialist Consultation",    serviceTypeId: "st-1", basePrice: 1200,  departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
-  { id: "svc-3",  name: "Follow-up Consultation",     serviceTypeId: "st-1", basePrice: 300,   departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
-  { id: "svc-4",  name: "Emergency Consultation",     serviceTypeId: "st-1", basePrice: 2000,  departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
   { id: "svc-5",  name: "Tele-Consultation",          serviceTypeId: "st-1", basePrice: 400,   departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
   { id: "svc-6",  name: "Pediatric Consultation",     serviceTypeId: "st-1", basePrice: 800,   departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
   { id: "svc-7",  name: "Psychiatric Consultation",   serviceTypeId: "st-1", basePrice: 1500,  departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
