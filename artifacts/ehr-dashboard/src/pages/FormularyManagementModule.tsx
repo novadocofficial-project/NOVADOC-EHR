@@ -236,7 +236,7 @@ function MedicineCatalogueTab() {
 
   function exportCSV() {
     const rows = [["Generic","Category","Allergy Keywords","Brand","Strength","Favourite","Enabled"]];
-    generics.filter(g => !g.deleted).forEach(g => {
+    generics.filter(g => g.enabled && !g.deleted).forEach(g => {
       if (g.brands.length === 0) {
         rows.push([g.generic, g.category, g.allergyKeywords.join("; "), "", "", "", g.enabled ? "Yes" : "No"]);
       } else {
@@ -692,6 +692,7 @@ interface Props { initialTab?: TabKey; }
 
 export function FormularyManagementModule({ initialTab = "catalogue" }: Props) {
   const [tab, setTab] = useState<TabKey>(initialTab);
+  useEffect(() => { setTab(initialTab); }, [initialTab]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
