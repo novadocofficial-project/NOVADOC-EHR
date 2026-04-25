@@ -43,7 +43,6 @@ export interface ImagingPartner {
   active:        boolean;
   selectedTests: string[];
   pricing:       Record<string, string>;
-  doctorRate:    Record<string, string>;
 }
 
 // ─── Seed data (mirrors ImagingSection.tsx IMAGING_TESTS / REASON_TEMPLATES) ───
@@ -117,14 +116,12 @@ const SEED_PARTNERS: ImagingPartner[] = [
   {
     id: "ip1", name: "In-House Radiology", type: "Internal Radiology", contact: "", active: true,
     selectedTests: ["xray-chest","xray-abdomen","xray-knee","us-abdomen","us-thyroid","echo-2d"],
-    pricing:    { "xray-chest": "800", "xray-abdomen": "900", "xray-knee": "700", "us-abdomen": "1500", "us-thyroid": "1200", "echo-2d": "3500" },
-    doctorRate: { "xray-chest": "0",   "xray-abdomen": "0",   "xray-knee": "0",   "us-abdomen": "400",  "us-thyroid": "350",  "echo-2d": "1000" },
+    pricing: { "xray-chest": "800", "xray-abdomen": "900", "xray-knee": "700", "us-abdomen": "1500", "us-thyroid": "1200", "echo-2d": "3500" },
   },
   {
     id: "ip2", name: "City Diagnostics Centre", type: "External Centre", contact: "0300-9876543", active: true,
     selectedTests: ["ct-brain","ct-chest","ct-abdo-pelvis","mri-brain","mri-knee","nuc-pet-ct"],
-    pricing:    { "ct-brain": "7000", "ct-chest": "8000", "ct-abdo-pelvis": "9000", "mri-brain": "12000", "mri-knee": "10000", "nuc-pet-ct": "35000" },
-    doctorRate: { "ct-brain": "1500", "ct-chest": "1500", "ct-abdo-pelvis": "2000", "mri-brain": "2500",  "mri-knee": "2000",  "nuc-pet-ct": "5000"  },
+    pricing: { "ct-brain": "7000", "ct-chest": "8000", "ct-abdo-pelvis": "9000", "mri-brain": "12000", "mri-knee": "10000", "nuc-pet-ct": "35000" },
   },
 ];
 
@@ -614,7 +611,6 @@ function ImagingPartnersTab({
   });
   const [selected,   setSelected]   = useState<string[]>([]);
   const [pricing,    setPricing]    = useState<Record<string, string>>({});
-  const [doctorRate, setDoctorRate] = useState<Record<string, string>>({});
   const [deleteId,   setDeleteId]   = useState<string | null>(null);
   const [expandId,   setExpandId]   = useState<string | null>(null);
   const [importPartnerId, setImportPartnerId] = useState<string | null>(null);
@@ -627,12 +623,12 @@ function ImagingPartnersTab({
 
   function openNew() {
     setForm({ name: "", type: "Internal Radiology", contact: "" });
-    setSelected([]); setPricing({}); setDoctorRate({}); setEditId(null); setStep(1); setModalSearch(""); setShowModal(true);
+    setSelected([]); setPricing({}); setEditId(null); setStep(1); setModalSearch(""); setShowModal(true);
   }
 
   function openEdit(p: ImagingPartner) {
     setForm({ name: p.name, type: p.type, contact: p.contact });
-    setSelected([...p.selectedTests]); setPricing({ ...p.pricing }); setDoctorRate({ ...p.doctorRate });
+    setSelected([...p.selectedTests]); setPricing({ ...p.pricing });
     setEditId(p.id); setStep(1); setModalSearch(""); setShowModal(true);
   }
 
@@ -640,7 +636,7 @@ function ImagingPartnersTab({
     const data: ImagingPartner = {
       id: editId ?? uid(), name: form.name.trim(), type: form.type, contact: form.contact,
       active: editId ? (partners.find(p => p.id === editId)?.active ?? true) : true,
-      selectedTests: selected, pricing, doctorRate,
+      selectedTests: selected, pricing,
     };
     if (editId) setPartners(ps => ps.map(p => p.id === editId ? data : p));
     else setPartners(ps => [...ps, data]);
@@ -652,15 +648,14 @@ function ImagingPartnersTab({
     if (!partner) return;
     const lines = importText.trim().split("\n").map(l => l.split(",").map(s => s.trim().replace(/^"|"$/g, "")));
     const newPricing = { ...partner.pricing };
-    const newDr      = { ...partner.doctorRate };
     const matched: string[] = [];
     const unmatched: string[] = [];
-    lines.forEach(([name, price, dr]) => {
+    lines.forEach(([name, price]) => {
       const test = activeTests.find(t => t.name.toLowerCase() === name?.toLowerCase());
-      if (test && price) { newPricing[test.id] = price; if (dr) newDr[test.id] = dr; matched.push(name); }
+      if (test && price) { newPricing[test.id] = price; matched.push(name); }
       else if (name) unmatched.push(name);
     });
-    setPartners(ps => ps.map(p => p.id === partnerId ? { ...p, pricing: newPricing, doctorRate: newDr } : p));
+    setPartners(ps => ps.map(p => p.id === partnerId ? { ...p, pricing: newPricing } : p));
     setImportResult({ matched: matched.length, unmatched });
     setImportText("");
   }
@@ -734,7 +729,7 @@ function ImagingPartnersTab({
                   </div>
                   {importPartnerId === p.id && (
                     <div className="px-4 py-3 bg-blue-50/40 border-b border-[#4982CF]/20 space-y-2">
-                      <p className="text-[10px] text-slate-500">Paste CSV: <span className="font-mono">Test Name, Price, Doctor Rate</span> (one per line)</p>
+                      <p className="text-[10px] text-slate-500">Paste CSV: <span className="font-mono">Test Name, Price</span> (one per line)</p>
                       <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={4}
                         className="w-full text-xs font-mono border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-[#4982CF] resize-none" />
                       <div className="flex items-center gap-2">
@@ -755,7 +750,6 @@ function ImagingPartnersTab({
                           <th className="text-left px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Test</th>
                           <th className="text-left px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Category</th>
                           <th className="text-right px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400 w-32">Price (PKR)</th>
-                          <th className="text-right px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400 w-32">Doctor Rate</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -774,17 +768,10 @@ function ImagingPartnersTab({
                                 placeholder="0.00" className="h-6 text-xs text-right w-28 ml-auto"
                               />
                             </td>
-                            <td className="px-4 py-1.5 text-right">
-                              <Input
-                                value={p.doctorRate[t.id] ?? ""}
-                                onChange={e => setPartners(ps => ps.map(x => x.id === p.id ? { ...x, doctorRate: { ...x.doctorRate, [t.id]: e.target.value } } : x))}
-                                placeholder="0.00" className="h-6 text-xs text-right w-28 ml-auto"
-                              />
-                            </td>
                           </tr>
                         ))}
                         {p.selectedTests.length === 0 && (
-                          <tr><td colSpan={4} className="px-4 py-4 text-center text-slate-300 text-xs">No tests selected for this partner</td></tr>
+                          <tr><td colSpan={3} className="px-4 py-4 text-center text-slate-300 text-xs">No tests selected for this partner</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -884,17 +871,10 @@ function ImagingPartnersTab({
                             className="accent-[#4982CF]" />
                           <span className="flex-1 text-xs text-slate-700">{t.name}</span>
                           {selected.includes(t.id) && (
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-1">
-                                <span className="text-[10px] text-slate-400">PKR</span>
-                                <Input value={pricing[t.id] ?? ""} onChange={e => setPricing(p => ({ ...p, [t.id]: e.target.value }))}
-                                  placeholder="Price" className="h-6 w-20 text-xs text-right" />
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <span className="text-[10px] text-slate-400">Dr.</span>
-                                <Input value={doctorRate[t.id] ?? ""} onChange={e => setDoctorRate(p => ({ ...p, [t.id]: e.target.value }))}
-                                  placeholder="Rate" className="h-6 w-20 text-xs text-right" />
-                              </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-slate-400">PKR</span>
+                              <Input value={pricing[t.id] ?? ""} onChange={e => setPricing(p => ({ ...p, [t.id]: e.target.value }))}
+                                placeholder="Price" className="h-6 w-20 text-xs text-right" />
                             </div>
                           )}
                         </div>

@@ -41,7 +41,6 @@ export interface ProcedurePartner {
   active: boolean;
   selectedProcedures: string[];
   pricing: Record<string, string>;
-  doctorRate: Record<string, string>;
 }
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
@@ -80,14 +79,12 @@ const SEED_PARTNERS: ProcedurePartner[] = [
   {
     id: "pp1", name: "In-Clinic (Main)", type: "Internal Clinic", contact: "", active: true,
     selectedProcedures: ["pr1","pr2","pr4","pr5","pr6","pr7"],
-    pricing:    { pr1: "1500", pr2: "500", pr4: "800", pr5: "1200", pr6: "400", pr7: "1800" },
-    doctorRate: { pr1: "600",  pr2: "0",   pr4: "0",   pr5: "500",  pr6: "0",   pr7: "700"  },
+    pricing: { pr1: "1500", pr2: "500", pr4: "800", pr5: "1200", pr6: "400", pr7: "1800" },
   },
   {
     id: "pp2", name: "Surgical Associates", type: "External Provider", contact: "0300-1234567", active: true,
     selectedProcedures: ["pr7","pr8","pr9"],
-    pricing:    { pr7: "2000", pr8: "3500", pr9: "1200" },
-    doctorRate: { pr7: "800",  pr8: "1400", pr9: "500"  },
+    pricing: { pr7: "2000", pr8: "3500", pr9: "1200" },
   },
 ];
 
@@ -275,7 +272,6 @@ function ProcedurePartners({
   const [form, setForm]           = useState<{ name: string; type: PartnerType; contact: string }>({ name: "", type: "Internal Clinic", contact: "" });
   const [selected, setSelected]   = useState<string[]>([]);
   const [pricing, setPricing]     = useState<Record<string, string>>({});
-  const [doctorRate, setDoctorRate] = useState<Record<string, string>>({});
   const [deleteId, setDeleteId]   = useState<string | null>(null);
   const [expandId, setExpandId]   = useState<string | null>(null);
   const [importPartnerId, setImportPartnerId] = useState<string | null>(null);
@@ -285,15 +281,15 @@ function ProcedurePartners({
   const allProcs = sections.flatMap(s => s.procedures);
 
   function openNew() {
-    setForm({ name: "", type: "Internal Clinic", contact: "" }); setSelected([]); setPricing({}); setDoctorRate({}); setEditId(null); setStep(1); setShowModal(true);
+    setForm({ name: "", type: "Internal Clinic", contact: "" }); setSelected([]); setPricing({}); setEditId(null); setStep(1); setShowModal(true);
   }
 
   function openEdit(p: ProcedurePartner) {
-    setForm({ name: p.name, type: p.type, contact: p.contact }); setSelected([...p.selectedProcedures]); setPricing({ ...p.pricing }); setDoctorRate({ ...p.doctorRate }); setEditId(p.id); setStep(1); setShowModal(true);
+    setForm({ name: p.name, type: p.type, contact: p.contact }); setSelected([...p.selectedProcedures]); setPricing({ ...p.pricing }); setEditId(p.id); setStep(1); setShowModal(true);
   }
 
   function save() {
-    const data: ProcedurePartner = { id: editId ?? uid(), name: form.name.trim(), type: form.type, contact: form.contact, active: true, selectedProcedures: selected, pricing, doctorRate };
+    const data: ProcedurePartner = { id: editId ?? uid(), name: form.name.trim(), type: form.type, contact: form.contact, active: true, selectedProcedures: selected, pricing };
     if (editId) setPartners(ps => ps.map(p => p.id === editId ? data : p));
     else setPartners(ps => [...ps, data]);
     setShowModal(false);
@@ -304,15 +300,14 @@ function ProcedurePartners({
     if (!partner) return;
     const lines = importText.trim().split("\n").map(l => l.split(",").map(s => s.trim().replace(/^"|"$/g, "")));
     const newPricing = { ...partner.pricing };
-    const newDr = { ...partner.doctorRate };
     const matched: string[] = [];
     const unmatched: string[] = [];
-    lines.forEach(([name, price, dr]) => {
+    lines.forEach(([name, price]) => {
       const proc = allProcs.find(p => p.name.toLowerCase() === name?.toLowerCase());
-      if (proc && price) { newPricing[proc.id] = price; if (dr) newDr[proc.id] = dr; matched.push(name); }
+      if (proc && price) { newPricing[proc.id] = price; matched.push(name); }
       else if (name) unmatched.push(name);
     });
-    setPartners(ps => ps.map(p => p.id === partnerId ? { ...p, pricing: newPricing, doctorRate: newDr } : p));
+    setPartners(ps => ps.map(p => p.id === partnerId ? { ...p, pricing: newPricing } : p));
     setImportResult({ matched: matched.length, unmatched });
     setImportText("");
   }
@@ -360,7 +355,7 @@ function ProcedurePartners({
                 </div>
                 {importPartnerId === p.id && (
                   <div className="px-4 py-3 bg-blue-50/40 border-b border-[#4982CF]/20 space-y-2">
-                    <p className="text-[10px] text-slate-500">Paste CSV: <span className="font-mono">Procedure Name, Price, Doctor Rate</span> (one per line)</p>
+                    <p className="text-[10px] text-slate-500">Paste CSV: <span className="font-mono">Procedure Name, Price</span> (one per line)</p>
                     <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={4}
                       className="w-full text-xs font-mono border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-[#4982CF] resize-none" />
                     <div className="flex items-center gap-2">
@@ -375,7 +370,6 @@ function ProcedurePartners({
                     <thead><tr className="bg-slate-50 border-b border-slate-100 sticky top-0">
                       <th className="text-left px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Procedure</th>
                       <th className="text-right px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400 w-32">Price (PKR)</th>
-                      <th className="text-right px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400 w-32">Doctor Rate</th>
                     </tr></thead>
                     <tbody>
                       {sections.flatMap(s => s.procedures.filter(pr => p.selectedProcedures.includes(pr.id)).map(pr => (
@@ -385,13 +379,9 @@ function ProcedurePartners({
                             <Input value={p.pricing[pr.id] ?? ""} onChange={e => setPartners(ps => ps.map(x => x.id === p.id ? { ...x, pricing: { ...x.pricing, [pr.id]: e.target.value } } : x))}
                               placeholder="0.00" className="h-6 text-xs text-right w-28 ml-auto" />
                           </td>
-                          <td className="px-4 py-1.5 text-right">
-                            <Input value={p.doctorRate[pr.id] ?? ""} onChange={e => setPartners(ps => ps.map(x => x.id === p.id ? { ...x, doctorRate: { ...x.doctorRate, [pr.id]: e.target.value } } : x))}
-                              placeholder="0.00" className="h-6 text-xs text-right w-28 ml-auto" />
-                          </td>
                         </tr>
                       )))}
-                      {p.selectedProcedures.length === 0 && <tr><td colSpan={3} className="px-4 py-4 text-center text-slate-300 text-xs">No procedures selected</td></tr>}
+                      {p.selectedProcedures.length === 0 && <tr><td colSpan={2} className="px-4 py-4 text-center text-slate-300 text-xs">No procedures selected</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -475,15 +465,9 @@ function ProcedurePartners({
                         <span className="flex-1 text-xs text-slate-700">{pr.name}</span>
                         <span className="text-[10px] text-slate-400 font-mono">{pr.cptCode}</span>
                         {selected.includes(pr.id) && (
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-slate-400">PKR</span>
-                              <Input value={pricing[pr.id] ?? ""} onChange={e => setPricing(p => ({ ...p, [pr.id]: e.target.value }))} placeholder="Price" className="h-6 w-20 text-xs text-right" />
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-slate-400">Dr.</span>
-                              <Input value={doctorRate[pr.id] ?? ""} onChange={e => setDoctorRate(p => ({ ...p, [pr.id]: e.target.value }))} placeholder="Rate" className="h-6 w-20 text-xs text-right" />
-                            </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-slate-400">PKR</span>
+                            <Input value={pricing[pr.id] ?? ""} onChange={e => setPricing(p => ({ ...p, [pr.id]: e.target.value }))} placeholder="Price" className="h-6 w-20 text-xs text-right" />
                           </div>
                         )}
                       </div>
