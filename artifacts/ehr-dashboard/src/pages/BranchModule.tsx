@@ -126,7 +126,7 @@ function LabAssignmentTab({ branches, labProviders, labSections, onNavigate }: {
               <div className="flex-1 text-left">
                 <p className="text-sm font-bold text-slate-800">{branch.name}</p>
                 <p className="text-[10px] text-slate-400">
-                  {enabledSet.size} of {labProviders.length} providers enabled
+                  {enabledSet.size} of {activeProviders.length} providers enabled
                   {prim && ` · Primary: ${labProviders.find(p => p.id === prim)?.name ?? "—"}`}
                 </p>
               </div>
@@ -153,7 +153,6 @@ function LabAssignmentTab({ branches, labProviders, labSections, onNavigate }: {
                         <div>
                           <p className="text-xs font-medium text-slate-700">{prov.name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
-                            {!prov.active && <span className="text-[9px] text-amber-500">Inactive in catalog</span>}
                             {prov.selectedTests.length > 0 && (
                               <button onClick={() => setViewPricingKey(showPricing ? null : pricingKey)}
                                 className="text-[9px] font-bold text-[#4982CF] hover:opacity-70 flex items-center gap-0.5">
@@ -274,7 +273,7 @@ function ProcedurePartnersTab({ branches, procPartners, procSections, onNavigate
               <div className="flex-1 text-left">
                 <p className="text-sm font-bold text-slate-800">{branch.name}</p>
                 <p className="text-[10px] text-slate-400">
-                  {enabledSet.size} of {procPartners.length} partners enabled
+                  {enabledSet.size} of {activePartners.length} partners enabled
                   {prim && ` · Primary: ${procPartners.find(p => p.id === prim)?.name ?? "—"}`}
                 </p>
               </div>
@@ -302,7 +301,6 @@ function ProcedurePartnersTab({ branches, procPartners, procSections, onNavigate
                         <div>
                           <p className="text-xs font-medium text-slate-700">{partner.name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
-                            {!partner.active && <span className="text-[9px] text-amber-500">Inactive in catalog</span>}
                             {partner.selectedProcedures.length > 0 && (
                               <button onClick={() => setViewPricingKey(showPricing ? null : pricingKey)}
                                 className="text-[9px] font-bold text-[#4982CF] hover:opacity-70 flex items-center gap-0.5">
@@ -323,7 +321,7 @@ function ProcedurePartnersTab({ branches, procPartners, procSections, onNavigate
                             className="accent-[#4982CF] h-4 w-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40" />
                         </div>
                       </div>
-                      {partner.type === "External Provider" && isEnabled && (
+                      {partner.type === "External Provider" && (
                         <div className="mx-4 mb-2">
                           <input
                             value={notes[noteKey] ?? ""}
