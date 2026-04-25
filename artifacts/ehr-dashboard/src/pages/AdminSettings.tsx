@@ -721,7 +721,17 @@ export function AdminSettings() {
             <ServiceTypesModule serviceTypes={serviceTypes} setServiceTypes={setServiceTypes} />
           )}
           {activeModule === "service-pricing" && (
-            <ServicePricingModule serviceTypes={serviceTypes} services={services} setServices={setServices} departments={departments} />
+            <ServicePricingModule
+              serviceTypes={serviceTypes}
+              services={services}
+              setServices={setServices}
+              departments={departments}
+              labProviders={labProviders}
+              imagingPartners={imagingPartners}
+              pharmacyPartners={pharmacyPartners}
+              consumableProviders={consumableProviders}
+              procPartners={procPartners}
+            />
           )}
           {activeModule === "corporate-pricing" && (
             <CorporatePricingModule serviceTypes={serviceTypes} services={services} />
