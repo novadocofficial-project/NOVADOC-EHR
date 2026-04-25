@@ -65,29 +65,34 @@ function fmt12(t: string) {
 
 // ─── Lab Assignment Tab ────────────────────────────────────────────────────────
 
-function LabAssignmentTab({ branches, labProviders, labSections }: { branches: Branch[]; labProviders: LabProvider[]; labSections: LabSection[] }) {
+function LabAssignmentTab({ branches, labProviders, labSections, onNavigate }: { branches: Branch[]; labProviders: LabProvider[]; labSections: LabSection[]; onNavigate?: (section: string) => void }) {
+  const activeProviders = labProviders.filter(p => p.active);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ "br-1": true });
   const [enabled, setEnabled]   = useState<Record<string, Set<string>>>(() => {
     const init: Record<string, Set<string>> = {};
-    branches.forEach(b => { init[b.id] = new Set(labProviders.filter(p => p.active).map(p => p.id)); });
+    branches.forEach(b => { init[b.id] = new Set(activeProviders.map(p => p.id)); });
     return init;
   });
   const [primary, setPrimary] = useState<Record<string, string | null>>(() => {
     const init: Record<string, string | null> = {};
-    const firstActive = labProviders.find(p => p.active);
-    branches.forEach(b => { init[b.id] = firstActive?.id ?? null; });
+    branches.forEach(b => { init[b.id] = activeProviders[0]?.id ?? null; });
     return init;
   });
   const [viewPricingKey, setViewPricingKey] = useState<string | null>(null);
 
   const allTests = labSections.flatMap(s => s.tests);
 
-  if (labProviders.length === 0) {
+  if (activeProviders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-slate-300">
         <FlaskConical className="h-12 w-12 mb-3" />
-        <p className="text-sm font-semibold text-slate-400">No lab providers configured</p>
-        <p className="text-xs text-slate-400 mt-1">Go to <strong>Lab Catalog → Lab Providers</strong> to add providers first.</p>
+        <p className="text-sm font-semibold text-slate-400">No lab providers configured yet</p>
+        <p className="text-xs text-slate-400 mt-1 mb-3">Add active providers in the Lab Catalog first.</p>
+        {onNavigate && (
+          <Button variant="outline" className="text-xs h-8 gap-1.5 text-[#4982CF] border-[#4982CF]/30" onClick={() => onNavigate("lab-providers")}>
+            <FlaskConical className="h-3.5 w-3.5" /> Go to Lab Providers
+          </Button>
+        )}
       </div>
     );
   }
@@ -133,18 +138,18 @@ function LabAssignmentTab({ branches, labProviders, labSections }: { branches: B
 
             {isExpanded && (
               <div className="border-t border-slate-100">
-                <div className="grid grid-cols-[1fr_90px_80px_80px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-4 py-2 bg-slate-50 border-b border-slate-100">
-                  <span>Provider</span><span></span><span className="text-center">Enabled</span><span className="text-center">Primary</span>
+                <div className="grid grid-cols-[1fr_80px_80px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-4 py-2 bg-slate-50 border-b border-slate-100">
+                  <span>Provider</span><span className="text-center">Enabled</span><span className="text-center">Primary</span>
                 </div>
-                {labProviders.map(prov => {
+                {activeProviders.map(prov => {
                   const isEnabled = enabledSet.has(prov.id);
                   const isPrimary = primary[branch.id] === prov.id;
                   const pricingKey = `${branch.id}:${prov.id}`;
                   const showPricing = viewPricingKey === pricingKey;
                   const pricedTests = prov.selectedTests.filter(tid => prov.pricing[tid]);
                   return (
-                    <div key={prov.id} className={`border-b border-slate-50 last:border-0 ${!prov.active ? "opacity-50" : ""}`}>
-                      <div className="grid grid-cols-[1fr_90px_80px_80px] items-center px-4 py-2.5">
+                    <div key={prov.id} className="border-b border-slate-50 last:border-0">
+                      <div className="grid grid-cols-[1fr_80px_80px] items-center px-4 py-2.5">
                         <div>
                           <p className="text-xs font-medium text-slate-700">{prov.name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
@@ -202,17 +207,17 @@ function LabAssignmentTab({ branches, labProviders, labSections }: { branches: B
 
 // ─── Procedure Partners Tab ───────────────────────────────────────────────────
 
-function ProcedurePartnersTab({ branches, procPartners, procSections }: { branches: Branch[]; procPartners: ProcedurePartner[]; procSections: ProcedureSection[] }) {
+function ProcedurePartnersTab({ branches, procPartners, procSections, onNavigate }: { branches: Branch[]; procPartners: ProcedurePartner[]; procSections: ProcedureSection[]; onNavigate?: (section: string) => void }) {
+  const activePartners = procPartners.filter(p => p.active);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ "br-1": true });
   const [enabled, setEnabled]   = useState<Record<string, Set<string>>>(() => {
     const init: Record<string, Set<string>> = {};
-    branches.forEach(b => { init[b.id] = new Set(procPartners.filter(p => p.active).map(p => p.id)); });
+    branches.forEach(b => { init[b.id] = new Set(activePartners.map(p => p.id)); });
     return init;
   });
   const [primary, setPrimary] = useState<Record<string, string | null>>(() => {
     const init: Record<string, string | null> = {};
-    const firstActive = procPartners.find(p => p.active);
-    branches.forEach(b => { init[b.id] = firstActive?.id ?? null; });
+    branches.forEach(b => { init[b.id] = activePartners[0]?.id ?? null; });
     return init;
   });
   const [viewPricingKey, setViewPricingKey] = useState<string | null>(null);
@@ -220,12 +225,17 @@ function ProcedurePartnersTab({ branches, procPartners, procSections }: { branch
 
   const allProcs = procSections.flatMap(s => s.procedures);
 
-  if (procPartners.length === 0) {
+  if (activePartners.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-slate-300">
         <Stethoscope className="h-12 w-12 mb-3" />
-        <p className="text-sm font-semibold text-slate-400">No procedure partners configured</p>
-        <p className="text-xs text-slate-400 mt-1">Go to <strong>Procedure Catalog → Procedure Partners</strong> to add partners first.</p>
+        <p className="text-sm font-semibold text-slate-400">No procedure partners configured yet</p>
+        <p className="text-xs text-slate-400 mt-1 mb-3">Add active partners in the Procedure Catalog first.</p>
+        {onNavigate && (
+          <Button variant="outline" className="text-xs h-8 gap-1.5 text-[#4982CF] border-[#4982CF]/30" onClick={() => onNavigate("proc-partners")}>
+            <Stethoscope className="h-3.5 w-3.5" /> Go to Procedure Partners
+          </Button>
+        )}
       </div>
     );
   }
@@ -279,7 +289,7 @@ function ProcedurePartnersTab({ branches, procPartners, procSections }: { branch
                 <div className="grid grid-cols-[1fr_110px_80px_80px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-4 py-2 bg-slate-50 border-b border-slate-100">
                   <span>Partner</span><span>Type</span><span className="text-center">Enabled</span><span className="text-center">Primary</span>
                 </div>
-                {procPartners.map(partner => {
+                {activePartners.map(partner => {
                   const isEnabled = enabledSet.has(partner.id);
                   const isPrimary = primary[branch.id] === partner.id;
                   const pricingKey = `${branch.id}:${partner.id}`;
@@ -287,7 +297,7 @@ function ProcedurePartnersTab({ branches, procPartners, procSections }: { branch
                   const noteKey = `${branch.id}:${partner.id}`;
                   const pricedProcs = partner.selectedProcedures.filter(pid => partner.pricing[pid]);
                   return (
-                    <div key={partner.id} className={`border-b border-slate-50 last:border-0 ${!partner.active ? "opacity-50" : ""}`}>
+                    <div key={partner.id} className="border-b border-slate-50 last:border-0">
                       <div className="grid grid-cols-[1fr_110px_80px_80px] items-center px-4 py-2.5">
                         <div>
                           <p className="text-xs font-medium text-slate-700">{partner.name}</p>
@@ -368,9 +378,10 @@ interface BranchModuleProps {
   labSections?: LabSection[];
   procPartners?: ProcedurePartner[];
   procSections?: ProcedureSection[];
+  onNavigate?: (section: string) => void;
 }
 
-export function BranchModule({ labProviders = [], labSections = [], procPartners = [], procSections = [] }: BranchModuleProps) {
+export function BranchModule({ labProviders = [], labSections = [], procPartners = [], procSections = [], onNavigate }: BranchModuleProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("branches");
   const [branches, setBranches] = useState<Branch[]>(SEED);
   const [search, setSearch] = useState("");
@@ -509,12 +520,12 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
 
       {/* ── Lab Assignment tab ── */}
       {activeTab === "lab-assignment" && (
-        <LabAssignmentTab branches={branches} labProviders={labProviders} labSections={labSections} />
+        <LabAssignmentTab branches={branches} labProviders={labProviders} labSections={labSections} onNavigate={onNavigate} />
       )}
 
       {/* ── Procedure Partners tab ── */}
       {activeTab === "proc-partners" && (
-        <ProcedurePartnersTab branches={branches} procPartners={procPartners} procSections={procSections} />
+        <ProcedurePartnersTab branches={branches} procPartners={procPartners} procSections={procSections} onNavigate={onNavigate} />
       )}
 
       {/* Add / Edit dialog */}

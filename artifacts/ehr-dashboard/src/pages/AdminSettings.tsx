@@ -599,6 +599,7 @@ export function AdminSettings() {
               labSections={labSections}
               procPartners={procPartners}
               procSections={procSections}
+              onNavigate={(section) => setActiveModule(section as Parameters<typeof setActiveModule>[0])}
             />
           )}
 
