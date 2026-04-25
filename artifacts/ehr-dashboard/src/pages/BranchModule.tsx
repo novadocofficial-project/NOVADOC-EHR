@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Plus, Edit2, Trash2, GitBranch, Clock, Globe, Search, AlertCircle, Check,
-  FlaskConical, Stethoscope, ChevronDown, ChevronRight,
+  FlaskConical, Stethoscope, ChevronDown, ChevronRight, ScanLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { LabProvider, LabSection } from "@/pages/LabCatalogModule";
 import type { ProcedurePartner, ProcedureSection } from "@/pages/ProcedureCatalogModule";
+import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
 
 type Branch = {
   id: string;
@@ -367,19 +368,181 @@ function ProcedurePartnersTab({ branches, procPartners, procSections, onNavigate
   );
 }
 
+// ─── Imaging Partners Tab ─────────────────────────────────────────────────────
+
+const IMAGING_CATALOGUE_KEY = "ehr-imaging-catalogue-v1";
+
+function loadImagingTests(): { id: string; name: string }[] {
+  try {
+    const raw = localStorage.getItem(IMAGING_CATALOGUE_KEY);
+    if (raw) return JSON.parse(raw) as { id: string; name: string }[];
+  } catch { /**/ }
+  return [];
+}
+
+function ImagingPartnersTab({ branches, imagingPartners, onNavigate }: { branches: Branch[]; imagingPartners: ImagingPartner[]; onNavigate?: (section: string) => void }) {
+  const activePartners = imagingPartners.filter(p => p.active);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ "br-1": true });
+  const [enabled, setEnabled] = useState<Record<string, Set<string>>>(() => {
+    const init: Record<string, Set<string>> = {};
+    branches.forEach(b => { init[b.id] = new Set(activePartners.map(p => p.id)); });
+    return init;
+  });
+  const [primary, setPrimary] = useState<Record<string, string | null>>(() => {
+    const init: Record<string, string | null> = {};
+    branches.forEach(b => { init[b.id] = activePartners[0]?.id ?? null; });
+    return init;
+  });
+  const [viewPricingKey, setViewPricingKey] = useState<string | null>(null);
+
+  const allTests = loadImagingTests();
+
+  if (activePartners.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-slate-300">
+        <ScanLine className="h-12 w-12 mb-3" />
+        <p className="text-sm font-semibold text-slate-400">No imaging partners configured yet</p>
+        <p className="text-xs text-slate-400 mt-1 mb-3">Add active partners in the Imaging Catalog first.</p>
+        {onNavigate && (
+          <Button variant="outline" className="text-xs h-8 gap-1.5 text-[#4982CF] border-[#4982CF]/30" onClick={() => onNavigate("imaging-partners")}>
+            <ScanLine className="h-3.5 w-3.5" /> Go to Imaging Partners
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  function toggleEnabled(branchId: string, partnerId: string) {
+    setEnabled(e => {
+      const next = new Set(e[branchId]);
+      if (next.has(partnerId)) {
+        next.delete(partnerId);
+        if (primary[branchId] === partnerId) setPrimary(p => ({ ...p, [branchId]: [...next][0] ?? null }));
+      } else {
+        next.add(partnerId);
+      }
+      return { ...e, [branchId]: next };
+    });
+  }
+
+  const TYPE_COLORS: Record<string, string> = {
+    "Internal Radiology": "text-blue-600 border-blue-200",
+    "External Centre":    "text-amber-600 border-amber-200",
+  };
+
+  return (
+    <div className="space-y-3">
+      {branches.map(branch => {
+        const isExpanded = expanded[branch.id];
+        const enabledSet = enabled[branch.id] ?? new Set();
+        const prim = primary[branch.id];
+        return (
+          <div key={branch.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <button onClick={() => setExpanded(e => ({ ...e, [branch.id]: !e[branch.id] }))}
+              className="flex w-full items-center gap-3 px-4 py-3 hover:bg-slate-50/50">
+              <div className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                <GitBranch className="h-4 w-4 text-slate-500" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-bold text-slate-800">{branch.name}</p>
+                <p className="text-[10px] text-slate-400">
+                  {enabledSet.size} of {activePartners.length} partners enabled
+                  {prim && ` · Primary: ${imagingPartners.find(p => p.id === prim)?.name ?? "—"}`}
+                </p>
+              </div>
+              <Badge variant="outline" className={`text-[9px] ${branch.status === "active" ? "text-emerald-600 border-emerald-200" : "text-slate-400 border-slate-200"}`}>
+                {branch.status}
+              </Badge>
+              {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
+            </button>
+
+            {isExpanded && (
+              <div className="border-t border-slate-100">
+                <div className="grid grid-cols-[1fr_120px_80px_80px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-4 py-2 bg-slate-50 border-b border-slate-100">
+                  <span>Partner</span><span>Type</span><span className="text-center">Enabled</span><span className="text-center">Primary</span>
+                </div>
+                {activePartners.map(partner => {
+                  const isEnabled = enabledSet.has(partner.id);
+                  const isPrimary = primary[branch.id] === partner.id;
+                  const pricingKey = `${branch.id}:${partner.id}`;
+                  const showPricing = viewPricingKey === pricingKey;
+                  const pricedTests = partner.selectedTests.filter(tid => partner.pricing[tid]);
+                  return (
+                    <div key={partner.id} className="border-b border-slate-50 last:border-0">
+                      <div className="grid grid-cols-[1fr_120px_80px_80px] items-center px-4 py-2.5">
+                        <div>
+                          <p className="text-xs font-medium text-slate-700">{partner.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {partner.contact && (
+                              <span className="text-[9px] text-slate-400 font-mono">{partner.contact}</span>
+                            )}
+                            {partner.selectedTests.length > 0 && (
+                              <button onClick={() => setViewPricingKey(showPricing ? null : pricingKey)}
+                                className="text-[9px] font-bold text-[#4982CF] hover:opacity-70 flex items-center gap-0.5">
+                                {showPricing ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />}
+                                View Pricing ({pricedTests.length} priced)
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 w-fit ${TYPE_COLORS[partner.type] ?? ""}`}>{partner.type}</Badge>
+                        <div className="flex justify-center">
+                          <Switch checked={isEnabled} onCheckedChange={() => toggleEnabled(branch.id, partner.id)} className="data-[state=checked]:bg-[#4982CF]" />
+                        </div>
+                        <div className="flex justify-center">
+                          <input type="radio" name={`img-primary-${branch.id}`} disabled={!isEnabled}
+                            checked={isPrimary && isEnabled}
+                            onChange={() => setPrimary(p => ({ ...p, [branch.id]: partner.id }))}
+                            className="accent-[#4982CF] h-4 w-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40" />
+                        </div>
+                      </div>
+                      {showPricing && (
+                        <div className="mx-4 mb-3 rounded-xl border border-[#4982CF]/20 overflow-hidden bg-blue-50/30">
+                          <div className="grid grid-cols-[1fr_90px_90px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-3 py-1.5 bg-slate-50/80 border-b border-slate-100">
+                            <span>Imaging Test</span><span className="text-right">Price (PKR)</span><span className="text-right">Doctor Rate</span>
+                          </div>
+                          {partner.selectedTests.length === 0 ? (
+                            <p className="text-xs text-slate-400 text-center py-3">No tests selected</p>
+                          ) : (
+                            partner.selectedTests.map(tid => {
+                              const test = allTests.find(t => t.id === tid);
+                              return (
+                                <div key={tid} className="grid grid-cols-[1fr_90px_90px] items-center px-3 py-1.5 border-b border-slate-50 last:border-0">
+                                  <span className="text-xs text-slate-700">{test?.name ?? tid}</span>
+                                  <span className="text-xs text-right font-mono text-slate-600">{partner.pricing[tid] ? `PKR ${partner.pricing[tid]}` : <span className="text-slate-300">—</span>}</span>
+                                  <span className="text-xs text-right font-mono text-slate-500">{partner.doctorRate[tid] ? `PKR ${partner.doctorRate[tid]}` : <span className="text-slate-300">—</span>}</span>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── BranchModule ─────────────────────────────────────────────────────────────
 
-type TabKey = "branches" | "lab-assignment" | "proc-partners";
+type TabKey = "branches" | "lab-assignment" | "proc-partners" | "imaging-partners";
 
 interface BranchModuleProps {
   labProviders?: LabProvider[];
   labSections?: LabSection[];
   procPartners?: ProcedurePartner[];
   procSections?: ProcedureSection[];
+  imagingPartners?: ImagingPartner[];
   onNavigate?: (section: string) => void;
 }
 
-export function BranchModule({ labProviders = [], labSections = [], procPartners = [], procSections = [], onNavigate }: BranchModuleProps) {
+export function BranchModule({ labProviders = [], labSections = [], procPartners = [], procSections = [], imagingPartners = [], onNavigate }: BranchModuleProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("branches");
   const [branches, setBranches] = useState<Branch[]>(SEED);
   const [search, setSearch] = useState("");
@@ -431,9 +594,10 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
   });
 
   const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-    { key: "branches",       label: "Branches",           icon: <GitBranch className="h-3.5 w-3.5" /> },
-    { key: "lab-assignment", label: "Lab Assignment",     icon: <FlaskConical className="h-3.5 w-3.5" /> },
-    { key: "proc-partners",  label: "Procedure Partners", icon: <Stethoscope className="h-3.5 w-3.5" /> },
+    { key: "branches",          label: "Branches",           icon: <GitBranch className="h-3.5 w-3.5" /> },
+    { key: "lab-assignment",    label: "Lab Assignment",     icon: <FlaskConical className="h-3.5 w-3.5" /> },
+    { key: "proc-partners",     label: "Procedure Partners", icon: <Stethoscope className="h-3.5 w-3.5" /> },
+    { key: "imaging-partners",  label: "Imaging Partners",   icon: <ScanLine className="h-3.5 w-3.5" /> },
   ];
 
   return (
@@ -524,6 +688,11 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
       {/* ── Procedure Partners tab ── */}
       {activeTab === "proc-partners" && (
         <ProcedurePartnersTab branches={branches} procPartners={procPartners} procSections={procSections} onNavigate={onNavigate} />
+      )}
+
+      {/* ── Imaging Partners tab ── */}
+      {activeTab === "imaging-partners" && (
+        <ImagingPartnersTab branches={branches} imagingPartners={imagingPartners} onNavigate={onNavigate} />
       )}
 
       {/* Add / Edit dialog */}

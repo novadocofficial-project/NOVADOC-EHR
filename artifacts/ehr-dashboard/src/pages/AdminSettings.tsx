@@ -63,6 +63,7 @@ import { PermissionsModule } from "@/pages/PermissionsModule";
 import { FormularyManagementModule } from "@/pages/FormularyManagementModule";
 import { FormularyPartnersModule } from "@/pages/FormularyPartnersModule";
 import { ImagingCatalogModule } from "@/pages/ImagingCatalogModule";
+import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
 import { LabCatalogModule, SEED_SECTIONS as LAB_SEED_SECTIONS, SEED_PROVIDERS as LAB_SEED_PROVIDERS, type LabSection, type LabProvider } from "@/pages/LabCatalogModule";
 import { ProcedureCatalogModule, INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS, type ProcedureSection, type ProcedurePartner } from "@/pages/ProcedureCatalogModule";
 import { QueueModule } from "@/pages/QueueModule";
@@ -223,6 +224,26 @@ export function AdminSettings() {
   const [labProviders, setLabProviders] = useState<LabProvider[]>(LAB_SEED_PROVIDERS);
   const [procSections, setProcSections] = useState<ProcedureSection[]>(INITIAL_PROC_SECTIONS);
   const [procPartners, setProcPartners] = useState<ProcedurePartner[]>(INITIAL_PROC_PARTNERS);
+  const [imagingPartners, setImagingPartners] = useState<ImagingPartner[]>(() => {
+    try {
+      const raw = localStorage.getItem("ehr-imaging-partners-v1");
+      if (raw) return JSON.parse(raw) as ImagingPartner[];
+    } catch { /**/ }
+    return [
+      {
+        id: "ip1", name: "In-House Radiology", type: "Internal Radiology", contact: "", active: true,
+        selectedTests: ["xray-chest","xray-abdomen","xray-knee","us-abdomen","us-thyroid","echo-2d"],
+        pricing:    { "xray-chest": "800", "xray-abdomen": "900", "xray-knee": "700", "us-abdomen": "1500", "us-thyroid": "1200", "echo-2d": "3500" },
+        doctorRate: { "xray-chest": "0",   "xray-abdomen": "0",   "xray-knee": "0",   "us-abdomen": "400",  "us-thyroid": "350",  "echo-2d": "1000" },
+      },
+      {
+        id: "ip2", name: "City Diagnostics Centre", type: "External Centre", contact: "0300-9876543", active: true,
+        selectedTests: ["ct-brain","ct-chest","ct-abdo-pelvis","mri-brain","mri-knee","nuc-pet-ct"],
+        pricing:    { "ct-brain": "7000", "ct-chest": "8000", "ct-abdo-pelvis": "9000", "mri-brain": "12000", "mri-knee": "10000", "nuc-pet-ct": "35000" },
+        doctorRate: { "ct-brain": "1500", "ct-chest": "1500", "ct-abdo-pelvis": "2000", "mri-brain": "2500",  "mri-knee": "2000",  "nuc-pet-ct": "5000"  },
+      },
+    ];
+  });
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
     d1: true, d2: true, d3: false, d4: true,
@@ -679,6 +700,7 @@ export function AdminSettings() {
               labSections={labSections}
               procPartners={procPartners}
               procSections={procSections}
+              imagingPartners={imagingPartners}
               onNavigate={(section) => setActiveModule(section as Parameters<typeof setActiveModule>[0])}
             />
           )}
