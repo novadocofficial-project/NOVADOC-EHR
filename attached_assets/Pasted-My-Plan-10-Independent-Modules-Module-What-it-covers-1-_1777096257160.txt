@@ -1,0 +1,12 @@
+My Plan — 10 Independent Modules
+#	Module	What it covers
+1	SOAP Config Foundation	Add the "SOAP Configuration" sidebar group to Admin Settings; Note Structure (section enable/disable, drag-to-reorder, required / optional / hidden, rename) and Vitals Config (required per visit type, reference ranges, custom vitals per specialty)
+2	HPI Template Builder	Link templates to chief complaints; template editor with heading + configurable multi-select / radio / text fields; configure field type and options yourself
+3	Clinical Libraries I	Chief Complaint library (CRUD + specialty tags); ICD-10 catalogue (manage codes, bundles, favourites); POC Test configuration (add/edit/delete POC tests); ROS system configuration (system names + abbreviations, editable, max 4 words)
+4	History & Allergy Libraries	Allergen management (name + type, onset options, reactions as separate lists); PMH / Surgical / Family History libraries; Social History dynamic question builder (condition-based dropdowns like tobacco → 3 dependent dropdowns, all self-named)
+5	Physical Exam Builder	Toggle PE body systems per specialty; edit normal/abnormal finding options per system; add or remove finding options
+6	Template Manager	Full CRUD for global note templates; assign to departments/specialties; live preview of what populates; set default per specialty
+7	Lab Catalog	Categorized lab list (Haematology, Blood Chemistry, user-defined sections); per-lab pricing (add a lab like "Hashmani", select which tests it offers via checkbox, enter price or import Excel); export full list to Excel
+8	Procedure Catalog	Procedure list with CPT codes (system-suggested or manual entry); user-defined category sections; per-clinic/doctor pricing; export to Excel
+9	Care Plan, Goals & Referrals	Care Plan task library (sections, mark favourite, sort by date asc/desc or alphabetical); Patient Goals (title + recommended actions); Referral Destinations (facility name, hospital/clinic category, services); Comorbidities management
+10	Permissions & Signing Rules	Role access per note type; who can sign/co-sign; co-signature requirement; discard-after-signing; auto-lock; enable/disable custom conditions toggle
