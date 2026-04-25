@@ -53,7 +53,7 @@ function exportToCSV(
       s.name,
       getSTName(s.serviceTypeId),
       getDeptName(s.departmentId),
-      s.basePrice,
+      s.basePrice || "",
       s.taxable ? "Yes" : "No",
       s.active ? "Active" : "Inactive",
       ...providers.map(p => s.providerPrices?.[p.id] ?? ""),
@@ -256,8 +256,9 @@ export function ServicePricingModule({
 
   const saveForm = () => {
     const name = form.name.trim();
-    const basePrice = parseFloat(form.basePrice);
-    if (!name || !form.serviceTypeId || isNaN(basePrice) || !form.departmentId) return;
+    const basePriceRaw = parseFloat(form.basePrice);
+    const basePrice = isNaN(basePriceRaw) ? 0 : basePriceRaw;
+    if (!name || !form.serviceTypeId || !form.departmentId) return;
     if (editingId) {
       setServices(prev => prev.map(s => s.id === editingId
         ? { ...s, name, serviceTypeId: form.serviceTypeId, basePrice, departmentId: form.departmentId, subDepartmentId: form.subDepartmentId, active: form.active, taxable: form.taxable }
@@ -294,7 +295,7 @@ export function ServicePricingModule({
   };
 
   const selectedDept = departments.find(d => d.id === form.departmentId);
-  const isFormValid = form.name.trim() && form.serviceTypeId && form.basePrice && form.departmentId;
+  const isFormValid = form.name.trim() && form.serviceTypeId && form.departmentId;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -419,7 +420,7 @@ export function ServicePricingModule({
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-semibold text-slate-600">Base / Self-Pay Price (Rs.) <span className="text-rose-500">*</span></Label>
+              <Label className="text-xs font-semibold text-slate-600">Base / Self-Pay Price (Rs.) <span className="text-slate-400 font-normal">(optional)</span></Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">Rs.</span>
                 <Input
@@ -579,16 +580,18 @@ function PivotTable({
 
   const MIN_COL_W = 120;
   const providerColsStyle = `repeat(${providers.length}, minmax(${MIN_COL_W}px, 1fr))`;
+  const gridTemplate = `minmax(200px,2fr) 90px 70px 110px ${providerColsStyle} 80px`;
 
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
       {/* Header */}
       <div
         className="grid items-center border-b border-slate-100 bg-slate-50/80 px-4 py-2.5 min-w-max"
-        style={{ gridTemplateColumns: `minmax(200px,2fr) 80px 100px ${providerColsStyle} 80px` }}
+        style={{ gridTemplateColumns: gridTemplate }}
       >
         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Service Name</span>
         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Base Price</span>
+        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Taxable</span>
         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Status</span>
         {providers.map(p => (
           <span key={p.id} className="text-[9px] font-bold uppercase tracking-widest text-[#4982CF] text-right truncate px-2" title={p.name}>
@@ -603,7 +606,7 @@ function PivotTable({
           <div
             key={s.id}
             className="grid items-center px-4 py-2.5 hover:bg-slate-50/60 transition-colors min-w-max"
-            style={{ gridTemplateColumns: `minmax(200px,2fr) 80px 100px ${providerColsStyle} 80px` }}
+            style={{ gridTemplateColumns: gridTemplate }}
           >
             {/* Service name */}
             <div className="min-w-0 pr-3">
@@ -612,7 +615,14 @@ function PivotTable({
             </div>
 
             {/* Base price */}
-            <span className="text-xs font-bold text-slate-700">Rs. {s.basePrice.toLocaleString()}</span>
+            <span className="text-xs font-bold text-slate-700">
+              {s.basePrice ? `Rs. ${s.basePrice.toLocaleString()}` : "—"}
+            </span>
+
+            {/* Taxable */}
+            <Badge className={s.taxable ? "bg-amber-500/10 text-amber-700 border-amber-200 text-[10px] w-fit" : "bg-slate-100 text-slate-500 border-slate-200 text-[10px] w-fit"}>
+              {s.taxable ? "Yes" : "No"}
+            </Badge>
 
             {/* Status toggle */}
             <div className="flex items-center gap-1.5">
