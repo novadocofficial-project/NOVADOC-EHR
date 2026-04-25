@@ -55,11 +55,6 @@ export const INITIAL_SERVICE_TYPES: ServiceType[] = [
 ];
 
 export const INITIAL_SERVICES: Service[] = [
-  // ── Consultation ──────────────────────────────────────────────────────────
-  { id: "svc-5",  name: "Tele-Consultation",          serviceTypeId: "st-1", basePrice: 400,   departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
-  { id: "svc-6",  name: "Pediatric Consultation",     serviceTypeId: "st-1", basePrice: 800,   departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
-  { id: "svc-7",  name: "Psychiatric Consultation",   serviceTypeId: "st-1", basePrice: 1500,  departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
-
   // ── Lab ───────────────────────────────────────────────────────────────────
   { id: "svc-10", name: "Complete Blood Count (CBC)", serviceTypeId: "st-2", basePrice: 450,   departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
   { id: "svc-11", name: "Liver Function Test (LFT)",  serviceTypeId: "st-2", basePrice: 800,   departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
