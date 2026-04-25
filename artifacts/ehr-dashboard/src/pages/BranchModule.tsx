@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Plus, Edit2, Trash2, GitBranch, Clock, Globe, Search, AlertCircle, Check,
-  FlaskConical, Stethoscope, ChevronDown, ChevronRight, ScanLine, Package,
+  FlaskConical, Stethoscope, ChevronDown, ChevronRight, ScanLine, Package, Pill,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import type { LabProvider, LabSection } from "@/pages/LabCatalogModule";
 import type { ProcedurePartner, ProcedureSection } from "@/pages/ProcedureCatalogModule";
 import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
 import type { ConsumableProvider } from "@/pages/ConsumablesModule";
+import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
 
 type Branch = {
   id: string;
@@ -696,9 +697,187 @@ function ConsumableProvidersTab({ branches, consumableProviders, onNavigate }: {
   );
 }
 
+// ─── Pharmacy Partners Tab ────────────────────────────────────────────────────
+
+const FORMULARY_CATALOGUE_KEY = "ehr-formulary-catalogue-v1";
+
+function loadFormularyGenerics(): { id: string; generic: string; category: string; brands: { id: string; brand: string; strength: string }[] }[] {
+  try {
+    const raw = localStorage.getItem(FORMULARY_CATALOGUE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /**/ }
+  return [];
+}
+
+function PharmacyPartnersTab({ branches, pharmacyPartners, onNavigate }: {
+  branches: Branch[];
+  pharmacyPartners: FormularyPartner[];
+  onNavigate?: (section: string) => void;
+}) {
+  const activePartners = pharmacyPartners.filter(p => p.active);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ "br-1": true });
+  const [enabled, setEnabled] = useState<Record<string, Set<string>>>(() => {
+    const init: Record<string, Set<string>> = {};
+    branches.forEach(b => { init[b.id] = new Set(activePartners.map(p => p.id)); });
+    return init;
+  });
+  const [primary, setPrimary] = useState<Record<string, string | null>>(() => {
+    const init: Record<string, string | null> = {};
+    branches.forEach(b => { init[b.id] = activePartners[0]?.id ?? null; });
+    return init;
+  });
+  const [viewPricingKey, setViewPricingKey] = useState<string | null>(null);
+
+  const allGenerics = loadFormularyGenerics();
+
+  const TYPE_COLORS: Record<string, string> = {
+    "In-Clinic Dispensary": "text-blue-600 border-blue-200",
+    "External Pharmacy":    "text-amber-600 border-amber-200",
+  };
+
+  if (activePartners.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-slate-300">
+        <Pill className="h-12 w-12 mb-3" />
+        <p className="text-sm font-semibold text-slate-400">No pharmacy partners configured yet</p>
+        <p className="text-xs text-slate-400 mt-1 mb-3">Add active partners in the Formulary Partners section first.</p>
+        {onNavigate && (
+          <Button variant="outline" className="text-xs h-8 gap-1.5 text-[#4982CF] border-[#4982CF]/30" onClick={() => onNavigate("formulary-partners")}>
+            <Pill className="h-3.5 w-3.5" /> Go to Pharmacy Partners
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  function toggleEnabled(branchId: string, partnerId: string) {
+    setEnabled(e => {
+      const next = new Set(e[branchId]);
+      if (next.has(partnerId)) {
+        next.delete(partnerId);
+        if (primary[branchId] === partnerId) setPrimary(p => ({ ...p, [branchId]: [...next][0] ?? null }));
+      } else {
+        next.add(partnerId);
+      }
+      return { ...e, [branchId]: next };
+    });
+  }
+
+  return (
+    <div className="space-y-3">
+      {branches.map(branch => {
+        const isExpanded = expanded[branch.id];
+        const enabledSet = enabled[branch.id] ?? new Set();
+        const prim = primary[branch.id];
+        return (
+          <div key={branch.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <button onClick={() => setExpanded(e => ({ ...e, [branch.id]: !e[branch.id] }))}
+              className="flex w-full items-center gap-3 px-4 py-3 hover:bg-slate-50/50">
+              <div className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                <GitBranch className="h-4 w-4 text-slate-500" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-bold text-slate-800">{branch.name}</p>
+                <p className="text-[10px] text-slate-400">
+                  {enabledSet.size} of {activePartners.length} partners enabled
+                  {prim && ` · Primary: ${pharmacyPartners.find(p => p.id === prim)?.name ?? "—"}`}
+                </p>
+              </div>
+              <Badge variant="outline" className={`text-[9px] ${branch.status === "active" ? "text-emerald-600 border-emerald-200" : "text-slate-400 border-slate-200"}`}>
+                {branch.status}
+              </Badge>
+              {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
+            </button>
+
+            {isExpanded && (
+              <div className="border-t border-slate-100">
+                <div className="grid grid-cols-[1fr_140px_80px_80px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-4 py-2 bg-slate-50 border-b border-slate-100">
+                  <span>Partner</span><span>Type</span><span className="text-center">Enabled</span><span className="text-center">Primary</span>
+                </div>
+                {activePartners.map(partner => {
+                  const isEnabled = enabledSet.has(partner.id);
+                  const isPrimary = primary[branch.id] === partner.id;
+                  const pricingKey = `${branch.id}:${partner.id}`;
+                  const showPricing = viewPricingKey === pricingKey;
+                  const pricedGenericsCount = partner.selectedGenerics.filter(gId => {
+                    const gen = allGenerics.find(g => g.id === gId);
+                    return gen?.brands.some(b => partner.sellingPrice[b.id]);
+                  }).length;
+                  return (
+                    <div key={partner.id} className="border-b border-slate-50 last:border-0">
+                      <div className="grid grid-cols-[1fr_140px_80px_80px] items-center px-4 py-2.5">
+                        <div>
+                          <p className="text-xs font-medium text-slate-700">{partner.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {partner.contact && (
+                              <span className="text-[9px] text-slate-400 font-mono">{partner.contact}</span>
+                            )}
+                            {partner.selectedGenerics.length > 0 && (
+                              <button onClick={() => setViewPricingKey(showPricing ? null : pricingKey)}
+                                className="text-[9px] font-bold text-[#4982CF] hover:opacity-70 flex items-center gap-0.5">
+                                {showPricing ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />}
+                                View Generics ({pricedGenericsCount} priced)
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 w-fit ${TYPE_COLORS[partner.type] ?? ""}`}>{partner.type}</Badge>
+                        <div className="flex justify-center">
+                          <Switch checked={isEnabled} onCheckedChange={() => toggleEnabled(branch.id, partner.id)} className="data-[state=checked]:bg-[#4982CF]" />
+                        </div>
+                        <div className="flex justify-center">
+                          <input type="radio" name={`pharm-primary-${branch.id}`} disabled={!isEnabled}
+                            checked={isPrimary && isEnabled}
+                            onChange={() => setPrimary(p => ({ ...p, [branch.id]: partner.id }))}
+                            className="accent-[#4982CF] h-4 w-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40" />
+                        </div>
+                      </div>
+                      {showPricing && (
+                        <div className="mx-4 mb-3 rounded-xl border border-[#4982CF]/20 overflow-hidden bg-blue-50/30">
+                          <div className="grid grid-cols-[1fr_80px_100px_100px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-3 py-1.5 bg-slate-50/80 border-b border-slate-100">
+                            <span>Generic / Brand</span><span>Category</span><span className="text-right">Selling (PKR)</span><span className="text-right">Dispensing Fee</span>
+                          </div>
+                          {partner.selectedGenerics.length === 0 ? (
+                            <p className="text-xs text-slate-400 text-center py-3">No generics selected</p>
+                          ) : (
+                            partner.selectedGenerics.map(gId => {
+                              const gen = allGenerics.find(g => g.id === gId);
+                              if (!gen) return null;
+                              return (
+                                <div key={gId}>
+                                  <div className="px-3 py-1.5 bg-slate-50/60 border-b border-slate-100">
+                                    <span className="text-[10px] font-bold text-slate-600">{gen.generic}</span>
+                                    <span className="ml-2 text-[9px] text-slate-400">{gen.category}</span>
+                                  </div>
+                                  {gen.brands.map(brand => (
+                                    <div key={brand.id} className="grid grid-cols-[1fr_80px_100px_100px] items-center px-3 py-1 border-b border-slate-50 last:border-0 pl-6">
+                                      <span className="text-xs text-slate-700">{brand.brand} <span className="text-[9px] text-slate-400 font-mono">{brand.strength}</span></span>
+                                      <span className="text-[9px] text-slate-400"></span>
+                                      <span className="text-xs text-right font-mono text-slate-600">{partner.sellingPrice[brand.id] ? `PKR ${partner.sellingPrice[brand.id]}` : <span className="text-slate-300">—</span>}</span>
+                                      <span className="text-xs text-right font-mono text-slate-500">{partner.dispensingFee[brand.id] ? `PKR ${partner.dispensingFee[brand.id]}` : <span className="text-slate-300">—</span>}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── BranchModule ─────────────────────────────────────────────────────────────
 
-type TabKey = "branches" | "lab-assignment" | "proc-partners" | "imaging-partners" | "consumable-providers";
+type TabKey = "branches" | "lab-assignment" | "proc-partners" | "imaging-partners" | "consumable-providers" | "pharmacy-partners";
 
 interface BranchModuleProps {
   labProviders?: LabProvider[];
@@ -707,10 +886,11 @@ interface BranchModuleProps {
   procSections?: ProcedureSection[];
   imagingPartners?: ImagingPartner[];
   consumableProviders?: ConsumableProvider[];
+  pharmacyPartners?: FormularyPartner[];
   onNavigate?: (section: string) => void;
 }
 
-export function BranchModule({ labProviders = [], labSections = [], procPartners = [], procSections = [], imagingPartners = [], consumableProviders = [], onNavigate }: BranchModuleProps) {
+export function BranchModule({ labProviders = [], labSections = [], procPartners = [], procSections = [], imagingPartners = [], consumableProviders = [], pharmacyPartners = [], onNavigate }: BranchModuleProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("branches");
   const [branches, setBranches] = useState<Branch[]>(SEED);
   const [search, setSearch] = useState("");
@@ -767,6 +947,7 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
     { key: "proc-partners",         label: "Procedure Partners",    icon: <Stethoscope className="h-3.5 w-3.5" /> },
     { key: "imaging-partners",      label: "Imaging Partners",      icon: <ScanLine className="h-3.5 w-3.5" /> },
     { key: "consumable-providers",  label: "Consumable Providers",  icon: <Package className="h-3.5 w-3.5" /> },
+    { key: "pharmacy-partners",     label: "Pharmacy Partners",     icon: <Pill className="h-3.5 w-3.5" /> },
   ];
 
   return (
@@ -867,6 +1048,11 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
       {/* ── Consumable Providers tab ── */}
       {activeTab === "consumable-providers" && (
         <ConsumableProvidersTab branches={branches} consumableProviders={consumableProviders} onNavigate={onNavigate} />
+      )}
+
+      {/* ── Pharmacy Partners tab ── */}
+      {activeTab === "pharmacy-partners" && (
+        <PharmacyPartnersTab branches={branches} pharmacyPartners={pharmacyPartners} onNavigate={onNavigate} />
       )}
 
       {/* Add / Edit dialog */}

@@ -63,6 +63,7 @@ import { ClinicalGoalsLibraryModule } from "@/pages/ClinicalGoalsLibraryModule";
 import { PermissionsModule } from "@/pages/PermissionsModule";
 import { FormularyManagementModule } from "@/pages/FormularyManagementModule";
 import { FormularyPartnersModule } from "@/pages/FormularyPartnersModule";
+import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
 import { ImagingCatalogModule } from "@/pages/ImagingCatalogModule";
 import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
 import { ConsumablesModule } from "@/pages/ConsumablesModule";
@@ -254,6 +255,14 @@ export function AdminSettings() {
     try {
       const raw = localStorage.getItem("ehr-consumables-providers-v1");
       if (raw) return JSON.parse(raw) as ConsumableProvider[];
+    } catch { /**/ }
+    return [];
+  });
+
+  const [pharmacyPartners] = useState<FormularyPartner[]>(() => {
+    try {
+      const raw = localStorage.getItem("ehr-formulary-partners-v1");
+      if (raw) return JSON.parse(raw) as FormularyPartner[];
     } catch { /**/ }
     return [];
   });
@@ -732,6 +741,7 @@ export function AdminSettings() {
               procSections={procSections}
               imagingPartners={imagingPartners}
               consumableProviders={consumableProviders}
+              pharmacyPartners={pharmacyPartners}
               onNavigate={(section) => setActiveModule(section as Parameters<typeof setActiveModule>[0])}
             />
           )}
