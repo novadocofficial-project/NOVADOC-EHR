@@ -66,6 +66,7 @@ import { FormularyPartnersModule } from "@/pages/FormularyPartnersModule";
 import { ImagingCatalogModule } from "@/pages/ImagingCatalogModule";
 import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
 import { ConsumablesModule } from "@/pages/ConsumablesModule";
+import type { ConsumableProvider } from "@/pages/ConsumablesModule";
 import { LabCatalogModule, SEED_SECTIONS as LAB_SEED_SECTIONS, SEED_PROVIDERS as LAB_SEED_PROVIDERS, type LabSection, type LabProvider } from "@/pages/LabCatalogModule";
 import { ProcedureCatalogModule, INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS, type ProcedureSection, type ProcedurePartner } from "@/pages/ProcedureCatalogModule";
 import { QueueModule } from "@/pages/QueueModule";
@@ -247,6 +248,14 @@ export function AdminSettings() {
         doctorRate: { "ct-brain": "1500", "ct-chest": "1500", "ct-abdo-pelvis": "2000", "mri-brain": "2500",  "mri-knee": "2000",  "nuc-pet-ct": "5000"  },
       },
     ];
+  });
+
+  const [consumableProviders] = useState<ConsumableProvider[]>(() => {
+    try {
+      const raw = localStorage.getItem("ehr-consumables-providers-v1");
+      if (raw) return JSON.parse(raw) as ConsumableProvider[];
+    } catch { /**/ }
+    return [];
   });
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
@@ -722,6 +731,7 @@ export function AdminSettings() {
               procPartners={procPartners}
               procSections={procSections}
               imagingPartners={imagingPartners}
+              consumableProviders={consumableProviders}
               onNavigate={(section) => setActiveModule(section as Parameters<typeof setActiveModule>[0])}
             />
           )}
