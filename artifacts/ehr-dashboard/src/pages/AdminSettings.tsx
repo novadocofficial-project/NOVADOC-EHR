@@ -596,7 +596,9 @@ export function AdminSettings() {
           {activeModule === "branches" && (
             <BranchModule
               labProviders={labProviders}
+              labSections={labSections}
               procPartners={procPartners}
+              procSections={procSections}
             />
           )}
 

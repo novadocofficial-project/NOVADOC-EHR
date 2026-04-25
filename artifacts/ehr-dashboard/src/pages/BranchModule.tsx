@@ -10,8 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { LabProvider } from "@/pages/LabCatalogModule";
-import type { ProcedurePartner } from "@/pages/ProcedureCatalogModule";
+import type { LabProvider, LabSection } from "@/pages/LabCatalogModule";
+import type { ProcedurePartner, ProcedureSection } from "@/pages/ProcedureCatalogModule";
 
 type Branch = {
   id: string;
@@ -65,7 +65,7 @@ function fmt12(t: string) {
 
 // ─── Lab Assignment Tab ────────────────────────────────────────────────────────
 
-function LabAssignmentTab({ branches, labProviders }: { branches: Branch[]; labProviders: LabProvider[] }) {
+function LabAssignmentTab({ branches, labProviders, labSections }: { branches: Branch[]; labProviders: LabProvider[]; labSections: LabSection[] }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ "br-1": true });
   const [enabled, setEnabled]   = useState<Record<string, Set<string>>>(() => {
     const init: Record<string, Set<string>> = {};
@@ -78,6 +78,9 @@ function LabAssignmentTab({ branches, labProviders }: { branches: Branch[]; labP
     branches.forEach(b => { init[b.id] = firstActive?.id ?? null; });
     return init;
   });
+  const [viewPricingKey, setViewPricingKey] = useState<string | null>(null);
+
+  const allTests = labSections.flatMap(s => s.tests);
 
   if (labProviders.length === 0) {
     return (
@@ -130,27 +133,61 @@ function LabAssignmentTab({ branches, labProviders }: { branches: Branch[]; labP
 
             {isExpanded && (
               <div className="border-t border-slate-100">
-                <div className="grid grid-cols-[1fr_80px_80px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-4 py-2 bg-slate-50 border-b border-slate-100">
-                  <span>Provider</span><span className="text-center">Enabled</span><span className="text-center">Primary</span>
+                <div className="grid grid-cols-[1fr_90px_80px_80px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-4 py-2 bg-slate-50 border-b border-slate-100">
+                  <span>Provider</span><span></span><span className="text-center">Enabled</span><span className="text-center">Primary</span>
                 </div>
                 {labProviders.map(prov => {
                   const isEnabled = enabledSet.has(prov.id);
                   const isPrimary = primary[branch.id] === prov.id;
+                  const pricingKey = `${branch.id}:${prov.id}`;
+                  const showPricing = viewPricingKey === pricingKey;
+                  const pricedTests = prov.selectedTests.filter(tid => prov.pricing[tid]);
                   return (
-                    <div key={prov.id} className={`grid grid-cols-[1fr_80px_80px] items-center px-4 py-2.5 border-b border-slate-50 last:border-0 ${!prov.active ? "opacity-50" : ""}`}>
-                      <div>
-                        <p className="text-xs font-medium text-slate-700">{prov.name}</p>
-                        {!prov.active && <span className="text-[9px] text-amber-500">Inactive in catalog</span>}
+                    <div key={prov.id} className={`border-b border-slate-50 last:border-0 ${!prov.active ? "opacity-50" : ""}`}>
+                      <div className="grid grid-cols-[1fr_90px_80px_80px] items-center px-4 py-2.5">
+                        <div>
+                          <p className="text-xs font-medium text-slate-700">{prov.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {!prov.active && <span className="text-[9px] text-amber-500">Inactive in catalog</span>}
+                            {prov.selectedTests.length > 0 && (
+                              <button onClick={() => setViewPricingKey(showPricing ? null : pricingKey)}
+                                className="text-[9px] font-bold text-[#4982CF] hover:opacity-70 flex items-center gap-0.5">
+                                {showPricing ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />}
+                                View Pricing ({pricedTests.length} priced)
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex justify-center">
+                          <Switch checked={isEnabled} onCheckedChange={() => toggleEnabled(branch.id, prov.id)} className="data-[state=checked]:bg-[#4982CF]" />
+                        </div>
+                        <div className="flex justify-center">
+                          <input type="radio" name={`lab-primary-${branch.id}`} disabled={!isEnabled}
+                            checked={isPrimary && isEnabled}
+                            onChange={() => setPrimary(p => ({ ...p, [branch.id]: prov.id }))}
+                            className="accent-[#4982CF] h-4 w-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40" />
+                        </div>
                       </div>
-                      <div className="flex justify-center">
-                        <Switch checked={isEnabled} onCheckedChange={() => toggleEnabled(branch.id, prov.id)} className="data-[state=checked]:bg-[#4982CF]" />
-                      </div>
-                      <div className="flex justify-center">
-                        <input type="radio" name={`lab-primary-${branch.id}`} disabled={!isEnabled}
-                          checked={isPrimary && isEnabled}
-                          onChange={() => setPrimary(p => ({ ...p, [branch.id]: prov.id }))}
-                          className="accent-[#4982CF] h-4 w-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40" />
-                      </div>
+                      {showPricing && (
+                        <div className="mx-4 mb-3 rounded-xl border border-[#4982CF]/20 overflow-hidden bg-blue-50/30">
+                          <div className="grid grid-cols-[1fr_100px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-3 py-1.5 bg-slate-50/80 border-b border-slate-100">
+                            <span>Test</span><span className="text-right">Price (PKR)</span>
+                          </div>
+                          {prov.selectedTests.length === 0 ? (
+                            <p className="text-xs text-slate-400 text-center py-3">No tests selected</p>
+                          ) : (
+                            prov.selectedTests.map(tid => {
+                              const test = allTests.find(t => t.id === tid);
+                              return (
+                                <div key={tid} className="grid grid-cols-[1fr_100px] items-center px-3 py-1.5 border-b border-slate-50 last:border-0">
+                                  <span className="text-xs text-slate-700">{test?.name ?? tid}</span>
+                                  <span className="text-xs text-right font-mono text-slate-600">{prov.pricing[tid] ? `PKR ${prov.pricing[tid]}` : <span className="text-slate-300">—</span>}</span>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -165,7 +202,7 @@ function LabAssignmentTab({ branches, labProviders }: { branches: Branch[]; labP
 
 // ─── Procedure Partners Tab ───────────────────────────────────────────────────
 
-function ProcedurePartnersTab({ branches, procPartners }: { branches: Branch[]; procPartners: ProcedurePartner[] }) {
+function ProcedurePartnersTab({ branches, procPartners, procSections }: { branches: Branch[]; procPartners: ProcedurePartner[]; procSections: ProcedureSection[] }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ "br-1": true });
   const [enabled, setEnabled]   = useState<Record<string, Set<string>>>(() => {
     const init: Record<string, Set<string>> = {};
@@ -178,6 +215,10 @@ function ProcedurePartnersTab({ branches, procPartners }: { branches: Branch[]; 
     branches.forEach(b => { init[b.id] = firstActive?.id ?? null; });
     return init;
   });
+  const [viewPricingKey, setViewPricingKey] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+
+  const allProcs = procSections.flatMap(s => s.procedures);
 
   if (procPartners.length === 0) {
     return (
@@ -235,28 +276,77 @@ function ProcedurePartnersTab({ branches, procPartners }: { branches: Branch[]; 
 
             {isExpanded && (
               <div className="border-t border-slate-100">
-                <div className="grid grid-cols-[1fr_100px_80px_80px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-4 py-2 bg-slate-50 border-b border-slate-100">
+                <div className="grid grid-cols-[1fr_110px_80px_80px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-4 py-2 bg-slate-50 border-b border-slate-100">
                   <span>Partner</span><span>Type</span><span className="text-center">Enabled</span><span className="text-center">Primary</span>
                 </div>
                 {procPartners.map(partner => {
                   const isEnabled = enabledSet.has(partner.id);
                   const isPrimary = primary[branch.id] === partner.id;
+                  const pricingKey = `${branch.id}:${partner.id}`;
+                  const showPricing = viewPricingKey === pricingKey;
+                  const noteKey = `${branch.id}:${partner.id}`;
+                  const pricedProcs = partner.selectedProcedures.filter(pid => partner.pricing[pid]);
                   return (
-                    <div key={partner.id} className={`grid grid-cols-[1fr_100px_80px_80px] items-center px-4 py-2.5 border-b border-slate-50 last:border-0 ${!partner.active ? "opacity-50" : ""}`}>
-                      <div>
-                        <p className="text-xs font-medium text-slate-700">{partner.name}</p>
-                        {!partner.active && <span className="text-[9px] text-amber-500">Inactive in catalog</span>}
+                    <div key={partner.id} className={`border-b border-slate-50 last:border-0 ${!partner.active ? "opacity-50" : ""}`}>
+                      <div className="grid grid-cols-[1fr_110px_80px_80px] items-center px-4 py-2.5">
+                        <div>
+                          <p className="text-xs font-medium text-slate-700">{partner.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {!partner.active && <span className="text-[9px] text-amber-500">Inactive in catalog</span>}
+                            {partner.selectedProcedures.length > 0 && (
+                              <button onClick={() => setViewPricingKey(showPricing ? null : pricingKey)}
+                                className="text-[9px] font-bold text-[#4982CF] hover:opacity-70 flex items-center gap-0.5">
+                                {showPricing ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />}
+                                View Pricing ({pricedProcs.length} priced)
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 w-fit ${TYPE_COLORS[partner.type] ?? ""}`}>{partner.type}</Badge>
+                        <div className="flex justify-center">
+                          <Switch checked={isEnabled} onCheckedChange={() => toggleEnabled(branch.id, partner.id)} className="data-[state=checked]:bg-[#4982CF]" />
+                        </div>
+                        <div className="flex justify-center">
+                          <input type="radio" name={`proc-primary-${branch.id}`} disabled={!isEnabled}
+                            checked={isPrimary && isEnabled}
+                            onChange={() => setPrimary(p => ({ ...p, [branch.id]: partner.id }))}
+                            className="accent-[#4982CF] h-4 w-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40" />
+                        </div>
                       </div>
-                      <Badge variant="outline" className={`text-[9px] px-1.5 py-0 w-fit ${TYPE_COLORS[partner.type] ?? ""}`}>{partner.type}</Badge>
-                      <div className="flex justify-center">
-                        <Switch checked={isEnabled} onCheckedChange={() => toggleEnabled(branch.id, partner.id)} className="data-[state=checked]:bg-[#4982CF]" />
-                      </div>
-                      <div className="flex justify-center">
-                        <input type="radio" name={`proc-primary-${branch.id}`} disabled={!isEnabled}
-                          checked={isPrimary && isEnabled}
-                          onChange={() => setPrimary(p => ({ ...p, [branch.id]: partner.id }))}
-                          className="accent-[#4982CF] h-4 w-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40" />
-                      </div>
+                      {partner.type === "External Provider" && isEnabled && (
+                        <div className="mx-4 mb-2">
+                          <input
+                            value={notes[noteKey] ?? ""}
+                            onChange={e => setNotes(n => ({ ...n, [noteKey]: e.target.value }))}
+                            placeholder="Contract reference / note (optional)"
+                            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#4982CF] bg-amber-50/30"
+                          />
+                        </div>
+                      )}
+                      {showPricing && (
+                        <div className="mx-4 mb-3 rounded-xl border border-[#4982CF]/20 overflow-hidden bg-blue-50/30">
+                          <div className="grid grid-cols-[1fr_90px_90px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-3 py-1.5 bg-slate-50/80 border-b border-slate-100">
+                            <span>Procedure</span><span className="text-right">Price (PKR)</span><span className="text-right">Doctor Rate</span>
+                          </div>
+                          {partner.selectedProcedures.length === 0 ? (
+                            <p className="text-xs text-slate-400 text-center py-3">No procedures selected</p>
+                          ) : (
+                            partner.selectedProcedures.map(pid => {
+                              const proc = allProcs.find(p => p.id === pid);
+                              return (
+                                <div key={pid} className="grid grid-cols-[1fr_90px_90px] items-center px-3 py-1.5 border-b border-slate-50 last:border-0">
+                                  <div>
+                                    <span className="text-xs text-slate-700">{proc?.name ?? pid}</span>
+                                    {proc?.cptCode && <span className="ml-1.5 text-[9px] text-slate-400 font-mono">{proc.cptCode}</span>}
+                                  </div>
+                                  <span className="text-xs text-right font-mono text-slate-600">{partner.pricing[pid] ? `PKR ${partner.pricing[pid]}` : <span className="text-slate-300">—</span>}</span>
+                                  <span className="text-xs text-right font-mono text-slate-500">{partner.doctorRate[pid] ? `PKR ${partner.doctorRate[pid]}` : <span className="text-slate-300">—</span>}</span>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -275,10 +365,12 @@ type TabKey = "branches" | "lab-assignment" | "proc-partners";
 
 interface BranchModuleProps {
   labProviders?: LabProvider[];
+  labSections?: LabSection[];
   procPartners?: ProcedurePartner[];
+  procSections?: ProcedureSection[];
 }
 
-export function BranchModule({ labProviders = [], procPartners = [] }: BranchModuleProps) {
+export function BranchModule({ labProviders = [], labSections = [], procPartners = [], procSections = [] }: BranchModuleProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("branches");
   const [branches, setBranches] = useState<Branch[]>(SEED);
   const [search, setSearch] = useState("");
@@ -417,12 +509,12 @@ export function BranchModule({ labProviders = [], procPartners = [] }: BranchMod
 
       {/* ── Lab Assignment tab ── */}
       {activeTab === "lab-assignment" && (
-        <LabAssignmentTab branches={branches} labProviders={labProviders} />
+        <LabAssignmentTab branches={branches} labProviders={labProviders} labSections={labSections} />
       )}
 
       {/* ── Procedure Partners tab ── */}
       {activeTab === "proc-partners" && (
-        <ProcedurePartnersTab branches={branches} procPartners={procPartners} />
+        <ProcedurePartnersTab branches={branches} procPartners={procPartners} procSections={procSections} />
       )}
 
       {/* Add / Edit dialog */}
