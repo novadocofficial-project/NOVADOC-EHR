@@ -53,7 +53,7 @@ function exportToCSV(
       s.name,
       getSTName(s.serviceTypeId),
       getDeptName(s.departmentId),
-      s.basePrice || "",
+      s.basePrice != null ? s.basePrice : "",
       s.taxable ? "Yes" : "No",
       s.active ? "Active" : "Inactive",
       ...providers.map(p => s.providerPrices?.[p.id] ?? ""),
@@ -98,7 +98,7 @@ function exportToPrint(
     tbody = services.map(s => `<tr>
       <td>${s.name}</td><td>${getSTName(s.serviceTypeId)}</td><td>${getDeptName(s.departmentId)}</td>
       <td>Rs. ${s.basePrice.toLocaleString()}</td><td>${s.taxable ? "Yes" : "No"}</td><td>${s.active ? "Active" : "Inactive"}</td>
-      ${providers.map(p => `<td>${s.providerPrices?.[p.id] ? `Rs. ${s.providerPrices[p.id].toLocaleString()}` : "—"}</td>`).join("")}
+      ${providers.map(p => `<td>${s.providerPrices?.[p.id] != null ? `Rs. ${s.providerPrices[p.id].toLocaleString()}` : "—"}</td>`).join("")}
     </tr>`).join("");
   } else {
     thead = `<tr><th>Service Name</th><th>Type</th><th>Dept</th><th>Base Price</th><th>Taxable</th><th>Status</th><th>Created</th></tr>`;
@@ -616,7 +616,7 @@ function PivotTable({
 
             {/* Base price */}
             <span className="text-xs font-bold text-slate-700">
-              {s.basePrice ? `Rs. ${s.basePrice.toLocaleString()}` : "—"}
+              {s.basePrice != null ? `Rs. ${s.basePrice.toLocaleString()}` : "—"}
             </span>
 
             {/* Taxable */}
