@@ -33,6 +33,7 @@ import {
   Shield,
   Sparkles,
   Stethoscope,
+  Store,
   Tag,
   Target,
   Ticket,
@@ -60,6 +61,7 @@ import { ClinicalLibrariesModule } from "@/pages/ClinicalLibrariesModule";
 import { ClinicalGoalsLibraryModule } from "@/pages/ClinicalGoalsLibraryModule";
 import { PermissionsModule } from "@/pages/PermissionsModule";
 import { FormularyManagementModule } from "@/pages/FormularyManagementModule";
+import { FormularyPartnersModule } from "@/pages/FormularyPartnersModule";
 import { ImagingCatalogModule } from "@/pages/ImagingCatalogModule";
 import { LabCatalogModule, SEED_SECTIONS as LAB_SEED_SECTIONS, SEED_PROVIDERS as LAB_SEED_PROVIDERS, type LabSection, type LabProvider } from "@/pages/LabCatalogModule";
 import { ProcedureCatalogModule, INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS, type ProcedureSection, type ProcedurePartner } from "@/pages/ProcedureCatalogModule";
@@ -184,7 +186,7 @@ type ActiveModule =
   | "lab-master" | "lab-providers"
   | "proc-master" | "proc-partners"
   | "permissions" | "signing-rules"
-  | "formulary-catalogue" | "formulary-defaults"
+  | "formulary-catalogue" | "formulary-defaults" | "formulary-partners"
   | "imaging-tests" | "imaging-reasons" | "imaging-partners"
   | "users-counters";
 
@@ -586,6 +588,7 @@ export function AdminSettings() {
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
                 {subNavItem("formulary-catalogue", <Pill className="h-3.5 w-3.5" />, "Medicine Catalogue")}
                 {subNavItem("formulary-defaults",  <Tag className="h-3.5 w-3.5" />,  "Prescription Defaults")}
+                {subNavItem("formulary-partners",  <Store className="h-3.5 w-3.5" />, "Formulary Partners")}
               </div>
             )}
 
@@ -643,7 +646,7 @@ export function AdminSettings() {
         </aside>
 
         {/* Right Content */}
-        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","care-plan-library","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","imaging-tests","imaging-reasons","imaging-partners"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
+        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","care-plan-library","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","formulary-partners","imaging-tests","imaging-reasons","imaging-partners"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
 
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
@@ -762,6 +765,10 @@ export function AdminSettings() {
 
           {(activeModule === "formulary-catalogue" || activeModule === "formulary-defaults") && (
             <FormularyManagementModule initialTab={activeModule === "formulary-defaults" ? "defaults" : "catalogue"} />
+          )}
+
+          {activeModule === "formulary-partners" && (
+            <FormularyPartnersModule />
           )}
 
           {(activeModule === "imaging-tests" || activeModule === "imaging-reasons" || activeModule === "imaging-partners") && (
