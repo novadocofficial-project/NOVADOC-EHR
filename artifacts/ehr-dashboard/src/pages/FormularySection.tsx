@@ -153,15 +153,67 @@ export const MEDICINES: MedicineDef[] = [
   ]},
 ];
 
+// ─── Admin Catalogue Integration ──────────────────────────────────────────────
+
+const CATALOGUE_KEY   = "ehr-formulary-catalogue-v1";
+const DEFAULTS_KEY    = "ehr-formulary-defaults-v1";
+
+interface AdminGeneric {
+  id: string; generic: string; category: string; allergyKeywords: string[];
+  brands: { id: string; brand: string; strength: string }[];
+  enabled: boolean; deleted: boolean;
+}
+
+/** Returns active (enabled & non-deleted) medicines from admin catalogue, falling back to MEDICINES. */
+function getActiveMedicines(): MedicineDef[] {
+  try {
+    const raw = localStorage.getItem(CATALOGUE_KEY);
+    if (raw) {
+      const cat: AdminGeneric[] = JSON.parse(raw);
+      return cat.filter(g => g.enabled && !g.deleted).map(g => ({
+        id: g.id, generic: g.generic, category: g.category,
+        allergyKeywords: g.allergyKeywords, brands: g.brands,
+      }));
+    }
+  } catch { /**/ }
+  return MEDICINES;
+}
+
+/** Returns all medicines from admin catalogue (inc. disabled), used for editing existing prescriptions. */
+function getAllAdminMedicines(): MedicineDef[] {
+  try {
+    const raw = localStorage.getItem(CATALOGUE_KEY);
+    if (raw) {
+      const cat: AdminGeneric[] = JSON.parse(raw);
+      return cat.map(g => ({
+        id: g.id, generic: g.generic, category: g.category,
+        allergyKeywords: g.allergyKeywords, brands: g.brands,
+      }));
+    }
+  } catch { /**/ }
+  return MEDICINES;
+}
+
 // ─── Options ──────────────────────────────────────────────────────────────────
 
-const ROUTES      = ["Oral", "IV", "IM", "SC", "Inhaled", "Topical", "Sublingual", "Rectal"];
-const FREQUENCIES = [
+const FACTORY_ROUTES      = ["Oral", "IV", "IM", "SC", "Inhaled", "Topical", "Sublingual", "Rectal"];
+const FACTORY_FREQUENCIES = [
   "Once daily (OD)", "Twice daily (BID)", "Three times daily (TID)", "Four times daily (QID)",
   "Every 6 hours (q6h)", "Every 8 hours (q8h)", "Every 12 hours (q12h)", "As needed (PRN)", "Weekly", "Monthly",
 ];
-const DURATIONS   = ["1 day", "3 days", "5 days", "7 days", "10 days", "14 days", "21 days", "30 days", "3 months", "6 months", "Ongoing"];
-const UNITS       = ["tablet(s)", "capsule(s)", "ml", "dose(s)", "drop(s)", "puff(s)", "sachet(s)"];
+const FACTORY_DURATIONS   = ["1 day", "3 days", "5 days", "7 days", "10 days", "14 days", "21 days", "30 days", "3 months", "6 months", "Ongoing"];
+const FACTORY_UNITS       = ["tablet(s)", "capsule(s)", "ml", "dose(s)", "drop(s)", "puff(s)", "sachet(s)"];
+
+function getFormularyOptions() {
+  try {
+    const raw = localStorage.getItem(DEFAULTS_KEY);
+    if (raw) {
+      const d = JSON.parse(raw) as { routes: string[]; frequencies: string[]; durations: string[]; units: string[] };
+      return { routes: d.routes ?? FACTORY_ROUTES, frequencies: d.frequencies ?? FACTORY_FREQUENCIES, durations: d.durations ?? FACTORY_DURATIONS, units: d.units ?? FACTORY_UNITS };
+    }
+  } catch { /**/ }
+  return { routes: FACTORY_ROUTES, frequencies: FACTORY_FREQUENCIES, durations: FACTORY_DURATIONS, units: FACTORY_UNITS };
+}
 
 // ─── Favourites (localStorage persisted) ─────────────────────────────────────
 
@@ -249,18 +301,20 @@ function MedicineSearch({
 
   const q = query.toLowerCase().trim();
 
+  const activeMeds = getActiveMedicines();
+
   // Favourited brand options with their parent medicine
-  const favList = MEDICINES.flatMap(m =>
+  const favList = activeMeds.flatMap(m =>
     m.brands.filter(b => favs.has(b.id)).map(b => ({ med: m, brand: b }))
   );
 
   // Filter medicines by query
   const matchedMeds = q
-    ? MEDICINES.filter(m =>
+    ? activeMeds.filter(m =>
         m.generic.toLowerCase().includes(q) ||
         m.brands.some(b => b.brand.toLowerCase().includes(q) || b.strength.toLowerCase().includes(q))
       )
-    : MEDICINES;
+    : activeMeds;
 
   // Group by category
   const grouped = matchedMeds.reduce<Record<string, MedicineDef[]>>((acc, m) => {
@@ -434,7 +488,9 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
   const [form,        setForm]        = useState(EMPTY_FORM);
   const [editingUid,  setEditingUid]  = useState<string | null>(null);
 
-  const drugAllergies = patientAllergies.filter(a => a.allergenType === "Drug" || MEDICINES.some(m =>
+  const allMeds = getAllAdminMedicines();
+  const opts    = getFormularyOptions();
+  const drugAllergies = patientAllergies.filter(a => a.allergenType === "Drug" || allMeds.some(m =>
     m.allergyKeywords.some(kw => a.name.toLowerCase().includes(kw.toLowerCase()) || kw.toLowerCase().includes(a.name.toLowerCase()))
   ));
 
@@ -481,7 +537,7 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
   }
 
   function startEdit(m: MedicineEntry) {
-    const def   = MEDICINES.find(d => d.id === m.medicineId) ?? null;
+    const def   = allMeds.find(d => d.id === m.medicineId) ?? null;
     const brand = def?.brands.find(b => b.id === m.brandId) ?? null;
     setSelMed(def); setSelBrand(brand);
     setForm({ dose: m.dose, unit: m.unit, route: m.route, frequency: m.frequency, duration: m.duration });
@@ -584,11 +640,11 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
                 </div>
                 <div>
                   <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Unit</label>
-                  <Sel value={form.unit} options={UNITS} onChange={v => setF("unit", v)} />
+                  <Sel value={form.unit} options={opts.units} onChange={v => setF("unit", v)} />
                 </div>
                 <div>
                   <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Route</label>
-                  <Sel value={form.route} options={ROUTES} onChange={v => setF("route", v)} />
+                  <Sel value={form.route} options={opts.routes} onChange={v => setF("route", v)} />
                 </div>
               </div>
 
@@ -596,11 +652,11 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Frequency</label>
-                  <Sel value={form.frequency} options={FREQUENCIES} onChange={v => setF("frequency", v)} />
+                  <Sel value={form.frequency} options={opts.frequencies} onChange={v => setF("frequency", v)} />
                 </div>
                 <div>
                   <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Duration</label>
-                  <Sel value={form.duration} options={DURATIONS} onChange={v => setF("duration", v)} />
+                  <Sel value={form.duration} options={opts.durations} onChange={v => setF("duration", v)} />
                 </div>
               </div>
 

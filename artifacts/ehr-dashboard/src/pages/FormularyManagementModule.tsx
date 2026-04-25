@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus, Trash2, Edit2, Save, X, GripVertical, Search, ChevronDown,
   ChevronRight, CheckCircle2, Star, Pill, FileText, RotateCcw,
@@ -12,8 +12,9 @@ import { MEDICINES } from "@/pages/FormularySection";
 
 const ACCENT = "#4982CF";
 
-// Shared localStorage key — must match FormularySection.tsx
-const FAVS_KEY = "formulary_fav_brandIds";
+// Shared localStorage keys — must match FormularySection.tsx
+const FAVS_KEY      = "formulary_fav_brandIds";
+const CATALOGUE_KEY = "ehr-formulary-catalogue-v1";
 
 function uid() { return `f-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`; }
 
@@ -68,6 +69,10 @@ function saveDefaults(data: { routes: string[]; frequencies: string[]; durations
 // ─── Seed generics from MEDICINES ─────────────────────────────────────────────
 
 function seedGenerics(): Generic[] {
+  try {
+    const raw = localStorage.getItem(CATALOGUE_KEY);
+    if (raw) return JSON.parse(raw) as Generic[];
+  } catch { /**/ }
   return MEDICINES.map(m => ({
     id:              m.id,
     generic:         m.generic,
@@ -113,6 +118,11 @@ function MedicineCatalogueTab() {
   // Brand inline editing
   const [brandEdit, setBrandEdit] = useState<{ genId: string; brandId: string; brand: string; strength: string } | null>(null);
   const [newBrand, setNewBrand]   = useState<Record<string, { brand: string; strength: string }>>({});
+
+  // Persist catalogue to shared localStorage key whenever generics changes
+  useEffect(() => {
+    try { localStorage.setItem(CATALOGUE_KEY, JSON.stringify(generics)); } catch { /**/ }
+  }, [generics]);
 
   const categories = Array.from(new Set(generics.map(g => g.category))).sort();
 
