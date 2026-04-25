@@ -185,7 +185,7 @@ type ActiveModule =
   | "proc-master" | "proc-partners"
   | "permissions" | "signing-rules"
   | "formulary-catalogue" | "formulary-defaults"
-  | "imaging-tests" | "imaging-reasons"
+  | "imaging-tests" | "imaging-reasons" | "imaging-partners"
   | "users-counters";
 
 export function AdminSettings() {
@@ -601,8 +601,9 @@ export function AdminSettings() {
             </button>
             {navExpanded.imagingCatalog && (
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("imaging-tests",   <ScanLine className="h-3.5 w-3.5" />, "Imaging Test List")}
-                {subNavItem("imaging-reasons", <FileText className="h-3.5 w-3.5" />, "Reason Templates")}
+                {subNavItem("imaging-tests",    <ScanLine className="h-3.5 w-3.5" />, "Imaging Test List")}
+                {subNavItem("imaging-reasons",  <FileText className="h-3.5 w-3.5" />, "Reason Templates")}
+                {subNavItem("imaging-partners", <Building2 className="h-3.5 w-3.5" />, "Imaging Partners")}
               </div>
             )}
 
@@ -642,7 +643,7 @@ export function AdminSettings() {
         </aside>
 
         {/* Right Content */}
-        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","care-plan-library","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","imaging-tests","imaging-reasons"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
+        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","care-plan-library","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","imaging-tests","imaging-reasons","imaging-partners"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
 
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
@@ -763,8 +764,8 @@ export function AdminSettings() {
             <FormularyManagementModule initialTab={activeModule === "formulary-defaults" ? "defaults" : "catalogue"} />
           )}
 
-          {(activeModule === "imaging-tests" || activeModule === "imaging-reasons") && (
-            <ImagingCatalogModule initialTab={activeModule === "imaging-reasons" ? "reasons" : "tests"} />
+          {(activeModule === "imaging-tests" || activeModule === "imaging-reasons" || activeModule === "imaging-partners") && (
+            <ImagingCatalogModule initialTab={activeModule === "imaging-reasons" ? "reasons" : activeModule === "imaging-partners" ? "partners" : "tests"} />
           )}
 
           {activeModule === "departments" && (

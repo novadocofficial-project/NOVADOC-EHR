@@ -2,15 +2,18 @@ import { useState, useEffect } from "react";
 import {
   Plus, Trash2, Edit2, X, GripVertical, Search, ChevronDown,
   ChevronRight, CheckCircle2, FileText, RotateCcw, EyeOff, Eye,
-  ScanLine, Save,
+  ScanLine, Save, Upload, AlertCircle, Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const ACCENT = "#4982CF";
 const CATALOGUE_KEY = "ehr-imaging-catalogue-v1";
 const REASONS_KEY   = "ehr-imaging-reasons-v1";
+const PARTNERS_KEY  = "ehr-imaging-partners-v1";
 
 function uid() { return `img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`; }
 function reorder<T>(arr: T[], from: number, to: number) {
@@ -28,6 +31,19 @@ interface ImagingTest {
   category: string;
   enabled:  boolean;
   deleted:  boolean;
+}
+
+export type ImagingPartnerType = "Internal Radiology" | "External Centre";
+
+export interface ImagingPartner {
+  id:            string;
+  name:          string;
+  type:          ImagingPartnerType;
+  contact:       string;
+  active:        boolean;
+  selectedTests: string[];
+  pricing:       Record<string, string>;
+  doctorRate:    Record<string, string>;
 }
 
 // ─── Seed data (mirrors ImagingSection.tsx IMAGING_TESTS / REASON_TEMPLATES) ───
@@ -97,6 +113,21 @@ const SEED_REASONS = [
   "Routine follow-up",
 ];
 
+const SEED_PARTNERS: ImagingPartner[] = [
+  {
+    id: "ip1", name: "In-House Radiology", type: "Internal Radiology", contact: "", active: true,
+    selectedTests: ["xray-chest","xray-abdomen","xray-knee","us-abdomen","us-thyroid","echo-2d"],
+    pricing:    { "xray-chest": "800", "xray-abdomen": "900", "xray-knee": "700", "us-abdomen": "1500", "us-thyroid": "1200", "echo-2d": "3500" },
+    doctorRate: { "xray-chest": "0",   "xray-abdomen": "0",   "xray-knee": "0",   "us-abdomen": "400",  "us-thyroid": "350",  "echo-2d": "1000" },
+  },
+  {
+    id: "ip2", name: "City Diagnostics Centre", type: "External Centre", contact: "0300-9876543", active: true,
+    selectedTests: ["ct-brain","ct-chest","ct-abdo-pelvis","mri-brain","mri-knee","nuc-pet-ct"],
+    pricing:    { "ct-brain": "7000", "ct-chest": "8000", "ct-abdo-pelvis": "9000", "mri-brain": "12000", "mri-knee": "10000", "nuc-pet-ct": "35000" },
+    doctorRate: { "ct-brain": "1500", "ct-chest": "1500", "ct-abdo-pelvis": "2000", "mri-brain": "2500",  "mri-knee": "2000",  "nuc-pet-ct": "5000"  },
+  },
+];
+
 const CATEGORY_COLORS: Record<string, string> = {
   "X-Ray":             "#0ea5e9",
   "CT Scan":           "#8b5cf6",
@@ -129,12 +160,24 @@ function seedReasons(): string[] {
   return [...SEED_REASONS];
 }
 
+function seedPartners(): ImagingPartner[] {
+  try {
+    const raw = localStorage.getItem(PARTNERS_KEY);
+    if (raw) return JSON.parse(raw) as ImagingPartner[];
+  } catch { /**/ }
+  return [...SEED_PARTNERS];
+}
+
 // ─── Tab 1: Imaging Test List (inline add + inline edit) ───────────────────────
 
 interface InlineEdit { name: string; category: string; customCat: string; }
 
-function ImagingTestListTab() {
-  const [tests,        setTests]        = useState<ImagingTest[]>(seedTests);
+function ImagingTestListTab({
+  tests, setTests,
+}: {
+  tests: ImagingTest[];
+  setTests: React.Dispatch<React.SetStateAction<ImagingTest[]>>;
+}) {
   const [search,       setSearch]       = useState("");
   const [filterCat,    setFilterCat]    = useState("All");
   const [showInactive, setShowInactive] = useState(false);
@@ -149,11 +192,6 @@ function ImagingTestListTab() {
   const [addName,   setAddName]   = useState("");
   const [addCatVal, setAddCatVal] = useState(KNOWN_CATS[0]);
   const [addCustom, setAddCustom] = useState("");
-
-  // Persist to localStorage whenever tests change
-  useEffect(() => {
-    try { localStorage.setItem(CATALOGUE_KEY, JSON.stringify(tests)); } catch { /**/ }
-  }, [tests]);
 
   const categories = Array.from(new Set(tests.map(t => t.category))).sort();
 
@@ -481,23 +519,23 @@ function ReasonTemplatesTab() {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-4">
-        {/* Add new reason */}
-        <div className="flex gap-2 mb-5">
-          <Input
-            value={newText}
-            onChange={e => setNewText(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addReason()}
-            placeholder="Add a new reason template…"
-            className="h-8 text-xs flex-1"
-          />
-          <Button onClick={addReason} className="h-8 text-xs text-white gap-1.5 px-3" style={{ background: ACCENT }}
-            disabled={!newText.trim()}>
-            <Plus className="h-3.5 w-3.5" /> Add
-          </Button>
-        </div>
+      {/* Add new reason */}
+      <div className="px-6 py-3 border-b border-slate-100 flex gap-2">
+        <Input
+          value={newText}
+          onChange={e => setNewText(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && addReason()}
+          placeholder="Add a new reason template…"
+          className="h-8 text-xs flex-1"
+        />
+        <Button onClick={addReason} className="h-8 text-xs text-white gap-1.5 px-3" style={{ background: ACCENT }}
+          disabled={!newText.trim()}>
+          <Plus className="h-3.5 w-3.5" /> Add
+        </Button>
+      </div>
 
-        {/* Reason list */}
+      {/* Reason list */}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="space-y-1.5">
           {items.map((reason, idx) => (
             <div key={idx} draggable
@@ -554,20 +592,382 @@ function ReasonTemplatesTab() {
   );
 }
 
+// ─── Tab 3: Imaging Partners ────────────────────────────────────────────────────
+
+const PARTNER_TYPE_COLORS: Record<ImagingPartnerType, string> = {
+  "Internal Radiology": "bg-blue-50 text-blue-600 border-blue-200",
+  "External Centre":    "bg-amber-50 text-amber-600 border-amber-200",
+};
+
+function ImagingPartnersTab({
+  partners, setPartners, tests,
+}: {
+  partners:    ImagingPartner[];
+  setPartners: React.Dispatch<React.SetStateAction<ImagingPartner[]>>;
+  tests:       ImagingTest[];
+}) {
+  const [step, setStep]           = useState<1 | 2>(1);
+  const [showModal, setShowModal] = useState(false);
+  const [editId, setEditId]       = useState<string | null>(null);
+  const [form, setForm]           = useState<{ name: string; type: ImagingPartnerType; contact: string }>({
+    name: "", type: "Internal Radiology", contact: "",
+  });
+  const [selected,   setSelected]   = useState<string[]>([]);
+  const [pricing,    setPricing]    = useState<Record<string, string>>({});
+  const [doctorRate, setDoctorRate] = useState<Record<string, string>>({});
+  const [deleteId,   setDeleteId]   = useState<string | null>(null);
+  const [expandId,   setExpandId]   = useState<string | null>(null);
+  const [importPartnerId, setImportPartnerId] = useState<string | null>(null);
+  const [importText,   setImportText]   = useState("");
+  const [importResult, setImportResult] = useState<{ matched: number; unmatched: string[] } | null>(null);
+  const [modalSearch,  setModalSearch]  = useState("");
+
+  const activeTests = tests.filter(t => t.enabled && !t.deleted);
+  const categories  = Array.from(new Set(activeTests.map(t => t.category))).sort();
+
+  function openNew() {
+    setForm({ name: "", type: "Internal Radiology", contact: "" });
+    setSelected([]); setPricing({}); setDoctorRate({}); setEditId(null); setStep(1); setModalSearch(""); setShowModal(true);
+  }
+
+  function openEdit(p: ImagingPartner) {
+    setForm({ name: p.name, type: p.type, contact: p.contact });
+    setSelected([...p.selectedTests]); setPricing({ ...p.pricing }); setDoctorRate({ ...p.doctorRate });
+    setEditId(p.id); setStep(1); setModalSearch(""); setShowModal(true);
+  }
+
+  function save() {
+    const data: ImagingPartner = {
+      id: editId ?? uid(), name: form.name.trim(), type: form.type, contact: form.contact,
+      active: editId ? (partners.find(p => p.id === editId)?.active ?? true) : true,
+      selectedTests: selected, pricing, doctorRate,
+    };
+    if (editId) setPartners(ps => ps.map(p => p.id === editId ? data : p));
+    else setPartners(ps => [...ps, data]);
+    setShowModal(false);
+  }
+
+  function importPricing(partnerId: string) {
+    const partner = partners.find(p => p.id === partnerId);
+    if (!partner) return;
+    const lines = importText.trim().split("\n").map(l => l.split(",").map(s => s.trim().replace(/^"|"$/g, "")));
+    const newPricing = { ...partner.pricing };
+    const newDr      = { ...partner.doctorRate };
+    const matched: string[] = [];
+    const unmatched: string[] = [];
+    lines.forEach(([name, price, dr]) => {
+      const test = activeTests.find(t => t.name.toLowerCase() === name?.toLowerCase());
+      if (test && price) { newPricing[test.id] = price; if (dr) newDr[test.id] = dr; matched.push(name); }
+      else if (name) unmatched.push(name);
+    });
+    setPartners(ps => ps.map(p => p.id === partnerId ? { ...p, pricing: newPricing, doctorRate: newDr } : p));
+    setImportResult({ matched: matched.length, unmatched });
+    setImportText("");
+  }
+
+  const filteredModalTests = modalSearch
+    ? activeTests.filter(t => t.name.toLowerCase().includes(modalSearch.toLowerCase()) || t.category.toLowerCase().includes(modalSearch.toLowerCase()))
+    : activeTests;
+
+  const modalCategories = Array.from(new Set(filteredModalTests.map(t => t.category))).sort();
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Toolbar */}
+      <div className="px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+        <p className="text-xs text-slate-500">
+          Manage radiology centers and their per-test pricing.
+        </p>
+        <Button onClick={openNew} className="h-8 text-xs gap-1.5 text-white" style={{ background: ACCENT }}>
+          <Plus className="h-3.5 w-3.5" /> New Partner
+        </Button>
+      </div>
+
+      {/* Partner list */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+        {partners.length === 0 && (
+          <div className="text-center py-16 text-slate-300">
+            <Building2 className="h-12 w-12 mx-auto mb-3" />
+            <p className="text-sm font-semibold">No imaging partners yet</p>
+            <p className="text-xs mt-1">Add your first radiology center or imaging partner above</p>
+          </div>
+        )}
+
+        {partners.map(p => {
+          const isExpanded = expandId === p.id;
+          return (
+            <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3">
+                <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                  <ScanLine className="h-4 w-4 text-slate-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-bold text-slate-800">{p.name}</p>
+                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${PARTNER_TYPE_COLORS[p.type]}`}>{p.type}</Badge>
+                    {!p.active && <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-slate-50 text-slate-400 border-slate-200">Inactive</Badge>}
+                  </div>
+                  <p className="text-[10px] text-slate-400 truncate">{p.contact || "No contact"} · {p.selectedTests.length} test{p.selectedTests.length !== 1 ? "s" : ""}</p>
+                </div>
+                <Switch checked={p.active} onCheckedChange={v => setPartners(ps => ps.map(x => x.id === p.id ? { ...x, active: v } : x))}
+                  className="data-[state=checked]:bg-[#4982CF]" />
+                <button onClick={() => openEdit(p)} className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-[#4982CF]">
+                  <Edit2 className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={() => setDeleteId(p.id)} className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-500">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={() => setExpandId(isExpanded ? null : p.id)} className="p-1.5 rounded hover:bg-slate-100 text-slate-400">
+                  {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+
+              {isExpanded && (
+                <div className="border-t border-slate-100">
+                  <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex-1">Test Pricing</p>
+                    <button
+                      onClick={() => { setImportPartnerId(importPartnerId === p.id ? null : p.id); setImportResult(null); setImportText(""); }}
+                      className="flex items-center gap-1 text-[10px] font-bold text-[#4982CF] hover:opacity-80">
+                      <Upload className="h-3 w-3" /> Import Pricing
+                    </button>
+                  </div>
+                  {importPartnerId === p.id && (
+                    <div className="px-4 py-3 bg-blue-50/40 border-b border-[#4982CF]/20 space-y-2">
+                      <p className="text-[10px] text-slate-500">Paste CSV: <span className="font-mono">Test Name, Price, Doctor Rate</span> (one per line)</p>
+                      <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={4}
+                        className="w-full text-xs font-mono border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-[#4982CF] resize-none" />
+                      <div className="flex items-center gap-2">
+                        <Button onClick={() => importPricing(p.id)} className="h-7 text-xs text-white px-3" style={{ background: ACCENT }}>Apply</Button>
+                        <Button variant="outline" onClick={() => { setImportPartnerId(null); setImportResult(null); }} className="h-7 text-xs px-3">Cancel</Button>
+                        {importResult && (
+                          <span className="text-[10px] text-slate-500">
+                            {importResult.matched} matched{importResult.unmatched.length > 0 && `, ${importResult.unmatched.length} unmatched`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="max-h-64 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100 sticky top-0">
+                          <th className="text-left px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Test</th>
+                          <th className="text-left px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Category</th>
+                          <th className="text-right px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400 w-32">Price (PKR)</th>
+                          <th className="text-right px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400 w-32">Doctor Rate</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeTests.filter(t => p.selectedTests.includes(t.id)).map(t => (
+                          <tr key={t.id} className="border-b border-slate-50 last:border-0">
+                            <td className="px-4 py-1.5 text-slate-700">{t.name}</td>
+                            <td className="px-4 py-1.5">
+                              <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: `${CATEGORY_COLORS[t.category] ?? "#64748b"}18`, color: CATEGORY_COLORS[t.category] ?? "#64748b" }}>
+                                {t.category}
+                              </span>
+                            </td>
+                            <td className="px-4 py-1.5 text-right">
+                              <Input
+                                value={p.pricing[t.id] ?? ""}
+                                onChange={e => setPartners(ps => ps.map(x => x.id === p.id ? { ...x, pricing: { ...x.pricing, [t.id]: e.target.value } } : x))}
+                                placeholder="0.00" className="h-6 text-xs text-right w-28 ml-auto"
+                              />
+                            </td>
+                            <td className="px-4 py-1.5 text-right">
+                              <Input
+                                value={p.doctorRate[t.id] ?? ""}
+                                onChange={e => setPartners(ps => ps.map(x => x.id === p.id ? { ...x, doctorRate: { ...x.doctorRate, [t.id]: e.target.value } } : x))}
+                                placeholder="0.00" className="h-6 text-xs text-right w-28 ml-auto"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                        {p.selectedTests.length === 0 && (
+                          <tr><td colSpan={4} className="px-4 py-4 text-center text-slate-300 text-xs">No tests selected for this partner</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Add / Edit Modal */}
+      <Dialog open={showModal} onOpenChange={v => !v && setShowModal(false)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {editId ? "Edit Imaging Partner" : "New Imaging Partner"}
+              <span className="ml-auto text-xs font-normal text-slate-400">Step {step} of 2</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 mb-4">
+            {[1, 2].map(s => (
+              <div key={s} className={`flex items-center gap-2 ${s < 2 ? "flex-1" : ""}`}>
+                <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-black ${step >= s ? "text-white" : "bg-slate-100 text-slate-400"}`}
+                  style={step >= s ? { background: ACCENT } : {}}>
+                  {s}
+                </div>
+                <span className={`text-xs font-medium ${step === s ? "text-[#4982CF]" : "text-slate-400"}`}>
+                  {s === 1 ? "Partner Details" : "Test Selection & Pricing"}
+                </span>
+                {s < 2 && <div className="flex-1 h-px bg-slate-200" />}
+              </div>
+            ))}
+          </div>
+
+          {step === 1 && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-600">Partner Name <span className="text-red-400">*</span></label>
+                  <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. City Diagnostics Centre" className="h-9 text-sm mt-1" autoFocus />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-600">Type</label>
+                  <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as ImagingPartnerType }))}
+                    className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3 focus:outline-none mt-1 bg-white">
+                    <option>Internal Radiology</option>
+                    <option>External Centre</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-bold text-slate-600">
+                    Contact Info {form.type === "External Centre" && <span className="text-slate-400 font-normal">(recommended for external)</span>}
+                  </label>
+                  <Input value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))}
+                    placeholder="Phone / email / contract ref" className="h-9 text-sm mt-1" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowModal(false)} className="h-9 text-sm">Cancel</Button>
+                <Button disabled={!form.name.trim()} onClick={() => setStep(2)} className="h-9 text-sm text-white" style={{ background: ACCENT }}>Next →</Button>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="flex flex-col gap-3 overflow-hidden flex-1">
+              <div className="flex items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-xs">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Input value={modalSearch} onChange={e => setModalSearch(e.target.value)}
+                    placeholder="Search tests…" className="pl-8 h-8 text-xs" />
+                </div>
+                <p className="text-xs text-slate-500 whitespace-nowrap">{selected.length} of {activeTests.length} selected</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setSelected(activeTests.map(t => t.id))} className="text-xs font-bold" style={{ color: ACCENT }}>Select All</button>
+                  <button onClick={() => setSelected([])} className="text-xs font-bold text-slate-400">Clear</button>
+                </div>
+              </div>
+              <div className="overflow-y-auto flex-1 border border-slate-100 rounded-xl">
+                {modalCategories.map(cat => {
+                  const color = CATEGORY_COLORS[cat] ?? "#64748b";
+                  const testsInCat = filteredModalTests.filter(t => t.category === cat);
+                  return (
+                    <div key={cat}>
+                      <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{cat}</p>
+                      </div>
+                      {testsInCat.map(t => (
+                        <div key={t.id} className="flex items-center gap-3 px-4 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
+                          <input type="checkbox" checked={selected.includes(t.id)}
+                            onChange={() => setSelected(ss => ss.includes(t.id) ? ss.filter(x => x !== t.id) : [...ss, t.id])}
+                            className="accent-[#4982CF]" />
+                          <span className="flex-1 text-xs text-slate-700">{t.name}</span>
+                          {selected.includes(t.id) && (
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-slate-400">PKR</span>
+                                <Input value={pricing[t.id] ?? ""} onChange={e => setPricing(p => ({ ...p, [t.id]: e.target.value }))}
+                                  placeholder="Price" className="h-6 w-20 text-xs text-right" />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-slate-400">Dr.</span>
+                                <Input value={doctorRate[t.id] ?? ""} onChange={e => setDoctorRate(p => ({ ...p, [t.id]: e.target.value }))}
+                                  placeholder="Rate" className="h-6 w-20 text-xs text-right" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+                {filteredModalTests.length === 0 && (
+                  <p className="text-center text-xs text-slate-300 py-8">No tests match your search</p>
+                )}
+              </div>
+              <div className="flex justify-between gap-2 pt-1">
+                <Button variant="outline" onClick={() => setStep(1)} className="h-9 text-sm">← Back</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowModal(false)} className="h-9 text-sm">Cancel</Button>
+                  <Button onClick={save} className="h-9 text-sm text-white gap-1.5" style={{ background: ACCENT }}>
+                    <Save className="h-3.5 w-3.5" /> Save Partner
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600">
+              <AlertCircle className="h-5 w-5" /> Remove Partner
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600">Remove <strong>{partners.find(p => p.id === deleteId)?.name}</strong>? This cannot be undone.</p>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setDeleteId(null)} className="h-8 text-sm">Cancel</Button>
+            <Button onClick={() => { setPartners(ps => ps.filter(p => p.id !== deleteId)); setDeleteId(null); }}
+              className="bg-rose-500 text-white h-8 text-sm">Remove</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ─── Main Module ───────────────────────────────────────────────────────────────
 
-type TabKey = "tests" | "reasons";
+type TabKey = "tests" | "reasons" | "partners";
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-  { key: "tests",   label: "Imaging Test List",  icon: <ScanLine className="h-3.5 w-3.5" /> },
-  { key: "reasons", label: "Reason Templates",   icon: <FileText className="h-3.5 w-3.5" /> },
+  { key: "tests",    label: "Imaging Test List",  icon: <ScanLine className="h-3.5 w-3.5" /> },
+  { key: "reasons",  label: "Reason Templates",   icon: <FileText className="h-3.5 w-3.5" /> },
+  { key: "partners", label: "Imaging Partners",   icon: <Building2 className="h-3.5 w-3.5" /> },
 ];
 
 interface Props { initialTab?: TabKey; }
 
 export function ImagingCatalogModule({ initialTab = "tests" }: Props) {
-  const [tab, setTab] = useState<TabKey>(initialTab);
+  const [tab, setTab]             = useState<TabKey>(initialTab);
+  const [tests, setTests]         = useState<ImagingTest[]>(seedTests);
+  const [partners, setPartners]   = useState<ImagingPartner[]>(seedPartners);
+
   useEffect(() => { setTab(initialTab); }, [initialTab]);
+
+  // Persist tests to localStorage whenever they change
+  useEffect(() => {
+    try { localStorage.setItem(CATALOGUE_KEY, JSON.stringify(tests)); } catch { /**/ }
+  }, [tests]);
+
+  // Persist partners to localStorage whenever they change
+  useEffect(() => {
+    try { localStorage.setItem(PARTNERS_KEY, JSON.stringify(partners)); } catch { /**/ }
+  }, [partners]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -579,7 +979,7 @@ export function ImagingCatalogModule({ initialTab = "tests" }: Props) {
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-800">Imaging Catalog</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Manage imaging tests and indication reason templates</p>
+            <p className="text-xs text-slate-500 mt-0.5">Manage imaging tests, reason templates, and radiology partners</p>
           </div>
         </div>
 
@@ -601,8 +1001,9 @@ export function ImagingCatalogModule({ initialTab = "tests" }: Props) {
 
       {/* Tab content */}
       <div className="flex-1 overflow-hidden">
-        {tab === "tests"   && <ImagingTestListTab />}
-        {tab === "reasons" && <ReasonTemplatesTab />}
+        {tab === "tests"    && <ImagingTestListTab tests={tests} setTests={setTests} />}
+        {tab === "reasons"  && <ReasonTemplatesTab />}
+        {tab === "partners" && <ImagingPartnersTab partners={partners} setPartners={setPartners} tests={tests} />}
       </div>
     </div>
   );
