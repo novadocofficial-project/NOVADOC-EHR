@@ -588,7 +588,7 @@ export function AdminSettings() {
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
                 {subNavItem("formulary-catalogue", <Pill className="h-3.5 w-3.5" />, "Medicine Catalogue")}
                 {subNavItem("formulary-defaults",  <Tag className="h-3.5 w-3.5" />,  "Prescription Defaults")}
-                {subNavItem("formulary-partners",  <Store className="h-3.5 w-3.5" />, "Formulary Partners")}
+                {subNavItem("formulary-partners",  <Store className="h-3.5 w-3.5" />, "Pharmacy Partners")}
               </div>
             )}
 
