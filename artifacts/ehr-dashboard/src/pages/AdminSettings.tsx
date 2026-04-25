@@ -12,13 +12,16 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  ClipboardCheck,
   ClipboardList,
   CreditCard,
   Edit2,
   GitBranch,
+  Heart,
   Layers,
   LayoutGrid,
   Lock,
+  MapPin,
   Monitor,
   Package,
   Plus,
@@ -29,6 +32,7 @@ import {
   Sparkles,
   Stethoscope,
   Tag,
+  Target,
   Ticket,
   Trash2,
   UserRound,
@@ -48,7 +52,11 @@ import { PackagesModule } from "@/pages/PackagesModule";
 import { BranchModule } from "@/pages/BranchModule";
 import { SoapConfigModule } from "@/pages/SoapConfigModule";
 import { HpiTemplatesModule } from "@/pages/HpiTemplatesModule";
+import { PhysicalExamBuilderModule } from "@/pages/PhysicalExamBuilderModule";
+import { TemplateManagerModule } from "@/pages/TemplateManagerModule";
 import { ClinicalLibrariesModule } from "@/pages/ClinicalLibrariesModule";
+import { ClinicalGoalsLibraryModule } from "@/pages/ClinicalGoalsLibraryModule";
+import { PermissionsModule } from "@/pages/PermissionsModule";
 import { LabCatalogModule, SEED_SECTIONS as LAB_SEED_SECTIONS, SEED_PROVIDERS as LAB_SEED_PROVIDERS, type LabSection, type LabProvider } from "@/pages/LabCatalogModule";
 import { ProcedureCatalogModule, INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS, type ProcedureSection, type ProcedurePartner } from "@/pages/ProcedureCatalogModule";
 import { QueueModule } from "@/pages/QueueModule";
@@ -165,11 +173,13 @@ type ActiveModule =
   | "branches"
   | "visit-types" | "workflow-config" | "counter-types" | "counters"
   | "token-settings" | "queue-behavior" | "locking-settings" | "display-settings" | "doctor-partitions" | "routing-rules"
-  | "soap-note-structure" | "soap-vitals-config" | "hpi-templates"
+  | "soap-note-structure" | "soap-vitals-config" | "hpi-templates" | "pe-builder" | "template-manager"
   | "clinical-complaints" | "clinical-icd10" | "clinical-poc" | "clinical-ros"
   | "clinical-allergies" | "clinical-med-surgical" | "clinical-family" | "clinical-social"
+  | "care-plan-library" | "goals-library" | "referral-destinations" | "comorbidities"
   | "lab-master" | "lab-providers"
   | "proc-master" | "proc-partners"
+  | "permissions" | "signing-rules"
   | "users-counters";
 
 export function AdminSettings() {
@@ -188,6 +198,7 @@ export function AdminSettings() {
     clinicalLibraries: false,
     labCatalog: false,
     procedureCatalog: false,
+    permissions: false,
     users: false,
   });
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DATA);
@@ -487,6 +498,8 @@ export function AdminSettings() {
                 {subNavItem("soap-note-structure", <FileText className="h-3.5 w-3.5" />, "Note Structure")}
                 {subNavItem("soap-vitals-config",  <Sliders className="h-3.5 w-3.5" />, "Vitals Config")}
                 {subNavItem("hpi-templates",       <ClipboardList className="h-3.5 w-3.5" />, "HPI Templates")}
+                {subNavItem("pe-builder",          <Stethoscope className="h-3.5 w-3.5" />, "PE Builder")}
+                {subNavItem("template-manager",    <FileText className="h-3.5 w-3.5" />, "Template Manager")}
               </div>
             )}
 
@@ -510,6 +523,10 @@ export function AdminSettings() {
                 {subNavItem("clinical-med-surgical", <Stethoscope className="h-3.5 w-3.5" />, "Med/Surgical History")}
                 {subNavItem("clinical-family",       <Users className="h-3.5 w-3.5" />, "Family History")}
                 {subNavItem("clinical-social",       <UserRound className="h-3.5 w-3.5" />, "Social History")}
+                {subNavItem("care-plan-library",     <ClipboardCheck className="h-3.5 w-3.5" />, "Care Plan Tasks")}
+                {subNavItem("goals-library",         <Target className="h-3.5 w-3.5" />, "Patient Goals")}
+                {subNavItem("referral-destinations", <MapPin className="h-3.5 w-3.5" />, "Referral Destinations")}
+                {subNavItem("comorbidities",         <Heart className="h-3.5 w-3.5" />, "Comorbidities")}
               </div>
             )}
 
@@ -547,6 +564,23 @@ export function AdminSettings() {
               </div>
             )}
 
+            {/* ── Permissions & Security Group ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("permissions")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Shield className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Permissions & Security</span>
+              {navExpanded.permissions ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.permissions && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("permissions",    <Shield className="h-3.5 w-3.5" />, "Role Access")}
+                {subNavItem("signing-rules",  <Lock className="h-3.5 w-3.5" />, "Signing Rules")}
+              </div>
+            )}
+
             {/* ── Users Management Group ── */}
             <button
               type="button"
@@ -566,7 +600,7 @@ export function AdminSettings() {
         </aside>
 
         {/* Right Content */}
-        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
+        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","care-plan-library","goals-library","referral-destinations","comorbidities","permissions","signing-rules"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
 
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
@@ -660,6 +694,27 @@ export function AdminSettings() {
               setPartners={setProcPartners}
               initialView={activeModule === "proc-partners" ? "partners" : "master"}
             />
+          )}
+
+          {activeModule === "pe-builder" && <PhysicalExamBuilderModule />}
+          {activeModule === "template-manager" && <TemplateManagerModule />}
+
+          {(activeModule === "care-plan-library"
+            || activeModule === "goals-library"
+            || activeModule === "referral-destinations"
+            || activeModule === "comorbidities") && (
+            <ClinicalGoalsLibraryModule
+              initialTab={
+                activeModule === "care-plan-library"     ? "care-plan"
+                : activeModule === "goals-library"       ? "goals"
+                : activeModule === "referral-destinations"? "referral-dest"
+                : "comorbidities"
+              }
+            />
+          )}
+
+          {(activeModule === "permissions" || activeModule === "signing-rules") && (
+            <PermissionsModule initialTab={activeModule === "signing-rules" ? "signing-rules" : "role-access"} />
           )}
 
           {activeModule === "departments" && (
