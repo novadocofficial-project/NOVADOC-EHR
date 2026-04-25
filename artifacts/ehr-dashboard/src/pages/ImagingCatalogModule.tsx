@@ -6,7 +6,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 
 const ACCENT = "#4982CF";
@@ -109,6 +108,11 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Mammography":       "#ec4899",
 };
 
+const KNOWN_CATS = [
+  "X-Ray", "CT Scan", "MRI", "Ultrasound",
+  "Echocardiography", "Nuclear Medicine", "Fluoroscopy", "Mammography",
+];
+
 function seedTests(): ImagingTest[] {
   try {
     const raw = localStorage.getItem(CATALOGUE_KEY);
@@ -125,7 +129,9 @@ function seedReasons(): string[] {
   return [...SEED_REASONS];
 }
 
-// ─── Tab 1: Imaging Test List ──────────────────────────────────────────────────
+// ─── Tab 1: Imaging Test List (inline add + inline edit) ───────────────────────
+
+interface InlineEdit { name: string; category: string; customCat: string; }
 
 function ImagingTestListTab() {
   const [tests,        setTests]        = useState<ImagingTest[]>(seedTests);
@@ -134,12 +140,17 @@ function ImagingTestListTab() {
   const [showInactive, setShowInactive] = useState(false);
   const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({});
 
-  const [drawerOpen,  setDrawerOpen]  = useState(false);
-  const [editingId,   setEditingId]   = useState<string | null>(null);
-  const [draftName,   setDraftName]   = useState("");
-  const [draftCat,    setDraftCat]    = useState("");
-  const [draftCustom, setDraftCustom] = useState("");
+  // Inline editing
+  const [editId,   setEditId]   = useState<string | null>(null);
+  const [editData, setEditData] = useState<InlineEdit>({ name: "", category: "X-Ray", customCat: "" });
 
+  // Inline add (shown at bottom of a category or global)
+  const [addCat,    setAddCat]    = useState<string | null>(null);
+  const [addName,   setAddName]   = useState("");
+  const [addCatVal, setAddCatVal] = useState(KNOWN_CATS[0]);
+  const [addCustom, setAddCustom] = useState("");
+
+  // Persist to localStorage whenever tests change
   useEffect(() => {
     try { localStorage.setItem(CATALOGUE_KEY, JSON.stringify(tests)); } catch { /**/ }
   }, [tests]);
@@ -171,6 +182,7 @@ function ImagingTestListTab() {
 
   function softDelete(id: string) {
     setTests(p => p.map(t => t.id === id ? { ...t, deleted: true, enabled: false } : t));
+    if (editId === id) setEditId(null);
   }
   function restore(id: string) {
     setTests(p => p.map(t => t.id === id ? { ...t, deleted: false, enabled: true } : t));
@@ -179,39 +191,37 @@ function ImagingTestListTab() {
     setTests(p => p.map(t => t.id === id ? { ...t, enabled: !t.enabled } : t));
   }
 
-  function openAdd() {
-    setEditingId(null);
-    setDraftName("");
-    setDraftCat(categories[0] ?? "X-Ray");
-    setDraftCustom("");
-    setDrawerOpen(true);
+  function startEdit(t: ImagingTest) {
+    const known = KNOWN_CATS.includes(t.category) || categories.includes(t.category);
+    setEditId(t.id);
+    setEditData({
+      name:      t.name,
+      category:  known ? t.category : "__custom__",
+      customCat: known ? "" : t.category,
+    });
   }
-  function openEdit(t: ImagingTest, e: React.MouseEvent) {
-    e.stopPropagation();
-    setEditingId(t.id);
-    setDraftName(t.name);
-    const knownCat = categories.includes(t.category);
-    setDraftCat(knownCat ? t.category : "__custom__");
-    setDraftCustom(knownCat ? "" : t.category);
-    setDrawerOpen(true);
-  }
-  function saveDrawer() {
-    const name = draftName.trim();
-    const cat  = draftCat === "__custom__" ? draftCustom.trim() : draftCat;
+
+  function saveEdit(id: string) {
+    const name = editData.name.trim();
+    const cat  = editData.category === "__custom__" ? editData.customCat.trim() : editData.category;
     if (!name || !cat) return;
-    if (editingId) {
-      setTests(p => p.map(t => t.id === editingId ? { ...t, name, category: cat } : t));
-    } else {
-      setTests(p => [...p, { id: uid(), name, category: cat, enabled: true, deleted: false }]);
-    }
-    setDrawerOpen(false);
+    setTests(p => p.map(t => t.id === id ? { ...t, name, category: cat } : t));
+    setEditId(null);
+  }
+
+  function addTest() {
+    const name = addName.trim();
+    const cat  = addCatVal === "__custom__" ? addCustom.trim() : addCatVal;
+    if (!name || !cat) return;
+    setTests(p => [...p, { id: uid(), name, category: cat, enabled: true, deleted: false }]);
+    setAddName("");
+    setAddCustom("");
+    setAddCat(null);
   }
 
   function exportCSV() {
     const rows = [["Category", "Test Name", "Enabled"]];
-    tests.filter(t => t.enabled && !t.deleted).forEach(t =>
-      rows.push([t.category, t.name, "Yes"])
-    );
+    tests.filter(t => t.enabled && !t.deleted).forEach(t => rows.push([t.category, t.name, "Yes"]));
     const csv = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -219,152 +229,188 @@ function ImagingTestListTab() {
     a.click();
   }
 
-  const KNOWN_CATS = [
-    "X-Ray", "CT Scan", "MRI", "Ultrasound",
-    "Echocardiography", "Nuclear Medicine", "Fluoroscopy", "Mammography",
-  ];
+  const allCatOptions = [...new Set([...KNOWN_CATS, ...categories])];
 
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* Main List */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Toolbar */}
-        <div className="px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-3 flex-wrap">
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <Input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search test name or category…" className="pl-8 h-8 text-xs" />
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {["All", ...categories].map(c => (
-              <button key={c} onClick={() => setFilterCat(c)}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  filterCat === c ? "text-white border-transparent" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                }`}
-                style={filterCat === c ? { background: CATEGORY_COLORS[c] ?? ACCENT } : {}}>
-                {c}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-1.5 ml-auto">
-            <button onClick={() => setShowInactive(s => !s)}
-              className={`flex items-center gap-1 text-xs border px-2.5 py-1 rounded-full transition-colors ${
-                showInactive ? "bg-slate-700 text-white border-slate-700" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-              }`}>
-              {showInactive ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-              {showInactive ? "Hide Inactive" : "Include Inactive"}
-            </button>
-            <Button variant="outline" size="sm" onClick={exportCSV} className="h-8 text-xs gap-1.5">
-              <FileText className="h-3.5 w-3.5" /> Export CSV
-            </Button>
-            <Button size="sm" onClick={openAdd} style={{ background: ACCENT }} className="text-white text-xs gap-1.5 h-8">
-              <Plus className="h-3.5 w-3.5" /> Add Test
-            </Button>
-          </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Toolbar */}
+      <div className="px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          <Input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search test name or category…" className="pl-8 h-8 text-xs" />
         </div>
-
-        {/* Grouped list */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {visible.length === 0 && (
-            <div className="text-center py-16 text-slate-400 text-sm">No tests match your filter.</div>
-          )}
-          {grouped.map(({ cat, items }) => {
-            const color   = CATEGORY_COLORS[cat] ?? "#64748b";
-            const expanded = isCatExpanded(cat);
-            return (
-              <div key={cat}>
-                <button className="flex items-center gap-2 w-full text-left mb-2 group" onClick={() => toggleCat(cat)}>
-                  <span className="h-3 w-3 rounded-full shrink-0" style={{ background: color }} />
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">{cat}</span>
-                  <span className="text-[10px] text-slate-400 ml-1">{items.length} test{items.length !== 1 ? "s" : ""}</span>
-                  <span className="ml-auto text-slate-300 group-hover:text-slate-500 transition-colors">
-                    {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  </span>
-                </button>
-                {expanded && (
-                  <div className="space-y-1.5 pl-4 border-l-2" style={{ borderColor: `${color}40` }}>
-                    {items.map(t => {
-                      const isDisabled = !t.enabled || t.deleted;
-                      return (
-                        <div key={t.id}
-                          className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border bg-white transition-all ${
-                            t.deleted ? "border-dashed border-red-200 opacity-60" :
-                            !t.enabled ? "border-slate-100 opacity-60" : "border-slate-200"
-                          }`}>
-                          <ScanLine className="h-3.5 w-3.5 flex-shrink-0" style={{ color }} />
-                          <span className={`flex-1 text-sm font-medium ${isDisabled ? "text-slate-400" : "text-slate-800"}`}>
-                            {t.name}
-                          </span>
-                          {t.deleted && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Deleted</Badge>}
-                          {!t.deleted && !t.enabled && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Disabled</Badge>}
-                          {t.deleted ? (
-                            <button onClick={() => restore(t.id)}
-                              className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 transition-colors">
-                              <RotateCcw className="h-3 w-3" /> Restore
-                            </button>
-                          ) : (
-                            <>
-                              <Switch checked={t.enabled} onCheckedChange={() => toggleEnabled(t.id)}
-                                className="data-[state=checked]:bg-[#4982CF]" />
-                              <button onClick={e => openEdit(t, e)}
-                                className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
-                                <Edit2 className="h-3.5 w-3.5" />
-                              </button>
-                              <button onClick={() => softDelete(t.id)}
-                                className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title="Remove from catalogue">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="flex flex-wrap gap-1.5">
+          {["All", ...categories].map(c => (
+            <button key={c} onClick={() => setFilterCat(c)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                filterCat === c ? "text-white border-transparent" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+              }`}
+              style={filterCat === c ? { background: CATEGORY_COLORS[c] ?? ACCENT } : {}}>
+              {c}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5 ml-auto">
+          <button onClick={() => setShowInactive(s => !s)}
+            className={`flex items-center gap-1 text-xs border px-2.5 py-1 rounded-full transition-colors ${
+              showInactive ? "bg-slate-700 text-white border-slate-700" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+            }`}>
+            {showInactive ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+            {showInactive ? "Hide Inactive" : "Include Inactive"}
+          </button>
+          <Button variant="outline" size="sm" onClick={exportCSV} className="h-8 text-xs gap-1.5">
+            <FileText className="h-3.5 w-3.5" /> Export CSV
+          </Button>
+          <Button size="sm" onClick={() => { setAddCat("__new__"); setAddCatVal(KNOWN_CATS[0]); setAddName(""); setAddCustom(""); }}
+            style={{ background: ACCENT }} className="text-white text-xs gap-1.5 h-8">
+            <Plus className="h-3.5 w-3.5" /> Add Test
+          </Button>
         </div>
       </div>
 
-      {/* Add / Edit Drawer */}
-      {drawerOpen && (
-        <div className="w-72 border-l border-slate-200 bg-white flex flex-col shrink-0">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-            <h3 className="font-semibold text-sm text-slate-800">{editingId ? "Edit Test" : "Add Test"}</h3>
-            <button onClick={() => setDrawerOpen(false)}><X className="h-4 w-4 text-slate-400" /></button>
+      {/* Grouped list */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        {/* Global inline add row (when not adding within a specific category) */}
+        {addCat === "__new__" && (
+          <div className="flex items-center gap-2 p-3 rounded-lg border border-dashed border-[#4982CF]/50 bg-[#4982CF]/5">
+            <ScanLine className="h-3.5 w-3.5 text-[#4982CF] flex-shrink-0" />
+            <Input value={addName} onChange={e => setAddName(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addTest()}
+              placeholder="Test name…" className="h-7 text-xs flex-1 max-w-xs" autoFocus />
+            <select value={addCatVal} onChange={e => setAddCatVal(e.target.value)}
+              className="h-7 text-xs rounded-md border border-slate-200 bg-white px-2 outline-none focus:ring-1 focus:ring-[#4982CF]/40">
+              {allCatOptions.map(c => <option key={c} value={c}>{c}</option>)}
+              <option value="__custom__">+ Custom…</option>
+            </select>
+            {addCatVal === "__custom__" && (
+              <Input value={addCustom} onChange={e => setAddCustom(e.target.value)}
+                placeholder="Category name" className="h-7 text-xs w-32" />
+            )}
+            <button onClick={addTest}
+              className="p-1.5 rounded hover:bg-[#4982CF] hover:text-white text-[#4982CF] transition-colors"
+              title="Save test">
+              <CheckCircle2 className="h-4 w-4" />
+            </button>
+            <button onClick={() => setAddCat(null)} className="p-1.5 rounded hover:bg-slate-100 text-slate-400">
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-600">Test Name *</label>
-              <Input value={draftName} onChange={e => setDraftName(e.target.value)}
-                placeholder="e.g. MRI Knee" className="h-8 text-xs" autoFocus
-                onKeyDown={e => e.key === "Enter" && saveDrawer()} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-600">Modality / Category *</label>
-              <select value={draftCat} onChange={e => setDraftCat(e.target.value)}
-                className="w-full h-8 text-xs rounded-md border border-slate-200 bg-white px-2 outline-none focus:ring-1 focus:ring-[#4982CF]/40">
-                {KNOWN_CATS.map(c => <option key={c} value={c}>{c}</option>)}
-                {[...categories].filter(c => !KNOWN_CATS.includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
-                <option value="__custom__">+ Custom category…</option>
-              </select>
-              {draftCat === "__custom__" && (
-                <Input value={draftCustom} onChange={e => setDraftCustom(e.target.value)}
-                  placeholder="Category name" className="h-8 text-xs mt-1" />
+        )}
+
+        {visible.length === 0 && addCat !== "__new__" && (
+          <div className="text-center py-16 text-slate-400 text-sm">No tests match your filter.</div>
+        )}
+
+        {grouped.map(({ cat, items }) => {
+          const color   = CATEGORY_COLORS[cat] ?? "#64748b";
+          const expanded = isCatExpanded(cat);
+          return (
+            <div key={cat}>
+              <button className="flex items-center gap-2 w-full text-left mb-2 group" onClick={() => toggleCat(cat)}>
+                <span className="h-3 w-3 rounded-full shrink-0" style={{ background: color }} />
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">{cat}</span>
+                <span className="text-[10px] text-slate-400 ml-1">{items.length} test{items.length !== 1 ? "s" : ""}</span>
+                <span className="ml-auto text-slate-300 group-hover:text-slate-500 transition-colors">
+                  {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                </span>
+              </button>
+
+              {expanded && (
+                <div className="space-y-1 pl-4 border-l-2" style={{ borderColor: `${color}40` }}>
+                  {items.map(t => {
+                    const isEditing  = editId === t.id;
+                    const isDisabled = !t.enabled || t.deleted;
+
+                    if (isEditing) {
+                      return (
+                        <div key={t.id}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#4982CF]/40 bg-[#4982CF]/5">
+                          <ScanLine className="h-3.5 w-3.5 flex-shrink-0" style={{ color }} />
+                          <Input
+                            value={editData.name}
+                            onChange={e => setEditData(d => ({ ...d, name: e.target.value }))}
+                            onKeyDown={e => e.key === "Enter" && saveEdit(t.id)}
+                            className="h-7 text-xs flex-1 max-w-xs"
+                            autoFocus
+                          />
+                          <select
+                            value={editData.category}
+                            onChange={e => setEditData(d => ({ ...d, category: e.target.value, customCat: "" }))}
+                            className="h-7 text-xs rounded-md border border-slate-200 bg-white px-2 outline-none focus:ring-1 focus:ring-[#4982CF]/40">
+                            {allCatOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                            <option value="__custom__">+ Custom…</option>
+                          </select>
+                          {editData.category === "__custom__" && (
+                            <Input
+                              value={editData.customCat}
+                              onChange={e => setEditData(d => ({ ...d, customCat: e.target.value }))}
+                              placeholder="Category…"
+                              className="h-7 text-xs w-28"
+                            />
+                          )}
+                          <button onClick={() => saveEdit(t.id)} title="Save"
+                            className="p-1.5 rounded hover:bg-[#4982CF] hover:text-white text-[#4982CF] transition-colors">
+                            <CheckCircle2 className="h-4 w-4" />
+                          </button>
+                          <button onClick={() => setEditId(null)} title="Cancel"
+                            className="p-1.5 rounded hover:bg-slate-100 text-slate-400">
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={t.id}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg border bg-white group transition-all ${
+                          t.deleted ? "border-dashed border-red-200 opacity-60"
+                          : !t.enabled ? "border-slate-100 opacity-60"
+                          : "border-slate-200 hover:border-slate-300"
+                        }`}>
+                        <ScanLine className="h-3.5 w-3.5 flex-shrink-0" style={{ color }} />
+                        <span className={`flex-1 text-sm font-medium ${isDisabled ? "text-slate-400" : "text-slate-800"}`}>
+                          {t.name}
+                        </span>
+                        {t.deleted && (
+                          <span className="text-[10px] font-semibold text-red-500 bg-red-50 border border-red-200 px-1.5 py-0 rounded">
+                            Deleted
+                          </span>
+                        )}
+                        {!t.deleted && !t.enabled && (
+                          <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0 rounded">
+                            Disabled
+                          </span>
+                        )}
+                        {t.deleted ? (
+                          <button onClick={() => restore(t.id)}
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 transition-colors">
+                            <RotateCcw className="h-3 w-3" /> Restore
+                          </button>
+                        ) : (
+                          <>
+                            <Switch checked={t.enabled} onCheckedChange={() => toggleEnabled(t.id)}
+                              className="data-[state=checked]:bg-[#4982CF]" />
+                            <button onClick={() => startEdit(t)}
+                              className="p-1.5 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-700 opacity-0 group-hover:opacity-100 transition-all">
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => softDelete(t.id)}
+                              className="p-1.5 rounded hover:bg-red-50 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                              title="Remove from catalogue">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
-          </div>
-          <div className="px-5 py-4 border-t border-slate-100 flex gap-2">
-            <Button className="flex-1 text-white text-xs h-8" style={{ background: ACCENT }}
-              onClick={saveDrawer} disabled={!draftName.trim() || (draftCat === "__custom__" && !draftCustom.trim())}>
-              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-              {editingId ? "Save Changes" : "Add Test"}
-            </Button>
-            <Button variant="outline" className="h-8 text-xs" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -372,33 +418,32 @@ function ImagingTestListTab() {
 // ─── Tab 2: Reason Templates ───────────────────────────────────────────────────
 
 function ReasonTemplatesTab() {
-  const [items,    setItems]    = useState<string[]>(seedReasons);
-  const [dirty,    setDirty]    = useState(false);
-  const [newText,  setNewText]  = useState("");
-  const [editIdx,  setEditIdx]  = useState<number | null>(null);
-  const [editVal,  setEditVal]  = useState("");
-  const [dragIdx,  setDragIdx]  = useState<number | null>(null);
-  const [dropIdx,  setDropIdx]  = useState<number | null>(null);
+  const [items,   setItems]   = useState<string[]>(seedReasons);
+  const [saved,   setSaved]   = useState(true);
+  const [newText, setNewText] = useState("");
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [editVal, setEditVal] = useState("");
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dropIdx, setDropIdx] = useState<number | null>(null);
 
-  function markDirty(fn: (p: string[]) => string[]) {
-    setItems(fn);
-    setDirty(true);
-  }
-
-  function save() {
+  // Auto-persist every change so data is never lost on refresh
+  useEffect(() => {
     try { localStorage.setItem(REASONS_KEY, JSON.stringify(items)); } catch { /**/ }
-    setDirty(false);
-  }
+    setSaved(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
+
+  function confirmSave() { setSaved(true); }
 
   function addReason() {
     const v = newText.trim();
     if (!v || items.includes(v)) return;
-    markDirty(p => [...p, v]);
+    setItems(p => [...p, v]);
     setNewText("");
   }
 
   function deleteReason(idx: number) {
-    markDirty(p => p.filter((_, i) => i !== idx));
+    setItems(p => p.filter((_, i) => i !== idx));
     if (editIdx === idx) setEditIdx(null);
   }
 
@@ -410,13 +455,13 @@ function ReasonTemplatesTab() {
   function saveEdit(idx: number) {
     const v = editVal.trim();
     if (!v) return;
-    markDirty(p => p.map((x, i) => i === idx ? v : x));
+    setItems(p => p.map((x, i) => i === idx ? v : x));
     setEditIdx(null);
   }
 
   function handleDrop(toIdx: number) {
     if (dragIdx === null || dragIdx === toIdx) { setDragIdx(null); setDropIdx(null); return; }
-    markDirty(p => reorder(p, dragIdx, toIdx));
+    setItems(p => reorder(p, dragIdx, toIdx));
     setDragIdx(null);
     setDropIdx(null);
   }
@@ -426,13 +471,13 @@ function ReasonTemplatesTab() {
       {/* Toolbar */}
       <div className="px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
         <p className="text-xs text-slate-500 flex-1">
-          Manage the indication templates available when ordering imaging tests. Drag to reorder.
+          Manage indication templates available when ordering imaging tests. Drag to reorder.
         </p>
-        <Button size="sm" onClick={save} disabled={!dirty}
-          className={`h-8 text-xs gap-1.5 ${dirty ? "text-white" : "text-slate-400"}`}
-          style={dirty ? { background: ACCENT } : {}}>
+        <Button size="sm" onClick={confirmSave}
+          className={`h-8 text-xs gap-1.5 transition-all ${!saved ? "text-white" : "bg-white text-slate-400 border border-slate-200"}`}
+          style={!saved ? { background: ACCENT } : {}}>
           <Save className="h-3.5 w-3.5" />
-          {dirty ? "Save Changes" : "Saved"}
+          {!saved ? "Saved" : "Up to date"}
         </Button>
       </div>
 
