@@ -1351,7 +1351,7 @@ function RateListCard({
   procPartners: ProcedurePartner[];
   imagingPartners: ImagingPartner[];
 }) {
-  const rows: { label: string; providerId: string | null; providers: { id: string; name: string }[]; color: string }[] = [
+  const rows: { label: string; providerId: string | null; providers: { id: string; name: string; type?: string }[]; color: string }[] = [
     { label: "Lab",         providerId: rateList.labProviderId,        providers: labProviders,        color: "#6366f1" },
     { label: "Pharmacy",    providerId: rateList.pharmacyPartnerId,     providers: pharmacyPartners,    color: "#10b981" },
     { label: "Consumables", providerId: rateList.consumableProviderId,  providers: consumableProviders, color: "#f59e0b" },
@@ -1372,7 +1372,10 @@ function RateListCard({
               <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: row.color }} />
               <span className="text-xs font-semibold text-slate-600 w-28 flex-shrink-0">{row.label}</span>
               {matched ? (
-                <span className="text-xs font-medium text-slate-800">{matched.name}</span>
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs font-medium text-slate-800">{matched.name}</span>
+                  {matched.type && <span className="text-[10px] text-slate-400">· {matched.type}</span>}
+                </span>
               ) : (
                 <span className="text-xs text-slate-400 italic">Not assigned</span>
               )}
