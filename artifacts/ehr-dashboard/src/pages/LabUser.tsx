@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import {
+  LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine,
+  ReferenceArea, ResponsiveContainer, Dot,
+} from "recharts";
+import {
   PhoneCall, SkipForward, RotateCcw,
   ChevronUp, ChevronDown, Clock, AlertCircle, X,
   CheckCircle2, FlaskConical, User, Heart,
@@ -179,6 +183,93 @@ const SEED_PAST_LAB_RECORDS: PastLabRecord[] = [
   },
 ];
 
+// ─── Trend seed data ──────────────────────────────────────────────────────────
+
+interface TrendSeries {
+  param: string;
+  unit: string;
+  normalRange: string;
+  min?: number;
+  max?: number;
+  points: { date: string; value: number }[];
+}
+
+const TREND_DATA: TrendSeries[] = [
+  {
+    param: "WBC Count", unit: "×10³/µL", normalRange: "4.0–11.0", min: 4.0, max: 11.0,
+    points: [
+      { date: "Apr '24", value: 8.1 },
+      { date: "Jul '24", value: 9.4 },
+      { date: "Oct '24", value: 11.6 },
+      { date: "Jan '25", value: 10.2 },
+      { date: "Feb '25", value: 7.2 },
+    ],
+  },
+  {
+    param: "Haemoglobin", unit: "g/dL", normalRange: "12.0–17.5", min: 12.0, max: 17.5,
+    points: [
+      { date: "Apr '24", value: 15.1 },
+      { date: "Jul '24", value: 14.6 },
+      { date: "Oct '24", value: 13.2 },
+      { date: "Jan '25", value: 11.8 },
+      { date: "Feb '25", value: 13.8 },
+    ],
+  },
+  {
+    param: "Platelets", unit: "×10³/µL", normalRange: "150–400", min: 150, max: 400,
+    points: [
+      { date: "Apr '24", value: 320 },
+      { date: "Jul '24", value: 345 },
+      { date: "Oct '24", value: 410 },
+      { date: "Jan '25", value: 380 },
+      { date: "Feb '25", value: 290 },
+    ],
+  },
+  {
+    param: "Fasting Blood Sugar", unit: "mmol/L", normalRange: "3.9–5.5", min: 3.9, max: 5.5,
+    points: [
+      { date: "Apr '24", value: 5.1 },
+      { date: "Jul '24", value: 5.4 },
+      { date: "Oct '24", value: 5.7 },
+      { date: "Jan '25", value: 6.0 },
+      { date: "Feb '25", value: 5.8 },
+    ],
+  },
+  {
+    param: "CRP", unit: "mg/L", normalRange: "< 10", max: 10,
+    points: [
+      { date: "Apr '24", value: 3.2 },
+      { date: "Jul '24", value: 5.8 },
+      { date: "Oct '24", value: 8.4 },
+      { date: "Jan '25", value: 12.0 },
+    ],
+  },
+  {
+    param: "Total Cholesterol", unit: "mmol/L", normalRange: "< 5.2", max: 5.2,
+    points: [
+      { date: "Apr '24", value: 4.8 },
+      { date: "Jul '24", value: 5.0 },
+      { date: "Oct '24", value: 5.5 },
+      { date: "Feb '25", value: 4.2 },
+    ],
+  },
+  {
+    param: "LDL", unit: "mmol/L", normalRange: "< 3.4", max: 3.4,
+    points: [
+      { date: "Apr '24", value: 2.6 },
+      { date: "Jul '24", value: 2.9 },
+      { date: "Oct '24", value: 3.7 },
+      { date: "Feb '25", value: 2.9 },
+    ],
+  },
+];
+
+function SparkFlag({ value, min, max }: { value: number; min?: number; max?: number }) {
+  if (max !== undefined && value > max) return <span className="inline-block px-1 py-0.5 rounded text-[9px] font-black bg-red-100 text-red-700">H</span>;
+  if (min !== undefined && value < min) return <span className="inline-block px-1 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-700">L</span>;
+  return <span className="inline-block px-1 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-700">N</span>;
+}
+
 // ─── Lab Panel (fullscreen slide-over) ───────────────────────────────────────
 
 function LabPanel({ entry, onClose, onComplete }: {
@@ -193,7 +284,7 @@ function LabPanel({ entry, onClose, onComplete }: {
     SEED_LAB_ORDERS.flatMap(o => o.tests)
   );
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
-  const [rightTab, setRightTab] = useState<"form" | "preview">("form");
+  const [rightTab, setRightTab] = useState<"form" | "preview" | "trends">("form");
   const [resultValues, setResultValues] = useState<Record<string, Record<string, string>>>({});
   const [savedSnapshots, setSavedSnapshots] = useState<Record<string, Record<string, string>>>({});
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
@@ -409,17 +500,90 @@ function LabPanel({ entry, onClose, onComplete }: {
               <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg">
                 <button
                   onClick={() => setRightTab("form")}
-                  className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${rightTab === "form" ? "bg-white shadow-sm text-[#4982CF]" : "text-slate-500 hover:text-slate-700"}`}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${rightTab === "form" ? "bg-white shadow-sm text-[#4982CF]" : "text-slate-500 hover:text-slate-700"}`}
                 >Form</button>
                 <button
                   onClick={() => setRightTab("preview")}
-                  className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${rightTab === "preview" ? "bg-white shadow-sm text-[#4982CF]" : "text-slate-500 hover:text-slate-700"}`}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${rightTab === "preview" ? "bg-white shadow-sm text-[#4982CF]" : "text-slate-500 hover:text-slate-700"}`}
                 >Preview</button>
+                <button
+                  onClick={() => setRightTab("trends")}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${rightTab === "trends" ? "bg-white shadow-sm text-[#4982CF]" : "text-slate-500 hover:text-slate-700"}`}
+                >Trends</button>
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
-              {!selectedTest ? (
+              {rightTab === "trends" ? (
+                /* ── Trends tab ─────────────────────────────────── */
+                <div className="w-full">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">Parameter Trends · Raj Sharma · MR-43001</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    {TREND_DATA.map(series => {
+                      const latest = series.points[series.points.length - 1];
+                      const yMin = Math.min(...series.points.map(p => p.value));
+                      const yMax = Math.max(...series.points.map(p => p.value));
+                      const pad = (yMax - yMin) * 0.3 || 1;
+                      const domainMin = Math.max(0, parseFloat((yMin - pad).toFixed(1)));
+                      const domainMax = parseFloat((yMax + pad).toFixed(1));
+                      return (
+                        <div key={series.param} className="rounded-xl border border-slate-200 bg-white p-3">
+                          <div className="flex items-start justify-between mb-1">
+                            <div>
+                              <p className="text-xs font-bold text-slate-800">{series.param}</p>
+                              <p className="text-[10px] text-slate-400">{series.unit} · Normal: {series.normalRange}</p>
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-2">
+                              <p className={`text-sm font-black ${(series.max !== undefined && latest.value > series.max) || (series.min !== undefined && latest.value < series.min) ? "text-red-600" : "text-emerald-600"}`}>
+                                {latest.value}
+                              </p>
+                              <SparkFlag value={latest.value} min={series.min} max={series.max} />
+                            </div>
+                          </div>
+                          <ResponsiveContainer width="100%" height={90}>
+                            <LineChart data={series.points} margin={{ top: 6, right: 4, left: -28, bottom: 0 }}>
+                              {series.min !== undefined && series.max !== undefined && (
+                                <ReferenceArea y1={series.min} y2={series.max} fill="#dcfce7" fillOpacity={0.5} />
+                              )}
+                              {series.max !== undefined && series.min === undefined && (
+                                <ReferenceArea y1={0} y2={series.max} fill="#dcfce7" fillOpacity={0.5} />
+                              )}
+                              {series.min !== undefined && series.max === undefined && (
+                                <ReferenceArea y1={series.min} y2={domainMax} fill="#dcfce7" fillOpacity={0.5} />
+                              )}
+                              {series.max !== undefined && (
+                                <ReferenceLine y={series.max} stroke="#f87171" strokeDasharray="3 3" strokeWidth={1} />
+                              )}
+                              {series.min !== undefined && (
+                                <ReferenceLine y={series.min} stroke="#f87171" strokeDasharray="3 3" strokeWidth={1} />
+                              )}
+                              <XAxis dataKey="date" tick={{ fontSize: 8, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+                              <YAxis domain={[domainMin, domainMax]} tick={{ fontSize: 8, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickCount={4} />
+                              <Tooltip
+                                contentStyle={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid #e2e8f0" }}
+                                labelStyle={{ fontWeight: 700, color: "#334155" }}
+                                formatter={(v: number) => [`${v} ${series.unit}`, series.param]}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke={LAB_ACCENT}
+                                strokeWidth={2}
+                                dot={(props: { cx: number; cy: number; payload: { value: number } }) => {
+                                  const oor = (series.max !== undefined && props.payload.value > series.max) ||
+                                              (series.min !== undefined && props.payload.value < series.min);
+                                  return <Dot key={`dot-${props.cx}-${props.cy}`} {...props} r={3} fill={oor ? "#ef4444" : LAB_ACCENT} stroke="white" strokeWidth={1.5} />;
+                                }}
+                                activeDot={{ r: 4 }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : !selectedTest ? (
                 <div className="flex flex-col items-center justify-center h-full text-center pb-16">
                   <div className="h-14 w-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-4">
                     <FlaskConical className="h-7 w-7 text-[#4982CF]" />
