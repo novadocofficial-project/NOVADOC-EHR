@@ -1535,15 +1535,16 @@ function EditablePricingTable({
           <tr className="border-b border-slate-100 bg-slate-50/60 sticky top-0">
             <th className="w-10 px-3 py-1.5" />
             <th className="text-left px-3 py-1.5 font-black text-[9px] uppercase tracking-widest text-slate-400">Item</th>
-            <th className="text-right px-3 py-1.5 font-black text-[9px] uppercase tracking-widest text-slate-400">Price (Rs.)</th>
+            <th className="text-right px-3 py-1.5 font-black text-[9px] uppercase tracking-widest text-slate-400 whitespace-nowrap">Base Price</th>
+            <th className="text-right px-3 py-1.5 font-black text-[9px] uppercase tracking-widest text-slate-400 whitespace-nowrap">Corporate Price</th>
           </tr>
         </thead>
         <tbody>
           {rows.map(row => {
             const ov = overrides[row.key];
             const isActive = ov?.active !== false;
-            const displayPrice = ov?.priceOverride !== undefined && ov.priceOverride !== "" ? ov.priceOverride : row.basePrice;
-            const isOverridden = ov?.priceOverride !== undefined && ov.priceOverride !== "" && ov.priceOverride !== row.basePrice;
+            const corpPrice = ov?.priceOverride ?? "";
+            const isCustom = corpPrice !== "" && corpPrice !== row.basePrice;
             return (
               <tr key={row.key} className={`border-b border-slate-50 last:border-0 transition-all ${!isActive ? "opacity-40 bg-slate-50/30" : "hover:bg-slate-50/50"}`}>
                 <td className="px-3 py-1.5 text-center">
@@ -1551,17 +1552,21 @@ function EditablePricingTable({
                 </td>
                 <td className={`px-3 py-1.5 font-medium ${!isActive ? "line-through text-slate-400" : "text-slate-700"}`}>
                   {row.name}
-                  {isOverridden && isActive && (
+                  {isCustom && isActive && (
                     <span className="ml-1.5 text-[9px] font-bold text-amber-500 bg-amber-50 border border-amber-200 rounded px-1">custom</span>
                   )}
+                </td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-slate-400 font-medium select-none">
+                  {row.basePrice !== "" && row.basePrice !== undefined ? `Rs.\u202f${Number(row.basePrice).toLocaleString()}` : "—"}
                 </td>
                 <td className="px-3 py-1.5 text-right">
                   <input
                     type="number" min={0}
-                    value={displayPrice}
+                    value={corpPrice}
+                    placeholder={row.basePrice !== "" ? row.basePrice : "—"}
                     onChange={e => onUpdate(row.key, "priceOverride", e.target.value)}
                     disabled={!isActive}
-                    className="w-24 text-right text-xs font-semibold tabular-nums border border-slate-200 rounded px-2 py-0.5 focus:outline-none focus:border-[#4982CF] focus:ring-1 focus:ring-[#4982CF]/20 disabled:bg-transparent disabled:text-slate-300 disabled:border-transparent"
+                    className="w-24 text-right text-xs font-semibold tabular-nums border border-slate-200 rounded px-2 py-0.5 focus:outline-none focus:border-[#4982CF] focus:ring-1 focus:ring-[#4982CF]/20 disabled:bg-transparent disabled:text-slate-300 disabled:border-transparent placeholder:text-slate-300 placeholder:font-normal"
                   />
                 </td>
               </tr>
