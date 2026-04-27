@@ -11,7 +11,7 @@ import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const LAB_ACCENT       = "#7c3aed";
+const LAB_ACCENT = "#4982CF";
 const CALL_WINDOW_SECS = 30;
 const MAX_CALLS        = 3;
 
@@ -80,19 +80,19 @@ function LabPanel({ entry, onClose, onComplete }: {
         {/* Sub-header */}
         <div className="flex items-center gap-4 px-5 py-3 border-b border-slate-100 bg-white flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-              <FlaskConical className="h-4 w-4 text-purple-600" />
+            <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <FlaskConical className="h-4 w-4 text-[#4982CF]" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-black text-purple-700 leading-none">{entry.tokenNumber}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold">Lab / Sample</span>
+                <span className="font-mono text-sm font-black text-[#4982CF] leading-none">{entry.tokenNumber}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-[#4982CF] font-bold">Lab / Sample</span>
               </div>
               {p && <p className="text-xs font-semibold text-slate-700 truncate mt-0.5">{p.name}</p>}
             </div>
           </div>
           <div className="flex items-center gap-1 flex-1 justify-center">
-            <button className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white">Lab Orders</button>
+            <button className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white" style={{ backgroundColor: LAB_ACCENT }}>Lab Orders</button>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <button onClick={() => setFullscreen(f => !f)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 transition-colors" title={fullscreen ? "Minimise" : "Full Screen"}>
@@ -111,9 +111,9 @@ function LabPanel({ entry, onClose, onComplete }: {
         <div className="flex-1 overflow-y-auto bg-slate-50/40">
           <div className="p-5 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2.5 flex items-center gap-2">
-                <TestTube2 className="h-4 w-4 text-purple-600" />
-                <span className="text-xs font-bold text-purple-800">{totalTests} test{totalTests !== 1 ? "s" : ""} ordered</span>
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 flex items-center gap-2">
+                <TestTube2 className="h-4 w-4 text-[#4982CF]" />
+                <span className="text-xs font-bold text-[#4982CF]">{totalTests} test{totalTests !== 1 ? "s" : ""} ordered</span>
               </div>
               {pendingCount > 0 ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 flex items-center gap-2">
@@ -178,8 +178,8 @@ function LabPanel({ entry, onClose, onComplete }: {
             <div className="absolute inset-0 bg-black/40" onClick={() => setShowConfirm(false)} />
             <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-80 z-10">
               <div className="flex items-center gap-3 mb-3">
-                <div className="h-10 w-10 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle2 className="h-5 w-5 text-purple-600" />
+                <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="h-5 w-5 text-[#4982CF]" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-slate-800">Mark Lab Complete?</p>
@@ -234,13 +234,13 @@ function LabDrawer({ entry, onClose, onComplete }: {
         <div className="flex-1 overflow-y-auto">
           <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/60">
             <div className="flex items-start gap-4">
-              <div className="h-12 w-12 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
-                <User className="h-6 w-6 text-purple-600" />
+              <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <User className="h-6 w-6 text-[#4982CF]" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                  <span className="font-mono text-lg font-black text-purple-700 leading-none">{entry.tokenNumber}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold">{entry.stepLabel}</span>
+                  <span className="font-mono text-lg font-black text-[#4982CF] leading-none">{entry.tokenNumber}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-[#4982CF] font-bold">{entry.stepLabel}</span>
                 </div>
                 {p ? (
                   <>
@@ -284,10 +284,10 @@ function LabDrawer({ entry, onClose, onComplete }: {
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => setShowPanel(true)}
-                className="rounded-xl border bg-purple-50 border-purple-200 px-4 py-3.5 text-left flex items-center gap-3 hover:shadow-sm transition-all group"
+                className="rounded-xl border bg-blue-50 border-blue-200 px-4 py-3.5 text-left flex items-center gap-3 hover:shadow-sm transition-all group"
               >
-                <FlaskConical className="h-5 w-5 text-purple-700 flex-shrink-0" />
-                <span className="text-sm font-semibold text-purple-700 leading-tight">Lab</span>
+                <FlaskConical className="h-5 w-5 text-[#4982CF] flex-shrink-0" />
+                <span className="text-sm font-semibold text-[#4982CF] leading-tight">Lab</span>
                 <ChevronRight className="h-3.5 w-3.5 text-slate-300 ml-auto group-hover:text-slate-500 transition-colors" />
               </button>
             </div>
@@ -376,7 +376,7 @@ export function LabUser() {
           <div className="p-4 border-b border-slate-100">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Queue Stats</p>
             {[
-              { label: "At Counter", value: atCounterEntry ? 1 : 0,  style: { color: LAB_ACCENT }, bg: "bg-purple-50 border-purple-200" },
+              { label: "At Counter", value: atCounterEntry ? 1 : 0,  style: { color: LAB_ACCENT }, bg: "bg-blue-50 border-blue-200" },
               { label: "Waiting",    value: waitingTokens.length,     style: { color: "#b45309" },  bg: "bg-amber-50 border-amber-200"  },
               { label: "Skipped",    value: skippedQueue.length,      style: { color: "#dc2626" },  bg: "bg-red-50 border-red-200"      },
             ].map(s => (
@@ -388,10 +388,10 @@ export function LabUser() {
           </div>
           <div className="p-4">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Assigned Queues</p>
-            <div className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-3">
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
               <div className="flex items-center gap-2 mb-1">
-                <FlaskConical className="h-4 w-4 text-purple-700" />
-                <p className="text-sm font-bold text-purple-700">Lab Queue</p>
+                <FlaskConical className="h-4 w-4 text-[#4982CF]" />
+                <p className="text-sm font-bold text-[#4982CF]">Lab Queue</p>
               </div>
               <p className="text-xs text-slate-500">Step 4 tokens · No billing</p>
             </div>

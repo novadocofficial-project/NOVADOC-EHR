@@ -359,8 +359,8 @@ export function QueueNavDropdown() {
           onClick={() => setLocation("/queue/lab")}
           className={`gap-3 cursor-pointer py-2.5 ${isActive("/queue/lab") ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
         >
-          <span className="h-7 w-7 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-            <FlaskConical className="h-3.5 w-3.5 text-purple-600" />
+          <span className="h-7 w-7 rounded-full bg-[#4982CF]/10 flex items-center justify-center flex-shrink-0">
+            <FlaskConical className="h-3.5 w-3.5 text-[#4982CF]" />
           </span>
           <div>
             <p className="text-sm font-semibold leading-tight">Lab</p>
