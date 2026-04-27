@@ -188,7 +188,7 @@ export function CorporatePricingModule({
   const [entityInvoices, setEntityInvoices] = useState<Record<string, PatientInvoice[]>>(() => buildSeedInvoices());
 
   // ── Wizard step (for creation only) ──
-  const [wizardStep, setWizardStep] = useState<1 | 2>(1);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const [wizardRateList, setWizardRateList] = useState<RateList>(blankRateList());
 
   const wizardToggleDoctor = (docId: string) => {
@@ -935,9 +935,11 @@ export function CorporatePricingModule({
               {editingEntityId ? `Edit ${entityLabel}` : `Add ${entityLabel}`}
               {entityLabel === "Corporate" && (
                 <div className="ml-auto flex items-center gap-1.5 text-xs font-normal text-slate-400">
-                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${wizardStep === 1 ? "bg-[#4982CF] text-white" : "bg-slate-200 text-slate-500"}`}>1</span>
+                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors ${wizardStep === 1 ? "bg-[#4982CF] text-white" : wizardStep > 1 ? "bg-[#4982CF]/30 text-[#4982CF]" : "bg-slate-200 text-slate-500"}`}>1</span>
                   <span className="text-slate-300">—</span>
-                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${wizardStep === 2 ? "bg-[#4982CF] text-white" : "bg-slate-200 text-slate-500"}`}>2</span>
+                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors ${wizardStep === 2 ? "bg-[#4982CF] text-white" : wizardStep > 2 ? "bg-[#4982CF]/30 text-[#4982CF]" : "bg-slate-200 text-slate-500"}`}>2</span>
+                  <span className="text-slate-300">—</span>
+                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors ${wizardStep === 3 ? "bg-[#4982CF] text-white" : "bg-slate-200 text-slate-500"}`}>3</span>
                 </div>
               )}
             </DialogTitle>
@@ -1009,7 +1011,7 @@ export function CorporatePricingModule({
                 <Button variant="outline" onClick={() => setShowEntityForm(false)}>Cancel</Button>
                 {entityLabel === "Corporate" ? (
                   <Button onClick={() => setWizardStep(2)} disabled={!entityForm.name.trim()} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white">
-                    Next: Rate List →
+                    Next: Doctors →
                   </Button>
                 ) : (
                   <Button onClick={saveEntityForm} disabled={!entityForm.name.trim()} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white">
@@ -1020,10 +1022,10 @@ export function CorporatePricingModule({
             </div>
           )}
 
-          {/* Step 2: Rate List Selection */}
+          {/* Step 2: Doctor Selection */}
           {wizardStep === 2 && (
             <div className="flex flex-col flex-1 overflow-y-auto gap-5 pt-2 min-h-0">
-              <p className="text-xs font-semibold text-[#4982CF] uppercase tracking-widest">Step 2 — Rate List Selection</p>
+              <p className="text-xs font-semibold text-[#4982CF] uppercase tracking-widest">Step 2 — Doctor Selection</p>
 
               {/* ── Consultant Doctors multi-select ── */}
               <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
@@ -1043,7 +1045,7 @@ export function CorporatePricingModule({
                 {doctors.length === 0 ? (
                   <p className="px-4 py-6 text-center text-xs text-slate-400">No doctors configured yet.</p>
                 ) : (
-                  <div className="max-h-52 overflow-y-auto overflow-x-auto">
+                  <div className="max-h-[420px] overflow-y-auto overflow-x-auto">
                     <table className="w-full min-w-[520px] text-xs">
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50/50 sticky top-0">
@@ -1101,7 +1103,23 @@ export function CorporatePricingModule({
                 )}
               </div>
 
-              {/* Provider Selection (5 categories) */}
+              <div className="flex justify-between gap-2 pt-1 border-t border-slate-100 mt-2">
+                <Button variant="outline" onClick={() => setWizardStep(1)}>← Back</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowEntityForm(false)}>Cancel</Button>
+                  <Button onClick={() => setWizardStep(3)} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white">
+                    Next: Services →
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Service / Provider Selection */}
+          {wizardStep === 3 && (
+            <div className="flex flex-col flex-1 overflow-y-auto gap-5 pt-2 min-h-0">
+              <p className="text-xs font-semibold text-[#4982CF] uppercase tracking-widest">Step 3 — Service Selection</p>
+
               <div className="space-y-3">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Provider Selection</p>
                 {([
@@ -1120,7 +1138,6 @@ export function CorporatePricingModule({
                       <p className="px-4 py-3 text-xs text-slate-400 italic">No {label.toLowerCase()} providers configured.</p>
                     ) : (
                       <div className="flex flex-wrap gap-2 p-3">
-                        {/* None option */}
                         <button type="button"
                           onClick={() => setWizardRateList(r => ({ ...r, [key]: null }))}
                           className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${wizardRateList[key] === null ? "border-[#4982CF] bg-[#4982CF]/5 text-[#4982CF]" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`}>
@@ -1143,11 +1160,11 @@ export function CorporatePricingModule({
               </div>
 
               <div className="flex justify-between gap-2 pt-1 border-t border-slate-100 mt-2">
-                <Button variant="outline" onClick={() => setWizardStep(1)}>← Back</Button>
+                <Button variant="outline" onClick={() => setWizardStep(2)}>← Back</Button>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setShowEntityForm(false)}>Cancel</Button>
                   <Button onClick={saveEntityForm} disabled={!entityForm.name.trim()} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white">
-                    {editingEntityId ? "Save Changes" : `Add ${entityLabel}`}
+                    {editingEntityId ? "Save Changes" : "Add Corporate"}
                   </Button>
                 </div>
               </div>
