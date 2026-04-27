@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   PhoneCall, X, ChevronRight, Maximize2, Minimize2,
   Clock, User, AlertCircle, Heart, FlaskConical,
@@ -69,9 +69,9 @@ function LabPanel({
   onClose: () => void;
   onComplete: () => void;
 }) {
-  const p               = entry.patient;
-  const [fullscreen, setFullscreen]   = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const p                               = entry.patient;
+  const [fullscreen, setFullscreen]     = useState(false);
+  const [showConfirm, setShowConfirm]   = useState(false);
 
   const totalTests   = SEED_LAB_ORDERS.reduce((s, o) => s + o.tests.length, 0);
   const pendingCount = SEED_LAB_ORDERS.reduce((s, o) => s + o.tests.filter(t => t.status === "pending").length, 0);
@@ -97,11 +97,8 @@ function LabPanel({
             </div>
           </div>
 
-          {/* Tab nav */}
           <div className="flex items-center gap-1 flex-1 justify-center">
-            <button
-              className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white"
-            >
+            <button className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white">
               Lab Orders
             </button>
           </div>
@@ -252,7 +249,6 @@ function LabDrawer({
     <>
       <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
       <div className="fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col w-[40%] min-w-[480px] border-l border-slate-200">
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
           <div>
             <p className="text-sm font-bold text-slate-900">Patient Details</p>
@@ -285,7 +281,6 @@ function LabDrawer({
                 )}
               </div>
             </div>
-
             {p && (
               <div className="mt-3 grid grid-cols-3 gap-2">
                 {[["Height", "168 cm"], ["Weight", "72 kg"], ["Last Visit", "Feb 2025"]].map(([label, value]) => (
@@ -336,159 +331,6 @@ function LabDrawer({
   );
 }
 
-// ─── Queue Card ───────────────────────────────────────────────────────────────
-
-function LabQueueCard({
-  entry, isActive, onCall, onTimerExpire, onLabOrders, onSkip,
-}: {
-  entry: MultiEntry;
-  isActive: boolean;
-  onCall: () => void;
-  onTimerExpire: () => void;
-  onLabOrders: () => void;
-  onSkip: () => void;
-}) {
-  const p         = entry.patient;
-  const isCalling = !!entry.callTimestamp;
-  const isAtCounter = entry.status === "called";
-  const [secsLeft, setSecsLeft] = useState(getSecsLeft(entry.callTimestamp));
-  const expiredRef = useRef(false);
-
-  useEffect(() => {
-    expiredRef.current = false;
-    if (!isCalling) { setSecsLeft(0); return; }
-    const iv = setInterval(() => {
-      const s = getSecsLeft(entry.callTimestamp);
-      setSecsLeft(s);
-      if (s === 0 && !expiredRef.current) {
-        expiredRef.current = true;
-        onTimerExpire();
-      }
-    }, 500);
-    return () => clearInterval(iv);
-  }, [isCalling, entry.callTimestamp]);
-
-  const timerPct  = (secsLeft / CALL_WINDOW_SECS) * 100;
-  const timerColor = secsLeft > 15 ? "#22c55e" : secsLeft > 8 ? "#f59e0b" : "#ef4444";
-  const callsLeft  = MAX_CALLS - entry.callCount;
-  const exhausted  = entry.callCount >= MAX_CALLS;
-
-  return (
-    <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${isActive ? "border-purple-300 shadow-purple-100 shadow-md" : "border-slate-100"}`}>
-      {/* Timer bar (only when calling) */}
-      {isCalling && (
-        <div className="h-1 w-full bg-slate-100">
-          <div
-            className="h-full transition-all duration-1000 rounded-r-full"
-            style={{ width: `${timerPct}%`, backgroundColor: timerColor }}
-          />
-        </div>
-      )}
-
-      <div className="flex items-start gap-4 px-5 py-4">
-        {/* Token */}
-        <div className="flex-shrink-0 text-center">
-          <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${isAtCounter ? "bg-purple-600" : isCalling ? "bg-amber-100" : "bg-purple-100"}`}>
-            <span className={`font-mono text-sm font-black ${isAtCounter ? "text-white" : isCalling ? "text-amber-700" : "text-purple-700"}`}>
-              {entry.tokenNumber}
-            </span>
-          </div>
-          {isCalling && (
-            <span className="mt-1 block text-[9px] font-bold text-amber-600 animate-pulse">CALLING</span>
-          )}
-          {isAtCounter && (
-            <span className="mt-1 block text-[9px] font-bold text-purple-600">AT COUNTER</span>
-          )}
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-0.5">
-            {p ? (
-              <span className="text-sm font-bold text-slate-800">{p.name}</span>
-            ) : (
-              <span className="text-sm text-slate-400 italic">Walk-in</span>
-            )}
-            {p && <span className="text-xs text-slate-400">{p.mrn}</span>}
-          </div>
-          <div className="flex items-center gap-2 text-[10px] text-slate-400 flex-wrap">
-            <span>{entry.stepLabel}</span>
-            <span>·</span>
-            <span>{timeAgo(entry.createdAt)}</span>
-            {entry.callCount > 0 && (
-              <><span>·</span><span className="text-amber-600 font-semibold">Called {entry.callCount}×</span></>
-            )}
-          </div>
-          {isCalling && (
-            <div className="mt-2 flex items-center gap-2">
-              <Clock className="h-3.5 w-3.5 flex-shrink-0" style={{ color: timerColor }} />
-              <span className="text-xs font-bold tabular-nums" style={{ color: timerColor }}>
-                Window expires in {secsLeft}s
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-col gap-1.5 flex-shrink-0 min-w-[120px]">
-          {/* At counter: show Lab Orders */}
-          {isAtCounter && !isCalling && (
-            <Button
-              onClick={onLabOrders}
-              className="h-8 text-xs gap-1.5 w-full text-white"
-              style={{ background: "#7c3aed" }}
-            >
-              <FlaskConical className="h-3.5 w-3.5" /> Lab Orders
-            </Button>
-          )}
-
-          {/* Calling window active: show Lab Orders (patient arrived) + Skip */}
-          {isCalling && (
-            <>
-              <Button
-                onClick={onLabOrders}
-                className="h-8 text-xs gap-1.5 w-full text-white"
-                style={{ background: "#7c3aed" }}
-              >
-                <FlaskConical className="h-3.5 w-3.5" /> Lab Orders
-              </Button>
-              <Button
-                onClick={onSkip}
-                variant="outline"
-                className="h-7 text-[10px] gap-1 w-full text-slate-500 hover:text-rose-600 hover:border-rose-200"
-              >
-                <SkipForward className="h-3 w-3" /> Skip
-              </Button>
-            </>
-          )}
-
-          {/* Waiting: show Call button */}
-          {!isAtCounter && !isCalling && (
-            <>
-              <Button
-                onClick={onCall}
-                disabled={exhausted}
-                className="h-8 text-xs gap-1.5 w-full text-white"
-                style={{ background: exhausted ? "#94a3b8" : ACCENT }}
-              >
-                <PhoneCall className="h-3.5 w-3.5" />
-                {exhausted ? "Max Calls" : entry.callCount > 0 ? `Call (${callsLeft} left)` : "Call"}
-              </Button>
-              <Button
-                onClick={onSkip}
-                variant="outline"
-                className="h-7 text-[10px] gap-1 w-full text-slate-500 hover:text-rose-600 hover:border-rose-200"
-              >
-                <SkipForward className="h-3 w-3" /> Skip
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function LabUser() {
@@ -497,26 +339,55 @@ export function LabUser() {
     labCall, labTimerExpire, labAtCounter, labComplete, labSkip, labRecall,
   } = useMultiStepQueue();
 
-  const [drawerEntry, setDrawerEntry] = useState<MultiEntry | null>(null);
+  const [tick, setTick]                 = useState(0);
+  const [drawerEntry, setDrawerEntry]   = useState<MultiEntry | null>(null);
+  const [toast, setToast]               = useState<string | null>(null);
+  const [showSkipped, setShowSkipped]   = useState(false);
 
-  // Filter to step 4 (Lab / Sample)
-  const labQueue  = queue.filter(e => e.step === 4 && !e.skipped && e.status !== "completed");
-  const skipped   = queue.filter(e => e.step === 4 && e.skipped);
-  const completed = queue.filter(e => e.step === 4 && e.status === "completed");
+  // Global tick — drives timer display and auto-expire
+  useEffect(() => {
+    const t = setInterval(() => setTick(p => p + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
 
-  const atCounter = labQueue.filter(e => e.status === "called");
-  const calling   = labQueue.filter(e => e.status !== "called" && !!e.callTimestamp);
-  const waiting   = labQueue.filter(e => e.status === "waiting" && !e.callTimestamp);
+  // Auto-expire stale call windows (same pattern as Nursing)
+  useEffect(() => {
+    queue.forEach(e => {
+      if (!e.callTimestamp) return;
+      if (Date.now() - e.callTimestamp >= CALL_WINDOW_SECS * 1000) {
+        labTimerExpire(e.id);
+        if (e.callCount >= MAX_CALLS) {
+          showToastMsg(`Token ${e.tokenNumber} auto-skipped after ${MAX_CALLS} calls`);
+        }
+      }
+    });
+  }, [tick]);
 
-  function handleCall(entry: MultiEntry) {
-    labCall(entry.id);
+  function showToastMsg(msg: string) { setToast(msg); setTimeout(() => setToast(null), 3500); }
+
+  // ── Derived state (mirrors Nursing exactly) ─────────────────────────────────
+  const labQueue       = queue
+    .filter(e => e.step === 4 && !e.skipped && e.status !== "completed")
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const skippedQueue   = queue.filter(e => e.step === 4 && e.skipped);
+  const completedQueue = queue.filter(e => e.step === 4 && e.status === "completed");
+
+  const atCounterEntry  = labQueue.find(e => e.status === "called") ?? null;
+  const activeCallEntry = labQueue.find(e => e.callTimestamp !== null && getSecsLeft(e.callTimestamp) > 0) ?? null;
+  const waitingTokens   = labQueue.filter(e => e.status === "waiting" && !e.callTimestamp && e.id !== atCounterEntry?.id);
+
+  const secsLeft = getSecsLeft(activeCallEntry?.callTimestamp ?? null);
+  const timerPct = (secsLeft / CALL_WINDOW_SECS) * 100;
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
+  function handleCall(id: string) {
+    labCall(id);
+    showToastMsg("Token called — 30 second window started");
   }
 
   function handleLabOrders(entry: MultiEntry) {
-    if (entry.status !== "called") {
-      labAtCounter(entry.id);
-    }
-    setDrawerEntry(entry);
+    labAtCounter(entry.id);
+    setDrawerEntry({ ...entry, status: "called" });
   }
 
   function handleComplete(id: string) {
@@ -524,25 +395,26 @@ export function LabUser() {
     setDrawerEntry(null);
   }
 
-  function renderEntryCard(e: MultiEntry) {
-    return (
-      <LabQueueCard
-        key={e.id}
-        entry={e}
-        isActive={drawerEntry?.id === e.id}
-        onCall={() => handleCall(e)}
-        onTimerExpire={() => labTimerExpire(e.id)}
-        onLabOrders={() => handleLabOrders(e)}
-        onSkip={() => labSkip(e.id)}
-      />
-    );
+  function handleSkip(id: string) {
+    labSkip(id);
+    showToastMsg("Token skipped");
   }
 
-  const totalActive = labQueue.length;
+  function handleRecall(id: string, tokenNum: string) {
+    labRecall(id);
+    showToastMsg(`Token ${tokenNum} recalled to queue`);
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <QueueAppHeader />
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 rounded-full bg-slate-800 text-white text-xs font-semibold px-5 py-2.5 shadow-lg transition-all">
+          {toast}
+        </div>
+      )}
 
       <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-6 space-y-6">
         {/* Page header */}
@@ -557,19 +429,21 @@ export function LabUser() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 shadow-sm px-3 py-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Active</span>
-              <span className="text-sm font-black text-purple-700">{totalActive}</span>
-            </div>
-            <div className="flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 shadow-sm px-3 py-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Skipped</span>
-              <span className="text-sm font-black text-slate-600">{skipped.length}</span>
-            </div>
+            {[
+              { label: "At Counter", value: atCounterEntry ? 1 : 0, color: "text-purple-700", bg: "bg-purple-50 border-purple-200" },
+              { label: "Waiting",    value: waitingTokens.length,    color: "text-amber-700",  bg: "bg-amber-50 border-amber-200" },
+              { label: "Skipped",    value: skippedQueue.length,     color: "text-red-600",    bg: "bg-red-50 border-red-200" },
+            ].map(s => (
+              <div key={s.label} className={`flex items-center gap-1.5 rounded-xl border ${s.bg} shadow-sm px-3 py-1.5`}>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{s.label}</span>
+                <span className={`text-sm font-black ${s.color}`}>{s.value}</span>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Empty state */}
-        {totalActive === 0 && skipped.length === 0 && (
+        {labQueue.length === 0 && skippedQueue.length === 0 && (
           <div className="text-center py-20 text-slate-400">
             <FlaskConical className="h-12 w-12 mx-auto mb-3 opacity-20" />
             <p className="text-sm font-medium">No patients in the lab queue</p>
@@ -577,81 +451,207 @@ export function LabUser() {
           </div>
         )}
 
-        {/* At Counter */}
-        {atCounter.length > 0 && (
+        {/* ── At Counter ─────────────────────────────────────────────────────── */}
+        {atCounterEntry && !activeCallEntry && (
           <div>
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-2">
               <span className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-purple-700">Now at Counter</p>
-              <span className="text-[10px] font-bold text-slate-300 bg-slate-100 rounded-full px-2 py-0.5">{atCounter.length}</span>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-purple-600">Now at Counter</p>
             </div>
-            <div className="space-y-3">{atCounter.map(renderEntryCard)}</div>
-          </div>
-        )}
-
-        {/* Call window active */}
-        {calling.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Call Window Active</p>
-              <span className="text-[10px] font-bold text-slate-300 bg-slate-100 rounded-full px-2 py-0.5">{calling.length}</span>
-            </div>
-            <div className="space-y-3">{calling.map(renderEntryCard)}</div>
-          </div>
-        )}
-
-        {/* Waiting */}
-        {waiting.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="h-2 w-2 rounded-full bg-amber-400" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Waiting</p>
-              <span className="text-[10px] font-bold text-slate-300 bg-slate-100 rounded-full px-2 py-0.5">{waiting.length}</span>
-            </div>
-            <div className="space-y-3">{waiting.map(renderEntryCard)}</div>
-          </div>
-        )}
-
-        {/* Skipped */}
-        {skipped.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Skipped</p>
-              <span className="text-[10px] font-bold text-slate-300 bg-slate-100 rounded-full px-2 py-0.5">{skipped.length}</span>
-            </div>
-            <div className="space-y-3">
-              {skipped.map(e => (
-                <div key={e.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 flex items-center gap-4 opacity-70">
-                  <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-                    <span className="font-mono text-xs font-black text-slate-500">{e.tokenNumber}</span>
+            <div className="rounded-2xl border-2 border-purple-300/50 bg-white shadow-sm overflow-hidden">
+              <div className="h-1 w-full bg-purple-500" />
+              <div className="flex items-center gap-5 px-6 py-5">
+                <div className="flex-shrink-0 text-center">
+                  <div className="rounded-2xl border-2 border-purple-400/50 bg-purple-50 px-6 py-3">
+                    <p className="font-mono font-black text-2xl text-purple-700">{atCounterEntry.tokenNumber}</p>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-700">{e.patient?.name ?? "Walk-in"}</p>
-                    <p className="text-[10px] text-slate-400">{e.patient?.mrn ?? "—"} · Skipped after {e.callCount} call{e.callCount !== 1 ? "s" : ""}</p>
+                  <p className="text-[9px] text-slate-400 mt-1">Call #{atCounterEntry.callCount}</p>
+                </div>
+                <div className="flex-1 min-w-0">
+                  {atCounterEntry.patient
+                    ? <><p className="text-base font-black text-slate-900 leading-tight">{atCounterEntry.patient.name}</p><p className="text-xs text-slate-400">{atCounterEntry.patient.mrn} · {atCounterEntry.patient.phone}</p></>
+                    : <p className="text-base font-black text-slate-500">Walk-in Patient</p>}
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />
+                    <span className="text-xs font-semibold text-purple-600">At Lab Counter</span>
+                    <span className="text-slate-300">·</span>
+                    <Clock className="h-3 w-3 text-slate-300" />
+                    <span className="text-xs text-slate-400">{timeAgo(atCounterEntry.createdAt)}</span>
                   </div>
+                </div>
+                <div className="flex flex-col gap-2 flex-shrink-0">
                   <Button
-                    onClick={() => labRecall(e.id)}
-                    variant="outline"
-                    className="h-8 text-xs gap-1.5 flex-shrink-0 border-purple-200 text-purple-700 hover:bg-purple-50"
+                    className="h-10 px-5 text-sm font-bold gap-2 text-white"
+                    style={{ background: "#7c3aed" }}
+                    onClick={() => setDrawerEntry(atCounterEntry)}
                   >
-                    <RotateCcw className="h-3.5 w-3.5" /> Recall
+                    <FlaskConical className="h-4 w-4" /> Lab Orders
                   </Button>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* Completed today */}
-        {completed.length > 0 && (
+        {/* ── Call window active ──────────────────────────────────────────────── */}
+        {activeCallEntry && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Call Window Active</p>
+            </div>
+            <div className="rounded-2xl border-2 border-amber-200 bg-white shadow-sm overflow-hidden">
+              <div className="h-1.5 w-full bg-slate-100 relative">
+                <div
+                  className="h-full transition-all duration-1000"
+                  style={{ width: `${timerPct}%`, backgroundColor: secsLeft < 10 ? "#ef4444" : "#f59e0b" }}
+                />
+              </div>
+              <div className="flex items-center gap-5 px-6 py-5">
+                <div className="flex-shrink-0 text-center">
+                  <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 px-6 py-3">
+                    <p className="font-mono font-black text-2xl text-amber-700">{activeCallEntry.tokenNumber}</p>
+                  </div>
+                  <p className="text-[9px] text-slate-400 mt-1">Attempt {activeCallEntry.callCount}/{MAX_CALLS}</p>
+                </div>
+                <div className="flex-1 min-w-0">
+                  {activeCallEntry.patient
+                    ? <><p className="text-base font-black text-slate-900 leading-tight">{activeCallEntry.patient.name}</p><p className="text-xs text-slate-400">{activeCallEntry.patient.mrn}</p></>
+                    : <p className="text-base font-black text-slate-500">Walk-in Patient</p>}
+                  <p className="text-sm font-semibold text-amber-600 mt-1">Window expires in {secsLeft}s</p>
+                </div>
+                <div className="flex flex-col gap-2 flex-shrink-0">
+                  <Button
+                    className="h-10 px-5 text-sm font-bold gap-2 text-white"
+                    style={{ background: "#7c3aed" }}
+                    onClick={() => handleLabOrders(activeCallEntry)}
+                  >
+                    <FlaskConical className="h-4 w-4" /> Lab Orders
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-red-200 text-red-500 hover:bg-red-50 text-xs"
+                    onClick={() => handleSkip(activeCallEntry.id)}
+                  >
+                    <SkipForward className="h-3 w-3 mr-1" /> Skip Token
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Waiting queue ───────────────────────────────────────────────────── */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="h-2 w-2 rounded-full bg-amber-400" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">
+              Waiting in Queue · {waitingTokens.length}
+            </p>
+          </div>
+          {waitingTokens.length === 0 && !atCounterEntry && !activeCallEntry && (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-2">
+              <CheckCircle2 className="h-10 w-10 opacity-20" />
+              <p className="text-sm font-medium">Queue is empty</p>
+              <p className="text-xs">Patients will appear here after they reach Step 4.</p>
+            </div>
+          )}
+          <div className="space-y-2">
+            {waitingTokens.map((entry, idx) => {
+              const isFirst = idx === 0 && !atCounterEntry && !activeCallEntry;
+              return (
+                <div
+                  key={entry.id}
+                  className={`flex items-center gap-4 rounded-xl border px-4 py-3 bg-white transition-all ${isFirst ? "border-slate-300 shadow-sm" : "border-slate-100 opacity-70"}`}
+                >
+                  <div className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-sm font-black bg-slate-100 text-slate-500">
+                    {idx + 1}
+                  </div>
+                  <div className="font-mono font-black text-sm text-slate-700 flex-shrink-0">{entry.tokenNumber}</div>
+                  <div className="flex-1 min-w-0">
+                    {entry.patient
+                      ? <p className="text-sm font-bold text-slate-800 truncate">{entry.patient.name}<span className="ml-2 text-xs font-normal text-slate-400">{entry.patient.mrn}</span></p>
+                      : <p className="text-sm font-bold text-slate-500">Walk-in Patient</p>}
+                    {entry.callCount > 0 && (
+                      <p className="text-[10px] text-amber-600 font-semibold">Called {entry.callCount}× — {MAX_CALLS - entry.callCount} attempt{MAX_CALLS - entry.callCount !== 1 ? "s" : ""} left</p>
+                    )}
+                  </div>
+                  <span className="text-xs text-slate-400 flex-shrink-0">{timeAgo(entry.createdAt)}</span>
+                  {isFirst ? (
+                    <Button
+                      size="sm"
+                      className="h-8 px-4 text-xs font-bold flex-shrink-0 gap-1.5"
+                      style={{ backgroundColor: ACCENT }}
+                      onClick={() => handleCall(entry.id)}
+                    >
+                      <PhoneCall className="h-3.5 w-3.5" /> Call
+                    </Button>
+                  ) : (
+                    <div className="h-8 px-4 flex items-center text-[10px] font-semibold text-slate-400 flex-shrink-0">Locked</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Skipped ─────────────────────────────────────────────────────────── */}
+        {skippedQueue.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowSkipped(v => !v)}
+              className="flex items-center gap-2 rounded-full border border-red-200 bg-white shadow-sm px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-all"
+            >
+              <AlertCircle className="h-3.5 w-3.5" /> Skipped Tokens ({skippedQueue.length})
+            </button>
+            {showSkipped && (
+              <div className="mt-3 bg-white border-2 border-red-200 rounded-2xl shadow-lg overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                    <p className="text-sm font-bold text-slate-900">Skipped Tokens</p>
+                  </div>
+                  <button onClick={() => setShowSkipped(false)} className="h-7 w-7 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="p-3 space-y-2">
+                  {skippedQueue.map(entry => (
+                    <div key={entry.id} className="flex items-center gap-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+                      <div className="font-mono font-black text-sm text-red-700 flex-shrink-0">{entry.tokenNumber}</div>
+                      <div className="flex-1 min-w-0">
+                        {entry.patient
+                          ? <p className="text-sm font-semibold text-slate-800">{entry.patient.name}</p>
+                          : <p className="text-sm font-semibold text-slate-500">Walk-in</p>}
+                        <p className="text-[10px] text-slate-400">{timeAgo(entry.createdAt)}</p>
+                      </div>
+                      <span className="text-xs font-bold text-red-500 flex-shrink-0">{entry.callCount}/{MAX_CALLS} calls</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-3 text-xs border-red-300 text-red-600 hover:bg-red-100 flex-shrink-0"
+                        onClick={() => handleRecall(entry.id, entry.tokenNumber)}
+                      >
+                        <RotateCcw className="h-3 w-3 mr-1" /> Recall
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Completed today ──────────────────────────────────────────────────── */}
+        {completedQueue.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Completed Today</p>
-              <span className="text-[10px] font-bold text-slate-300 bg-slate-100 rounded-full px-2 py-0.5">{completed.length}</span>
+              <span className="text-[10px] font-bold text-slate-300 bg-slate-100 rounded-full px-2 py-0.5">{completedQueue.length}</span>
             </div>
             <div className="space-y-2">
-              {completed.map(e => (
+              {completedQueue.map(e => (
                 <div key={e.id} className="bg-white rounded-xl border border-slate-100 px-4 py-3 flex items-center gap-3 opacity-60">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
                   <span className="font-mono text-xs font-bold text-slate-500">{e.tokenNumber}</span>
