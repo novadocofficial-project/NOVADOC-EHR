@@ -384,9 +384,10 @@ function TemplateBuilder({
                 <div>
                   {/* Column headers */}
                   {sec.parameters.length > 0 && (
-                    <div className="grid grid-cols-[1fr_auto_1fr_1fr_auto] gap-0 px-4 py-1.5 bg-slate-50/50 border-b border-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                    <div className="grid grid-cols-[1fr_auto_1fr_1fr_1fr_auto] gap-0 px-4 py-1.5 bg-slate-50/50 border-b border-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wide">
                       <span>Parameter Name</span>
                       <span className="w-20 text-center">Move</span>
+                      <span className="text-slate-300 italic normal-case font-normal">Value (filled at entry)</span>
                       <span>Unit</span>
                       <span>Reference Range</span>
                       <span className="w-14" />
@@ -410,12 +411,13 @@ function TemplateBuilder({
                             </div>
                           </div>
                         ) : (
-                          <div className="grid grid-cols-[1fr_auto_1fr_1fr_auto] gap-0 px-4 py-2 items-center">
+                          <div className="grid grid-cols-[1fr_auto_1fr_1fr_1fr_auto] gap-0 px-4 py-2 items-center">
                             <span className="text-xs font-medium text-slate-700">{p.name}</span>
                             <div className="w-20 flex justify-center gap-0.5">
                               <button onClick={() => moveParam(sec.id, pi, -1)} disabled={pi === 0} className="p-0.5 rounded hover:bg-slate-200 text-slate-300 disabled:opacity-30"><ArrowUp className="h-2.5 w-2.5" /></button>
                               <button onClick={() => moveParam(sec.id, pi, 1)} disabled={pi === sec.parameters.length - 1} className="p-0.5 rounded hover:bg-slate-200 text-slate-300 disabled:opacity-30"><ArrowDown className="h-2.5 w-2.5" /></button>
                             </div>
+                            <span className="text-xs text-slate-300 italic">—</span>
                             <span className="text-xs text-slate-500">{p.unit || <span className="text-slate-300">—</span>}</span>
                             <span className="text-xs text-slate-500">{p.reference || <span className="text-slate-300">—</span>}</span>
                             <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity w-14 justify-end">

@@ -176,7 +176,7 @@ type ActiveModule =
   | "clinical-complaints" | "clinical-icd10" | "clinical-poc" | "clinical-ros"
   | "clinical-allergies" | "clinical-med-surgical" | "clinical-family" | "clinical-social"
   | "care-plan-library" | "goals-library" | "referral-destinations" | "comorbidities"
-  | "lab-master" | "lab-providers"
+  | "lab-master" | "lab-providers" | "lab-result-templates"
   | "proc-master" | "proc-partners"
   | "permissions" | "signing-rules"
   | "formulary-catalogue" | "formulary-defaults" | "formulary-partners"
