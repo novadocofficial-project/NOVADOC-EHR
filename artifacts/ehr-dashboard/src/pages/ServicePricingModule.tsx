@@ -502,30 +502,32 @@ export function ServicePricingModule({
 
         {/* Tabs + search */}
         <div className="mt-4 flex items-center gap-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-w-0 overflow-hidden">
-            <TabsList className="h-8 bg-slate-100 w-full flex overflow-x-auto scrollbar-none" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" }}>
-              <TabsTrigger value="all" className="h-7 text-xs shrink-0">
-                <LayoutGrid className="h-3 w-3 mr-1" />
-                All <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{services.length}</span>
-              </TabsTrigger>
-              <TabsTrigger value="consultation-fees" className="h-7 text-xs shrink-0">
-                <Banknote className="h-3 w-3 mr-1" />
-                Consult Fees
-                {consultRows.length > 0 && <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{consultRows.length}</span>}
-              </TabsTrigger>
-              {activeServiceTypes.map(st => {
-                const count = services.filter(s => s.serviceTypeId === st.id).length;
-                if (count === 0) return null;
-                const isPivot = PROVIDER_ST_IDS.has(st.id);
-                return (
-                  <TabsTrigger key={st.id} value={st.id} className="h-7 text-xs shrink-0">
-                    {isPivot && <Columns className="h-3 w-3 mr-1 opacity-60" />}
-                    {st.name}
-                    <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{count}</span>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-w-0">
+            <div className="overflow-x-auto scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
+              <TabsList className="h-8 bg-slate-100 inline-flex min-w-max">
+                <TabsTrigger value="all" className="h-7 text-xs">
+                  <LayoutGrid className="h-3 w-3 mr-1" />
+                  All <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{services.length}</span>
+                </TabsTrigger>
+                <TabsTrigger value="consultation-fees" className="h-7 text-xs">
+                  <Banknote className="h-3 w-3 mr-1" />
+                  Consult Fees
+                  {consultRows.length > 0 && <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{consultRows.length}</span>}
+                </TabsTrigger>
+                {activeServiceTypes.map(st => {
+                  const count = services.filter(s => s.serviceTypeId === st.id).length;
+                  if (count === 0) return null;
+                  const isPivot = PROVIDER_ST_IDS.has(st.id);
+                  return (
+                    <TabsTrigger key={st.id} value={st.id} className="h-7 text-xs">
+                      {isPivot && <Columns className="h-3 w-3 mr-1 opacity-60" />}
+                      {st.name}
+                      <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{count}</span>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+            </div>
           </Tabs>
           <div className="relative w-56 flex-none">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
