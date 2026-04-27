@@ -513,12 +513,13 @@ export function ServicePricingModule({
               </TabsTrigger>
               {activeServiceTypes.map(st => {
                 const count = services.filter(s => s.serviceTypeId === st.id).length;
+                if (count === 0) return null;
                 const isPivot = PROVIDER_ST_IDS.has(st.id);
                 return (
                   <TabsTrigger key={st.id} value={st.id} className="h-7 text-xs">
                     {isPivot && <Columns className="h-3 w-3 mr-1 opacity-60" />}
                     {st.name}
-                    {count > 0 && <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{count}</span>}
+                    <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{count}</span>
                   </TabsTrigger>
                 );
               })}
