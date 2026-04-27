@@ -581,7 +581,7 @@ function TemplateList({
                     {tpl.sections.length} section{tpl.sections.length !== 1 ? "s" : ""} · {totalParams} parameter{totalParams !== 1 ? "s" : ""} · updated {tpl.updatedAt}
                   </p>
                 </div>
-                <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap justify-end">
+                <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
                   <button onClick={() => onPreview(tpl.id)} title="Preview" className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-[#4982CF] border border-slate-200">
                     <Eye className="h-3 w-3" /> Preview
                   </button>
