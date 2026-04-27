@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   PhoneCall, X, ChevronRight, Maximize2, Minimize2,
   Clock, User, AlertCircle, Heart, FlaskConical,
   SkipForward, RotateCcw, CheckCircle2, TestTube2,
-  FileText, Package,
+  Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
@@ -11,16 +11,16 @@ import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ACCENT        = "#4982CF";
+const ACCENT           = "#4982CF";
 const CALL_WINDOW_SECS = 30;
-const MAX_CALLS     = 3;
+const MAX_CALLS        = 3;
 
 function getSecsLeft(ts: number | null): number {
   if (!ts) return 0;
   return Math.max(0, CALL_WINDOW_SECS - Math.floor((Date.now() - ts) / 1000));
 }
 
-// ─── Seed lab orders for display in the Lab Panel ────────────────────────────
+// ─── Seed lab orders ──────────────────────────────────────────────────────────
 
 interface LabTest {
   id: string;
@@ -44,9 +44,9 @@ const SEED_LAB_ORDERS: LabOrder[] = [
     orderedBy: "Dr. Asif Imam",
     orderDate: "10 Dec 2024",
     tests: [
-      { id: "lt1", serial: 1, name: "Complete Blood Count (CBC)",       lab: "CityPath Diagnostics", status: "pending",   updatedAt: "" },
-      { id: "lt2", serial: 2, name: "C-Reactive Protein (CRP)",         lab: "CityPath Diagnostics", status: "pending",   updatedAt: "" },
-      { id: "lt3", serial: 3, name: "Throat Swab Culture & Sensitivity", lab: "ABC Lab",             status: "pending",   updatedAt: "" },
+      { id: "lt1", serial: 1, name: "Complete Blood Count (CBC)",        lab: "CityPath Diagnostics", status: "pending",   updatedAt: "" },
+      { id: "lt2", serial: 2, name: "C-Reactive Protein (CRP)",          lab: "CityPath Diagnostics", status: "pending",   updatedAt: "" },
+      { id: "lt3", serial: 3, name: "Throat Swab Culture & Sensitivity", lab: "ABC Lab",              status: "pending",   updatedAt: "" },
     ],
   },
   {
@@ -54,15 +54,13 @@ const SEED_LAB_ORDERS: LabOrder[] = [
     orderedBy: "Dr. Emily Wong",
     orderDate: "09 Dec 2024",
     tests: [
-      { id: "lt4", serial: 1, name: "Fasting Blood Sugar",   lab: "Hashmani Laboratories", status: "completed", updatedAt: "09 Dec 2024, 10:30 AM" },
-      { id: "lt5", serial: 2, name: "Lipid Profile",         lab: "Hashmani Laboratories", status: "completed", updatedAt: "09 Dec 2024, 11:00 AM" },
+      { id: "lt4", serial: 1, name: "Fasting Blood Sugar", lab: "Hashmani Laboratories", status: "completed", updatedAt: "09 Dec 2024, 10:30 AM" },
+      { id: "lt5", serial: 2, name: "Lipid Profile",       lab: "Hashmani Laboratories", status: "completed", updatedAt: "09 Dec 2024, 11:00 AM" },
     ],
   },
 ];
 
-// ─── Lab Panel (fullscreen) ───────────────────────────────────────────────────
-
-type LabTab = "lab-orders";
+// ─── Lab Panel (fullscreen slide-over) ───────────────────────────────────────
 
 function LabPanel({
   entry, onClose, onComplete,
@@ -71,16 +69,11 @@ function LabPanel({
   onClose: () => void;
   onComplete: () => void;
 }) {
-  const p             = entry.patient;
-  const [fullscreen, setFullscreen] = useState(false);
-  const [activeTab, setActiveTab]   = useState<LabTab>("lab-orders");
+  const p               = entry.patient;
+  const [fullscreen, setFullscreen]   = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const tabs: { id: LabTab; label: string }[] = [
-    { id: "lab-orders", label: "Lab Orders" },
-  ];
-
-  const totalTests  = SEED_LAB_ORDERS.reduce((s, o) => s + o.tests.length, 0);
+  const totalTests   = SEED_LAB_ORDERS.reduce((s, o) => s + o.tests.length, 0);
   const pendingCount = SEED_LAB_ORDERS.reduce((s, o) => s + o.tests.filter(t => t.status === "pending").length, 0);
 
   return (
@@ -106,19 +99,11 @@ function LabPanel({
 
           {/* Tab nav */}
           <div className="flex items-center gap-1 flex-1 justify-center">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  activeTab === tab.id
-                    ? "bg-purple-600 text-white"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            <button
+              className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white"
+            >
+              Lab Orders
+            </button>
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -144,88 +129,74 @@ function LabPanel({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto bg-slate-50/40">
-          {activeTab === "lab-orders" && (
-            <div className="p-5 space-y-4">
-              {/* Summary bar */}
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2.5 flex items-center gap-2">
-                  <TestTube2 className="h-4 w-4 text-purple-600" />
-                  <span className="text-xs font-bold text-purple-800">{totalTests} test{totalTests !== 1 ? "s" : ""} ordered</span>
-                </div>
-                {pendingCount > 0 && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-amber-600" />
-                    <span className="text-xs font-bold text-amber-800">{pendingCount} pending</span>
-                  </div>
-                )}
-                {pendingCount === 0 && (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    <span className="text-xs font-bold text-emerald-800">All completed</span>
-                  </div>
-                )}
+          <div className="p-5 space-y-4">
+            {/* Summary bar */}
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2.5 flex items-center gap-2">
+                <TestTube2 className="h-4 w-4 text-purple-600" />
+                <span className="text-xs font-bold text-purple-800">{totalTests} test{totalTests !== 1 ? "s" : ""} ordered</span>
               </div>
-
-              {/* Orders */}
-              {SEED_LAB_ORDERS.map(order => (
-                <div key={order.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                  {/* Order header */}
-                  <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-100">
-                    <Package className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-700">Order · {order.orderDate}</p>
-                      <p className="text-[10px] text-slate-400">Ordered by {order.orderedBy}</p>
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-400">
-                      {order.tests.filter(t => t.status === "completed").length}/{order.tests.length} done
-                    </span>
-                  </div>
-
-                  {/* Test rows */}
-                  <div className="divide-y divide-slate-50">
-                    {order.tests.map(test => (
-                      <div key={test.id} className="flex items-center gap-4 px-4 py-3">
-                        <span className="text-[10px] font-black text-slate-400 w-5 flex-shrink-0 text-right">{test.serial}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-800 leading-tight">{test.name}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
-                            <FlaskConical className="h-3 w-3" /> {test.lab}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {test.status === "completed" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                              <CheckCircle2 className="h-3 w-3" /> Completed
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                              <Clock className="h-3 w-3" /> Pending
-                            </span>
-                          )}
-                          {test.status === "completed" && test.updatedAt && (
-                            <span className="text-[10px] text-slate-400">{test.updatedAt}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              {pendingCount > 0 ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  <span className="text-xs font-bold text-amber-800">{pendingCount} pending</span>
                 </div>
-              ))}
-
-              {SEED_LAB_ORDERS.length === 0 && (
-                <div className="text-center py-16 text-slate-400">
-                  <FlaskConical className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm font-medium">No lab orders found</p>
-                  <p className="text-xs mt-1">This patient has no pending lab orders.</p>
+              ) : (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <span className="text-xs font-bold text-emerald-800">All completed</span>
                 </div>
               )}
             </div>
-          )}
+
+            {/* Orders */}
+            {SEED_LAB_ORDERS.map(order => (
+              <div key={order.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-100">
+                  <Package className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-700">Order · {order.orderDate}</p>
+                    <p className="text-[10px] text-slate-400">Ordered by {order.orderedBy}</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    {order.tests.filter(t => t.status === "completed").length}/{order.tests.length} done
+                  </span>
+                </div>
+                <div className="divide-y divide-slate-50">
+                  {order.tests.map(test => (
+                    <div key={test.id} className="flex items-center gap-4 px-4 py-3">
+                      <span className="text-[10px] font-black text-slate-400 w-5 flex-shrink-0 text-right">{test.serial}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 leading-tight">{test.name}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                          <FlaskConical className="h-3 w-3" /> {test.lab}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {test.status === "completed" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                            <CheckCircle2 className="h-3 w-3" /> Completed
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                            <Clock className="h-3 w-3" /> Pending
+                          </span>
+                        )}
+                        {test.status === "completed" && test.updatedAt && (
+                          <span className="text-[10px] text-slate-400">{test.updatedAt}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Confirm modal */}
         {showConfirm && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40" onClick={() => setShowConfirm(false)} />
             <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-80 z-10">
               <div className="flex items-center gap-3 mb-3">
@@ -245,7 +216,11 @@ function LabPanel({
               )}
               <div className="flex gap-2 mt-2">
                 <Button onClick={() => setShowConfirm(false)} variant="outline" className="flex-1 h-9 text-sm">Cancel</Button>
-                <Button onClick={() => { onComplete(); setShowConfirm(false); }} className="flex-1 h-9 text-sm text-white" style={{ background: "#7c3aed" }}>
+                <Button
+                  onClick={() => { onComplete(); setShowConfirm(false); }}
+                  className="flex-1 h-9 text-sm text-white"
+                  style={{ background: "#7c3aed" }}
+                >
                   Confirm
                 </Button>
               </div>
@@ -257,9 +232,7 @@ function LabPanel({
   );
 }
 
-// ─── Lab Drawer ───────────────────────────────────────────────────────────────
-
-type LabDrawerCategory = "lab";
+// ─── Lab Drawer (patient summary) ─────────────────────────────────────────────
 
 function LabDrawer({
   entry, onClose, onComplete,
@@ -268,10 +241,10 @@ function LabDrawer({
   onClose: () => void;
   onComplete: () => void;
 }) {
-  const [activeCategory, setActiveCategory] = useState<LabDrawerCategory | null>(null);
+  const [showPanel, setShowPanel] = useState(false);
   const p = entry.patient;
 
-  if (activeCategory === "lab") {
+  if (showPanel) {
     return <LabPanel entry={entry} onClose={onClose} onComplete={onComplete} />;
   }
 
@@ -348,7 +321,7 @@ function LabDrawer({
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Categories</p>
             <div className="grid grid-cols-2 gap-2.5">
               <button
-                onClick={() => setActiveCategory("lab")}
+                onClick={() => setShowPanel(true)}
                 className="rounded-xl border bg-purple-50 border-purple-200 px-4 py-3.5 text-left flex items-center gap-3 hover:shadow-sm transition-all group"
               >
                 <FlaskConical className="h-5 w-5 text-purple-700 flex-shrink-0" />
@@ -360,22 +333,6 @@ function LabDrawer({
         </div>
       </div>
     </>
-  );
-}
-
-// ─── Timer display ────────────────────────────────────────────────────────────
-
-function CallTimer({ secsLeft }: { secsLeft: number }) {
-  const pct = (secsLeft / CALL_WINDOW_SECS) * 100;
-  const color = secsLeft > 15 ? "#22c55e" : secsLeft > 8 ? "#f59e0b" : "#ef4444";
-  return (
-    <div className="flex items-center gap-2 min-w-0">
-      <Clock className="h-3.5 w-3.5 flex-shrink-0" style={{ color }} />
-      <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${pct}%`, background: color }} />
-      </div>
-      <span className="text-xs font-bold tabular-nums flex-shrink-0" style={{ color }}>{secsLeft}s</span>
-    </div>
   );
 }
 
@@ -391,35 +348,55 @@ function LabQueueCard({
   onLabOrders: () => void;
   onSkip: () => void;
 }) {
-  const p = entry.patient;
+  const p         = entry.patient;
   const isCalling = !!entry.callTimestamp;
+  const isAtCounter = entry.status === "called";
   const [secsLeft, setSecsLeft] = useState(getSecsLeft(entry.callTimestamp));
+  const expiredRef = useRef(false);
 
   useEffect(() => {
+    expiredRef.current = false;
     if (!isCalling) { setSecsLeft(0); return; }
     const iv = setInterval(() => {
       const s = getSecsLeft(entry.callTimestamp);
       setSecsLeft(s);
-      if (s === 0) onTimerExpire();
+      if (s === 0 && !expiredRef.current) {
+        expiredRef.current = true;
+        onTimerExpire();
+      }
     }, 500);
     return () => clearInterval(iv);
-  }, [isCalling, entry.callTimestamp, onTimerExpire]);
+  }, [isCalling, entry.callTimestamp]);
 
-  const callsLeft = MAX_CALLS - entry.callCount;
-  const isAtCounter = entry.status === "called";
+  const timerPct  = (secsLeft / CALL_WINDOW_SECS) * 100;
+  const timerColor = secsLeft > 15 ? "#22c55e" : secsLeft > 8 ? "#f59e0b" : "#ef4444";
+  const callsLeft  = MAX_CALLS - entry.callCount;
+  const exhausted  = entry.callCount >= MAX_CALLS;
 
   return (
-    <div className={`bg-white rounded-2xl border shadow-sm px-5 py-4 transition-all ${isActive ? "border-purple-300 shadow-purple-100 shadow-md" : "border-slate-100"}`}>
-      <div className="flex items-start gap-4">
+    <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${isActive ? "border-purple-300 shadow-purple-100 shadow-md" : "border-slate-100"}`}>
+      {/* Timer bar (only when calling) */}
+      {isCalling && (
+        <div className="h-1 w-full bg-slate-100">
+          <div
+            className="h-full transition-all duration-1000 rounded-r-full"
+            style={{ width: `${timerPct}%`, backgroundColor: timerColor }}
+          />
+        </div>
+      )}
+
+      <div className="flex items-start gap-4 px-5 py-4">
         {/* Token */}
         <div className="flex-shrink-0 text-center">
-          <div className="h-12 w-12 rounded-xl bg-purple-100 flex items-center justify-center">
-            <span className="font-mono text-sm font-black text-purple-700">{entry.tokenNumber}</span>
+          <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${isAtCounter ? "bg-purple-600" : isCalling ? "bg-amber-100" : "bg-purple-100"}`}>
+            <span className={`font-mono text-sm font-black ${isAtCounter ? "text-white" : isCalling ? "text-amber-700" : "text-purple-700"}`}>
+              {entry.tokenNumber}
+            </span>
           </div>
           {isCalling && (
             <span className="mt-1 block text-[9px] font-bold text-amber-600 animate-pulse">CALLING</span>
           )}
-          {isAtCounter && !isCalling && (
+          {isAtCounter && (
             <span className="mt-1 block text-[9px] font-bold text-purple-600">AT COUNTER</span>
           )}
         </div>
@@ -443,25 +420,19 @@ function LabQueueCard({
             )}
           </div>
           {isCalling && (
-            <div className="mt-2">
-              <CallTimer secsLeft={secsLeft} />
+            <div className="mt-2 flex items-center gap-2">
+              <Clock className="h-3.5 w-3.5 flex-shrink-0" style={{ color: timerColor }} />
+              <span className="text-xs font-bold tabular-nums" style={{ color: timerColor }}>
+                Window expires in {secsLeft}s
+              </span>
             </div>
           )}
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col gap-1.5 flex-shrink-0 min-w-[110px]">
-          {!isAtCounter ? (
-            <Button
-              onClick={onCall}
-              disabled={isCalling || entry.callCount >= MAX_CALLS}
-              className="h-8 text-xs gap-1.5 w-full text-white"
-              style={{ background: isCalling || entry.callCount >= MAX_CALLS ? "#94a3b8" : ACCENT }}
-            >
-              <PhoneCall className="h-3.5 w-3.5" />
-              {isCalling ? "Calling…" : entry.callCount >= MAX_CALLS ? "Max Calls" : `Call ${entry.callCount > 0 ? `(${callsLeft} left)` : ""}`}
-            </Button>
-          ) : (
+        <div className="flex flex-col gap-1.5 flex-shrink-0 min-w-[120px]">
+          {/* At counter: show Lab Orders */}
+          {isAtCounter && !isCalling && (
             <Button
               onClick={onLabOrders}
               className="h-8 text-xs gap-1.5 w-full text-white"
@@ -471,23 +442,47 @@ function LabQueueCard({
             </Button>
           )}
 
-          {!isAtCounter && !isCalling && entry.callCount > 0 && entry.callCount < MAX_CALLS && (
-            <Button
-              onClick={onLabOrders}
-              variant="outline"
-              className="h-8 text-xs gap-1.5 w-full border-purple-200 text-purple-700 hover:bg-purple-50"
-            >
-              <FlaskConical className="h-3.5 w-3.5" /> Lab Orders
-            </Button>
+          {/* Calling window active: show Lab Orders (patient arrived) + Skip */}
+          {isCalling && (
+            <>
+              <Button
+                onClick={onLabOrders}
+                className="h-8 text-xs gap-1.5 w-full text-white"
+                style={{ background: "#7c3aed" }}
+              >
+                <FlaskConical className="h-3.5 w-3.5" /> Lab Orders
+              </Button>
+              <Button
+                onClick={onSkip}
+                variant="outline"
+                className="h-7 text-[10px] gap-1 w-full text-slate-500 hover:text-rose-600 hover:border-rose-200"
+              >
+                <SkipForward className="h-3 w-3" /> Skip
+              </Button>
+            </>
           )}
 
-          <Button
-            onClick={onSkip}
-            variant="outline"
-            className="h-7 text-[10px] gap-1 w-full text-slate-500 hover:text-rose-600 hover:border-rose-200"
-          >
-            <SkipForward className="h-3 w-3" /> Skip
-          </Button>
+          {/* Waiting: show Call button */}
+          {!isAtCounter && !isCalling && (
+            <>
+              <Button
+                onClick={onCall}
+                disabled={exhausted}
+                className="h-8 text-xs gap-1.5 w-full text-white"
+                style={{ background: exhausted ? "#94a3b8" : ACCENT }}
+              >
+                <PhoneCall className="h-3.5 w-3.5" />
+                {exhausted ? "Max Calls" : entry.callCount > 0 ? `Call (${callsLeft} left)` : "Call"}
+              </Button>
+              <Button
+                onClick={onSkip}
+                variant="outline"
+                className="h-7 text-[10px] gap-1 w-full text-slate-500 hover:text-rose-600 hover:border-rose-200"
+              >
+                <SkipForward className="h-3 w-3" /> Skip
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -509,17 +504,18 @@ export function LabUser() {
   const skipped   = queue.filter(e => e.step === 4 && e.skipped);
   const completed = queue.filter(e => e.step === 4 && e.status === "completed");
 
-  const waiting = labQueue.filter(e => e.status === "waiting");
-  const called  = labQueue.filter(e => e.status === "called");
+  const atCounter = labQueue.filter(e => e.status === "called");
+  const calling   = labQueue.filter(e => e.status !== "called" && !!e.callTimestamp);
+  const waiting   = labQueue.filter(e => e.status === "waiting" && !e.callTimestamp);
 
   function handleCall(entry: MultiEntry) {
     labCall(entry.id);
-    // After a brief moment to simulate call, mark at counter so "Lab Orders" appears
-    setTimeout(() => labAtCounter(entry.id), 500);
   }
 
   function handleLabOrders(entry: MultiEntry) {
-    labAtCounter(entry.id);
+    if (entry.status !== "called") {
+      labAtCounter(entry.id);
+    }
     setDrawerEntry(entry);
   }
 
@@ -528,28 +524,17 @@ export function LabUser() {
     setDrawerEntry(null);
   }
 
-  function renderSection(title: string, entries: MultiEntry[], accent?: string) {
-    if (entries.length === 0) return null;
+  function renderEntryCard(e: MultiEntry) {
     return (
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{title}</p>
-          <span className="text-[10px] font-bold text-slate-300 bg-slate-100 rounded-full px-2 py-0.5">{entries.length}</span>
-        </div>
-        <div className="space-y-3">
-          {entries.map(e => (
-            <LabQueueCard
-              key={e.id}
-              entry={e}
-              isActive={drawerEntry?.id === e.id}
-              onCall={() => handleCall(e)}
-              onTimerExpire={() => labTimerExpire(e.id)}
-              onLabOrders={() => handleLabOrders(e)}
-              onSkip={() => labSkip(e.id)}
-            />
-          ))}
-        </div>
-      </div>
+      <LabQueueCard
+        key={e.id}
+        entry={e}
+        isActive={drawerEntry?.id === e.id}
+        onCall={() => handleCall(e)}
+        onTimerExpire={() => labTimerExpire(e.id)}
+        onLabOrders={() => handleLabOrders(e)}
+        onSkip={() => labSkip(e.id)}
+      />
     );
   }
 
@@ -592,11 +577,41 @@ export function LabUser() {
           </div>
         )}
 
-        {/* Called (at counter) */}
-        {renderSection("At Counter", called)}
+        {/* At Counter */}
+        {atCounter.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-purple-700">Now at Counter</p>
+              <span className="text-[10px] font-bold text-slate-300 bg-slate-100 rounded-full px-2 py-0.5">{atCounter.length}</span>
+            </div>
+            <div className="space-y-3">{atCounter.map(renderEntryCard)}</div>
+          </div>
+        )}
+
+        {/* Call window active */}
+        {calling.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Call Window Active</p>
+              <span className="text-[10px] font-bold text-slate-300 bg-slate-100 rounded-full px-2 py-0.5">{calling.length}</span>
+            </div>
+            <div className="space-y-3">{calling.map(renderEntryCard)}</div>
+          </div>
+        )}
 
         {/* Waiting */}
-        {renderSection("Waiting", waiting)}
+        {waiting.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="h-2 w-2 rounded-full bg-amber-400" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Waiting</p>
+              <span className="text-[10px] font-bold text-slate-300 bg-slate-100 rounded-full px-2 py-0.5">{waiting.length}</span>
+            </div>
+            <div className="space-y-3">{waiting.map(renderEntryCard)}</div>
+          </div>
+        )}
 
         {/* Skipped */}
         {skipped.length > 0 && (

@@ -26,11 +26,11 @@ export const INITIAL_QUEUE: MultiEntry[] = [
     callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
   },
   {
-    id: "m-2", tokenNumber: "C104", displayNum: 104, status: "completed",
+    id: "m-2", tokenNumber: "C104", displayNum: 104, status: "waiting",
     step: 4, totalSteps: 5, stepLabel: "Lab / Sample",
     patient: SEED_PATIENTS[5], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 55 * 60000),
-    callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
+    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
   },
   {
     id: "m-3", tokenNumber: "C105", displayNum: 105, status: "called",
@@ -97,7 +97,7 @@ const CHANNEL_NAME = "ehr-multistep-queue-v2";
 const LS_QUEUE_KEY = "ehr-queue-v2";
 const LS_NUMS_KEY  = "ehr-queue-nums-v2";
 const LS_VER_KEY   = "ehr-queue-ver";
-const QUEUE_VER    = "6"; // bump when seed schema changes
+const QUEUE_VER    = "7"; // bump when seed schema changes
 
 function loadQueue(): MultiEntry[] {
   try {
