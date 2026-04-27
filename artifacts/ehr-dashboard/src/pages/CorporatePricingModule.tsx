@@ -114,8 +114,8 @@ function StatusBadge({ status }: { status: PatientInvoice["status"] }) {
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 
 const SEED_ENTITIES: BillingEntity[] = [
-  { id: "corp-2", name: "Sui Northern Gas (SNGPL)", contactPerson: "Nadia Baig", contactPhone: "0321-9876543", email: "welfare@sngpl.com.pk", mouFileName: "SNGPL_MOU_2024.pdf", creditEnabled: true, creditLimit: 750000, useBaseForNew: false, pricingRules: {}, entityServices: [], rateList: { pharmacyPartnerId: "fpart-1", labProviderId: "prov1", consumableProviderId: "cprov-1", procedurePartnerId: "pp1", imagingPartnerId: "ip1" }, createdAt: "2024-02-10T00:00:00.000Z" },
-  { id: "corp-4", name: "Packages Limited", contactPerson: "Sana Tariq", contactPhone: "0301-4567890", email: "hr@packages.com.pk", mouFileName: "", creditEnabled: false, creditLimit: 0, useBaseForNew: true, pricingRules: {}, entityServices: [], rateList: { pharmacyPartnerId: null, labProviderId: "prov2", consumableProviderId: "cprov-2", procedurePartnerId: "pp2", imagingPartnerId: "ip2" }, createdAt: "2024-04-20T00:00:00.000Z" },
+  { id: "corp-2", name: "Sui Northern Gas (SNGPL)", contactPerson: "Nadia Baig", contactPhone: "0321-9876543", email: "welfare@sngpl.com.pk", mouFileName: "SNGPL_MOU_2024.pdf", creditEnabled: true, creditLimit: 750000, useBaseForNew: false, pricingRules: {}, entityServices: [], rateList: { pharmacyPartnerId: "fpart-1", labProviderId: "prov1", consumableProviderId: "cprov-1", procedurePartnerId: "pp1", imagingPartnerId: "ip1", doctorIds: ["doc-1", "doc-2", "doc-3"] }, createdAt: "2024-02-10T00:00:00.000Z" },
+  { id: "corp-4", name: "Packages Limited", contactPerson: "Sana Tariq", contactPhone: "0301-4567890", email: "hr@packages.com.pk", mouFileName: "", creditEnabled: false, creditLimit: 0, useBaseForNew: true, pricingRules: {}, entityServices: [], rateList: { pharmacyPartnerId: null, labProviderId: "prov2", consumableProviderId: "cprov-2", procedurePartnerId: "pp2", imagingPartnerId: "ip2", doctorIds: ["doc-1", "doc-2"] }, createdAt: "2024-04-20T00:00:00.000Z" },
 ];
 
 function buildSeedLedgers(): Record<string, LedgerEntry[]> {
@@ -155,6 +155,7 @@ export function CorporatePricingModule({
   imagingPartners = [],
   doctors = [],
   doctorFees = {},
+  departments = [],
 }: {
   serviceTypes: ServiceType[];
   services: Service[];
@@ -168,6 +169,7 @@ export function CorporatePricingModule({
   imagingPartners?: ImagingPartner[];
   doctors?: Doctor[];
   doctorFees?: Record<string, FeeRow[]>;
+  departments?: { id: string; name: string }[];
 }) {
   // ── Core state (existing) ──
   const [entities, setEntities] = useState<BillingEntity[]>(() => SEED_ENTITIES);
@@ -263,10 +265,13 @@ export function CorporatePricingModule({
     });
   }
 
-  const openAddEntity = () => { setEntityForm(blankEntityForm()); setEditingEntityId(null); setWizardStep(1); setWizardRateList(blankRateList()); setShowEntityForm(true); };
+  const openAddEntity = () => { setEntityForm(blankEntityForm()); setEditingEntityId(null); setWizardStep(1); setWizardRateList({ ...blankRateList(), doctorIds: doctors.map(d => d.id) }); setShowEntityForm(true); };
   const openEditEntity = (e: BillingEntity) => {
     setEntityForm({ name: e.name, contactPerson: e.contactPerson, contactPhone: e.contactPhone, email: e.email, mouFileName: e.mouFileName, creditEnabled: e.creditEnabled, creditLimit: String(e.creditLimit), useBaseForNew: e.useBaseForNew });
-    setEditingEntityId(e.id); setWizardStep(1); setWizardRateList(e.rateList ?? blankRateList()); setShowEntityForm(true);
+    const existingRL = e.rateList ?? blankRateList();
+    setEditingEntityId(e.id); setWizardStep(1);
+    setWizardRateList({ ...existingRL, doctorIds: existingRL.doctorIds?.length ? existingRL.doctorIds : doctors.map(d => d.id) });
+    setShowEntityForm(true);
   };
 
   const saveEntityForm = () => {
@@ -820,6 +825,7 @@ export function CorporatePricingModule({
                     consumableProviders={consumableProviders}
                     procPartners={procPartners}
                     imagingPartners={imagingPartners}
+                    doctors={doctors}
                   />
                 )}
               </div>
@@ -988,40 +994,77 @@ export function CorporatePricingModule({
             <div className="flex flex-col flex-1 overflow-y-auto gap-5 pt-2 min-h-0">
               <p className="text-xs font-semibold text-[#4982CF] uppercase tracking-widest">Step 2 — Rate List Selection</p>
 
-              {/* Consultant Fees (read-only) */}
+              {/* Consultant Doctors (multi-select) */}
               <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                <div className="flex items-center gap-2 bg-slate-50 border-b border-slate-100 px-4 py-2.5">
-                  <span className="text-xs font-black uppercase tracking-widest text-slate-500">Consultant Fees</span>
-                  <span className="text-[10px] text-slate-400 ml-1">— sourced automatically from all doctors</span>
+                <div className="flex items-center justify-between bg-slate-50 border-b border-slate-100 px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-500">Consultant Doctors</span>
+                    <span className="text-[10px] bg-[#4982CF]/10 text-[#4982CF] font-bold px-1.5 py-0.5 rounded">
+                      {wizardRateList.doctorIds.length} / {doctors.length} selected
+                    </span>
+                  </div>
+                  <button type="button"
+                    className="text-[10px] font-semibold text-[#4982CF] hover:underline"
+                    onClick={() => setWizardRateList(r => ({
+                      ...r,
+                      doctorIds: r.doctorIds.length === doctors.length ? [] : doctors.map(d => d.id),
+                    }))}>
+                    {wizardRateList.doctorIds.length === doctors.length ? "Deselect All" : "Select All"}
+                  </button>
                 </div>
                 {doctors.length === 0 ? (
                   <p className="text-center text-xs text-slate-400 py-6">No doctors configured yet.</p>
                 ) : (
-                  <div className="overflow-x-auto max-h-40">
-                    <table className="w-full text-xs min-w-[480px]">
+                  <div className="overflow-x-auto max-h-52">
+                    <table className="w-full text-xs min-w-[520px]">
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50/50">
-                          <th className="text-left px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Doctor</th>
-                          <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Consultation</th>
+                          <th className="w-8 px-3 py-2" />
+                          <th className="text-left px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Doctor</th>
+                          <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Consult</th>
                           <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Follow-up</th>
                           <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Emergency</th>
-                          <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Tele-consult</th>
+                          <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Tele</th>
                         </tr>
                       </thead>
                       <tbody>
                         {doctors.map(doc => {
+                          const isSelected = wizardRateList.doctorIds.includes(doc.id);
                           const feeRows = doctorFees[doc.id] ?? [];
                           const maxFeeVal = (key: "consultationFee" | "followUpFee" | "emergencyFee" | "teleFee") => {
                             const vals = feeRows.map(r => parseFloat(r[key]) || 0).filter(v => v > 0);
                             return vals.length > 0 ? `Rs. ${Math.max(...vals).toLocaleString()}` : "—";
                           };
+                          const docDeptNames = (doc.departments ?? [])
+                            .map(did => departments.find(d => d.id === did)?.name ?? did)
+                            .filter(Boolean);
+                          const toggleDoctor = () => setWizardRateList(r => ({
+                            ...r,
+                            doctorIds: isSelected
+                              ? r.doctorIds.filter(id => id !== doc.id)
+                              : [...r.doctorIds, doc.id],
+                          }));
                           return (
-                            <tr key={doc.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/40">
-                              <td className="px-4 py-2 font-medium text-slate-700">{doc.name}</td>
-                              <td className="px-3 py-2 text-right text-slate-600">{maxFeeVal("consultationFee")}</td>
-                              <td className="px-3 py-2 text-right text-slate-600">{maxFeeVal("followUpFee")}</td>
-                              <td className="px-3 py-2 text-right text-slate-600">{maxFeeVal("emergencyFee")}</td>
-                              <td className="px-3 py-2 text-right text-slate-600">{maxFeeVal("teleFee")}</td>
+                            <tr key={doc.id}
+                              onClick={toggleDoctor}
+                              className={`border-b border-slate-50 last:border-0 cursor-pointer transition-colors ${isSelected ? "bg-[#4982CF]/5 hover:bg-[#4982CF]/10" : "bg-white hover:bg-slate-50/60 opacity-60"}`}>
+                              <td className="px-3 py-2.5">
+                                <Checkbox checked={isSelected} onCheckedChange={toggleDoctor} className="pointer-events-none" />
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <span className="font-semibold text-slate-700">{doc.name}</span>
+                                {docDeptNames.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-0.5">
+                                    {docDeptNames.map(n => (
+                                      <span key={n} className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">{n}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">{maxFeeVal("consultationFee")}</td>
+                              <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">{maxFeeVal("followUpFee")}</td>
+                              <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">{maxFeeVal("emergencyFee")}</td>
+                              <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">{maxFeeVal("teleFee")}</td>
                             </tr>
                           );
                         })}
@@ -1346,6 +1389,7 @@ function RateListCard({
   consumableProviders,
   procPartners,
   imagingPartners,
+  doctors = [],
 }: {
   rateList: RateList;
   pharmacyPartners: FormularyPartner[];
@@ -1353,22 +1397,41 @@ function RateListCard({
   consumableProviders: ConsumableProvider[];
   procPartners: ProcedurePartner[];
   imagingPartners: ImagingPartner[];
+  doctors?: Doctor[];
 }) {
-  const rows: { label: string; providerId: string | null; providers: { id: string; name: string; type?: string }[]; color: string }[] = [
+  const providerRows: { label: string; providerId: string | null; providers: { id: string; name: string; type?: string }[]; color: string }[] = [
     { label: "Lab",         providerId: rateList.labProviderId,        providers: labProviders,        color: "#6366f1" },
     { label: "Pharmacy",    providerId: rateList.pharmacyPartnerId,     providers: pharmacyPartners,    color: "#10b981" },
     { label: "Consumables", providerId: rateList.consumableProviderId,  providers: consumableProviders, color: "#f59e0b" },
     { label: "Procedures",  providerId: rateList.procedurePartnerId,    providers: procPartners,        color: "#8b5cf6" },
     { label: "Imaging",     providerId: rateList.imagingPartnerId,      providers: imagingPartners,     color: "#0ea5e9" },
   ];
+  const selectedDoctorIds = rateList.doctorIds ?? [];
+  const selectedDoctors = doctors.filter(d => selectedDoctorIds.includes(d.id));
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
       <div className="bg-slate-50 border-b border-slate-100 px-4 py-2.5">
         <p className="text-sm font-bold text-slate-700">Rate List</p>
-        <p className="text-[10px] text-slate-400">Providers linked to this corporate</p>
+        <p className="text-[10px] text-slate-400">Providers &amp; doctors linked to this corporate</p>
       </div>
       <div className="divide-y divide-slate-100">
-        {rows.map(row => {
+        {/* Consultants row */}
+        <div className="flex items-start gap-3 px-4 py-2.5">
+          <span className="h-2 w-2 rounded-full flex-shrink-0 mt-1" style={{ background: "#4982CF" }} />
+          <span className="text-xs font-semibold text-slate-600 w-28 flex-shrink-0">Consultants</span>
+          {selectedDoctors.length === 0 ? (
+            <span className="text-xs text-slate-400 italic">None selected</span>
+          ) : selectedDoctors.length === doctors.length ? (
+            <span className="text-xs font-medium text-slate-700">All doctors ({doctors.length})</span>
+          ) : (
+            <span className="flex flex-wrap gap-1">
+              {selectedDoctors.map(d => (
+                <span key={d.id} className="text-[10px] bg-[#4982CF]/10 text-[#4982CF] font-medium px-1.5 py-0.5 rounded">{d.name}</span>
+              ))}
+            </span>
+          )}
+        </div>
+        {providerRows.map(row => {
           const matched = row.providers.find(p => p.id === row.providerId);
           return (
             <div key={row.label} className="flex items-center gap-3 px-4 py-2.5">
@@ -1449,8 +1512,12 @@ function ProviderServicePricingView({
 }: PSPVProps) {
   const rl = entity.rateList ?? blankRateList();
 
-  // ── Consultation Fees: aggregate max fee across all dept rows per doctor ──────
-  const consultRows: { name: string; price: string }[] = doctors.flatMap(doc => {
+  // ── Consultation Fees: only selected doctors, max fee across dept rows ────────
+  const selectedDoctorIds = rl.doctorIds ?? [];
+  const activeDoctors = selectedDoctorIds.length > 0
+    ? doctors.filter(d => selectedDoctorIds.includes(d.id))
+    : doctors;
+  const consultRows: { name: string; price: string }[] = activeDoctors.flatMap(doc => {
     const rows = doctorFees[doc.id] ?? [];
     const maxFee = (key: "consultationFee" | "followUpFee" | "emergencyFee" | "teleFee") => {
       const vals = rows.map(r => parseFloat(r[key]) || 0).filter(v => v > 0);
@@ -1532,8 +1599,12 @@ function ProviderServicePricingView({
 
       {/* Consultations */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <ProviderSectionHeader color="#4982CF" title="Consultations" providerName="All Doctors" itemCount={consultRows.length} />
-        {doctors.length === 0 ? <p className="text-center text-xs text-slate-400 py-6">No doctors configured.</p> : <PricingTable items={consultRows} />}
+        <ProviderSectionHeader color="#4982CF" title="Consultations"
+          providerName={activeDoctors.length === 0 ? null : activeDoctors.length === doctors.length ? `All Doctors (${doctors.length})` : `${activeDoctors.length} of ${doctors.length} doctors`}
+          itemCount={consultRows.length} />
+        {activeDoctors.length === 0
+          ? <PricingTable items={[{ name: "No doctors selected — edit this corporate to assign consultant doctors", price: "" }]} />
+          : <PricingTable items={consultRows} />}
       </div>
 
       {/* Lab */}

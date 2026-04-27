@@ -708,6 +708,7 @@ export function AdminSettings() {
               imagingPartners={imagingPartners}
               doctors={doctors}
               doctorFees={doctorFees}
+              departments={departments}
             />
           )}
           {activeModule === "insurance-pricing" && (

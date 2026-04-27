@@ -35,10 +35,11 @@ export type RateList = {
   consumableProviderId: string | null;
   procedurePartnerId:  string | null;
   imagingPartnerId:    string | null;
+  doctorIds:           string[];
 };
 
 export function blankRateList(): RateList {
-  return { pharmacyPartnerId: null, labProviderId: null, consumableProviderId: null, procedurePartnerId: null, imagingPartnerId: null };
+  return { pharmacyPartnerId: null, labProviderId: null, consumableProviderId: null, procedurePartnerId: null, imagingPartnerId: null, doctorIds: [] };
 }
 
 export type BillingEntity = {
