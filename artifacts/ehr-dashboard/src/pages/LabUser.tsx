@@ -148,7 +148,7 @@ interface PastLabRecord {
   date: string;
   dateRange: string;
   orderedBy: string;
-  tests: { name: string; result: string; unit: string; ref: string }[];
+  tests: { name: string; result: string; unit: string; ref: string; flag?: "H" | "L" | "N" }[];
 }
 
 const SEED_PAST_LAB_RECORDS: PastLabRecord[] = [
@@ -158,9 +158,12 @@ const SEED_PAST_LAB_RECORDS: PastLabRecord[] = [
     dateRange: "21 Feb 2025 · Reported 23 Feb 2025",
     orderedBy: "Dr. Emily Wong",
     tests: [
-      { name: "CBC",                    result: "Normal", unit: "—",       ref: "Normal range" },
-      { name: "Lipid Profile",          result: "4.2",    unit: "mmol/L",  ref: "< 5.2 mmol/L" },
-      { name: "Blood Sugar (Fasting)",  result: "5.8",    unit: "mmol/L",  ref: "3.9–5.5 mmol/L" },
+      { name: "WBC Count",             result: "7.2",  unit: "×10³/µL", ref: "4.0–11.0",       flag: "N" },
+      { name: "Haemoglobin",           result: "13.8", unit: "g/dL",    ref: "12.0–17.5",       flag: "N" },
+      { name: "Platelets",             result: "290",  unit: "×10³/µL", ref: "150–400",         flag: "N" },
+      { name: "Total Cholesterol",     result: "4.2",  unit: "mmol/L",  ref: "< 5.2",           flag: "N" },
+      { name: "LDL",                   result: "2.9",  unit: "mmol/L",  ref: "< 3.4",           flag: "N" },
+      { name: "Fasting Blood Sugar",   result: "5.8",  unit: "mmol/L",  ref: "3.9–5.5",         flag: "H" },
     ],
   },
   {
@@ -169,8 +172,9 @@ const SEED_PAST_LAB_RECORDS: PastLabRecord[] = [
     dateRange: "14 Jan 2025 · Reported 15 Jan 2025",
     orderedBy: "Dr. Asif Imam",
     tests: [
-      { name: "CRP",         result: "12",               unit: "mg/L", ref: "< 10 mg/L" },
-      { name: "Throat Swab", result: "Strep A positive", unit: "—",    ref: "Negative" },
+      { name: "CRP",         result: "12",               unit: "mg/L", ref: "< 10",    flag: "H" },
+      { name: "Organism",    result: "Strep A positive", unit: "—",    ref: "Negative"           },
+      { name: "Sensitivity", result: "Penicillin",       unit: "—",    ref: "—"                  },
     ],
   },
 ];
@@ -352,22 +356,39 @@ function LabPanel({ entry, onClose, onComplete }: {
                     </div>
                     {expandedRecords[rec.id] && (
                       <div className="mt-3 pt-3 border-t border-slate-100">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Lab Results</p>
-                        <div className="rounded-lg overflow-hidden border border-slate-100">
-                          <div className="flex items-center px-2.5 py-1.5 bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                            <span className="flex-1">Test</span>
-                            <span className="w-16 text-right">Result</span>
-                            <span className="w-16 text-right">Unit</span>
-                            <span className="w-20 text-right">Ref Range</span>
-                          </div>
-                          {rec.tests.map((t, i) => (
-                            <div key={t.name} className={`flex items-center px-2.5 py-1.5 ${i % 2 === 0 ? "bg-blue-50" : "bg-white"}`}>
-                              <span className="flex-1 text-slate-800 font-semibold">{t.name}</span>
-                              <span className="w-16 text-right text-slate-700">{t.result}</span>
-                              <span className="w-16 text-right text-slate-400">{t.unit}</span>
-                              <span className="w-20 text-right text-slate-400">{t.ref}</span>
-                            </div>
-                          ))}
+                        <div className="rounded-lg overflow-hidden border border-slate-200 bg-white">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="bg-slate-100 border-b border-slate-200">
+                                <th className="px-2.5 py-2 text-left text-[9px] font-bold text-slate-500 uppercase tracking-wider">Parameter</th>
+                                <th className="px-2.5 py-2 text-right text-[9px] font-bold text-slate-500 uppercase tracking-wider">Value</th>
+                                <th className="px-2.5 py-2 text-right text-[9px] font-bold text-slate-500 uppercase tracking-wider">Unit</th>
+                                <th className="px-2.5 py-2 text-right text-[9px] font-bold text-slate-500 uppercase tracking-wider">Ref Range</th>
+                                <th className="px-2.5 py-2 text-center text-[9px] font-bold text-slate-500 uppercase tracking-wider">Flag</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rec.tests.map((t, i) => (
+                                <tr key={t.name} className={i % 2 === 0 ? "bg-blue-50" : "bg-white"}>
+                                  <td className="px-2.5 py-2 font-semibold text-slate-800">{t.name}</td>
+                                  <td className={`px-2.5 py-2 text-right font-bold ${t.flag === "H" || t.flag === "L" ? "text-red-600" : "text-slate-800"}`}>{t.result}</td>
+                                  <td className="px-2.5 py-2 text-right text-slate-400">{t.unit}</td>
+                                  <td className="px-2.5 py-2 text-right text-slate-500">{t.ref}</td>
+                                  <td className="px-2.5 py-2 text-center">
+                                    {t.flag === "H" ? (
+                                      <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700">H</span>
+                                    ) : t.flag === "L" ? (
+                                      <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700">L</span>
+                                    ) : t.flag === "N" ? (
+                                      <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700">N</span>
+                                    ) : (
+                                      <span className="text-slate-300">—</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
                       </div>
                     )}
