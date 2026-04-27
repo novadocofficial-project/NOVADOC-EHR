@@ -69,6 +69,7 @@ import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
 import { ConsumablesModule, CONSUMABLE_SEED_PROVIDERS } from "@/pages/ConsumablesModule";
 import type { ConsumableProvider } from "@/pages/ConsumablesModule";
 import { LabCatalogModule, SEED_SECTIONS as LAB_SEED_SECTIONS, SEED_PROVIDERS as LAB_SEED_PROVIDERS, type LabSection, type LabProvider } from "@/pages/LabCatalogModule";
+import { LabResultTemplatesModule } from "@/pages/LabResultTemplatesModule";
 import { ProcedureCatalogModule, INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS, type ProcedureSection, type ProcedurePartner } from "@/pages/ProcedureCatalogModule";
 import { QueueModule } from "@/pages/QueueModule";
 import type { QueueSection } from "@/pages/QueueModule";
@@ -600,8 +601,9 @@ export function AdminSettings() {
             </button>
             {navExpanded.labCatalog && (
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("lab-master",    <FileText className="h-3.5 w-3.5" />, "Lab Test Master List")}
-                {subNavItem("lab-providers", <FlaskConical className="h-3.5 w-3.5" />, "Lab Providers")}
+                {subNavItem("lab-master",           <FileText className="h-3.5 w-3.5" />,     "Lab Test Master List")}
+                {subNavItem("lab-providers",        <FlaskConical className="h-3.5 w-3.5" />, "Lab Providers")}
+                {subNavItem("lab-result-templates", <FileText className="h-3.5 w-3.5" />,     "Result Templates")}
               </div>
             )}
 
@@ -810,6 +812,10 @@ export function AdminSettings() {
               setProviders={setLabProviders}
               initialView={activeModule === "lab-providers" ? "providers" : "master"}
             />
+          )}
+
+          {activeModule === "lab-result-templates" && (
+            <LabResultTemplatesModule />
           )}
 
           {(activeModule === "proc-master" || activeModule === "proc-partners") && (
