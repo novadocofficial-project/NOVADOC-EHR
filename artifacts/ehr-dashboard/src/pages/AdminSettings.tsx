@@ -364,7 +364,7 @@ export function AdminSettings() {
     <button
       type="button"
       onClick={() => setActiveModule(module)}
-      className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${activeModule === module ? "bg-[#4982CF]/10 text-[#4982CF]" : "text-slate-600 hover:bg-slate-100"}`}
+      className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-left transition-colors ${activeModule === module ? "bg-[#4982CF]/10 text-[#4982CF]" : "text-slate-600 hover:bg-slate-100"}`}
     >
       {icon}
       {label}
