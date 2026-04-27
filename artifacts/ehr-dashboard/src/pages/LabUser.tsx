@@ -80,23 +80,30 @@ function Collapsible({ title, badge, defaultOpen = true, accent, children }:
 
 // ─── Result field templates ───────────────────────────────────────────────────
 
-interface ResultField { label: string; key: string; unit?: string; multiline?: boolean }
+interface ResultField {
+  label: string;
+  key: string;
+  unit?: string;
+  multiline?: boolean;
+  normalRange?: string;
+  min?: number;
+  max?: number;
+}
 
 const RESULT_FIELDS: Record<string, ResultField[]> = {
   lt1: [
-    { label: "WBC Count",    key: "wbc",  unit: "×10³/µL" },
-    { label: "RBC Count",    key: "rbc",  unit: "×10⁶/µL" },
-    { label: "Haemoglobin",  key: "hgb",  unit: "g/dL" },
-    { label: "Haematocrit",  key: "hct",  unit: "%" },
-    { label: "Platelets",    key: "plt",  unit: "×10³/µL" },
+    { label: "WBC Count",    key: "wbc",  unit: "×10³/µL", normalRange: "4.0–11.0",  min: 4.0,  max: 11.0 },
+    { label: "RBC Count",    key: "rbc",  unit: "×10⁶/µL", normalRange: "4.0–5.5",   min: 4.0,  max: 5.5  },
+    { label: "Haemoglobin",  key: "hgb",  unit: "g/dL",    normalRange: "12.0–17.5", min: 12.0, max: 17.5 },
+    { label: "Haematocrit",  key: "hct",  unit: "%",        normalRange: "36–50",     min: 36,   max: 50   },
+    { label: "Platelets",    key: "plt",  unit: "×10³/µL", normalRange: "150–400",   min: 150,  max: 400  },
     { label: "Collected At", key: "collected" },
     { label: "Notes",        key: "notes", multiline: true },
   ],
   lt2: [
-    { label: "CRP Value",       key: "crp",  unit: "mg/L" },
-    { label: "Reference Range", key: "ref" },
-    { label: "Collected At",    key: "collected" },
-    { label: "Notes",           key: "notes", multiline: true },
+    { label: "CRP Value",    key: "crp",  unit: "mg/L", normalRange: "< 10", max: 10 },
+    { label: "Collected At", key: "collected" },
+    { label: "Notes",        key: "notes", multiline: true },
   ],
   lt3: [
     { label: "Organism",     key: "organism" },
@@ -106,20 +113,33 @@ const RESULT_FIELDS: Record<string, ResultField[]> = {
     { label: "Notes",        key: "notes", multiline: true },
   ],
   lt4: [
-    { label: "Fasting Blood Sugar", key: "fbs", unit: "mmol/L" },
-    { label: "Reference Range",     key: "ref" },
+    { label: "Fasting Blood Sugar", key: "fbs", unit: "mmol/L", normalRange: "3.9–5.5", min: 3.9, max: 5.5 },
     { label: "Collected At",        key: "collected" },
     { label: "Notes",               key: "notes", multiline: true },
   ],
   lt5: [
-    { label: "Total Cholesterol", key: "total_chol", unit: "mmol/L" },
-    { label: "LDL",               key: "ldl",        unit: "mmol/L" },
-    { label: "HDL",               key: "hdl",        unit: "mmol/L" },
-    { label: "Triglycerides",     key: "trig",       unit: "mmol/L" },
+    { label: "Total Cholesterol", key: "total_chol", unit: "mmol/L", normalRange: "< 5.2",  max: 5.2 },
+    { label: "LDL",               key: "ldl",        unit: "mmol/L", normalRange: "< 3.4",  max: 3.4 },
+    { label: "HDL",               key: "hdl",        unit: "mmol/L", normalRange: "> 1.0",  min: 1.0 },
+    { label: "Triglycerides",     key: "trig",       unit: "mmol/L", normalRange: "< 1.7",  max: 1.7 },
     { label: "Collected At",      key: "collected" },
     { label: "Notes",             key: "notes", multiline: true },
   ],
 };
+
+function getFlag(value: string, field: ResultField): "H" | "L" | "N" | "—" {
+  if (!field.normalRange) return "—";
+  const num = parseFloat(value);
+  if (isNaN(num)) return "—";
+  if (field.max !== undefined && num > field.max) return "H";
+  if (field.min !== undefined && num < field.min) return "L";
+  return "N";
+}
+
+function isOutOfRange(value: string, field: ResultField): boolean {
+  const f = getFlag(value, field);
+  return f === "H" || f === "L";
+}
 
 // ─── Seed past lab records ────────────────────────────────────────────────────
 
@@ -385,59 +405,129 @@ function LabPanel({ entry, onClose, onComplete }: {
                     <p className="text-[10px] text-slate-400 ml-6">{selectedTest.lab}</p>
                   </div>
                   <div className="space-y-4">
-                    {selectedFields.map(field => (
-                      <div key={field.key}>
-                        <label className="text-xs font-semibold text-slate-600 block mb-1">
-                          {field.label}{field.unit && <span className="font-normal text-slate-400"> ({field.unit})</span>}
-                        </label>
-                        {field.multiline ? (
-                          <textarea
-                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF] resize-none"
-                            rows={2}
-                            placeholder="Enter notes..."
-                            value={selectedValues[field.key] ?? ""}
-                            onChange={e => setFieldValue(field.key, e.target.value)}
-                          />
-                        ) : (
-                          <input
-                            type="text"
-                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF]"
-                            placeholder={`Enter ${field.label.toLowerCase()}...`}
-                            value={selectedValues[field.key] ?? ""}
-                            onChange={e => setFieldValue(field.key, e.target.value)}
-                          />
-                        )}
-                      </div>
-                    ))}
+                    {selectedFields.map(field => {
+                      const val = selectedValues[field.key] ?? "";
+                      const oor = val !== "" && !field.multiline ? isOutOfRange(val, field) : false;
+                      return (
+                        <div key={field.key}>
+                          <div className="flex items-baseline justify-between mb-1">
+                            <label className="text-xs font-semibold text-slate-600">
+                              {field.label}{field.unit && <span className="font-normal text-slate-400"> ({field.unit})</span>}
+                            </label>
+                            {field.normalRange && (
+                              <span className="text-[10px] text-slate-400">Normal: {field.normalRange}{field.unit ? ` ${field.unit}` : ""}</span>
+                            )}
+                          </div>
+                          {field.multiline ? (
+                            <textarea
+                              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF] resize-none"
+                              rows={2}
+                              placeholder="Enter notes..."
+                              value={val}
+                              onChange={e => setFieldValue(field.key, e.target.value)}
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              className={`w-full rounded-lg border px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 transition-colors ${
+                                oor
+                                  ? "border-red-400 text-red-700 bg-red-50 focus:ring-red-200 focus:border-red-500"
+                                  : "border-slate-200 text-slate-800 focus:ring-[#4982CF]/30 focus:border-[#4982CF]"
+                              }`}
+                              placeholder={`Enter ${field.label.toLowerCase()}...`}
+                              value={val}
+                              onChange={e => setFieldValue(field.key, e.target.value)}
+                            />
+                          )}
+                          {oor && (
+                            <p className="text-[10px] text-red-500 font-semibold mt-1 flex items-center gap-1">
+                              ⚠ Value out of normal range — please reverify before saving
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
                 /* Preview tab */
-                <div className="max-w-lg">
-                  <div className="mb-5">
-                    <p className="text-sm font-bold text-slate-800 mb-0.5">{selectedTest.name}</p>
-                    <p className="text-[10px] text-slate-400">{selectedTest.lab}</p>
+                <div className="w-full">
+                  <div className="mb-4 flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800 mb-0.5">{selectedTest.name}</p>
+                      <p className="text-[10px] text-slate-400">{selectedTest.lab}</p>
+                    </div>
+                    {selectedTest.updatedAt && (
+                      <span className="text-[10px] text-emerald-600 flex items-center gap-1 flex-shrink-0">
+                        <CheckCircle2 className="h-3 w-3" /> Saved: {selectedTest.updatedAt}
+                      </span>
+                    )}
                   </div>
-                  {Object.keys(selectedValues).filter(k => selectedValues[k]).length === 0 ? (
+
+                  {/* Main result table */}
+                  {selectedFields.filter(f => f.normalRange && selectedValues[f.key]).length === 0 &&
+                   selectedFields.filter(f => !f.normalRange && !f.multiline && f.key !== "notes" && selectedValues[f.key]).length === 0 ? (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center">
                       <p className="text-sm text-slate-400 italic">No result entered yet</p>
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                      <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
-                        <p className="text-xs font-bold text-slate-600">Result Summary</p>
-                        {selectedTest.updatedAt && <p className="text-[10px] text-slate-400 mt-0.5">Saved: {selectedTest.updatedAt}</p>}
-                      </div>
-                      {selectedFields.map((field, i) => {
-                        const val = selectedValues[field.key];
-                        if (!val) return null;
-                        return (
-                          <div key={field.key} className={`flex items-start justify-between px-4 py-2.5 ${i % 2 === 0 ? "bg-blue-50" : "bg-white"}`}>
-                            <span className="text-xs text-slate-500">{field.label}{field.unit ? ` (${field.unit})` : ""}</span>
-                            <span className="text-xs font-semibold text-slate-800 text-right max-w-[55%]">{val}</span>
-                          </div>
-                        );
-                      })}
+                    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden mb-4">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-slate-100 border-b border-slate-200">
+                            <th className="px-3 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Parameter</th>
+                            <th className="px-3 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">Value</th>
+                            <th className="px-3 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">Unit</th>
+                            <th className="px-3 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">Reference Range</th>
+                            <th className="px-3 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Flag</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedFields
+                            .filter(f => !f.multiline && f.key !== "notes" && f.key !== "collected" && selectedValues[f.key])
+                            .map((field, i) => {
+                              const val = selectedValues[field.key] ?? "";
+                              const flag = getFlag(val, field);
+                              return (
+                                <tr key={field.key} className={i % 2 === 0 ? "bg-blue-50" : "bg-white"}>
+                                  <td className="px-3 py-2.5 font-semibold text-slate-800">{field.label}</td>
+                                  <td className={`px-3 py-2.5 text-right font-bold ${flag === "H" || flag === "L" ? "text-red-600" : "text-slate-800"}`}>{val}</td>
+                                  <td className="px-3 py-2.5 text-right text-slate-400">{field.unit ?? "—"}</td>
+                                  <td className="px-3 py-2.5 text-right text-slate-500">{field.normalRange ?? "—"}</td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    {flag === "H" ? (
+                                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">H</span>
+                                    ) : flag === "L" ? (
+                                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">L</span>
+                                    ) : flag === "N" ? (
+                                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">N</span>
+                                    ) : (
+                                      <span className="text-slate-300 text-xs">—</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Collected At + Notes shown below the table */}
+                  {(selectedValues["collected"] || selectedValues["notes"]) && (
+                    <div className="space-y-2">
+                      {selectedValues["collected"] && (
+                        <div className="flex gap-2 text-xs">
+                          <span className="text-slate-400 w-24 flex-shrink-0">Collected At</span>
+                          <span className="font-semibold text-slate-700">{selectedValues["collected"]}</span>
+                        </div>
+                      )}
+                      {selectedValues["notes"] && (
+                        <div className="flex gap-2 text-xs">
+                          <span className="text-slate-400 w-24 flex-shrink-0">Notes</span>
+                          <span className="text-slate-700">{selectedValues["notes"]}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
