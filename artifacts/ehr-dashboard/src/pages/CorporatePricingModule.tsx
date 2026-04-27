@@ -454,6 +454,10 @@ export function CorporatePricingModule({
       {/* ── Left: entity list ── */}
       <aside className="flex w-72 flex-none flex-col border-r border-slate-200 bg-white">
         <div className="flex-none border-b border-slate-100 p-4">
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#4982CF] animate-pulse" />
+            <span className="text-[9px] font-bold uppercase tracking-widest text-[#4982CF]">Rate List v2 · Doctor Selection</span>
+          </div>
           <Button onClick={openAddEntity} className="w-full bg-[#4982CF] hover:bg-[#3a6ab5] text-white gap-2 mb-3">
             <Plus className="h-4 w-4" />Add {entityLabel}
           </Button>
