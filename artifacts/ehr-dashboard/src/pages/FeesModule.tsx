@@ -398,18 +398,18 @@ export function FeesModule({
               </div>
 
               {/* Tabs */}
-              <Tabs defaultValue="service-pricing" className="flex flex-col flex-1 overflow-hidden">
+              <Tabs defaultValue="consult-fees" className="flex flex-col flex-1 overflow-hidden">
                 <TabsList className="flex-none h-9 bg-slate-100 w-fit">
-                  <TabsTrigger value="service-pricing" className="text-xs gap-1.5">
-                    <CreditCard className="h-3.5 w-3.5" /> Service Pricing
-                    {doctorServiceRows.length > 0 && (
-                      <span className="ml-1 rounded bg-[#4982CF]/15 px-1.5 text-[10px] font-bold text-[#4982CF]">{doctorServiceRows.length}</span>
-                    )}
-                  </TabsTrigger>
                   <TabsTrigger value="consult-fees" className="text-xs gap-1.5">
                     <Banknote className="h-3.5 w-3.5" /> Consultation Fees
                     {configuredCount > 0 && (
                       <span className="ml-1 rounded bg-[#4982CF]/15 px-1.5 text-[10px] font-bold text-[#4982CF]">{configuredCount}</span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="service-pricing" className="text-xs gap-1.5">
+                    <CreditCard className="h-3.5 w-3.5" /> Service Pricing
+                    {doctorServiceRows.length > 0 && (
+                      <span className="ml-1 rounded bg-[#4982CF]/15 px-1.5 text-[10px] font-bold text-[#4982CF]">{doctorServiceRows.length}</span>
                     )}
                   </TabsTrigger>
                 </TabsList>
