@@ -66,10 +66,9 @@ export type Doctor = {
   status: "active" | "inactive";
 };
 
-const ALL_SERVICES = [
-  "Consultation", "FollowUp", "Emergency", "Tele-consultation", "Vaccinations", "Procedures",
-  "Consumables", "Pharmacy", "Imaging", "Lab",
-];
+const CONSULT_SERVICES = ["Consultation", "FollowUp", "Emergency", "Tele-consultation"];
+const OTHER_SERVICES   = ["Vaccinations", "Procedures", "Consumables", "Pharmacy", "Imaging", "Lab"];
+const ALL_SERVICES = [...CONSULT_SERVICES, ...OTHER_SERVICES];
 
 const SHIFTS = ["Morning", "Afternoon", "Evening", "Night"];
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -662,12 +661,20 @@ export function DoctorsModule({
               </TabsContent>
 
               {/* ── TAB 3: Services ── */}
-              <TabsContent value="services" className="m-0 p-6 space-y-4">
-                <div>
-                  <SectionLabel>Services Offered</SectionLabel>
-                  <p className="mb-4 text-xs text-slate-500">Select all services this doctor provides.</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {ALL_SERVICES.map(svc => {
+              <TabsContent value="services" className="m-0 p-6 space-y-5">
+
+                {/* ── Consultation Services ── */}
+                <div className="overflow-hidden rounded-xl border border-[#4982CF]/20 bg-white shadow-sm">
+                  <div className="flex items-start gap-3 border-b border-[#4982CF]/10 bg-[#4982CF]/5 px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-[#4982CF]">Consultation Services</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        Enabled services here will be available across <span className="font-semibold text-slate-600">all sub-departments</span> assigned to this doctor.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 p-4">
+                    {CONSULT_SERVICES.map(svc => {
                       const selected = form.services.includes(svc);
                       return (
                         <label key={svc} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all ${selected ? "border-[#4982CF]/40 bg-[#4982CF]/5" : "border-slate-200 hover:border-slate-300"}`}>
@@ -683,12 +690,40 @@ export function DoctorsModule({
                   </div>
                 </div>
 
+                {/* ── Other Services ── */}
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex items-start gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-700">Other Services</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        Additional services offered by this doctor outside of consultation types.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 p-4">
+                    {OTHER_SERVICES.map(svc => {
+                      const selected = form.services.includes(svc);
+                      return (
+                        <label key={svc} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all ${selected ? "border-[#4982CF]/40 bg-[#4982CF]/5" : "border-slate-200 hover:border-slate-300"}`}>
+                          <Checkbox
+                            checked={selected}
+                            onCheckedChange={() => toggleService(svc)}
+                            className="data-[state=checked]:bg-[#4982CF] data-[state=checked]:border-[#4982CF]"
+                          />
+                          <span className={`text-sm font-medium ${selected ? "text-[#4982CF]" : "text-slate-700"}`}>{svc}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* ── Selected summary ── */}
                 {form.services.length > 0 && (
                   <div className="rounded-lg border border-[#4982CF]/20 bg-[#4982CF]/5 p-3">
                     <p className="mb-2 text-xs font-semibold text-[#4982CF]">{form.services.length} service{form.services.length !== 1 ? "s" : ""} selected</p>
                     <div className="flex flex-wrap gap-1.5">
                       {form.services.map(s => (
-                        <span key={s} className="flex items-center gap-1 rounded-full bg-[#4982CF] px-2.5 py-0.5 text-xs font-medium text-white">
+                        <span key={s} className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${CONSULT_SERVICES.includes(s) ? "bg-[#4982CF]" : "bg-slate-500"}`}>
                           {s}
                           <button type="button" onClick={() => toggleService(s)} className="ml-0.5 hover:opacity-75"><X className="h-3 w-3" /></button>
                         </span>
