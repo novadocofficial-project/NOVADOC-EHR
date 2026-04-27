@@ -42,6 +42,11 @@ export function blankRateList(): RateList {
   return { pharmacyPartnerId: null, labProviderId: null, consumableProviderId: null, procedurePartnerId: null, imagingPartnerId: null, doctorIds: [] };
 }
 
+export type ItemOverride = {
+  priceOverride: string;
+  active: boolean;
+};
+
 export type BillingEntity = {
   id: string;
   name: string;
@@ -55,6 +60,7 @@ export type BillingEntity = {
   pricingRules: Record<string, PricingRule>;
   entityServices: EntityService[];
   rateList: RateList;
+  itemOverrides?: Record<string, ItemOverride>;
   createdAt: string;
 };
 

@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import type { ServiceType, Service, BillingEntity, PricingRule, EntityService, RateList } from "@/pages/BillingTypes";
+import type { ServiceType, Service, BillingEntity, PricingRule, EntityService, RateList, ItemOverride } from "@/pages/BillingTypes";
 import { blankRateList } from "@/pages/BillingTypes";
 import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
 import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
@@ -312,6 +312,15 @@ export function CorporatePricingModule({
         return { serviceId: s.id, price: computeAdjustedPrice(s.basePrice, rule), overridden: false };
       });
       return { ...e, pricingRules: newRules, entityServices: updatedEntityServices };
+    }));
+  };
+
+  const updateItemOverride = (key: string, field: "priceOverride" | "active", value: string | boolean) => {
+    if (!selectedId) return;
+    setEntities(prev => prev.map(e => {
+      if (e.id !== selectedId) return e;
+      const existing = (e.itemOverrides ?? {})[key] ?? { priceOverride: "", active: true };
+      return { ...e, itemOverrides: { ...(e.itemOverrides ?? {}), [key]: { ...existing, [field]: value } } };
     }));
   };
 
@@ -886,6 +895,7 @@ export function CorporatePricingModule({
                   procPartners={procPartners}
                   procSections={procSections}
                   imagingPartners={imagingPartners}
+                  onUpdate={updateItemOverride}
                 />
               ) : (
                 <LegacyServicePricingView
@@ -1459,6 +1469,8 @@ function RateListCard({
 
 // ─── Provider Service Pricing View ────────────────────────────────────────────
 
+type PricingRow = { key: string; name: string; basePrice: string };
+
 type PSPVProps = {
   entity: BillingEntity;
   doctors: Doctor[];
@@ -1470,35 +1482,77 @@ type PSPVProps = {
   procPartners: ProcedurePartner[];
   procSections: ProcedureSection[];
   imagingPartners: ImagingPartner[];
+  onUpdate: (key: string, field: "priceOverride" | "active", value: string | boolean) => void;
 };
 
-function PricingTable({ items }: { items: { name: string; price: string }[] }) {
-  if (items.length === 0) return <p className="text-center text-xs text-slate-400 py-6">No items configured for this provider.</p>;
+function EditablePricingTable({
+  rows, overrides, onUpdate, placeholderMsg,
+}: {
+  rows: PricingRow[];
+  overrides: Record<string, ItemOverride>;
+  onUpdate: (key: string, field: "priceOverride" | "active", value: string | boolean) => void;
+  placeholderMsg?: string;
+}) {
+  if (rows.length === 0) return <p className="text-center text-xs text-slate-400 py-6">{placeholderMsg ?? "No items configured for this provider."}</p>;
   return (
-    <div className="max-h-56 overflow-y-auto">
+    <div className="max-h-64 overflow-y-auto">
       <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-slate-100 bg-slate-50/60 sticky top-0">
+            <th className="w-10 px-3 py-1.5" />
+            <th className="text-left px-3 py-1.5 font-black text-[9px] uppercase tracking-widest text-slate-400">Item</th>
+            <th className="text-right px-3 py-1.5 font-black text-[9px] uppercase tracking-widest text-slate-400">Price (Rs.)</th>
+          </tr>
+        </thead>
         <tbody>
-          {items.map((item, i) => (
-            <tr key={i} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/40">
-              <td className="px-4 py-1.5 text-slate-700 font-medium">{item.name}</td>
-              <td className="px-4 py-1.5 text-right text-slate-600 font-semibold tabular-nums">
-                {item.price ? `Rs. ${Number(item.price).toLocaleString()}` : "—"}
-              </td>
-            </tr>
-          ))}
+          {rows.map(row => {
+            const ov = overrides[row.key];
+            const isActive = ov?.active !== false;
+            const displayPrice = ov?.priceOverride !== undefined && ov.priceOverride !== "" ? ov.priceOverride : row.basePrice;
+            const isOverridden = ov?.priceOverride !== undefined && ov.priceOverride !== "" && ov.priceOverride !== row.basePrice;
+            return (
+              <tr key={row.key} className={`border-b border-slate-50 last:border-0 transition-all ${!isActive ? "opacity-40 bg-slate-50/30" : "hover:bg-slate-50/50"}`}>
+                <td className="px-3 py-1.5 text-center">
+                  <Switch checked={isActive} onCheckedChange={v => onUpdate(row.key, "active", v)} className="scale-[0.65] origin-center" />
+                </td>
+                <td className={`px-3 py-1.5 font-medium ${!isActive ? "line-through text-slate-400" : "text-slate-700"}`}>
+                  {row.name}
+                  {isOverridden && isActive && (
+                    <span className="ml-1.5 text-[9px] font-bold text-amber-500 bg-amber-50 border border-amber-200 rounded px-1">custom</span>
+                  )}
+                </td>
+                <td className="px-3 py-1.5 text-right">
+                  <input
+                    type="number" min={0}
+                    value={displayPrice}
+                    onChange={e => onUpdate(row.key, "priceOverride", e.target.value)}
+                    disabled={!isActive}
+                    className="w-24 text-right text-xs font-semibold tabular-nums border border-slate-200 rounded px-2 py-0.5 focus:outline-none focus:border-[#4982CF] focus:ring-1 focus:ring-[#4982CF]/20 disabled:bg-transparent disabled:text-slate-300 disabled:border-transparent"
+                  />
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
 
-function ProviderSectionHeader({ color, title, providerName, itemCount }: { color: string; title: string; providerName: string | null; itemCount: number }) {
+function ProviderSectionHeader({ color, title, providerName, itemCount, activeCount }: { color: string; title: string; providerName: string | null; itemCount: number; activeCount?: number }) {
   return (
     <div className="flex items-center gap-2 bg-slate-50 border-b border-slate-100 px-4 py-2.5">
       <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
       <span className="text-xs font-black uppercase tracking-widest text-slate-600">{title}</span>
       {providerName ? (
-        <span className="ml-1 text-[10px] text-slate-400">via <strong className="text-slate-600">{providerName}</strong> · {itemCount} items</span>
+        <span className="ml-1 text-[10px] text-slate-400">
+          via <strong className="text-slate-600">{providerName}</strong>
+          {" · "}
+          {activeCount !== undefined && activeCount < itemCount
+            ? <><span className="text-emerald-600 font-bold">{activeCount}</span><span> / {itemCount} active</span></>
+            : <span>{itemCount} items</span>
+          }
+        </span>
       ) : (
         <span className="ml-1 text-[10px] text-slate-400 italic">No provider assigned</span>
       )}
@@ -1513,45 +1567,51 @@ function ProviderServicePricingView({
   consumableProviders,
   procPartners, procSections,
   imagingPartners,
+  onUpdate,
 }: PSPVProps) {
   const rl = entity.rateList ?? blankRateList();
+  const overrides: Record<string, ItemOverride> = entity.itemOverrides ?? {};
+
+  const countActive = (rows: PricingRow[]) => rows.filter(r => (overrides[r.key]?.active ?? true)).length;
 
   // ── Consultation Fees: only selected doctors, max fee across dept rows ────────
   const selectedDoctorIds = rl.doctorIds ?? [];
   const activeDoctors = selectedDoctorIds.length > 0
     ? doctors.filter(d => selectedDoctorIds.includes(d.id))
     : doctors;
-  const consultRows: { name: string; price: string }[] = activeDoctors.flatMap(doc => {
+  const consultRows: PricingRow[] = activeDoctors.flatMap(doc => {
     const rows = doctorFees[doc.id] ?? [];
-    const maxFee = (key: "consultationFee" | "followUpFee" | "emergencyFee" | "teleFee") => {
-      const vals = rows.map(r => parseFloat(r[key]) || 0).filter(v => v > 0);
+    const maxFee = (feeKey: "consultationFee" | "followUpFee" | "emergencyFee" | "teleFee") => {
+      const vals = rows.map(r => parseFloat(r[feeKey]) || 0).filter(v => v > 0);
       return vals.length > 0 ? String(Math.max(...vals)) : "";
     };
     return [
-      { name: `${doc.name} — Consultation`,  price: maxFee("consultationFee") },
-      { name: `${doc.name} — Follow-up`,     price: maxFee("followUpFee") },
-      { name: `${doc.name} — Emergency`,     price: maxFee("emergencyFee") },
-      { name: `${doc.name} — Tele-Consult`,  price: maxFee("teleFee") },
+      { key: `consult-${doc.id}-consultation`, name: `${doc.name} — Consultation`, basePrice: maxFee("consultationFee") },
+      { key: `consult-${doc.id}-followup`,     name: `${doc.name} — Follow-up`,    basePrice: maxFee("followUpFee") },
+      { key: `consult-${doc.id}-emergency`,    name: `${doc.name} — Emergency`,    basePrice: maxFee("emergencyFee") },
+      { key: `consult-${doc.id}-tele`,         name: `${doc.name} — Tele-Consult`, basePrice: maxFee("teleFee") },
     ];
   });
 
   // ── Lab ───────────────────────────────────────────────────────────────────────
   const labProvider = labProviders.find(p => p.id === rl.labProviderId) ?? null;
   const allLabTests = labSections.flatMap(s => s.tests);
-  const labRows: { name: string; price: string }[] = labProvider
+  const labRows: PricingRow[] = labProvider
     ? labProvider.selectedTests.map(tid => ({
+        key: `lab-${tid}`,
         name: allLabTests.find(t => t.id === tid)?.name ?? tid,
-        price: labProvider.pricing[tid] ?? "",
+        basePrice: labProvider.pricing[tid] ?? "",
       }))
     : [];
 
   // ── Pharmacy ─────────────────────────────────────────────────────────────────
   const pharmPartner = pharmacyPartners.find(p => p.id === rl.pharmacyPartnerId) ?? null;
   const allBrands = MEDICINES.flatMap(m => (m.brands ?? []).map((b: { id: string; brand: string; strength: string }) => ({ id: b.id, label: `${m.generic} — ${b.brand} ${b.strength}` })));
-  const pharmRows: { name: string; price: string }[] = pharmPartner
+  const pharmRows: PricingRow[] = pharmPartner
     ? Object.entries(pharmPartner.sellingPrice).map(([brandId, price]) => ({
+        key: `pharm-${brandId}`,
         name: allBrands.find(b => b.id === brandId)?.label ?? brandId,
-        price,
+        basePrice: price,
       }))
     : [];
 
@@ -1564,20 +1624,22 @@ function ProviderServicePricingView({
     } catch { /**/ }
     return CONSUMABLE_SEED_ITEMS;
   }, []);
-  const conRows: { name: string; price: string }[] = conProvider
+  const conRows: PricingRow[] = conProvider
     ? conProvider.selectedItems.map(iid => ({
+        key: `con-${iid}`,
         name: consItems.find(c => c.id === iid)?.name ?? iid,
-        price: conProvider.sellingPrice[iid] ?? "",
+        basePrice: conProvider.sellingPrice[iid] ?? "",
       }))
     : [];
 
   // ── Procedures ───────────────────────────────────────────────────────────────
   const procPartner = procPartners.find(p => p.id === rl.procedurePartnerId) ?? null;
   const allProcs = procSections.flatMap(s => s.procedures);
-  const procRows: { name: string; price: string }[] = procPartner
+  const procRows: PricingRow[] = procPartner
     ? procPartner.selectedProcedures.map(pid => ({
+        key: `proc-${pid}`,
         name: allProcs.find(p => p.id === pid)?.name ?? pid,
-        price: procPartner.pricing[pid] ?? "",
+        basePrice: procPartner.pricing[pid] ?? "",
       }))
     : [];
 
@@ -1590,55 +1652,69 @@ function ProviderServicePricingView({
     } catch { /**/ }
     return IMAGING_SEED_TESTS;
   }, []);
-  const imgRows: { name: string; price: string }[] = imgPartner
+  const imgRows: PricingRow[] = imgPartner
     ? imgPartner.selectedTests.map(tid => ({
+        key: `img-${tid}`,
         name: imagingTests.find(t => t.id === tid)?.name ?? tid,
-        price: imgPartner.pricing[tid] ?? "",
+        basePrice: imgPartner.pricing[tid] ?? "",
       }))
     : [];
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">Prices are sourced directly from linked providers. To change prices, edit the respective provider in the catalog.</p>
+      <div className="flex items-start gap-2 text-xs text-slate-500 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+        <span className="text-blue-400 mt-0.5">ⓘ</span>
+        <span>Base prices are pulled from linked providers. You can override any price for this corporate, or toggle items inactive to exclude them from billing.</span>
+      </div>
 
       {/* Consultations */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <ProviderSectionHeader color="#4982CF" title="Consultations"
           providerName={activeDoctors.length === 0 ? null : activeDoctors.length === doctors.length ? `All Doctors (${doctors.length})` : `${activeDoctors.length} of ${doctors.length} doctors`}
-          itemCount={consultRows.length} />
+          itemCount={consultRows.length} activeCount={countActive(consultRows)} />
         {activeDoctors.length === 0
-          ? <PricingTable items={[{ name: "No doctors selected — edit this corporate to assign consultant doctors", price: "" }]} />
-          : <PricingTable items={consultRows} />}
+          ? <p className="text-center text-xs text-slate-400 py-6">No doctors selected — edit this corporate to assign consultant doctors.</p>
+          : <EditablePricingTable rows={consultRows} overrides={overrides} onUpdate={onUpdate} />}
       </div>
 
       {/* Lab */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <ProviderSectionHeader color="#6366f1" title="Lab" providerName={labProvider?.name ?? null} itemCount={labRows.length} />
-        <PricingTable items={labProvider ? labRows : [{ name: "No provider assigned — edit this corporate to link a lab", price: "" }]} />
+        <ProviderSectionHeader color="#6366f1" title="Lab" providerName={labProvider?.name ?? null} itemCount={labRows.length} activeCount={countActive(labRows)} />
+        {labProvider
+          ? <EditablePricingTable rows={labRows} overrides={overrides} onUpdate={onUpdate} />
+          : <p className="text-center text-xs text-slate-400 py-6">No provider assigned — edit this corporate to link a lab.</p>}
       </div>
 
       {/* Pharmacy */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <ProviderSectionHeader color="#10b981" title="Pharmacy" providerName={pharmPartner?.name ?? null} itemCount={pharmRows.length} />
-        <PricingTable items={pharmPartner ? pharmRows : [{ name: "No provider assigned — edit this corporate to link a pharmacy", price: "" }]} />
+        <ProviderSectionHeader color="#10b981" title="Pharmacy" providerName={pharmPartner?.name ?? null} itemCount={pharmRows.length} activeCount={countActive(pharmRows)} />
+        {pharmPartner
+          ? <EditablePricingTable rows={pharmRows} overrides={overrides} onUpdate={onUpdate} />
+          : <p className="text-center text-xs text-slate-400 py-6">No provider assigned — edit this corporate to link a pharmacy.</p>}
       </div>
 
       {/* Consumables */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <ProviderSectionHeader color="#f59e0b" title="Consumables" providerName={conProvider?.name ?? null} itemCount={conRows.length} />
-        <PricingTable items={conProvider ? conRows : [{ name: "No provider assigned — edit this corporate to link consumables", price: "" }]} />
+        <ProviderSectionHeader color="#f59e0b" title="Consumables" providerName={conProvider?.name ?? null} itemCount={conRows.length} activeCount={countActive(conRows)} />
+        {conProvider
+          ? <EditablePricingTable rows={conRows} overrides={overrides} onUpdate={onUpdate} />
+          : <p className="text-center text-xs text-slate-400 py-6">No provider assigned — edit this corporate to link consumables.</p>}
       </div>
 
       {/* Procedures */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <ProviderSectionHeader color="#8b5cf6" title="Procedures" providerName={procPartner?.name ?? null} itemCount={procRows.length} />
-        <PricingTable items={procPartner ? procRows : [{ name: "No provider assigned — edit this corporate to link procedures", price: "" }]} />
+        <ProviderSectionHeader color="#8b5cf6" title="Procedures" providerName={procPartner?.name ?? null} itemCount={procRows.length} activeCount={countActive(procRows)} />
+        {procPartner
+          ? <EditablePricingTable rows={procRows} overrides={overrides} onUpdate={onUpdate} />
+          : <p className="text-center text-xs text-slate-400 py-6">No provider assigned — edit this corporate to link procedures.</p>}
       </div>
 
       {/* Imaging */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <ProviderSectionHeader color="#0ea5e9" title="Imaging" providerName={imgPartner?.name ?? null} itemCount={imgRows.length} />
-        <PricingTable items={imgPartner ? imgRows : [{ name: "No provider assigned — edit this corporate to link imaging", price: "" }]} />
+        <ProviderSectionHeader color="#0ea5e9" title="Imaging" providerName={imgPartner?.name ?? null} itemCount={imgRows.length} activeCount={countActive(imgRows)} />
+        {imgPartner
+          ? <EditablePricingTable rows={imgRows} overrides={overrides} onUpdate={onUpdate} />
+          : <p className="text-center text-xs text-slate-400 py-6">No provider assigned — edit this corporate to link imaging.</p>}
       </div>
     </div>
   );
