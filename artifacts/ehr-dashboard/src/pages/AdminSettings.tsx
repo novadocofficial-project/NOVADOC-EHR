@@ -128,8 +128,10 @@ const INITIAL_DATA: Department[] = [
     name: "Cardiology",
     active: true,
     subDepartments: [
-      { id: "sd1-1", name: "Outpatient", active: true, specialties: [] },
-      { id: "sd1-2", name: "Inpatient", active: false, specialties: [] },
+      { id: "sd1-1", name: "Consultation", active: true, specialties: [] },
+      { id: "sd1-2", name: "Emergency", active: true, specialties: [] },
+      { id: "sd1-3", name: "Tele-Consultation", active: true, specialties: [] },
+      { id: "sd1-4", name: "Inpatient", active: false, specialties: [] },
     ],
     specialties: [
       { id: "sp1-1", name: "Interventional Cardiology", description: "Diagnosis and treatment of heart conditions using catheter-based procedures such as angioplasty and stenting.", active: true },
@@ -142,10 +144,10 @@ const INITIAL_DATA: Department[] = [
     name: "Orthopedics",
     active: true,
     subDepartments: [
-      { id: "sd2-1", name: "Surgery", active: true, specialties: [
-        { id: "sp-sd2-1", name: "Arthroscopic Surgery", description: "Minimally invasive joint surgery.", active: true },
-      ]},
-      { id: "sd2-2", name: "Rehabilitation", active: true, specialties: [] },
+      { id: "sd2-1", name: "Consultation", active: true, specialties: [] },
+      { id: "sd2-2", name: "Emergency", active: true, specialties: [] },
+      { id: "sd2-3", name: "Tele-Consultation", active: true, specialties: [] },
+      { id: "sd2-4", name: "Inpatient", active: false, specialties: [] },
     ],
     specialties: [
       { id: "sp2-1", name: "Joint Replacement", description: "Hip, knee, and shoulder replacement surgeries for arthritis and injury-related joint damage.", active: true },
@@ -158,6 +160,9 @@ const INITIAL_DATA: Department[] = [
     active: false,
     subDepartments: [
       { id: "sd3-1", name: "Consultation", active: true, specialties: [] },
+      { id: "sd3-2", name: "Emergency", active: true, specialties: [] },
+      { id: "sd3-3", name: "Tele-Consultation", active: true, specialties: [] },
+      { id: "sd3-4", name: "Inpatient", active: false, specialties: [] },
     ],
     specialties: [
       { id: "sp3-1", name: "Stroke & Cerebrovascular", description: "Emergency and long-term management of stroke, TIA, and cerebrovascular disease.", active: true },
