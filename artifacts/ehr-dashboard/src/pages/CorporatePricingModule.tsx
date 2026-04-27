@@ -265,12 +265,21 @@ export function CorporatePricingModule({
     });
   }
 
-  const openAddEntity = () => { setEntityForm(blankEntityForm()); setEditingEntityId(null); setWizardStep(1); setWizardRateList({ ...blankRateList(), doctorIds: doctors.map(d => d.id) }); setShowEntityForm(true); };
+  const openAddEntity = () => {
+    setEntityForm(blankEntityForm());
+    setEditingEntityId(null);
+    setWizardStep(1);
+    const allDoctorIds = doctors.map(d => d.id);
+    setWizardRateList({ ...blankRateList(), doctorIds: allDoctorIds });
+    setShowEntityForm(true);
+  };
   const openEditEntity = (e: BillingEntity) => {
     setEntityForm({ name: e.name, contactPerson: e.contactPerson, contactPhone: e.contactPhone, email: e.email, mouFileName: e.mouFileName, creditEnabled: e.creditEnabled, creditLimit: String(e.creditLimit), useBaseForNew: e.useBaseForNew });
     const existingRL = e.rateList ?? blankRateList();
-    setEditingEntityId(e.id); setWizardStep(1);
-    setWizardRateList({ ...existingRL, doctorIds: existingRL.doctorIds?.length ? existingRL.doctorIds : doctors.map(d => d.id) });
+    setEditingEntityId(e.id);
+    setWizardStep(1);
+    const preselected = existingRL.doctorIds && existingRL.doctorIds.length > 0 ? existingRL.doctorIds : doctors.map(d => d.id);
+    setWizardRateList({ ...existingRL, doctorIds: preselected });
     setShowEntityForm(true);
   };
 
@@ -463,10 +472,6 @@ export function CorporatePricingModule({
       {/* ── Left: entity list ── */}
       <aside className="flex w-72 flex-none flex-col border-r border-slate-200 bg-white">
         <div className="flex-none border-b border-slate-100 p-4">
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#4982CF] animate-pulse" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-[#4982CF]">Rate List v2 · Doctor Selection</span>
-          </div>
           <Button onClick={openAddEntity} className="w-full bg-[#4982CF] hover:bg-[#3a6ab5] text-white gap-2 mb-3">
             <Plus className="h-4 w-4" />Add {entityLabel}
           </Button>
@@ -1008,85 +1013,94 @@ export function CorporatePricingModule({
             <div className="flex flex-col flex-1 overflow-y-auto gap-5 pt-2 min-h-0">
               <p className="text-xs font-semibold text-[#4982CF] uppercase tracking-widest">Step 2 — Rate List Selection</p>
 
-              {/* Consultant Doctors (multi-select) */}
-              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                <div className="flex items-center justify-between bg-slate-50 border-b border-slate-100 px-4 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-500">Consultant Doctors</span>
-                    <span className="text-[10px] bg-[#4982CF]/10 text-[#4982CF] font-bold px-1.5 py-0.5 rounded">
-                      {wizardRateList.doctorIds.length} / {doctors.length} selected
-                    </span>
-                  </div>
-                  <button type="button"
-                    className="text-[10px] font-semibold text-[#4982CF] hover:underline"
-                    onClick={() => setWizardRateList(r => ({
-                      ...r,
-                      doctorIds: r.doctorIds.length === doctors.length ? [] : doctors.map(d => d.id),
-                    }))}>
-                    {wizardRateList.doctorIds.length === doctors.length ? "Deselect All" : "Select All"}
-                  </button>
-                </div>
-                {doctors.length === 0 ? (
-                  <p className="text-center text-xs text-slate-400 py-6">No doctors configured yet.</p>
-                ) : (
-                  <div className="overflow-x-auto max-h-52">
-                    <table className="w-full text-xs min-w-[520px]">
-                      <thead>
-                        <tr className="border-b border-slate-100 bg-slate-50/50">
-                          <th className="w-8 px-3 py-2" />
-                          <th className="text-left px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Doctor</th>
-                          <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Consult</th>
-                          <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Follow-up</th>
-                          <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Emergency</th>
-                          <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Tele</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {doctors.map(doc => {
-                          const isSelected = wizardRateList.doctorIds.includes(doc.id);
-                          const feeRows = doctorFees[doc.id] ?? [];
-                          const maxFeeVal = (key: "consultationFee" | "followUpFee" | "emergencyFee" | "teleFee") => {
-                            const vals = feeRows.map(r => parseFloat(r[key]) || 0).filter(v => v > 0);
-                            return vals.length > 0 ? `Rs. ${Math.max(...vals).toLocaleString()}` : "—";
-                          };
-                          const docDeptNames = (doc.departments ?? [])
-                            .map(did => departments.find(d => d.id === did)?.name ?? did)
-                            .filter(Boolean);
-                          const toggleDoctor = () => setWizardRateList(r => ({
-                            ...r,
-                            doctorIds: isSelected
-                              ? r.doctorIds.filter(id => id !== doc.id)
-                              : [...r.doctorIds, doc.id],
-                          }));
-                          return (
-                            <tr key={doc.id}
-                              onClick={toggleDoctor}
-                              className={`border-b border-slate-50 last:border-0 cursor-pointer transition-colors ${isSelected ? "bg-[#4982CF]/5 hover:bg-[#4982CF]/10" : "bg-white hover:bg-slate-50/60 opacity-60"}`}>
-                              <td className="px-3 py-2.5">
-                                <Checkbox checked={isSelected} onCheckedChange={toggleDoctor} className="pointer-events-none" />
-                              </td>
-                              <td className="px-3 py-2.5">
-                                <span className="font-semibold text-slate-700">{doc.name}</span>
-                                {docDeptNames.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-0.5">
-                                    {docDeptNames.map(n => (
-                                      <span key={n} className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">{n}</span>
-                                    ))}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">{maxFeeVal("consultationFee")}</td>
-                              <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">{maxFeeVal("followUpFee")}</td>
-                              <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">{maxFeeVal("emergencyFee")}</td>
-                              <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">{maxFeeVal("teleFee")}</td>
+              {/* ── Consultant Doctors multi-select ── */}
+              {(() => {
+                const allSelected = wizardRateList.doctorIds.length === doctors.length;
+                const toggleAll = () => setWizardRateList(prev => ({
+                  ...prev,
+                  doctorIds: allSelected ? [] : doctors.map(d => d.id),
+                }));
+                const toggleOne = (docId: string) => setWizardRateList(prev => ({
+                  ...prev,
+                  doctorIds: prev.doctorIds.includes(docId)
+                    ? prev.doctorIds.filter(id => id !== docId)
+                    : [...prev.doctorIds, docId],
+                }));
+                return (
+                  <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                    <div className="flex items-center justify-between bg-slate-50 border-b border-slate-100 px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black uppercase tracking-widest text-slate-500">Consultant Doctors</span>
+                        <span className="text-[10px] bg-[#4982CF]/10 text-[#4982CF] font-bold px-1.5 py-0.5 rounded-full">
+                          {wizardRateList.doctorIds.length}&thinsp;/&thinsp;{doctors.length}
+                        </span>
+                      </div>
+                      <button type="button" onClick={toggleAll}
+                        className="text-[10px] font-semibold text-[#4982CF] hover:underline">
+                        {allSelected ? "Deselect All" : "Select All"}
+                      </button>
+                    </div>
+                    {doctors.length === 0 ? (
+                      <p className="px-4 py-6 text-center text-xs text-slate-400">No doctors configured yet.</p>
+                    ) : (
+                      <div className="max-h-52 overflow-y-auto overflow-x-auto">
+                        <table className="w-full min-w-[520px] text-xs">
+                          <thead>
+                            <tr className="border-b border-slate-100 bg-slate-50/50 sticky top-0">
+                              <th className="w-9 px-3 py-2" />
+                              <th className="px-3 py-2 text-left font-black text-[10px] uppercase tracking-widest text-slate-400">Doctor</th>
+                              <th className="px-3 py-2 text-right font-black text-[10px] uppercase tracking-widest text-slate-400">Consult</th>
+                              <th className="px-3 py-2 text-right font-black text-[10px] uppercase tracking-widest text-slate-400">Follow-up</th>
+                              <th className="px-3 py-2 text-right font-black text-[10px] uppercase tracking-widest text-slate-400">Emergency</th>
+                              <th className="px-3 py-2 text-right font-black text-[10px] uppercase tracking-widest text-slate-400">Tele</th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                          </thead>
+                          <tbody>
+                            {doctors.map(doc => {
+                              const checked = wizardRateList.doctorIds.includes(doc.id);
+                              const fees = doctorFees[doc.id] ?? [];
+                              const peak = (field: "consultationFee" | "followUpFee" | "emergencyFee" | "teleFee") => {
+                                const nums = fees.map(r => parseFloat(r[field]) || 0).filter(n => n > 0);
+                                return nums.length ? `Rs.\u202f${Math.max(...nums).toLocaleString()}` : "—";
+                              };
+                              const deptBadges = (doc.departments ?? [])
+                                .map(did => departments.find(d => d.id === did)?.name)
+                                .filter((n): n is string => Boolean(n));
+                              return (
+                                <tr key={doc.id} onClick={() => toggleOne(doc.id)}
+                                  className={`cursor-pointer border-b border-slate-50 last:border-0 transition-all
+                                    ${checked ? "bg-[#4982CF]/5 hover:bg-[#4982CF]/10" : "opacity-50 hover:opacity-70 bg-white"}`}>
+                                  <td className="px-3 py-2.5 text-center">
+                                    <Checkbox checked={checked} onCheckedChange={() => toggleOne(doc.id)}
+                                      className="pointer-events-none" />
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <span className="font-semibold text-slate-700">{doc.name}</span>
+                                    {deptBadges.length > 0 && (
+                                      <div className="mt-0.5 flex flex-wrap gap-1">
+                                        {deptBadges.map(n => (
+                                          <span key={n}
+                                            className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-500">
+                                            {n}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{peak("consultationFee")}</td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{peak("followUpFee")}</td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{peak("emergencyFee")}</td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{peak("teleFee")}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })()}
 
               {/* Provider Selection (5 categories) */}
               <div className="space-y-3">
@@ -1420,8 +1434,9 @@ function RateListCard({
     { label: "Procedures",  providerId: rateList.procedurePartnerId,    providers: procPartners,        color: "#8b5cf6" },
     { label: "Imaging",     providerId: rateList.imagingPartnerId,      providers: imagingPartners,     color: "#0ea5e9" },
   ];
-  const selectedDoctorIds = rateList.doctorIds ?? [];
-  const selectedDoctors = doctors.filter(d => selectedDoctorIds.includes(d.id));
+  const chosenDoctorIds = rateList.doctorIds ?? [];
+  const chosenDoctors = doctors.filter(d => chosenDoctorIds.includes(d.id));
+  const allDoctorsChosen = doctors.length > 0 && chosenDoctors.length === doctors.length;
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
       <div className="bg-slate-50 border-b border-slate-100 px-4 py-2.5">
@@ -1429,18 +1444,21 @@ function RateListCard({
         <p className="text-[10px] text-slate-400">Providers &amp; doctors linked to this corporate</p>
       </div>
       <div className="divide-y divide-slate-100">
-        {/* Consultants row */}
+        {/* Consultants */}
         <div className="flex items-start gap-3 px-4 py-2.5">
-          <span className="h-2 w-2 rounded-full flex-shrink-0 mt-1" style={{ background: "#4982CF" }} />
-          <span className="text-xs font-semibold text-slate-600 w-28 flex-shrink-0">Consultants</span>
-          {selectedDoctors.length === 0 ? (
-            <span className="text-xs text-slate-400 italic">None selected</span>
-          ) : selectedDoctors.length === doctors.length ? (
+          <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full" style={{ background: "#4982CF" }} />
+          <span className="w-28 flex-shrink-0 text-xs font-semibold text-slate-600">Consultants</span>
+          {chosenDoctors.length === 0 ? (
+            <span className="text-xs italic text-slate-400">None selected</span>
+          ) : allDoctorsChosen ? (
             <span className="text-xs font-medium text-slate-700">All doctors ({doctors.length})</span>
           ) : (
             <span className="flex flex-wrap gap-1">
-              {selectedDoctors.map(d => (
-                <span key={d.id} className="text-[10px] bg-[#4982CF]/10 text-[#4982CF] font-medium px-1.5 py-0.5 rounded">{d.name}</span>
+              {chosenDoctors.map(d => (
+                <span key={d.id}
+                  className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-[#4982CF]/10 text-[#4982CF]">
+                  {d.name}
+                </span>
               ))}
             </span>
           )}
