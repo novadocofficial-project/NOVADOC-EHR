@@ -78,7 +78,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
   {
     id: "doc-1", name: "Dr. Emily Wong", gender: "Female",
     phone: "+1 (555) 201-3344", email: "emily.wong@medfinance.com", shift: "Morning",
-    departments: ["d1"], subDepartments: { d1: ["sd1-1"] },
+    departments: ["d1", "d2"], subDepartments: { d1: ["sd1-1"], d2: ["sd2-1"] },
     specialties: ["Interventional Cardiology", "Electrophysiology"], doctorType: "appointment",
     hasProfessionalDetails: true,
     professional: { awards: "Best Cardiologist 2021", expertise: "Heart failure, Arrhythmia", memberships: "AHA, ESC", languages: "English, Mandarin", experience: "12 years", degreeCompletion: "2010", pmdcNumber: "PMDC-2010-8821" },
