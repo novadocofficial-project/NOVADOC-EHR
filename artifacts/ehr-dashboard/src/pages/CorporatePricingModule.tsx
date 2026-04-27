@@ -811,15 +811,17 @@ export function CorporatePricingModule({
                     <span className="text-sm font-semibold text-[#4982CF]">{selectedEntity.useBaseForNew ? "Use Base Price" : "Use Adjusted Price"}</span>
                   </div>
                 </div>
-                {/* Rate List card */}
-                <RateListCard
-                  rateList={selectedEntity.rateList ?? blankRateList()}
-                  pharmacyPartners={pharmacyPartners}
-                  labProviders={labProviders}
-                  consumableProviders={consumableProviders}
-                  procPartners={procPartners}
-                  imagingPartners={imagingPartners}
-                />
+                {/* Rate List card — Corporate only */}
+                {entityLabel === "Corporate" && (
+                  <RateListCard
+                    rateList={selectedEntity.rateList ?? blankRateList()}
+                    pharmacyPartners={pharmacyPartners}
+                    labProviders={labProviders}
+                    consumableProviders={consumableProviders}
+                    procPartners={procPartners}
+                    imagingPartners={imagingPartners}
+                  />
+                )}
               </div>
             </TabsContent>
 
