@@ -15,7 +15,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import type { ServiceType, Service, BillingEntity, PricingRule, EntityService } from "@/pages/BillingTypes";
+import type { ServiceType, Service, BillingEntity, PricingRule, EntityService, RateList } from "@/pages/BillingTypes";
+import { blankRateList } from "@/pages/BillingTypes";
+import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
+import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
+import type { ConsumableProvider } from "@/pages/ConsumablesModule";
+import { CONSUMABLE_SEED_ITEMS } from "@/pages/ConsumablesModule";
+import type { LabProvider, LabSection } from "@/pages/LabCatalogModule";
+import { IMAGING_SEED_TESTS } from "@/pages/ImagingCatalogModule";
+import type { ProcedurePartner, ProcedureSection } from "@/pages/ProcedureCatalogModule";
+import type { Doctor } from "@/pages/DoctorsModule";
+import type { FeeRow } from "@/pages/FeesModule";
+import { MEDICINES } from "@/pages/FormularySection";
 
 // ─── Additional Types ─────────────────────────────────────────────────────────
 
@@ -103,8 +114,8 @@ function StatusBadge({ status }: { status: PatientInvoice["status"] }) {
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 
 const SEED_ENTITIES: BillingEntity[] = [
-  { id: "corp-2", name: "Sui Northern Gas (SNGPL)", contactPerson: "Nadia Baig", contactPhone: "0321-9876543", email: "welfare@sngpl.com.pk", mouFileName: "SNGPL_MOU_2024.pdf", creditEnabled: true, creditLimit: 750000, useBaseForNew: false, pricingRules: {}, entityServices: [], createdAt: "2024-02-10T00:00:00.000Z" },
-  { id: "corp-4", name: "Packages Limited", contactPerson: "Sana Tariq", contactPhone: "0301-4567890", email: "hr@packages.com.pk", mouFileName: "", creditEnabled: false, creditLimit: 0, useBaseForNew: true, pricingRules: {}, entityServices: [], createdAt: "2024-04-20T00:00:00.000Z" },
+  { id: "corp-2", name: "Sui Northern Gas (SNGPL)", contactPerson: "Nadia Baig", contactPhone: "0321-9876543", email: "welfare@sngpl.com.pk", mouFileName: "SNGPL_MOU_2024.pdf", creditEnabled: true, creditLimit: 750000, useBaseForNew: false, pricingRules: {}, entityServices: [], rateList: { pharmacyPartnerId: "fpart-1", labProviderId: "lprov-1", consumableProviderId: "cprov-1", procedurePartnerId: "pp1", imagingPartnerId: "ip1" }, createdAt: "2024-02-10T00:00:00.000Z" },
+  { id: "corp-4", name: "Packages Limited", contactPerson: "Sana Tariq", contactPhone: "0301-4567890", email: "hr@packages.com.pk", mouFileName: "", creditEnabled: false, creditLimit: 0, useBaseForNew: true, pricingRules: {}, entityServices: [], rateList: { pharmacyPartnerId: null, labProviderId: "lprov-2", consumableProviderId: "cprov-2", procedurePartnerId: "pp2", imagingPartnerId: "ip2" }, createdAt: "2024-04-20T00:00:00.000Z" },
 ];
 
 function buildSeedLedgers(): Record<string, LedgerEntry[]> {
@@ -135,10 +146,28 @@ function buildSeedInvoices(): Record<string, PatientInvoice[]> {
 
 export function CorporatePricingModule({
   serviceTypes, services, entityLabel = "Corporate",
+  pharmacyPartners = [],
+  labProviders = [],
+  labSections = [],
+  consumableProviders = [],
+  procPartners = [],
+  procSections = [],
+  imagingPartners = [],
+  doctors = [],
+  doctorFees = {},
 }: {
   serviceTypes: ServiceType[];
   services: Service[];
   entityLabel?: string;
+  pharmacyPartners?: FormularyPartner[];
+  labProviders?: LabProvider[];
+  labSections?: LabSection[];
+  consumableProviders?: ConsumableProvider[];
+  procPartners?: ProcedurePartner[];
+  procSections?: ProcedureSection[];
+  imagingPartners?: ImagingPartner[];
+  doctors?: Doctor[];
+  doctorFees?: Record<string, FeeRow[]>;
 }) {
   // ── Core state (existing) ──
   const [entities, setEntities] = useState<BillingEntity[]>(() => SEED_ENTITIES);
@@ -155,6 +184,10 @@ export function CorporatePricingModule({
   // ── New state: ledger, invoices ──
   const [ledgers, setLedgers] = useState<Record<string, LedgerEntry[]>>(() => buildSeedLedgers());
   const [entityInvoices, setEntityInvoices] = useState<Record<string, PatientInvoice[]>>(() => buildSeedInvoices());
+
+  // ── Wizard step (for creation only) ──
+  const [wizardStep, setWizardStep] = useState<1 | 2>(1);
+  const [wizardRateList, setWizardRateList] = useState<RateList>(blankRateList());
 
   // ── Advance payment dialog ──
   const [showAdvanceDialog, setShowAdvanceDialog] = useState(false);
@@ -230,20 +263,20 @@ export function CorporatePricingModule({
     });
   }
 
-  const openAddEntity = () => { setEntityForm(blankEntityForm()); setEditingEntityId(null); setShowEntityForm(true); };
+  const openAddEntity = () => { setEntityForm(blankEntityForm()); setEditingEntityId(null); setWizardStep(1); setWizardRateList(blankRateList()); setShowEntityForm(true); };
   const openEditEntity = (e: BillingEntity) => {
     setEntityForm({ name: e.name, contactPerson: e.contactPerson, contactPhone: e.contactPhone, email: e.email, mouFileName: e.mouFileName, creditEnabled: e.creditEnabled, creditLimit: String(e.creditLimit), useBaseForNew: e.useBaseForNew });
-    setEditingEntityId(e.id); setShowEntityForm(true);
+    setEditingEntityId(e.id); setWizardStep(1); setWizardRateList(e.rateList ?? blankRateList()); setShowEntityForm(true);
   };
 
   const saveEntityForm = () => {
     const name = entityForm.name.trim();
     if (!name) return;
     if (editingEntityId) {
-      setEntities(prev => prev.map(e => e.id === editingEntityId ? { ...e, name, contactPerson: entityForm.contactPerson, contactPhone: entityForm.contactPhone, email: entityForm.email, mouFileName: entityForm.mouFileName, creditEnabled: entityForm.creditEnabled, creditLimit: parseFloat(entityForm.creditLimit) || 0, useBaseForNew: entityForm.useBaseForNew } : e));
+      setEntities(prev => prev.map(e => e.id === editingEntityId ? { ...e, name, contactPerson: entityForm.contactPerson, contactPhone: entityForm.contactPhone, email: entityForm.email, mouFileName: entityForm.mouFileName, creditEnabled: entityForm.creditEnabled, creditLimit: parseFloat(entityForm.creditLimit) || 0, useBaseForNew: entityForm.useBaseForNew, rateList: wizardRateList } : e));
     } else {
       const id = `ent-${Date.now()}`;
-      const newE: BillingEntity = { id, name, contactPerson: entityForm.contactPerson, contactPhone: entityForm.contactPhone, email: entityForm.email, mouFileName: entityForm.mouFileName, creditEnabled: entityForm.creditEnabled, creditLimit: parseFloat(entityForm.creditLimit) || 0, useBaseForNew: entityForm.useBaseForNew, pricingRules: {}, entityServices: [], createdAt: new Date().toISOString() };
+      const newE: BillingEntity = { id, name, contactPerson: entityForm.contactPerson, contactPhone: entityForm.contactPhone, email: entityForm.email, mouFileName: entityForm.mouFileName, creditEnabled: entityForm.creditEnabled, creditLimit: parseFloat(entityForm.creditLimit) || 0, useBaseForNew: entityForm.useBaseForNew, pricingRules: {}, entityServices: [], rateList: wizardRateList, createdAt: new Date().toISOString() };
       setEntities(prev => [...prev, newE]);
       setEntityInvoices(prev => ({ ...prev, [id]: generateMockInvoices(id) }));
       setLedgers(prev => ({ ...prev, [id]: [] }));
@@ -749,7 +782,7 @@ export function CorporatePricingModule({
               </div>
             </TabsContent>
 
-            {/* ── INFO TAB (existing) ── */}
+            {/* ── INFO TAB ── */}
             <TabsContent value="info" className="flex-1 overflow-y-auto px-6 py-5 mt-0">
               <div className="max-w-xl space-y-5">
                 <div className="grid grid-cols-2 gap-4">
@@ -778,6 +811,15 @@ export function CorporatePricingModule({
                     <span className="text-sm font-semibold text-[#4982CF]">{selectedEntity.useBaseForNew ? "Use Base Price" : "Use Adjusted Price"}</span>
                   </div>
                 </div>
+                {/* Rate List card */}
+                <RateListCard
+                  rateList={selectedEntity.rateList ?? blankRateList()}
+                  pharmacyPartners={pharmacyPartners}
+                  labProviders={labProviders}
+                  consumableProviders={consumableProviders}
+                  procPartners={procPartners}
+                  imagingPartners={imagingPartners}
+                />
               </div>
             </TabsContent>
 
@@ -818,130 +860,207 @@ export function CorporatePricingModule({
               </div>
             </TabsContent>
 
-            {/* ── SERVICE PRICES TAB (existing) ── */}
+            {/* ── SERVICE PRICES TAB (provider-sourced) ── */}
             <TabsContent value="services" className="flex-1 overflow-y-auto px-6 py-5 mt-0">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-slate-500">{services.length} services loaded · Edit prices individually or use bulk update.</p>
-                  <Button variant="outline" size="sm" onClick={() => { setBulkRule({ scope: "all", type: "percentage", value: "" }); setShowBulkDialog(true); }}
-                    className="gap-1.5 border-[#4982CF]/30 text-[#4982CF] hover:bg-[#4982CF]/5" disabled={services.length === 0}>
-                    <CreditCard className="h-3.5 w-3.5" />Change Price (Bulk)
-                  </Button>
-                </div>
-                {services.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white py-14 text-slate-400">
-                    <p className="text-sm">No services in system yet. Add services in Service Pricing first.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {groupedServices.map(({ st, svcs }) => (
-                      <div key={st.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                        <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-2.5">
-                          <span className="font-bold text-slate-800">{st.name}</span>
-                          <span className="text-xs text-slate-400">{svcs.length} service{svcs.length !== 1 ? "s" : ""}</span>
-                        </div>
-                        <div className="grid grid-cols-[2fr_1fr_1fr] items-center border-b border-slate-100 bg-slate-50/40 px-5 py-2">
-                          {["Service", "Base Price", `${entityLabel} Price`].map(h => <span key={h} className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{h}</span>)}
-                        </div>
-                        <div className="divide-y divide-slate-100">
-                          {svcs.map(s => {
-                            const entityPrice = entityServiceMap[s.id] ?? s.basePrice;
-                            const diff = entityPrice - s.basePrice;
-                            return (
-                              <div key={s.id} className="grid grid-cols-[2fr_1fr_1fr] items-center px-5 py-3 hover:bg-slate-50/60 transition-colors gap-3">
-                                <p className="text-sm font-semibold text-slate-800">{s.name}</p>
-                                <span className="text-sm text-slate-500">Rs. {s.basePrice.toLocaleString()}</span>
-                                <div>
-                                  <div className="relative">
-                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">Rs.</span>
-                                    <Input type="number" min={0} value={entityPrice} onChange={e => updateServicePrice(s.id, e.target.value)} className="h-8 pl-8 text-sm" />
-                                  </div>
-                                  {diff !== 0 && <span className={`text-[10px] font-medium ${diff > 0 ? "text-emerald-600" : "text-rose-500"}`}>{diff > 0 ? "+" : ""}Rs. {diff.toLocaleString()} from base</span>}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ProviderServicePricingView
+                entity={selectedEntity}
+                doctors={doctors}
+                doctorFees={doctorFees}
+                labProviders={labProviders}
+                labSections={labSections}
+                pharmacyPartners={pharmacyPartners}
+                consumableProviders={consumableProviders}
+                procPartners={procPartners}
+                procSections={procSections}
+                imagingPartners={imagingPartners}
+              />
             </TabsContent>
           </Tabs>
         )}
       </div>
 
-      {/* ── Add/Edit Entity Dialog ── */}
+      {/* ── Add/Edit Entity Dialog (2-step wizard) ── */}
       <Dialog open={showEntityForm} onOpenChange={open => !open && setShowEntityForm(false)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editingEntityId ? `Edit ${entityLabel}` : `Add ${entityLabel}`}</DialogTitle></DialogHeader>
-          <div className="grid gap-4 pt-2">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-semibold text-slate-600">{entityLabel} Name <span className="text-rose-500">*</span></Label>
-              <Input placeholder={`${entityLabel} name…`} value={entityForm.name} onChange={e => setEntityForm(f => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              {editingEntityId ? `Edit ${entityLabel}` : `Add ${entityLabel}`}
+              <div className="ml-auto flex items-center gap-1.5 text-xs font-normal text-slate-400">
+                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${wizardStep === 1 ? "bg-[#4982CF] text-white" : "bg-slate-200 text-slate-500"}`}>1</span>
+                <span className="text-slate-300">—</span>
+                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${wizardStep === 2 ? "bg-[#4982CF] text-white" : "bg-slate-200 text-slate-500"}`}>2</span>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Step 1: Corporate Information */}
+          {wizardStep === 1 && (
+            <div className="flex flex-col flex-1 overflow-y-auto gap-4 pt-2 min-h-0">
+              <p className="text-xs font-semibold text-[#4982CF] uppercase tracking-widest">Step 1 — Corporate Information</p>
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-semibold text-slate-600">Contact Person</Label>
-                <Input placeholder="Full name" value={entityForm.contactPerson} onChange={e => setEntityForm(f => ({ ...f, contactPerson: e.target.value }))} />
+                <Label className="text-xs font-semibold text-slate-600">{entityLabel} Name <span className="text-rose-500">*</span></Label>
+                <Input placeholder={`${entityLabel} name…`} value={entityForm.name} onChange={e => setEntityForm(f => ({ ...f, name: e.target.value }))} />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-semibold text-slate-600">Phone</Label>
-                <Input placeholder="+92 300…" value={entityForm.contactPhone} onChange={e => setEntityForm(f => ({ ...f, contactPhone: e.target.value }))} />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-semibold text-slate-600">Official Email</Label>
-              <Input type="email" placeholder="contact@company.com" value={entityForm.email} onChange={e => setEntityForm(f => ({ ...f, email: e.target.value }))} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-semibold text-slate-600">Upload MOU (PDF)</Label>
-              <div className="flex items-center gap-2">
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-300 px-4 py-2.5 text-sm text-slate-500 hover:border-[#4982CF]/50 hover:bg-[#4982CF]/5 transition-colors">
-                  <Upload className="h-4 w-4 text-slate-400" />
-                  {entityForm.mouFileName || "Choose PDF file…"}
-                  <input type="file" accept=".pdf" className="hidden" onChange={e => setEntityForm(f => ({ ...f, mouFileName: e.target.files?.[0]?.name ?? "" }))} />
-                </label>
-                {entityForm.mouFileName && <button type="button" onClick={() => setEntityForm(f => ({ ...f, mouFileName: "" }))} className="text-slate-400 hover:text-rose-500"><X className="h-4 w-4" /></button>}
-              </div>
-            </div>
-            <div className="rounded-lg border border-slate-200 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold text-slate-700">Credit Allowance</Label>
-                <Switch checked={entityForm.creditEnabled} onCheckedChange={v => setEntityForm(f => ({ ...f, creditEnabled: v }))} className="data-[state=checked]:bg-[#4982CF]" />
-              </div>
-              {entityForm.creditEnabled && (
+              <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs font-semibold text-slate-600">Credit Limit (Rs.)</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">Rs.</span>
-                    <Input type="number" min={0} placeholder="0" value={entityForm.creditLimit} onChange={e => setEntityForm(f => ({ ...f, creditLimit: e.target.value }))} className="pl-10" />
-                  </div>
+                  <Label className="text-xs font-semibold text-slate-600">Contact Person</Label>
+                  <Input placeholder="Full name" value={entityForm.contactPerson} onChange={e => setEntityForm(f => ({ ...f, contactPerson: e.target.value }))} />
                 </div>
-              )}
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-slate-700">New services pricing</p>
-                <p className="text-xs text-slate-400">When new services are added to the system</p>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs font-semibold text-slate-600">Phone</Label>
+                  <Input placeholder="+92 300…" value={entityForm.contactPhone} onChange={e => setEntityForm(f => ({ ...f, contactPhone: e.target.value }))} />
+                </div>
               </div>
-              <div className="flex overflow-hidden rounded-md border border-slate-200">
-                {(["Base", "Adjusted"] as const).map((label, i) => (
-                  <button key={label} type="button" onClick={() => setEntityForm(f => ({ ...f, useBaseForNew: i === 0 }))}
-                    className={`px-2.5 py-1.5 text-[11px] font-bold transition-colors ${(i === 0) === entityForm.useBaseForNew ? "bg-[#4982CF] text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>
-                    {label}
-                  </button>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Official Email</Label>
+                <Input type="email" placeholder="contact@company.com" value={entityForm.email} onChange={e => setEntityForm(f => ({ ...f, email: e.target.value }))} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Upload MOU (PDF)</Label>
+                <div className="flex items-center gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-300 px-4 py-2.5 text-sm text-slate-500 hover:border-[#4982CF]/50 hover:bg-[#4982CF]/5 transition-colors">
+                    <Upload className="h-4 w-4 text-slate-400" />
+                    {entityForm.mouFileName || "Choose PDF file…"}
+                    <input type="file" accept=".pdf" className="hidden" onChange={e => setEntityForm(f => ({ ...f, mouFileName: e.target.files?.[0]?.name ?? "" }))} />
+                  </label>
+                  {entityForm.mouFileName && <button type="button" onClick={() => setEntityForm(f => ({ ...f, mouFileName: "" }))} className="text-slate-400 hover:text-rose-500"><X className="h-4 w-4" /></button>}
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold text-slate-700">Credit Allowance</Label>
+                  <Switch checked={entityForm.creditEnabled} onCheckedChange={v => setEntityForm(f => ({ ...f, creditEnabled: v }))} className="data-[state=checked]:bg-[#4982CF]" />
+                </div>
+                {entityForm.creditEnabled && (
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs font-semibold text-slate-600">Credit Limit (Rs.)</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">Rs.</span>
+                      <Input type="number" min={0} placeholder="0" value={entityForm.creditLimit} onChange={e => setEntityForm(f => ({ ...f, creditLimit: e.target.value }))} className="pl-10" />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-slate-700">New services pricing</p>
+                  <p className="text-xs text-slate-400">When new services are added to the system</p>
+                </div>
+                <div className="flex overflow-hidden rounded-md border border-slate-200">
+                  {(["Base", "Adjusted"] as const).map((label, i) => (
+                    <button key={label} type="button" onClick={() => setEntityForm(f => ({ ...f, useBaseForNew: i === 0 }))}
+                      className={`px-2.5 py-1.5 text-[11px] font-bold transition-colors ${(i === 0) === entityForm.useBaseForNew ? "bg-[#4982CF] text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-1 border-t border-slate-100 mt-2">
+                <Button variant="outline" onClick={() => setShowEntityForm(false)}>Cancel</Button>
+                <Button onClick={() => setWizardStep(2)} disabled={!entityForm.name.trim()} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white">
+                  Next: Rate List →
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Rate List Selection */}
+          {wizardStep === 2 && (
+            <div className="flex flex-col flex-1 overflow-y-auto gap-5 pt-2 min-h-0">
+              <p className="text-xs font-semibold text-[#4982CF] uppercase tracking-widest">Step 2 — Rate List Selection</p>
+
+              {/* Consultant Fees (read-only) */}
+              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                <div className="flex items-center gap-2 bg-slate-50 border-b border-slate-100 px-4 py-2.5">
+                  <span className="text-xs font-black uppercase tracking-widest text-slate-500">Consultant Fees</span>
+                  <span className="text-[10px] text-slate-400 ml-1">— sourced automatically from all doctors</span>
+                </div>
+                {doctors.length === 0 ? (
+                  <p className="text-center text-xs text-slate-400 py-6">No doctors configured yet.</p>
+                ) : (
+                  <div className="overflow-x-auto max-h-40">
+                    <table className="w-full text-xs min-w-[480px]">
+                      <thead>
+                        <tr className="border-b border-slate-100 bg-slate-50/50">
+                          <th className="text-left px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Doctor</th>
+                          <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Consultation</th>
+                          <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Follow-up</th>
+                          <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Emergency</th>
+                          <th className="text-right px-3 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Tele-consult</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {doctors.map(doc => {
+                          const rows = doctorFees[doc.id] ?? [];
+                          const firstRow = rows[0];
+                          return (
+                            <tr key={doc.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/40">
+                              <td className="px-4 py-2 font-medium text-slate-700">{doc.name}</td>
+                              <td className="px-3 py-2 text-right text-slate-600">{firstRow?.consultationFee ? `Rs. ${firstRow.consultationFee}` : "—"}</td>
+                              <td className="px-3 py-2 text-right text-slate-600">{firstRow?.followUpFee ? `Rs. ${firstRow.followUpFee}` : "—"}</td>
+                              <td className="px-3 py-2 text-right text-slate-600">{firstRow?.emergencyFee ? `Rs. ${firstRow.emergencyFee}` : "—"}</td>
+                              <td className="px-3 py-2 text-right text-slate-600">{firstRow?.teleFee ? `Rs. ${firstRow.teleFee}` : "—"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Provider Selection (5 categories) */}
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Provider Selection</p>
+                {([
+                  { key: "labProviderId",        label: "Lab",          providers: labProviders,         color: "#6366f1" },
+                  { key: "pharmacyPartnerId",     label: "Pharmacy",     providers: pharmacyPartners,      color: "#10b981" },
+                  { key: "consumableProviderId",  label: "Consumables",  providers: consumableProviders,   color: "#f59e0b" },
+                  { key: "procedurePartnerId",    label: "Procedures",   providers: procPartners,          color: "#8b5cf6" },
+                  { key: "imagingPartnerId",      label: "Imaging",      providers: imagingPartners,       color: "#0ea5e9" },
+                ] as { key: keyof RateList; label: string; providers: { id: string; name: string; type?: string }[]; color: string }[]).map(({ key, label, providers, color }) => (
+                  <div key={key} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                    <div className="flex items-center gap-2 bg-slate-50 border-b border-slate-100 px-4 py-2">
+                      <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                      <span className="text-xs font-bold text-slate-700">{label}</span>
+                    </div>
+                    {providers.length === 0 ? (
+                      <p className="px-4 py-3 text-xs text-slate-400 italic">No {label.toLowerCase()} providers configured.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2 p-3">
+                        {/* None option */}
+                        <button type="button"
+                          onClick={() => setWizardRateList(r => ({ ...r, [key]: null }))}
+                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${wizardRateList[key] === null ? "border-[#4982CF] bg-[#4982CF]/5 text-[#4982CF]" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`}>
+                          <span className={`h-3 w-3 rounded-full border-2 flex-shrink-0 ${wizardRateList[key] === null ? "border-[#4982CF] bg-[#4982CF]" : "border-slate-300 bg-white"}`} />
+                          None
+                        </button>
+                        {providers.map(p => (
+                          <button key={p.id} type="button"
+                            onClick={() => setWizardRateList(r => ({ ...r, [key]: p.id }))}
+                            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${wizardRateList[key] === p.id ? "border-[#4982CF] bg-[#4982CF]/5 text-[#4982CF]" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`}>
+                            <span className={`h-3 w-3 rounded-full border-2 flex-shrink-0 ${wizardRateList[key] === p.id ? "border-[#4982CF] bg-[#4982CF]" : "border-slate-300 bg-white"}`} />
+                            {p.name}
+                            {p.type && <span className="text-[9px] text-slate-400 font-normal ml-0.5">({p.type})</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
+
+              <div className="flex justify-between gap-2 pt-1 border-t border-slate-100 mt-2">
+                <Button variant="outline" onClick={() => setWizardStep(1)}>← Back</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowEntityForm(false)}>Cancel</Button>
+                  <Button onClick={saveEntityForm} disabled={!entityForm.name.trim()} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white">
+                    {editingEntityId ? "Save Changes" : `Add ${entityLabel}`}
+                  </Button>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-end gap-2 pt-1">
-              <Button variant="outline" onClick={() => setShowEntityForm(false)}>Cancel</Button>
-              <Button onClick={saveEntityForm} disabled={!entityForm.name.trim()} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white">
-                {editingEntityId ? "Save Changes" : `Add ${entityLabel}`}
-              </Button>
-            </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -1139,6 +1258,220 @@ function InfoField({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
       <p className="mt-0.5 text-sm font-semibold text-slate-700">{value}</p>
+    </div>
+  );
+}
+
+// ─── Rate List Card ────────────────────────────────────────────────────────────
+
+function RateListCard({
+  rateList,
+  pharmacyPartners,
+  labProviders,
+  consumableProviders,
+  procPartners,
+  imagingPartners,
+}: {
+  rateList: RateList;
+  pharmacyPartners: FormularyPartner[];
+  labProviders: LabProvider[];
+  consumableProviders: ConsumableProvider[];
+  procPartners: ProcedurePartner[];
+  imagingPartners: ImagingPartner[];
+}) {
+  const rows: { label: string; providerId: string | null; providers: { id: string; name: string }[]; color: string }[] = [
+    { label: "Lab",         providerId: rateList.labProviderId,        providers: labProviders,        color: "#6366f1" },
+    { label: "Pharmacy",    providerId: rateList.pharmacyPartnerId,     providers: pharmacyPartners,    color: "#10b981" },
+    { label: "Consumables", providerId: rateList.consumableProviderId,  providers: consumableProviders, color: "#f59e0b" },
+    { label: "Procedures",  providerId: rateList.procedurePartnerId,    providers: procPartners,        color: "#8b5cf6" },
+    { label: "Imaging",     providerId: rateList.imagingPartnerId,      providers: imagingPartners,     color: "#0ea5e9" },
+  ];
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <div className="bg-slate-50 border-b border-slate-100 px-4 py-2.5">
+        <p className="text-sm font-bold text-slate-700">Rate List</p>
+        <p className="text-[10px] text-slate-400">Providers linked to this corporate</p>
+      </div>
+      <div className="divide-y divide-slate-100">
+        {rows.map(row => {
+          const matched = row.providers.find(p => p.id === row.providerId);
+          return (
+            <div key={row.label} className="flex items-center gap-3 px-4 py-2.5">
+              <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: row.color }} />
+              <span className="text-xs font-semibold text-slate-600 w-28 flex-shrink-0">{row.label}</span>
+              {matched ? (
+                <span className="text-xs font-medium text-slate-800">{matched.name}</span>
+              ) : (
+                <span className="text-xs text-slate-400 italic">Not assigned</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Provider Service Pricing View ────────────────────────────────────────────
+
+type PSPVProps = {
+  entity: BillingEntity;
+  doctors: Doctor[];
+  doctorFees: Record<string, FeeRow[]>;
+  labProviders: LabProvider[];
+  labSections: LabSection[];
+  pharmacyPartners: FormularyPartner[];
+  consumableProviders: ConsumableProvider[];
+  procPartners: ProcedurePartner[];
+  procSections: ProcedureSection[];
+  imagingPartners: ImagingPartner[];
+};
+
+function PricingTable({ items }: { items: { name: string; price: string }[] }) {
+  if (items.length === 0) return <p className="text-center text-xs text-slate-400 py-6">No items configured for this provider.</p>;
+  return (
+    <div className="max-h-56 overflow-y-auto">
+      <table className="w-full text-xs">
+        <tbody>
+          {items.map((item, i) => (
+            <tr key={i} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/40">
+              <td className="px-4 py-1.5 text-slate-700 font-medium">{item.name}</td>
+              <td className="px-4 py-1.5 text-right text-slate-600 font-semibold tabular-nums">
+                {item.price ? `Rs. ${Number(item.price).toLocaleString()}` : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ProviderSectionHeader({ color, title, providerName, itemCount }: { color: string; title: string; providerName: string | null; itemCount: number }) {
+  return (
+    <div className="flex items-center gap-2 bg-slate-50 border-b border-slate-100 px-4 py-2.5">
+      <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
+      <span className="text-xs font-black uppercase tracking-widest text-slate-600">{title}</span>
+      {providerName ? (
+        <span className="ml-1 text-[10px] text-slate-400">via <strong className="text-slate-600">{providerName}</strong> · {itemCount} items</span>
+      ) : (
+        <span className="ml-1 text-[10px] text-slate-400 italic">No provider assigned</span>
+      )}
+    </div>
+  );
+}
+
+function ProviderServicePricingView({
+  entity, doctors, doctorFees,
+  labProviders, labSections,
+  pharmacyPartners,
+  consumableProviders,
+  procPartners, procSections,
+  imagingPartners,
+}: PSPVProps) {
+  const rl = entity.rateList ?? blankRateList();
+
+  // ── Consultation Fees (all doctors) ──────────────────────────────────────────
+  const consultRows: { name: string; price: string }[] = doctors.flatMap(doc => {
+    const rows = doctorFees[doc.id] ?? [];
+    const first = rows[0];
+    if (!first) return [];
+    return [
+      { name: `${doc.name} — Consultation`,  price: first.consultationFee  || "" },
+      { name: `${doc.name} — Follow-up`,     price: first.followUpFee      || "" },
+      { name: `${doc.name} — Emergency`,     price: first.emergencyFee     || "" },
+      { name: `${doc.name} — Tele-Consult`,  price: first.teleFee          || "" },
+    ].filter(r => r.price !== "");
+  });
+
+  // ── Lab ───────────────────────────────────────────────────────────────────────
+  const labProvider = labProviders.find(p => p.id === rl.labProviderId) ?? null;
+  const allLabTests = labSections.flatMap(s => s.tests);
+  const labRows: { name: string; price: string }[] = labProvider
+    ? labProvider.selectedTests.map(tid => ({
+        name: allLabTests.find(t => t.id === tid)?.name ?? tid,
+        price: labProvider.pricing[tid] ?? "",
+      }))
+    : [];
+
+  // ── Pharmacy ─────────────────────────────────────────────────────────────────
+  const pharmPartner = pharmacyPartners.find(p => p.id === rl.pharmacyPartnerId) ?? null;
+  const allBrands = MEDICINES.flatMap(m => (m.brands ?? []).map((b: { id: string; brand: string; strength: string }) => ({ id: b.id, label: `${m.generic} — ${b.brand} ${b.strength}` })));
+  const pharmRows: { name: string; price: string }[] = pharmPartner
+    ? Object.entries(pharmPartner.sellingPrice).map(([brandId, price]) => ({
+        name: allBrands.find(b => b.id === brandId)?.label ?? brandId,
+        price,
+      }))
+    : [];
+
+  // ── Consumables ──────────────────────────────────────────────────────────────
+  const conProvider = consumableProviders.find(p => p.id === rl.consumableProviderId) ?? null;
+  const consItems = CONSUMABLE_SEED_ITEMS;
+  const conRows: { name: string; price: string }[] = conProvider
+    ? conProvider.selectedItems.map(iid => ({
+        name: consItems.find(c => c.id === iid)?.name ?? iid,
+        price: conProvider.sellingPrice[iid] ?? "",
+      }))
+    : [];
+
+  // ── Procedures ───────────────────────────────────────────────────────────────
+  const procPartner = procPartners.find(p => p.id === rl.procedurePartnerId) ?? null;
+  const allProcs = procSections.flatMap(s => s.procedures);
+  const procRows: { name: string; price: string }[] = procPartner
+    ? procPartner.selectedProcedures.map(pid => ({
+        name: allProcs.find(p => p.id === pid)?.name ?? pid,
+        price: procPartner.pricing[pid] ?? "",
+      }))
+    : [];
+
+  // ── Imaging ───────────────────────────────────────────────────────────────────
+  const imgPartner = imagingPartners.find(p => p.id === rl.imagingPartnerId) ?? null;
+  const imgRows: { name: string; price: string }[] = imgPartner
+    ? imgPartner.selectedTests.map(tid => ({
+        name: IMAGING_SEED_TESTS.find(t => t.id === tid)?.name ?? tid,
+        price: imgPartner.pricing[tid] ?? "",
+      }))
+    : [];
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-slate-500">Prices are sourced directly from linked providers. To change prices, edit the respective provider in the catalog.</p>
+
+      {/* Consultations */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <ProviderSectionHeader color="#4982CF" title="Consultations" providerName="All Doctors" itemCount={consultRows.length} />
+        {doctors.length === 0 ? <p className="text-center text-xs text-slate-400 py-6">No doctors configured.</p> : <PricingTable items={consultRows} />}
+      </div>
+
+      {/* Lab */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <ProviderSectionHeader color="#6366f1" title="Lab" providerName={labProvider?.name ?? null} itemCount={labRows.length} />
+        {labProvider ? <PricingTable items={labRows} /> : <p className="text-center text-xs text-slate-400 py-6">No lab provider assigned. Edit this corporate to assign one.</p>}
+      </div>
+
+      {/* Pharmacy */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <ProviderSectionHeader color="#10b981" title="Pharmacy" providerName={pharmPartner?.name ?? null} itemCount={pharmRows.length} />
+        {pharmPartner ? <PricingTable items={pharmRows} /> : <p className="text-center text-xs text-slate-400 py-6">No pharmacy partner assigned. Edit this corporate to assign one.</p>}
+      </div>
+
+      {/* Consumables */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <ProviderSectionHeader color="#f59e0b" title="Consumables" providerName={conProvider?.name ?? null} itemCount={conRows.length} />
+        {conProvider ? <PricingTable items={conRows} /> : <p className="text-center text-xs text-slate-400 py-6">No consumable provider assigned. Edit this corporate to assign one.</p>}
+      </div>
+
+      {/* Procedures */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <ProviderSectionHeader color="#8b5cf6" title="Procedures" providerName={procPartner?.name ?? null} itemCount={procRows.length} />
+        {procPartner ? <PricingTable items={procRows} /> : <p className="text-center text-xs text-slate-400 py-6">No procedure partner assigned. Edit this corporate to assign one.</p>}
+      </div>
+
+      {/* Imaging */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <ProviderSectionHeader color="#0ea5e9" title="Imaging" providerName={imgPartner?.name ?? null} itemCount={imgRows.length} />
+        {imgPartner ? <PricingTable items={imgRows} /> : <p className="text-center text-xs text-slate-400 py-6">No imaging partner assigned. Edit this corporate to assign one.</p>}
+      </div>
     </div>
   );
 }

@@ -29,6 +29,18 @@ export type EntityService = {
   overridden: boolean;
 };
 
+export type RateList = {
+  pharmacyPartnerId:   string | null;
+  labProviderId:       string | null;
+  consumableProviderId: string | null;
+  procedurePartnerId:  string | null;
+  imagingPartnerId:    string | null;
+};
+
+export function blankRateList(): RateList {
+  return { pharmacyPartnerId: null, labProviderId: null, consumableProviderId: null, procedurePartnerId: null, imagingPartnerId: null };
+}
+
 export type BillingEntity = {
   id: string;
   name: string;
@@ -41,6 +53,7 @@ export type BillingEntity = {
   useBaseForNew: boolean;
   pricingRules: Record<string, PricingRule>;
   entityServices: EntityService[];
+  rateList: RateList;
   createdAt: string;
 };
 

@@ -890,3 +890,5 @@ export function ConsumablesModule({ initialTab = "items" }: Props) {
     </div>
   );
 }
+
+export { SEED_ITEMS as CONSUMABLE_SEED_ITEMS };

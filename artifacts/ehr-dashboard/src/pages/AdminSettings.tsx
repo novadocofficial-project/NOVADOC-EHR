@@ -696,7 +696,19 @@ export function AdminSettings() {
             />
           )}
           {activeModule === "corporate-pricing" && (
-            <CorporatePricingModule serviceTypes={serviceTypes} services={services} />
+            <CorporatePricingModule
+              serviceTypes={serviceTypes}
+              services={services}
+              pharmacyPartners={pharmacyPartners}
+              labProviders={labProviders}
+              labSections={labSections}
+              consumableProviders={consumableProviders}
+              procPartners={procPartners}
+              procSections={procSections}
+              imagingPartners={imagingPartners}
+              doctors={doctors}
+              doctorFees={doctorFees}
+            />
           )}
           {activeModule === "insurance-pricing" && (
             <InsurancePricingModule serviceTypes={serviceTypes} services={services} />

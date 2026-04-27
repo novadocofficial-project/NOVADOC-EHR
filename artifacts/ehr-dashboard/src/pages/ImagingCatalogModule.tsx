@@ -988,3 +988,5 @@ export function ImagingCatalogModule({ initialTab = "tests" }: Props) {
     </div>
   );
 }
+
+export { SEED_TESTS as IMAGING_SEED_TESTS };
