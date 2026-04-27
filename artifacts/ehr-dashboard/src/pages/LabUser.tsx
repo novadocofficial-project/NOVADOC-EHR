@@ -272,7 +272,7 @@ function LabPanel({ entry, onClose, onComplete }: {
         <div className="flex flex-1 overflow-hidden">
 
           {/* LEFT: Patient Record */}
-          <div className="w-[38%] border-r border-slate-200 flex flex-col flex-shrink-0">
+          <div className="w-1/2 border-r border-slate-200 flex flex-col flex-shrink-0">
             <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Record</p>
             </div>
