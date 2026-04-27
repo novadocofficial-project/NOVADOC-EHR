@@ -255,7 +255,36 @@ export function AdminSettings() {
     return FORMULARY_SEED_PARTNERS;
   });
 
-  const [doctorFees, setDoctorFees] = useState<Record<string, FeeRow[]>>({});
+  const [doctorFees, setDoctorFees] = useState<Record<string, FeeRow[]>>(() => {
+    const fee = (
+      deptId: string, subDeptId: string,
+      consultationFee: string, shareType: "value" | "percentage", shareAmount: string,
+      followUpFee: string, followUpShareType: "value" | "percentage", followUpShareAmount: string,
+      emergencyFee: string, emergencyShareType: "value" | "percentage", emergencyShareAmount: string,
+      teleFee: string, teleShareType: "value" | "percentage", teleShareAmount: string,
+    ): FeeRow => ({
+      deptId, subDeptId,
+      consultationFee, shareType, shareAmount,
+      followUpFee, followUpShareType, followUpShareAmount,
+      emergencyFee, emergencyShareType, emergencyShareAmount,
+      teleFee, teleShareType, teleShareAmount,
+    });
+    return {
+      // Dr. Emily Wong — Cardiology (Outpatient) + Orthopedics (Outpatient)
+      "doc-1": [
+        fee("d1", "sd1-1", "2000", "percentage", "70", "1000", "percentage", "70", "3000", "percentage", "60", "1500", "percentage", "70"),
+        fee("d2", "sd2-1", "2500", "percentage", "65", "1200", "percentage", "65", "3500", "percentage", "55", "1800", "percentage", "65"),
+      ],
+      // Dr. James Wilson — Orthopedics (Outpatient)
+      "doc-2": [
+        fee("d2", "sd2-1", "3000", "percentage", "70", "1500", "percentage", "70", "4000", "percentage", "60", "2000", "percentage", "70"),
+      ],
+      // Dr. Sarah Connor — Neurology (Outpatient)
+      "doc-3": [
+        fee("d3", "sd3-1", "2500", "percentage", "65", "1200", "percentage", "65", "3500", "percentage", "55", "1500", "percentage", "65"),
+      ],
+    };
+  });
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
     d1: true, d2: true, d3: false, d4: true,
