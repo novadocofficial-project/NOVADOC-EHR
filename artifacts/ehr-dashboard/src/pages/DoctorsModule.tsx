@@ -67,9 +67,7 @@ export type Doctor = {
 };
 
 const ALL_SERVICES = [
-  "Consultation", "Surgery", "Diagnosis", "Treatment", "Follow-up",
-  "Vaccination", "Lab Tests", "Radiology", "Physiotherapy", "Emergency Care",
-  "Ultrasound", "ECG", "Biopsy", "Chemotherapy", "Endoscopy",
+  "Consultation", "FollowUp", "Emergency", "Tele-consultation", "Vaccinations", "Procedures",
 ];
 
 const SHIFTS = ["Morning", "Afternoon", "Evening", "Night"];
@@ -88,7 +86,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
       { id: "q1", name: "MBBS", startYear: "2004", completionYear: "2010" },
       { id: "q2", name: "MD Cardiology", startYear: "2010", completionYear: "2013" },
     ],
-    services: ["Consultation", "Diagnosis"],
+    services: ["Consultation", "FollowUp"],
     timings: [
       { id: "t1", day: "Monday", startTime: "09:00", endTime: "13:00", slotDuration: 30, allowMultiple: false },
       { id: "t2", day: "Wednesday", startTime: "09:00", endTime: "13:00", slotDuration: 30, allowMultiple: false },
@@ -103,7 +101,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
     specialties: ["Joint Replacement"], doctorType: "token",
     hasProfessionalDetails: false, professional: {},
     qualifications: [{ id: "q3", name: "MBBS", startYear: "2005", completionYear: "2011" }],
-    services: ["Surgery", "Physiotherapy"],
+    services: ["Consultation", "Procedures"],
     timings: [{ id: "t3", day: "Tuesday", startTime: "13:00", endTime: "18:00", slotDuration: 20, allowMultiple: true }],
     faqs: [], status: "active",
   },
@@ -114,7 +112,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
     specialties: ["Stroke & Cerebrovascular"], doctorType: "appointment",
     hasProfessionalDetails: false, professional: {},
     qualifications: [{ id: "q4", name: "MBBS", startYear: "2006", completionYear: "2012" }, { id: "q5", name: "MD Neurology", startYear: "2012", completionYear: "2015" }],
-    services: ["Consultation", "Diagnosis", "Treatment"],
+    services: ["Consultation", "FollowUp", "Tele-consultation"],
     timings: [{ id: "t4", day: "Thursday", startTime: "10:00", endTime: "15:00", slotDuration: 45, allowMultiple: false }],
     faqs: [], status: "inactive",
   },
