@@ -500,11 +500,11 @@ export function ServicePricingModule({
 
         {/* Tabs + search */}
         <div className="mt-4 flex items-center gap-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-w-0">
-            <TabsList className="h-8 bg-slate-100 flex-wrap">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-w-0 overflow-hidden">
+            <TabsList className="h-8 bg-slate-100 w-full flex overflow-x-auto scrollbar-none whitespace-nowrap">
               <TabsTrigger value="consultation-fees" className="h-7 text-xs">
                 <Banknote className="h-3 w-3 mr-1" />
-                Consultation
+                Consult Fees
                 {consultRows.length > 0 && <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{consultRows.length}</span>}
               </TabsTrigger>
               <TabsTrigger value="all" className="h-7 text-xs">
