@@ -341,6 +341,50 @@ export function useMultiStepQueue() {
     ));
   }
 
+  // ── Lab mutations ────────────────────────────────────────────────────────────
+
+  function labCall(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, callCount: e.callCount + 1, callTimestamp: Date.now() }
+    ));
+  }
+
+  function labTimerExpire(id: string) {
+    setQueue(prev => prev.map(e => {
+      if (e.id !== id) return e;
+      if (e.callCount >= 3) return { ...e, skipped: true, callTimestamp: null };
+      return { ...e, callTimestamp: null };
+    }));
+  }
+
+  function labAtCounter(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, status: "called", callTimestamp: null }
+    ));
+  }
+
+  function labComplete(id: string) {
+    setQueue(prev => prev.map(e => {
+      if (e.id !== id) return e;
+      const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
+      const nextStep = e.step + 1;
+      if (nextStep > e.totalSteps) return { ...e, status: "completed" };
+      return { ...e, step: nextStep, stepLabel: vt.steps[nextStep - 1], status: "waiting", callCount: 0, callTimestamp: null };
+    }));
+  }
+
+  function labSkip(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, skipped: true, callTimestamp: null, status: "waiting" }
+    ));
+  }
+
+  function labRecall(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, skipped: false, callCount: 0, callTimestamp: null }
+    ));
+  }
+
   function docSendToLab(id: string) {
     setQueue(prev => prev.map(e =>
       e.id !== id ? e : { ...e, pendingLab: true, status: "waiting", callTimestamp: null }
@@ -369,6 +413,8 @@ export function useMultiStepQueue() {
     nurseCall, nurseTimerExpire, nurseAtCounter, nurseCompleteVitals, nurseSkip, nurseRecall,
     // doctor
     docCall, docTimerExpire, docAtCounter, docCompleteConsultation, docMarkComplete, docSkip, docRecall, docSendToLab, docCancelLab,
+    // lab
+    labCall, labTimerExpire, labAtCounter, labComplete, labSkip, labRecall,
     addEntry,
   };
 }

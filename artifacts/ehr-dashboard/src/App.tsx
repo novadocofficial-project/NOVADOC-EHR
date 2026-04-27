@@ -11,6 +11,7 @@ import { QueueTokenMultiStep } from "@/pages/QueueTokenMultiStep";
 import { FrontDeskUser } from "@/pages/FrontDeskUser";
 import { NursingUser } from "@/pages/NursingUser";
 import { DoctorUser } from "@/pages/DoctorUser";
+import { LabUser } from "@/pages/LabUser";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/queue/frontdesk" component={FrontDeskUser} />
       <Route path="/queue/nursing" component={NursingUser} />
       <Route path="/queue/doctor" component={DoctorUser} />
+      <Route path="/queue/lab" component={LabUser} />
       <Route component={NotFound} />
     </Switch>
   );
