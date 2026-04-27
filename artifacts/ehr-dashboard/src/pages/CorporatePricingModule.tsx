@@ -1529,31 +1529,31 @@ function ProviderServicePricingView({
       {/* Lab */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <ProviderSectionHeader color="#6366f1" title="Lab" providerName={labProvider?.name ?? null} itemCount={labRows.length} />
-        {labProvider ? <PricingTable items={labRows} /> : <p className="text-center text-xs text-slate-400 py-6">No lab provider assigned. Edit this corporate to assign one.</p>}
+        <PricingTable items={labProvider ? labRows : [{ name: "No provider assigned — edit this corporate to link a lab", price: "" }]} />
       </div>
 
       {/* Pharmacy */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <ProviderSectionHeader color="#10b981" title="Pharmacy" providerName={pharmPartner?.name ?? null} itemCount={pharmRows.length} />
-        {pharmPartner ? <PricingTable items={pharmRows} /> : <p className="text-center text-xs text-slate-400 py-6">No pharmacy partner assigned. Edit this corporate to assign one.</p>}
+        <PricingTable items={pharmPartner ? pharmRows : [{ name: "No provider assigned — edit this corporate to link a pharmacy", price: "" }]} />
       </div>
 
       {/* Consumables */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <ProviderSectionHeader color="#f59e0b" title="Consumables" providerName={conProvider?.name ?? null} itemCount={conRows.length} />
-        {conProvider ? <PricingTable items={conRows} /> : <p className="text-center text-xs text-slate-400 py-6">No consumable provider assigned. Edit this corporate to assign one.</p>}
+        <PricingTable items={conProvider ? conRows : [{ name: "No provider assigned — edit this corporate to link consumables", price: "" }]} />
       </div>
 
       {/* Procedures */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <ProviderSectionHeader color="#8b5cf6" title="Procedures" providerName={procPartner?.name ?? null} itemCount={procRows.length} />
-        {procPartner ? <PricingTable items={procRows} /> : <p className="text-center text-xs text-slate-400 py-6">No procedure partner assigned. Edit this corporate to assign one.</p>}
+        <PricingTable items={procPartner ? procRows : [{ name: "No provider assigned — edit this corporate to link procedures", price: "" }]} />
       </div>
 
       {/* Imaging */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <ProviderSectionHeader color="#0ea5e9" title="Imaging" providerName={imgPartner?.name ?? null} itemCount={imgRows.length} />
-        {imgPartner ? <PricingTable items={imgRows} /> : <p className="text-center text-xs text-slate-400 py-6">No imaging partner assigned. Edit this corporate to assign one.</p>}
+        <PricingTable items={imgPartner ? imgRows : [{ name: "No provider assigned — edit this corporate to link imaging", price: "" }]} />
       </div>
     </div>
   );
