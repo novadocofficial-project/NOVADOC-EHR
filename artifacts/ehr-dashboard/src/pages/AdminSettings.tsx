@@ -481,6 +481,7 @@ export function AdminSettings() {
                 {subNavItem("corporate-pricing", <CreditCard className="h-3.5 w-3.5" />, "Corporate Pricing")}
                 {subNavItem("insurance-pricing", <Shield className="h-3.5 w-3.5" />, "Insurance Pricing")}
                 {subNavItem("packages", <Package className="h-3.5 w-3.5" />, "Packages / Bundles")}
+                {subNavItem("order-sets", <Layers className="h-3.5 w-3.5" />, "Order Sets")}
               </div>
             )}
 
@@ -644,9 +645,6 @@ export function AdminSettings() {
                 {subNavItem("consumables-providers", <Truck className="h-3.5 w-3.5" />,   "Consumable Providers")}
               </div>
             )}
-
-            {/* ── Order Sets ── */}
-            {subNavItem("order-sets", <Layers className="h-3.5 w-3.5" />, "Order Sets")}
 
             {/* ── Permissions & Security Group ── */}
             <button
