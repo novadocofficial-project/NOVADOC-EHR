@@ -48,6 +48,7 @@ import {
 import { DoctorsModule, Doctor, INITIAL_DOCTORS } from "@/pages/DoctorsModule";
 import { SpecialtiesModule } from "@/pages/SpecialtiesModule";
 import { FeesModule } from "@/pages/FeesModule";
+import type { FeeRow } from "@/pages/FeesModule";
 import { ServiceTypesModule } from "@/pages/ServiceTypesModule";
 import { ServicePricingModule } from "@/pages/ServicePricingModule";
 import { CorporatePricingModule } from "@/pages/CorporatePricingModule";
@@ -254,6 +255,8 @@ export function AdminSettings() {
     } catch { /**/ }
     return [];
   });
+
+  const [doctorFees, setDoctorFees] = useState<Record<string, FeeRow[]>>({});
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
     d1: true, d2: true, d3: false, d4: true,
@@ -706,7 +709,7 @@ export function AdminSettings() {
             <SpecialtiesModule departments={departments} setDepartments={setDepartments} />
           )}
           {activeModule === "fees" && (
-            <FeesModule departments={departments} doctors={doctors} services={services} serviceTypes={serviceTypes} />
+            <FeesModule departments={departments} doctors={doctors} services={services} serviceTypes={serviceTypes} doctorFees={doctorFees} setDoctorFees={setDoctorFees} />
           )}
           {activeModule === "service-types" && (
             <ServiceTypesModule serviceTypes={serviceTypes} setServiceTypes={setServiceTypes} />
@@ -722,6 +725,8 @@ export function AdminSettings() {
               pharmacyPartners={pharmacyPartners}
               consumableProviders={consumableProviders}
               procPartners={procPartners}
+              doctors={doctors}
+              doctorFees={doctorFees}
             />
           )}
           {activeModule === "corporate-pricing" && (

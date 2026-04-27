@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import {
   Plus, Printer, Search, Edit2, Trash2,
-  ClipboardList, FileSpreadsheet, LayoutGrid, Columns,
+  ClipboardList, FileSpreadsheet, LayoutGrid, Columns, Banknote, Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ServiceType, Service } from "@/pages/BillingTypes";
 import type { Department } from "@/pages/AdminSettings";
+import type { Doctor } from "@/pages/DoctorsModule";
+import type { FeeRow } from "@/pages/FeesModule";
 import type { LabProvider } from "@/pages/LabCatalogModule";
 import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
 import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
@@ -28,6 +30,24 @@ interface Provider { id: string; name: string; active: boolean; }
 
 // ── Service-type ID → provider category ───────────────────────────────────
 const PROVIDER_ST_IDS = new Set(["st-2", "st-3", "st-4", "st-5", "st-6"]);
+
+// ── Consultation service → FeeRow field mapping ────────────────────────────
+const CONSULT_SERVICES_LIST = ["Consultation", "FollowUp", "Emergency", "Tele-consultation"] as const;
+type ConsultService = typeof CONSULT_SERVICES_LIST[number];
+
+const CONSULT_FEE_MAP: Record<ConsultService, {
+  feeKey: keyof FeeRow; stKey: keyof FeeRow; saKey: keyof FeeRow;
+  label: string; color: string; badgeColor: string;
+}> = {
+  "Consultation":      { feeKey: "consultationFee", stKey: "shareType",          saKey: "shareAmount",          label: "Consultation",    color: "text-slate-700", badgeColor: "bg-slate-100 text-slate-600 border-slate-200" },
+  "FollowUp":          { feeKey: "followUpFee",      stKey: "followUpShareType",  saKey: "followUpShareAmount",  label: "Follow-up",       color: "text-slate-500", badgeColor: "bg-slate-50 text-slate-500 border-slate-200"  },
+  "Emergency":         { feeKey: "emergencyFee",     stKey: "emergencyShareType", saKey: "emergencyShareAmount", label: "Emergency",       color: "text-rose-600",  badgeColor: "bg-rose-50 text-rose-600 border-rose-200"     },
+  "Tele-consultation": { feeKey: "teleFee",          stKey: "teleShareType",      saKey: "teleShareAmount",      label: "Tele-consultation",color: "text-sky-600",  badgeColor: "bg-sky-50 text-sky-600 border-sky-200"       },
+};
+
+function consultInitials(name: string) {
+  return name.replace(/^Dr\.\s*/i, "").split(" ").filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+}
 
 // ── Formatting helpers ─────────────────────────────────────────────────────
 function fmtDate(iso: string) {
@@ -181,6 +201,90 @@ function blankForm(): FormState {
   return { name: "", serviceTypeId: "", departmentId: "", subDepartmentId: "", active: true, taxable: false };
 }
 
+// ── Consultation Fees read-only table ───────────────────────────────────────
+type ConsultRow = {
+  key: string; doctorId: string; doctorName: string;
+  deptId: string; deptName: string; subDeptId: string; subDeptName: string;
+  service: string; label: string; labelColor: string; badgeColor: string;
+  feeAmount: string; shareType: string; shareAmount: string;
+};
+
+function ConsultationTable({ rows }: { rows: ConsultRow[] }) {
+  const grouped = rows.reduce<Record<string, ConsultRow[]>>((acc, r) => {
+    (acc[r.doctorId] ??= []).push(r); return acc;
+  }, {});
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+        <Info className="h-3.5 w-3.5 text-slate-400 flex-none" />
+        <p className="text-xs text-slate-500">
+          Read-only view. Fee amounts are configured in <span className="font-semibold text-slate-600">Admin Settings → Doctor Fees &amp; Shares</span>.
+        </p>
+      </div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-100 bg-slate-50/50">
+            <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Doctor</th>
+            <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Department / Sub-Dept</th>
+            <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Service Type</th>
+            <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Fee Amount</th>
+            <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Doctor's Share</th>
+            <th className="px-4 py-2.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(grouped).map(([, docRows]) => {
+            const first = docRows[0];
+            const initials = consultInitials(first.doctorName);
+            return docRows.map((row, ri) => (
+              <tr key={row.key} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                {ri === 0 && (
+                  <td rowSpan={docRows.length} className="px-4 py-3 align-top border-r border-slate-50">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-8 w-8 rounded-full bg-[#4982CF]/10 flex items-center justify-center flex-none">
+                        <span className="text-xs font-bold text-[#4982CF]">{initials}</span>
+                      </div>
+                      <span className="text-sm font-medium text-slate-700 whitespace-nowrap">{first.doctorName}</span>
+                    </div>
+                  </td>
+                )}
+                <td className="px-4 py-3 text-sm text-slate-600">
+                  <span className="font-medium">{row.deptName}</span>
+                  <span className="mx-1 text-slate-300">/</span>
+                  <span className="text-slate-500">{row.subDeptName}</span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${row.badgeColor}`}>
+                    {row.label}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-sm">
+                  {row.feeAmount
+                    ? <span className="text-slate-700">Rs. {row.feeAmount}</span>
+                    : <span className="text-slate-300">—</span>}
+                </td>
+                <td className="px-4 py-3 text-right text-sm text-slate-600">
+                  {row.feeAmount && row.shareAmount
+                    ? row.shareType === "percentage"
+                      ? <span>{row.shareAmount}%</span>
+                      : <span className="font-mono">Rs. {row.shareAmount}</span>
+                    : <span className="text-slate-300">—</span>}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  {row.feeAmount
+                    ? <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">Configured</span>
+                    : <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">Not set</span>}
+                </td>
+              </tr>
+            ));
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────
 export function ServicePricingModule({
   serviceTypes,
@@ -192,6 +296,8 @@ export function ServicePricingModule({
   pharmacyPartners = [],
   consumableProviders = [],
   procPartners = [],
+  doctors,
+  doctorFees,
 }: {
   serviceTypes: ServiceType[];
   services: Service[];
@@ -202,12 +308,15 @@ export function ServicePricingModule({
   pharmacyPartners?: FormularyPartner[];
   consumableProviders?: ConsumableProvider[];
   procPartners?: ProcedurePartner[];
+  doctors?: Doctor[];
+  doctorFees?: Record<string, FeeRow[]>;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(blankForm);
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("consultation-fees");
   const [search, setSearch] = useState("");
+  const [consultSearch, setConsultSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const activeServiceTypes = serviceTypes.filter(st => st.active);
@@ -240,6 +349,61 @@ export function ServicePricingModule({
   const getSubDeptName = (deptId: string, subId: string) =>
     departments.find(d => d.id === deptId)?.subDepartments.find(s => s.id === subId)?.name ?? "—";
   const getSTName = (id: string) => serviceTypes.find(st => st.id === id)?.name ?? "—";
+
+  // ── Auto-generated consultation fee rows ──
+  const consultRows = useMemo(() => {
+    if (!doctors || doctors.length === 0) return [];
+    type ConsultRow = {
+      key: string; doctorId: string; doctorName: string;
+      deptId: string; deptName: string; subDeptId: string; subDeptName: string;
+      service: ConsultService; label: string; labelColor: string; badgeColor: string;
+      feeAmount: string; shareType: string; shareAmount: string;
+    };
+    const rows: ConsultRow[] = [];
+    doctors.forEach(doc => {
+      const consultSvcs = doc.services.filter((s): s is ConsultService =>
+        CONSULT_SERVICES_LIST.includes(s as ConsultService)
+      );
+      if (consultSvcs.length === 0) return;
+      doc.departments.forEach(deptId => {
+        const dept = departments.find(d => d.id === deptId);
+        if (!dept) return;
+        (doc.subDepartments[deptId] ?? []).forEach(subDeptId => {
+          const subDept = dept.subDepartments.find(s => s.id === subDeptId);
+          if (!subDept) return;
+          const feeRows = doctorFees?.[doc.id] ?? [];
+          const feeRow = feeRows.find(r => r.deptId === deptId && r.subDeptId === subDeptId);
+          consultSvcs.forEach(svc => {
+            const m = CONSULT_FEE_MAP[svc];
+            rows.push({
+              key: `${doc.id}-${deptId}-${subDeptId}-${svc}`,
+              doctorId: doc.id, doctorName: doc.name,
+              deptId, deptName: dept.name,
+              subDeptId, subDeptName: subDept.name,
+              service: svc, label: m.label, labelColor: m.color, badgeColor: m.badgeColor,
+              feeAmount: feeRow ? String(feeRow[m.feeKey] ?? "") : "",
+              shareType: feeRow ? String(feeRow[m.stKey] ?? "percentage") : "percentage",
+              shareAmount: feeRow ? String(feeRow[m.saKey] ?? "") : "",
+            });
+          });
+        });
+      });
+    });
+    return rows;
+  }, [doctors, departments, doctorFees]);
+
+  const filteredConsultRows = useMemo(() => {
+    if (!consultSearch.trim()) return consultRows;
+    const q = consultSearch.toLowerCase();
+    return consultRows.filter(r =>
+      r.doctorName.toLowerCase().includes(q) ||
+      r.deptName.toLowerCase().includes(q) ||
+      r.subDeptName.toLowerCase().includes(q) ||
+      r.label.toLowerCase().includes(q)
+    );
+  }, [consultRows, consultSearch]);
+
+  const isConsultTab = activeTab === "consultation-fees";
 
   const openAdd = () => { setForm(blankForm()); setEditingId(null); setShowForm(true); };
   const openEdit = (s: Service) => {
@@ -306,27 +470,31 @@ export function ServicePricingModule({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline" size="sm" className="gap-1.5 text-slate-600"
-              onClick={() => exportToPrint(visibleServices, serviceTypes, departments, activeProviders, hasPivot)}
-              disabled={visibleServices.length === 0}
-            >
-              <Printer className="h-3.5 w-3.5" /> Print
-            </Button>
-            <Button
-              variant="outline" size="sm" className="gap-1.5 text-slate-600"
-              onClick={() => exportToCSV(visibleServices, serviceTypes, departments, activeProviders, hasPivot)}
-              disabled={visibleServices.length === 0}
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5" /> Export CSV
-            </Button>
-            <Button
-              onClick={openAdd}
-              className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white gap-2 ml-2"
-              data-testid="btn-add-service"
-            >
-              <Plus className="h-4 w-4" /> Add Service
-            </Button>
+            {!isConsultTab && (
+              <>
+                <Button
+                  variant="outline" size="sm" className="gap-1.5 text-slate-600"
+                  onClick={() => exportToPrint(visibleServices, serviceTypes, departments, activeProviders, hasPivot)}
+                  disabled={visibleServices.length === 0}
+                >
+                  <Printer className="h-3.5 w-3.5" /> Print
+                </Button>
+                <Button
+                  variant="outline" size="sm" className="gap-1.5 text-slate-600"
+                  onClick={() => exportToCSV(visibleServices, serviceTypes, departments, activeProviders, hasPivot)}
+                  disabled={visibleServices.length === 0}
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5" /> Export CSV
+                </Button>
+                <Button
+                  onClick={openAdd}
+                  className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white gap-2 ml-2"
+                  data-testid="btn-add-service"
+                >
+                  <Plus className="h-4 w-4" /> Add Service
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -334,6 +502,11 @@ export function ServicePricingModule({
         <div className="mt-4 flex items-center gap-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-w-0">
             <TabsList className="h-8 bg-slate-100 flex-wrap">
+              <TabsTrigger value="consultation-fees" className="h-7 text-xs">
+                <Banknote className="h-3 w-3 mr-1" />
+                Consultation
+                {consultRows.length > 0 && <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{consultRows.length}</span>}
+              </TabsTrigger>
               <TabsTrigger value="all" className="h-7 text-xs">
                 <LayoutGrid className="h-3 w-3 mr-1" />
                 All <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{services.length}</span>
@@ -353,19 +526,44 @@ export function ServicePricingModule({
           </Tabs>
           <div className="relative w-56 flex-none">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <Input
-              placeholder="Search services…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="h-8 pl-8 text-xs"
-            />
+            {isConsultTab ? (
+              <Input
+                placeholder="Search doctor, dept…"
+                value={consultSearch}
+                onChange={e => setConsultSearch(e.target.value)}
+                className="h-8 pl-8 text-xs"
+              />
+            ) : (
+              <Input
+                placeholder="Search services…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="h-8 pl-8 text-xs"
+              />
+            )}
           </div>
         </div>
       </div>
 
       {/* Table area */}
       <div className="flex-1 overflow-auto bg-slate-50/50 px-6 pb-6 pt-4">
-        {visibleServices.length === 0 ? (
+        {isConsultTab ? (
+          filteredConsultRows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white py-20 text-slate-400">
+              <Banknote className="mb-3 h-12 w-12 opacity-30" />
+              <p className="font-semibold text-slate-500">
+                {consultSearch ? "No rows match your search" : "No consultation rows yet"}
+              </p>
+              <p className="mt-1 text-sm text-center max-w-xs">
+                {consultSearch
+                  ? "Try a different keyword."
+                  : "Assign consultation services to a doctor and configure fees in Doctor Fees & Shares."}
+              </p>
+            </div>
+          ) : (
+            <ConsultationTable rows={filteredConsultRows} />
+          )
+        ) : visibleServices.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white py-20 text-slate-400">
             <ClipboardList className="mb-3 h-12 w-12 opacity-30" />
             <p className="font-semibold text-slate-500">{search ? "No services match your search" : "No services yet"}</p>

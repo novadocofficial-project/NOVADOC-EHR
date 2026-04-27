@@ -20,7 +20,7 @@ import type { Service, ServiceType } from "@/pages/BillingTypes";
 
 type SubShareType = "value" | "percentage";
 
-type FeeRow = {
+export type FeeRow = {
   deptId: string;
   subDeptId: string;
   consultationFee: string;
@@ -154,17 +154,22 @@ export function FeesModule({
   doctors,
   services = [],
   serviceTypes = [],
+  doctorFees,
+  setDoctorFees,
 }: {
   departments: Department[];
   doctors: Doctor[];
   services?: Service[];
   serviceTypes?: ServiceType[];
+  doctorFees: Record<string, FeeRow[]>;
+  setDoctorFees: React.Dispatch<React.SetStateAction<Record<string, FeeRow[]>>>;
 }) {
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  // Sub-dept fees state (existing)
-  const [fees, setFees] = useState<Record<string, FeeRow[]>>({});
+  // fees / setFees are aliases for the lifted state
+  const fees = doctorFees;
+  const setFees = setDoctorFees;
 
   // Service-level pricing state (new)
   const [docServices, setDocServices] = useState<Record<string, DocServiceRow[]>>(() => buildSeedDocServices());
