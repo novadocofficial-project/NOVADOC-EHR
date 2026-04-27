@@ -1446,15 +1446,18 @@ function ProviderServicePricingView({
 }: PSPVProps) {
   const rl = entity.rateList ?? blankRateList();
 
-  // ── Consultation Fees (all doctors, all 4 fee types, — for unconfigured) ─────
+  // ── Consultation Fees: aggregate max fee across all dept rows per doctor ──────
   const consultRows: { name: string; price: string }[] = doctors.flatMap(doc => {
     const rows = doctorFees[doc.id] ?? [];
-    const first = rows[0];
+    const maxFee = (key: "consultationFee" | "followUpFee" | "emergencyFee" | "teleFee") => {
+      const vals = rows.map(r => parseFloat(r[key]) || 0).filter(v => v > 0);
+      return vals.length > 0 ? String(Math.max(...vals)) : "";
+    };
     return [
-      { name: `${doc.name} — Consultation`,  price: first?.consultationFee || "" },
-      { name: `${doc.name} — Follow-up`,     price: first?.followUpFee     || "" },
-      { name: `${doc.name} — Emergency`,     price: first?.emergencyFee    || "" },
-      { name: `${doc.name} — Tele-Consult`,  price: first?.teleFee         || "" },
+      { name: `${doc.name} — Consultation`,  price: maxFee("consultationFee") },
+      { name: `${doc.name} — Follow-up`,     price: maxFee("followUpFee") },
+      { name: `${doc.name} — Emergency`,     price: maxFee("emergencyFee") },
+      { name: `${doc.name} — Tele-Consult`,  price: maxFee("teleFee") },
     ];
   });
 
