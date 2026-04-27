@@ -761,6 +761,7 @@ export function AdminSettings() {
 
           {(activeModule === "lab-master" || activeModule === "lab-providers") && (
             <LabCatalogModule
+              key={activeModule}
               sections={labSections}
               setSections={setLabSections}
               providers={labProviders}
@@ -771,6 +772,7 @@ export function AdminSettings() {
 
           {(activeModule === "proc-master" || activeModule === "proc-partners") && (
             <ProcedureCatalogModule
+              key={activeModule}
               sections={procSections}
               setSections={setProcSections}
               partners={procPartners}
