@@ -894,18 +894,20 @@ export function CorporatePricingModule({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               {editingEntityId ? `Edit ${entityLabel}` : `Add ${entityLabel}`}
-              <div className="ml-auto flex items-center gap-1.5 text-xs font-normal text-slate-400">
-                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${wizardStep === 1 ? "bg-[#4982CF] text-white" : "bg-slate-200 text-slate-500"}`}>1</span>
-                <span className="text-slate-300">—</span>
-                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${wizardStep === 2 ? "bg-[#4982CF] text-white" : "bg-slate-200 text-slate-500"}`}>2</span>
-              </div>
+              {entityLabel === "Corporate" && (
+                <div className="ml-auto flex items-center gap-1.5 text-xs font-normal text-slate-400">
+                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${wizardStep === 1 ? "bg-[#4982CF] text-white" : "bg-slate-200 text-slate-500"}`}>1</span>
+                  <span className="text-slate-300">—</span>
+                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${wizardStep === 2 ? "bg-[#4982CF] text-white" : "bg-slate-200 text-slate-500"}`}>2</span>
+                </div>
+              )}
             </DialogTitle>
           </DialogHeader>
 
           {/* Step 1: Corporate Information */}
           {wizardStep === 1 && (
             <div className="flex flex-col flex-1 overflow-y-auto gap-4 pt-2 min-h-0">
-              <p className="text-xs font-semibold text-[#4982CF] uppercase tracking-widest">Step 1 — Corporate Information</p>
+              <p className="text-xs font-semibold text-[#4982CF] uppercase tracking-widest">{entityLabel === "Corporate" ? "Step 1 — " : ""}{entityLabel} Information</p>
               <div className="flex flex-col gap-1.5">
                 <Label className="text-xs font-semibold text-slate-600">{entityLabel} Name <span className="text-rose-500">*</span></Label>
                 <Input placeholder={`${entityLabel} name…`} value={entityForm.name} onChange={e => setEntityForm(f => ({ ...f, name: e.target.value }))} />
@@ -966,9 +968,15 @@ export function CorporatePricingModule({
               </div>
               <div className="flex justify-end gap-2 pt-1 border-t border-slate-100 mt-2">
                 <Button variant="outline" onClick={() => setShowEntityForm(false)}>Cancel</Button>
-                <Button onClick={() => setWizardStep(2)} disabled={!entityForm.name.trim()} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white">
-                  Next: Rate List →
-                </Button>
+                {entityLabel === "Corporate" ? (
+                  <Button onClick={() => setWizardStep(2)} disabled={!entityForm.name.trim()} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white">
+                    Next: Rate List →
+                  </Button>
+                ) : (
+                  <Button onClick={saveEntityForm} disabled={!entityForm.name.trim()} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white">
+                    {editingEntityId ? "Save Changes" : `Add ${entityLabel}`}
+                  </Button>
+                )}
               </div>
             </div>
           )}
