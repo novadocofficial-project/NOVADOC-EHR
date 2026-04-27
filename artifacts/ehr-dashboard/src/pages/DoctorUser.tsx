@@ -444,8 +444,8 @@ export function DoctorUser() {
                   return (
                     <div
                       key={entry.id}
-                      className={`flex items-center gap-4 rounded-xl border px-4 py-3 bg-white transition-all ${isFirst ? "border-slate-300 shadow-sm" : "border-slate-100 opacity-70"}`}>
-                      <div className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-sm font-black bg-slate-100 text-slate-500">
+                      className={`flex items-center gap-4 rounded-xl border px-4 py-3 bg-white transition-all ${entry.labResultsReady ? "border-emerald-400 bg-emerald-50/40 shadow-sm" : isFirst ? "border-slate-300 shadow-sm" : "border-slate-100 opacity-70"}`}>
+                      <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-sm font-black ${entry.labResultsReady ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                         {idx + 1}
                       </div>
                       <div className="font-mono font-black text-sm text-slate-700 flex-shrink-0">{entry.tokenNumber}</div>
@@ -454,22 +454,27 @@ export function DoctorUser() {
                           ? <p className="text-sm font-bold text-slate-800 truncate">{entry.patient.name}<span className="ml-2 text-xs font-normal text-slate-400">{entry.patient.mrn}</span></p>
                           : <p className="text-sm font-bold text-slate-500">Walk-in Patient</p>
                         }
+                        {entry.labResultsReady && (
+                          <p className="text-[10px] font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
+                            <FlaskConical className="h-3 w-3" /> Lab Results Ready
+                          </p>
+                        )}
                       </div>
                       <span className="text-xs text-slate-400 flex-shrink-0">{timeAgo(entry.createdAt)}</span>
-                      {isFirst ? (
+                      {(isFirst || entry.labResultsReady) ? (
                         isCalled ? (
                           <Button
                             size="sm"
                             className="h-8 px-4 text-xs font-bold flex-shrink-0 gap-1.5 text-white"
-                            style={{ backgroundColor: ACCENT }}
+                            style={{ backgroundColor: entry.labResultsReady ? "#059669" : ACCENT }}
                             onClick={() => handleConsultation(entry)}>
-                            <Stethoscope className="h-3.5 w-3.5" /> Consultation
+                            <Stethoscope className="h-3.5 w-3.5" /> {entry.labResultsReady ? "Review" : "Consultation"}
                           </Button>
                         ) : (
                           <Button
                             size="sm"
                             className="h-8 px-4 text-xs font-bold flex-shrink-0 gap-1.5 text-white"
-                            style={{ backgroundColor: ACCENT }}
+                            style={{ backgroundColor: entry.labResultsReady ? "#059669" : ACCENT }}
                             onClick={() => handleCall(entry.id)}>
                             <PhoneCall className="h-3.5 w-3.5" /> Call
                           </Button>

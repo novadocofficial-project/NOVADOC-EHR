@@ -11,6 +11,7 @@ export type MultiEntry = QueueEntry & {
   billingCompleted: boolean;
   callTimestamp: number | null;
   pendingLab: boolean;
+  labResultsReady: boolean;
 };
 
 // ─── Seed Data ─────────────────────────────────────────────────────────────────
@@ -23,42 +24,42 @@ export const INITIAL_QUEUE: MultiEntry[] = [
     step: 5, totalSteps: 5, stepLabel: "Pharmacy",
     patient: SEED_PATIENTS[4], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 90 * 60000),
-    callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
+    callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false, labResultsReady: false,
   },
   {
     id: "m-2", tokenNumber: "C104", displayNum: 104, status: "waiting",
     step: 4, totalSteps: 5, stepLabel: "Lab / Sample",
     patient: SEED_PATIENTS[5], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 55 * 60000),
-    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
+    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false, labResultsReady: false,
   },
   {
     id: "m-3", tokenNumber: "C105", displayNum: 105, status: "called",
     step: 3, totalSteps: 5, stepLabel: "Doctor Consultation",
     patient: SEED_PATIENTS[0], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 30 * 60000),
-    callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
+    callCount: 1, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false, labResultsReady: false,
   },
   {
     id: "m-4", tokenNumber: "C106", displayNum: 106, status: "waiting",
     step: 1, totalSteps: 5, stepLabel: "Registration",
     patient: SEED_PATIENTS[1], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 12 * 60000),
-    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false,
+    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false, labResultsReady: false,
   },
   {
     id: "m-5", tokenNumber: "C107", displayNum: 107, status: "waiting",
     step: 1, totalSteps: 5, stepLabel: "Registration",
     patient: SEED_PATIENTS[2], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 6 * 60000),
-    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false,
+    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false, labResultsReady: false,
   },
   {
     id: "m-6", tokenNumber: "U001", displayNum: 1, status: "waiting",
     step: 1, totalSteps: 2, stepLabel: "Triage & Registration",
     patient: SEED_PATIENTS[3], visitTypeId: "vt-2",
     createdAt: new Date(now.getTime() - 8 * 60000),
-    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false,
+    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false, labResultsReady: false,
   },
   {
     id: "m-7", tokenNumber: "C108", displayNum: 108, status: "waiting",
@@ -66,28 +67,28 @@ export const INITIAL_QUEUE: MultiEntry[] = [
     patient: null,
     visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 3 * 60000),
-    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false,
+    callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false, labResultsReady: false,
   },
   {
     id: "m-8", tokenNumber: "C109", displayNum: 109, status: "waiting",
     step: 2, totalSteps: 5, stepLabel: "Vitals",
     patient: SEED_PATIENTS[3], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 22 * 60000),
-    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
+    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false, labResultsReady: false,
   },
   {
     id: "m-9", tokenNumber: "C110", displayNum: 110, status: "waiting",
     step: 2, totalSteps: 5, stepLabel: "Vitals",
     patient: SEED_PATIENTS[6], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 11 * 60000),
-    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
+    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false, labResultsReady: false,
   },
   {
     id: "m-10", tokenNumber: "C111", displayNum: 111, status: "waiting",
     step: 2, totalSteps: 5, stepLabel: "Vitals",
     patient: SEED_PATIENTS[0], visitTypeId: "vt-1",
     createdAt: new Date(now.getTime() - 5 * 60000),
-    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false,
+    callCount: 0, skipped: false, billingCompleted: true, callTimestamp: null, pendingLab: false, labResultsReady: false,
   },
 ];
 
@@ -97,7 +98,7 @@ const CHANNEL_NAME = "ehr-multistep-queue-v2";
 const LS_QUEUE_KEY = "ehr-queue-v2";
 const LS_NUMS_KEY  = "ehr-queue-nums-v2";
 const LS_VER_KEY   = "ehr-queue-ver";
-const QUEUE_VER    = "7"; // bump when seed schema changes
+const QUEUE_VER    = "8"; // bump when seed schema changes
 
 function loadQueue(): MultiEntry[] {
   try {
@@ -317,6 +318,12 @@ export function useMultiStepQueue() {
     setQueue(prev => prev.map(e => {
       if (e.id !== id) return e;
       const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
+      // If lab results are already ready, skip the lab step and go straight to pharmacy
+      if (e.labResultsReady) {
+        const pharmStep = e.step + 2; // skip lab (step 4) → go to step 5
+        if (pharmStep > e.totalSteps) return { ...e, status: "completed", labResultsReady: false };
+        return { ...e, step: pharmStep, stepLabel: vt.steps[pharmStep - 1], status: "waiting", callCount: 0, callTimestamp: null, labResultsReady: false };
+      }
       const nextStep = e.step + 1;
       if (nextStep > e.totalSteps) return { ...e, status: "completed" };
       return { ...e, step: nextStep, stepLabel: vt.steps[nextStep - 1], status: "waiting", callCount: 0, callTimestamp: null };
@@ -367,6 +374,20 @@ export function useMultiStepQueue() {
     setQueue(prev => prev.map(e => {
       if (e.id !== id) return e;
       const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
+      // If patient came through Doctor Consultation (step 3 in visit type), return them there with a "lab ready" flag
+      const cameFromDoctor = e.step === 4 && vt.steps[2]?.toLowerCase().includes("doctor");
+      if (cameFromDoctor) {
+        return {
+          ...e,
+          step: 3,
+          stepLabel: vt.steps[2],
+          status: "waiting",
+          callCount: 0,
+          callTimestamp: null,
+          pendingLab: false,
+          labResultsReady: true,
+        };
+      }
       const nextStep = e.step + 1;
       if (nextStep > e.totalSteps) return { ...e, status: "completed" };
       return { ...e, step: nextStep, stepLabel: vt.steps[nextStep - 1], status: "waiting", callCount: 0, callTimestamp: null };
