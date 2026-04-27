@@ -105,6 +105,8 @@ function brandCount(partner: FormularyPartner, activeGenerics: Generic[]): numbe
 
 // ─── FormularyPartnersModule ───────────────────────────────────────────────────
 
+export { SEED_PARTNERS as FORMULARY_SEED_PARTNERS };
+
 export function FormularyPartnersModule() {
   const [generics, setGenerics] = useState<Generic[]>(loadGenerics);
   const [partners, setPartners] = useState<FormularyPartner[]>(loadPartners);

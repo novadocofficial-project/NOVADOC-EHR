@@ -891,4 +891,4 @@ export function ConsumablesModule({ initialTab = "items" }: Props) {
   );
 }
 
-export { SEED_ITEMS as CONSUMABLE_SEED_ITEMS };
+export { SEED_ITEMS as CONSUMABLE_SEED_ITEMS, SEED_PROVIDERS as CONSUMABLE_SEED_PROVIDERS };

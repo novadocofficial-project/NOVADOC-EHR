@@ -62,11 +62,11 @@ import { ClinicalLibrariesModule } from "@/pages/ClinicalLibrariesModule";
 import { ClinicalGoalsLibraryModule } from "@/pages/ClinicalGoalsLibraryModule";
 import { PermissionsModule } from "@/pages/PermissionsModule";
 import { FormularyManagementModule } from "@/pages/FormularyManagementModule";
-import { FormularyPartnersModule } from "@/pages/FormularyPartnersModule";
+import { FormularyPartnersModule, FORMULARY_SEED_PARTNERS } from "@/pages/FormularyPartnersModule";
 import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
 import { ImagingCatalogModule } from "@/pages/ImagingCatalogModule";
 import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
-import { ConsumablesModule } from "@/pages/ConsumablesModule";
+import { ConsumablesModule, CONSUMABLE_SEED_PROVIDERS } from "@/pages/ConsumablesModule";
 import type { ConsumableProvider } from "@/pages/ConsumablesModule";
 import { LabCatalogModule, SEED_SECTIONS as LAB_SEED_SECTIONS, SEED_PROVIDERS as LAB_SEED_PROVIDERS, type LabSection, type LabProvider } from "@/pages/LabCatalogModule";
 import { ProcedureCatalogModule, INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS, type ProcedureSection, type ProcedurePartner } from "@/pages/ProcedureCatalogModule";
@@ -244,7 +244,7 @@ export function AdminSettings() {
       const raw = localStorage.getItem("ehr-consumables-providers-v1");
       if (raw) return JSON.parse(raw) as ConsumableProvider[];
     } catch { /**/ }
-    return [];
+    return CONSUMABLE_SEED_PROVIDERS;
   });
 
   const [pharmacyPartners] = useState<FormularyPartner[]>(() => {
@@ -252,7 +252,7 @@ export function AdminSettings() {
       const raw = localStorage.getItem("ehr-formulary-partners-v1");
       if (raw) return JSON.parse(raw) as FormularyPartner[];
     } catch { /**/ }
-    return [];
+    return FORMULARY_SEED_PARTNERS;
   });
 
   const [doctorFees, setDoctorFees] = useState<Record<string, FeeRow[]>>({});
