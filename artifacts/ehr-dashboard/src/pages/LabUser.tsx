@@ -409,22 +409,6 @@ function LabPanel({ entry, onClose, onComplete }: {
                         )}
                       </div>
                     ))}
-                    <div className="pt-2 flex items-center gap-3">
-                      <Button
-                        onClick={saveResult}
-                        className="h-9 px-6 text-sm font-semibold text-white gap-1.5"
-                        style={{ backgroundColor: LAB_ACCENT }}
-                        disabled={selectedTest.status === "completed"}
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        {selectedTest.status === "completed" ? "Result Saved" : "Save Result"}
-                      </Button>
-                      {selectedTest.status === "completed" && (
-                        <p className="text-[11px] text-emerald-600 flex items-center gap-1">
-                          <CheckCircle2 className="h-3 w-3" /> Saved at {selectedTest.updatedAt}
-                        </p>
-                      )}
-                    </div>
                   </div>
                 </div>
               ) : (
@@ -459,6 +443,26 @@ function LabPanel({ entry, onClose, onComplete }: {
                 </div>
               )}
             </div>
+
+            {/* Fixed footer — Save Result button, only on form tab with a test selected */}
+            {selectedTest && rightTab === "form" && (
+              <div className="flex-shrink-0 border-t border-slate-200 bg-white px-6 py-4 flex items-center gap-3">
+                <Button
+                  onClick={saveResult}
+                  className="h-9 px-6 text-sm font-semibold text-white gap-1.5"
+                  style={{ backgroundColor: LAB_ACCENT }}
+                  disabled={selectedTest.status === "completed"}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {selectedTest.status === "completed" ? "Result Saved" : "Save Result"}
+                </Button>
+                {selectedTest.status === "completed" && (
+                  <p className="text-[11px] text-emerald-600 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Saved at {selectedTest.updatedAt}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
         </div>
