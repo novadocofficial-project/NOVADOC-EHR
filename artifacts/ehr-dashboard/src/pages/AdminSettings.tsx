@@ -129,8 +129,6 @@ const INITIAL_DATA: Department[] = [
     active: true,
     subDepartments: [
       { id: "sd1-1", name: "Outpatient", active: true, specialties: [] },
-      { id: "sd1-2", name: "Emergency", active: true, specialties: [] },
-      { id: "sd1-3", name: "Tele-Consultation", active: true, specialties: [] },
       { id: "sd1-4", name: "Inpatient", active: false, specialties: [] },
     ],
     specialties: [
@@ -145,8 +143,6 @@ const INITIAL_DATA: Department[] = [
     active: true,
     subDepartments: [
       { id: "sd2-1", name: "Outpatient", active: true, specialties: [] },
-      { id: "sd2-2", name: "Emergency", active: true, specialties: [] },
-      { id: "sd2-3", name: "Tele-Consultation", active: true, specialties: [] },
       { id: "sd2-4", name: "Inpatient", active: false, specialties: [] },
     ],
     specialties: [
@@ -160,8 +156,6 @@ const INITIAL_DATA: Department[] = [
     active: false,
     subDepartments: [
       { id: "sd3-1", name: "Outpatient", active: true, specialties: [] },
-      { id: "sd3-2", name: "Emergency", active: true, specialties: [] },
-      { id: "sd3-3", name: "Tele-Consultation", active: true, specialties: [] },
       { id: "sd3-4", name: "Inpatient", active: false, specialties: [] },
     ],
     specialties: [
