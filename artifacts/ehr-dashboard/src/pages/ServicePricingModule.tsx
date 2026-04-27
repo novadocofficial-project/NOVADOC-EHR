@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   Plus, Printer, Search, Edit2, Trash2,
   ClipboardList, FileSpreadsheet, LayoutGrid, Columns, Banknote, Info,
@@ -318,6 +318,19 @@ export function ServicePricingModule({
   const [search, setSearch] = useState("");
   const [consultSearch, setConsultSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const tabScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = tabScrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   const activeServiceTypes = serviceTypes.filter(st => st.active);
 
@@ -503,7 +516,7 @@ export function ServicePricingModule({
         {/* Tabs + search */}
         <div className="mt-4 flex items-center gap-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-w-0">
-            <div className="overflow-x-auto scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
+            <div ref={tabScrollRef} className="overflow-x-auto scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
               <TabsList className="h-8 bg-slate-100 inline-flex min-w-max">
                 <TabsTrigger value="all" className="h-7 text-xs">
                   <LayoutGrid className="h-3 w-3 mr-1" />
