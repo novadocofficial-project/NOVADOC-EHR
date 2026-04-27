@@ -153,7 +153,7 @@ const INITIAL_DATA: Department[] = [
   {
     id: "d3",
     name: "Neurology",
-    active: false,
+    active: true,
     subDepartments: [
       { id: "sd3-1", name: "Outpatient", active: true, specialties: [] },
       { id: "sd3-4", name: "Inpatient", active: false, specialties: [] },
@@ -161,19 +161,6 @@ const INITIAL_DATA: Department[] = [
     specialties: [
       { id: "sp3-1", name: "Stroke & Cerebrovascular", description: "Emergency and long-term management of stroke, TIA, and cerebrovascular disease.", active: true },
       { id: "sp3-2", name: "Epilepsy", description: "Diagnosis and management of seizure disorders using EEG, medications, and surgical options.", active: false },
-    ],
-  },
-  {
-    id: "d4",
-    name: "Pediatrics",
-    active: true,
-    subDepartments: [
-      { id: "sd4-1", name: "Vaccination", active: true, specialties: [] },
-      { id: "sd4-2", name: "ICU", active: false, specialties: [] },
-    ],
-    specialties: [
-      { id: "sp4-1", name: "Neonatology", description: "Specialized care for newborns, especially premature or critically ill infants in the NICU.", active: true },
-      { id: "sp4-2", name: "Pediatric Oncology", description: "Diagnosis and treatment of cancers in children including leukemia and solid tumors.", active: true },
     ],
   },
 ];
