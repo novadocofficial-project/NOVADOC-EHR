@@ -585,10 +585,39 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: "comorbidities", label: "Comorbidities",        icon: <Heart className="h-3.5 w-3.5" /> },
 ];
 
-interface Props { initialTab?: TabKey; }
+const TAB_META_GOALS: Record<TabKey, { title: string; sub: string }> = {
+  "care-plan":     { title: "Care Plan Tasks",       sub: "Manage the admin library of care plan task templates used in SOAP notes." },
+  "goals":         { title: "Patient Goals",         sub: "Define goal templates and associated actions for patient care plans." },
+  "referral-dest": { title: "Referral Destinations", sub: "Manage the list of referral destinations available in the SOAP note." },
+  "comorbidities": { title: "Comorbidities",         sub: "Manage the comorbidity list used when documenting patient conditions." },
+};
 
-export function ClinicalGoalsLibraryModule({ initialTab = "care-plan" }: Props) {
+interface Props { initialTab?: TabKey; standalone?: boolean; }
+
+export function ClinicalGoalsLibraryModule({ initialTab = "care-plan", standalone }: Props) {
   const [tab, setTab] = useState<TabKey>(initialTab);
+  const currentMeta = TAB_META_GOALS[tab];
+
+  const tabContent = (
+    <>
+      {tab === "care-plan"     && <CarePlanTab />}
+      {tab === "goals"         && <GoalsTab />}
+      {tab === "referral-dest" && <ReferralDestTab />}
+      {tab === "comorbidities" && <ComorbiditiesTab />}
+    </>
+  );
+
+  if (standalone) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 bg-white flex-none">
+          <h2 className="text-lg font-black text-slate-800">{currentMeta.title}</h2>
+          <p className="text-sm text-slate-400 mt-0.5">{currentMeta.sub}</p>
+        </div>
+        <div className="flex-1 overflow-hidden">{tabContent}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -617,12 +646,7 @@ export function ClinicalGoalsLibraryModule({ initialTab = "care-plan" }: Props) 
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 overflow-hidden">
-        {tab === "care-plan"     && <CarePlanTab />}
-        {tab === "goals"         && <GoalsTab />}
-        {tab === "referral-dest" && <ReferralDestTab />}
-        {tab === "comorbidities" && <ComorbiditiesTab />}
-      </div>
+      <div className="flex-1 overflow-hidden">{tabContent}</div>
     </div>
   );
 }

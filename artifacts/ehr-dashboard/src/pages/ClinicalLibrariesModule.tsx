@@ -1100,9 +1100,34 @@ const TAB_META: Record<ClinTab, { title: string; sub: string }> = {
   "social-history": { title: "Social History Builder",      sub: "Design dynamic social history questions with conditional logic and live preview." },
 };
 
-export function ClinicalLibrariesModule({ initialTab }: { initialTab?: ClinTab }) {
+export function ClinicalLibrariesModule({ initialTab, standalone }: { initialTab?: ClinTab; standalone?: boolean }) {
   const [activeTab, setActiveTab] = useState<ClinTab>(initialTab ?? "complaints");
   const meta = TAB_META[activeTab];
+
+  const content = (
+    <>
+      {activeTab === "complaints"     && <ChiefComplaintLibrary />}
+      {activeTab === "icd10"          && <Icd10Catalogue />}
+      {activeTab === "poc"            && <PocTestConfig />}
+      {activeTab === "ros"            && <RosConfig />}
+      {activeTab === "allergies"      && <AllergyManagement />}
+      {activeTab === "med-surgical"   && <MedicalSurgicalHistory />}
+      {activeTab === "family-history" && <FamilyHistory />}
+      {activeTab === "social-history" && <SocialHistoryBuilder />}
+    </>
+  );
+
+  if (standalone) {
+    return (
+      <div className="flex-1 min-w-0 overflow-y-auto p-6">
+        <div className="mb-5">
+          <h2 className="text-lg font-black text-slate-800">{meta.title}</h2>
+          <p className="text-sm text-slate-400 mt-0.5">{meta.sub}</p>
+        </div>
+        {content}
+      </div>
+    );
+  }
 
   return (
     <div className="flex gap-0 -ml-6 -mr-6 -mt-6 h-full min-h-0">
@@ -1134,14 +1159,7 @@ export function ClinicalLibrariesModule({ initialTab }: { initialTab?: ClinTab }
           <h2 className="text-lg font-black text-slate-800">{meta.title}</h2>
           <p className="text-sm text-slate-400 mt-0.5">{meta.sub}</p>
         </div>
-        {activeTab === "complaints"     && <ChiefComplaintLibrary />}
-        {activeTab === "icd10"          && <Icd10Catalogue />}
-        {activeTab === "poc"            && <PocTestConfig />}
-        {activeTab === "ros"            && <RosConfig />}
-        {activeTab === "allergies"      && <AllergyManagement />}
-        {activeTab === "med-surgical"   && <MedicalSurgicalHistory />}
-        {activeTab === "family-history" && <FamilyHistory />}
-        {activeTab === "social-history" && <SocialHistoryBuilder />}
+        {content}
       </div>
     </div>
   );

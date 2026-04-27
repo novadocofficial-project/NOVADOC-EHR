@@ -762,6 +762,7 @@ export function AdminSettings() {
             || activeModule === "clinical-family"
             || activeModule === "clinical-social") && (
             <ClinicalLibrariesModule
+              standalone
               initialTab={
                 activeModule === "clinical-complaints"   ? "complaints"
                 : activeModule === "clinical-icd10"      ? "icd10"
@@ -803,6 +804,7 @@ export function AdminSettings() {
             || activeModule === "referral-destinations"
             || activeModule === "comorbidities") && (
             <ClinicalGoalsLibraryModule
+              standalone
               initialTab={
                 activeModule === "care-plan-library"     ? "care-plan"
                 : activeModule === "goals-library"       ? "goals"
