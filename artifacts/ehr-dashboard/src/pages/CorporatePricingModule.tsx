@@ -1010,15 +1010,18 @@ export function CorporatePricingModule({
                       </thead>
                       <tbody>
                         {doctors.map(doc => {
-                          const rows = doctorFees[doc.id] ?? [];
-                          const firstRow = rows[0];
+                          const feeRows = doctorFees[doc.id] ?? [];
+                          const maxFeeVal = (key: "consultationFee" | "followUpFee" | "emergencyFee" | "teleFee") => {
+                            const vals = feeRows.map(r => parseFloat(r[key]) || 0).filter(v => v > 0);
+                            return vals.length > 0 ? `Rs. ${Math.max(...vals).toLocaleString()}` : "—";
+                          };
                           return (
                             <tr key={doc.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/40">
                               <td className="px-4 py-2 font-medium text-slate-700">{doc.name}</td>
-                              <td className="px-3 py-2 text-right text-slate-600">{firstRow?.consultationFee ? `Rs. ${firstRow.consultationFee}` : "—"}</td>
-                              <td className="px-3 py-2 text-right text-slate-600">{firstRow?.followUpFee ? `Rs. ${firstRow.followUpFee}` : "—"}</td>
-                              <td className="px-3 py-2 text-right text-slate-600">{firstRow?.emergencyFee ? `Rs. ${firstRow.emergencyFee}` : "—"}</td>
-                              <td className="px-3 py-2 text-right text-slate-600">{firstRow?.teleFee ? `Rs. ${firstRow.teleFee}` : "—"}</td>
+                              <td className="px-3 py-2 text-right text-slate-600">{maxFeeVal("consultationFee")}</td>
+                              <td className="px-3 py-2 text-right text-slate-600">{maxFeeVal("followUpFee")}</td>
+                              <td className="px-3 py-2 text-right text-slate-600">{maxFeeVal("emergencyFee")}</td>
+                              <td className="px-3 py-2 text-right text-slate-600">{maxFeeVal("teleFee")}</td>
                             </tr>
                           );
                         })}
