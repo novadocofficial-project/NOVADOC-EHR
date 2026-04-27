@@ -540,21 +540,21 @@ export function AdminSettings() {
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
                 {subNavItem("soap-note-structure",   <FileText className="h-3.5 w-3.5" />,      "Note Structure")}
                 {subNavItem("soap-vitals-config",    <Sliders className="h-3.5 w-3.5" />,       "Vitals Config")}
-                {subNavItem("hpi-templates",         <ClipboardList className="h-3.5 w-3.5" />, "HPI Templates")}
-                {subNavItem("pe-builder",            <Stethoscope className="h-3.5 w-3.5" />,   "PE Builder")}
-                {subNavItem("template-manager",      <FileText className="h-3.5 w-3.5" />,      "Template Manager")}
                 {subNavItem("clinical-complaints",   <Activity className="h-3.5 w-3.5" />,      "Chief Complaints")}
-                {subNavItem("clinical-icd10",        <FileText className="h-3.5 w-3.5" />,      "ICD-10 Codes")}
-                {subNavItem("clinical-poc",          <FlaskConical className="h-3.5 w-3.5" />,  "POC Tests")}
-                {subNavItem("clinical-ros",          <ClipboardList className="h-3.5 w-3.5" />, "ROS Config")}
+                {subNavItem("hpi-templates",         <ClipboardList className="h-3.5 w-3.5" />, "HPI Templates")}
                 {subNavItem("clinical-allergies",    <Bell className="h-3.5 w-3.5" />,          "Allergies")}
                 {subNavItem("clinical-med-surgical", <Stethoscope className="h-3.5 w-3.5" />,   "Med/Surgical History")}
                 {subNavItem("clinical-family",       <Users className="h-3.5 w-3.5" />,         "Family History")}
                 {subNavItem("clinical-social",       <UserRound className="h-3.5 w-3.5" />,     "Social History")}
+                {subNavItem("clinical-ros",          <ClipboardList className="h-3.5 w-3.5" />, "ROS Config")}
+                {subNavItem("pe-builder",            <Stethoscope className="h-3.5 w-3.5" />,   "PE Builder")}
+                {subNavItem("clinical-poc",          <FlaskConical className="h-3.5 w-3.5" />,  "POC Tests")}
+                {subNavItem("clinical-icd10",        <FileText className="h-3.5 w-3.5" />,      "ICD-10 Codes")}
+                {subNavItem("comorbidities",         <Heart className="h-3.5 w-3.5" />,         "Comorbidities")}
                 {subNavItem("care-plan-library",     <ClipboardCheck className="h-3.5 w-3.5" />,"Care Plan Tasks")}
                 {subNavItem("goals-library",         <Target className="h-3.5 w-3.5" />,        "Patient Goals")}
                 {subNavItem("referral-destinations", <MapPin className="h-3.5 w-3.5" />,        "Referral Destinations")}
-                {subNavItem("comorbidities",         <Heart className="h-3.5 w-3.5" />,         "Comorbidities")}
+                {subNavItem("template-manager",      <FileText className="h-3.5 w-3.5" />,      "Template Manager")}
               </div>
             )}
 
