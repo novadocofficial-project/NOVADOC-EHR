@@ -1443,17 +1443,16 @@ function ProviderServicePricingView({
 }: PSPVProps) {
   const rl = entity.rateList ?? blankRateList();
 
-  // ── Consultation Fees (all doctors) ──────────────────────────────────────────
+  // ── Consultation Fees (all doctors, all 4 fee types, — for unconfigured) ─────
   const consultRows: { name: string; price: string }[] = doctors.flatMap(doc => {
     const rows = doctorFees[doc.id] ?? [];
     const first = rows[0];
-    if (!first) return [];
     return [
-      { name: `${doc.name} — Consultation`,  price: first.consultationFee  || "" },
-      { name: `${doc.name} — Follow-up`,     price: first.followUpFee      || "" },
-      { name: `${doc.name} — Emergency`,     price: first.emergencyFee     || "" },
-      { name: `${doc.name} — Tele-Consult`,  price: first.teleFee          || "" },
-    ].filter(r => r.price !== "");
+      { name: `${doc.name} — Consultation`,  price: first?.consultationFee || "" },
+      { name: `${doc.name} — Follow-up`,     price: first?.followUpFee     || "" },
+      { name: `${doc.name} — Emergency`,     price: first?.emergencyFee    || "" },
+      { name: `${doc.name} — Tele-Consult`,  price: first?.teleFee         || "" },
+    ];
   });
 
   // ── Lab ───────────────────────────────────────────────────────────────────────
