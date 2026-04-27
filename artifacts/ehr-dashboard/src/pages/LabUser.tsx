@@ -191,12 +191,21 @@ function LabPanel({ entry, onClose, onComplete }: {
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState<"form" | "preview">("form");
   const [resultValues, setResultValues] = useState<Record<string, Record<string, string>>>({});
+  const [savedSnapshots, setSavedSnapshots] = useState<Record<string, Record<string, string>>>({});
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
 
   const pendingCount = localTests.filter(t => t.status === "pending").length;
   const selectedTest = localTests.find(t => t.id === selectedTestId) ?? null;
   const selectedFields = selectedTestId ? (RESULT_FIELDS[selectedTestId] ?? []) : [];
   const selectedValues = selectedTestId ? (resultValues[selectedTestId] ?? {}) : {};
+
+  // Detect unsaved changes: test already saved but current values differ from snapshot
+  const hasUnsavedChanges = !!(
+    selectedTestId &&
+    selectedTest?.status === "completed" &&
+    savedSnapshots[selectedTestId] &&
+    JSON.stringify(selectedValues) !== JSON.stringify(savedSnapshots[selectedTestId])
+  );
 
   // Rebuild orders with live local test statuses
   const currentOrder = {
@@ -215,7 +224,9 @@ function LabPanel({ entry, onClose, onComplete }: {
     const formatted =
       now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) + ", " +
       now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    const snapshot = { ...(resultValues[selectedTestId] ?? {}) };
     setLocalTests(ts => ts.map(t => t.id === selectedTestId ? { ...t, status: "completed", updatedAt: formatted } : t));
+    setSavedSnapshots(ss => ({ ...ss, [selectedTestId]: snapshot }));
   }
 
   return (
@@ -540,15 +551,24 @@ function LabPanel({ entry, onClose, onComplete }: {
                 <Button
                   onClick={saveResult}
                   className="h-9 px-6 text-sm font-semibold text-white gap-1.5"
-                  style={{ backgroundColor: LAB_ACCENT }}
-                  disabled={selectedTest.status === "completed"}
+                  style={{ backgroundColor: hasUnsavedChanges ? "#b45309" : LAB_ACCENT }}
+                  disabled={selectedTest.status === "completed" && !hasUnsavedChanges}
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  {selectedTest.status === "completed" ? "Result Saved" : "Save Result"}
+                  {selectedTest.status === "completed" && !hasUnsavedChanges
+                    ? "Result Saved"
+                    : hasUnsavedChanges
+                    ? "Update Result"
+                    : "Save Result"}
                 </Button>
-                {selectedTest.status === "completed" && (
+                {selectedTest.status === "completed" && !hasUnsavedChanges && (
                   <p className="text-[11px] text-emerald-600 flex items-center gap-1">
                     <CheckCircle2 className="h-3 w-3" /> Saved at {selectedTest.updatedAt}
+                  </p>
+                )}
+                {hasUnsavedChanges && (
+                  <p className="text-[11px] text-amber-600 flex items-center gap-1">
+                    ● Unsaved changes
                   </p>
                 )}
               </div>
