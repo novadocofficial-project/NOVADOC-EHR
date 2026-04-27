@@ -258,7 +258,7 @@ function LabPanel({ entry, onClose, onComplete }: {
               </Collapsible>
 
               {/* Required Actions */}
-              <Collapsible title="Required Actions" badge={currentOrder.tests.filter(t => t.status === "pending").length} accent defaultOpen>
+              <Collapsible title="Required Actions" badge={1} accent defaultOpen>
                 <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 mb-2">
                   <div className="flex items-center justify-between mb-2.5">
                     <p className="text-xs font-bold text-slate-700">Order · {currentOrder.orderDate}</p>
@@ -303,7 +303,7 @@ function LabPanel({ entry, onClose, onComplete }: {
                   <div key={rec.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs mb-2">
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-semibold text-slate-800 leading-tight flex-1">
-                        {rec.tests.map(t => t.name).join(" · ")} · {rec.tests.length} test{rec.tests.length !== 1 ? "s" : ""}
+                        {rec.tests.map(t => t.name).join(" · ")} · {rec.tests.length} test{rec.tests.length !== 1 ? "s" : ""} — {rec.date}
                       </p>
                       <button
                         onClick={() => setExpandedRecords(er => ({ ...er, [rec.id]: !er[rec.id] }))}
