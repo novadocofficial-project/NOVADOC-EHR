@@ -905,6 +905,7 @@ export function CorporatePricingModule({
                   entity={selectedEntity}
                   doctors={doctors}
                   doctorFees={doctorFees}
+                  departments={departments}
                   labProviders={labProviders}
                   labSections={labSections}
                   pharmacyPartners={pharmacyPartners}
@@ -1509,6 +1510,7 @@ type PSPVProps = {
   entity: BillingEntity;
   doctors: Doctor[];
   doctorFees: Record<string, FeeRow[]>;
+  departments: { id: string; name: string }[];
   labProviders: LabProvider[];
   labSections: LabSection[];
   pharmacyPartners: FormularyPartner[];
@@ -1600,7 +1602,7 @@ function ProviderSectionHeader({ color, title, providerName, itemCount, activeCo
 }
 
 function ProviderServicePricingView({
-  entity, doctors, doctorFees,
+  entity, doctors, doctorFees, departments,
   labProviders, labSections,
   pharmacyPartners,
   consumableProviders,
@@ -1612,24 +1614,25 @@ function ProviderServicePricingView({
   const overrides: Record<string, ItemOverride> = entity.itemOverrides ?? {};
 
   const countActive = (rows: PricingRow[]) => rows.filter(r => (overrides[r.key]?.active ?? true)).length;
+  const deptName = (id: string) => departments.find(d => d.id === id)?.name ?? id;
 
-  // ── Consultation Fees: only selected doctors, max fee across dept rows ────────
+  // ── Consultation Fees: one block per fee-row (dept/subDept) per doctor ────────
   const selectedDoctorIds = rl.doctorIds ?? [];
   const activeDoctors = selectedDoctorIds.length > 0
     ? doctors.filter(d => selectedDoctorIds.includes(d.id))
     : doctors;
   const consultRows: PricingRow[] = activeDoctors.flatMap(doc => {
-    const rows = doctorFees[doc.id] ?? [];
-    const maxFee = (feeKey: "consultationFee" | "followUpFee" | "emergencyFee" | "teleFee") => {
-      const vals = rows.map(r => parseFloat(r[feeKey]) || 0).filter(v => v > 0);
-      return vals.length > 0 ? String(Math.max(...vals)) : "";
-    };
-    return [
-      { key: `consult-${doc.id}-consultation`, name: `${doc.name} — Consultation`, basePrice: maxFee("consultationFee") },
-      { key: `consult-${doc.id}-followup`,     name: `${doc.name} — Follow-up`,    basePrice: maxFee("followUpFee") },
-      { key: `consult-${doc.id}-emergency`,    name: `${doc.name} — Emergency`,    basePrice: maxFee("emergencyFee") },
-      { key: `consult-${doc.id}-tele`,         name: `${doc.name} — Tele-Consult`, basePrice: maxFee("teleFee") },
-    ];
+    const feeRows = doctorFees[doc.id] ?? [];
+    const multiDept = feeRows.length > 1;
+    return feeRows.flatMap(fr => {
+      const label = multiDept ? `${doc.name} — ${deptName(fr.deptId)}` : doc.name;
+      return [
+        { key: `consult-${doc.id}-${fr.deptId}-${fr.subDeptId}-consultation`, name: `${label} · Consultation`, basePrice: fr.consultationFee },
+        { key: `consult-${doc.id}-${fr.deptId}-${fr.subDeptId}-followup`,     name: `${label} · Follow-up`,    basePrice: fr.followUpFee },
+        { key: `consult-${doc.id}-${fr.deptId}-${fr.subDeptId}-emergency`,    name: `${label} · Emergency`,    basePrice: fr.emergencyFee },
+        { key: `consult-${doc.id}-${fr.deptId}-${fr.subDeptId}-tele`,         name: `${label} · Tele-Consult`, basePrice: fr.teleFee },
+      ];
+    });
   });
 
   // ── Lab ───────────────────────────────────────────────────────────────────────
