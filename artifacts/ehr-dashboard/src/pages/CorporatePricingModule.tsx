@@ -1623,9 +1623,8 @@ function ProviderServicePricingView({
     : doctors;
   const consultRows: PricingRow[] = activeDoctors.flatMap(doc => {
     const feeRows = doctorFees[doc.id] ?? [];
-    const multiDept = feeRows.length > 1;
     return feeRows.flatMap(fr => {
-      const label = multiDept ? `${doc.name} — ${deptName(fr.deptId)}` : doc.name;
+      const label = `${doc.name} — ${deptName(fr.deptId)}`;
       return [
         { key: `consult-${doc.id}-${fr.deptId}-${fr.subDeptId}-consultation`, name: `${label} · Consultation`, basePrice: fr.consultationFee },
         { key: `consult-${doc.id}-${fr.deptId}-${fr.subDeptId}-followup`,     name: `${label} · Follow-up`,    basePrice: fr.followUpFee },
