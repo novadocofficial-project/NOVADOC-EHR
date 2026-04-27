@@ -314,7 +314,7 @@ export function ServicePricingModule({
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(blankForm);
-  const [activeTab, setActiveTab] = useState("consultation-fees");
+  const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
   const [consultSearch, setConsultSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -464,9 +464,11 @@ export function ServicePricingModule({
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">Service Pricing</h1>
             <p className="mt-0.5 text-sm text-slate-500">
-              {hasPivot
-                ? "Compare provider prices side-by-side. Click any price cell to edit inline."
-                : "Manage all billable services. Switch to a service type tab to configure provider prices."}
+              {isConsultTab
+                ? "Auto-generated from doctor profiles. Configure amounts in Doctor Fees & Shares."
+                : hasPivot
+                  ? "Compare provider prices side-by-side. Click any price cell to edit inline."
+                  : "Manage all billable services. Switch to a service type tab to configure provider prices."}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -501,22 +503,22 @@ export function ServicePricingModule({
         {/* Tabs + search */}
         <div className="mt-4 flex items-center gap-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-w-0 overflow-hidden">
-            <TabsList className="h-8 bg-slate-100 w-full flex overflow-x-auto scrollbar-none whitespace-nowrap">
-              <TabsTrigger value="consultation-fees" className="h-7 text-xs">
+            <TabsList className="h-8 bg-slate-100 w-full flex overflow-x-auto scrollbar-none" style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" }}>
+              <TabsTrigger value="all" className="h-7 text-xs shrink-0">
+                <LayoutGrid className="h-3 w-3 mr-1" />
+                All <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{services.length}</span>
+              </TabsTrigger>
+              <TabsTrigger value="consultation-fees" className="h-7 text-xs shrink-0">
                 <Banknote className="h-3 w-3 mr-1" />
                 Consult Fees
                 {consultRows.length > 0 && <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{consultRows.length}</span>}
-              </TabsTrigger>
-              <TabsTrigger value="all" className="h-7 text-xs">
-                <LayoutGrid className="h-3 w-3 mr-1" />
-                All <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{services.length}</span>
               </TabsTrigger>
               {activeServiceTypes.map(st => {
                 const count = services.filter(s => s.serviceTypeId === st.id).length;
                 if (count === 0) return null;
                 const isPivot = PROVIDER_ST_IDS.has(st.id);
                 return (
-                  <TabsTrigger key={st.id} value={st.id} className="h-7 text-xs">
+                  <TabsTrigger key={st.id} value={st.id} className="h-7 text-xs shrink-0">
                     {isPivot && <Columns className="h-3 w-3 mr-1 opacity-60" />}
                     {st.name}
                     <span className="ml-1.5 rounded bg-slate-200 px-1.5 text-[10px] font-bold">{count}</span>
