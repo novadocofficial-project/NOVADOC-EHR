@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import {
   PhoneCall, SkipForward, RotateCcw,
-  ChevronUp, Clock, AlertCircle, X,
+  ChevronUp, ChevronDown, Clock, AlertCircle, X,
   CheckCircle2, FlaskConical, User, Heart,
-  ChevronRight, Maximize2, Minimize2, TestTube2, Package,
+  ChevronRight, Maximize2, Minimize2, TestTube2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
@@ -60,24 +60,150 @@ const SEED_LAB_ORDERS: LabOrder[] = [
   },
 ];
 
+// ─── Collapsible ─────────────────────────────────────────────────────────────
+
+function Collapsible({ title, badge, defaultOpen = true, accent, children }:
+  { title: string; badge?: number; defaultOpen?: boolean; accent?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="mb-4">
+      <button className="w-full flex items-center justify-between py-2" onClick={() => setOpen(o => !o)}>
+        <span className={`text-sm font-bold ${accent ? "text-[#4982CF]" : "text-slate-700"}`}>
+          {title}{badge !== undefined && <span className="ml-1.5 text-[11px] font-bold text-slate-500">({badge})</span>}
+        </span>
+        {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
+      </button>
+      {open && <div>{children}</div>}
+    </div>
+  );
+}
+
+// ─── Result field templates ───────────────────────────────────────────────────
+
+interface ResultField { label: string; key: string; unit?: string; multiline?: boolean }
+
+const RESULT_FIELDS: Record<string, ResultField[]> = {
+  lt1: [
+    { label: "WBC Count",    key: "wbc",  unit: "×10³/µL" },
+    { label: "RBC Count",    key: "rbc",  unit: "×10⁶/µL" },
+    { label: "Haemoglobin",  key: "hgb",  unit: "g/dL" },
+    { label: "Haematocrit",  key: "hct",  unit: "%" },
+    { label: "Platelets",    key: "plt",  unit: "×10³/µL" },
+    { label: "Collected At", key: "collected" },
+    { label: "Notes",        key: "notes", multiline: true },
+  ],
+  lt2: [
+    { label: "CRP Value",       key: "crp",  unit: "mg/L" },
+    { label: "Reference Range", key: "ref" },
+    { label: "Collected At",    key: "collected" },
+    { label: "Notes",           key: "notes", multiline: true },
+  ],
+  lt3: [
+    { label: "Organism",     key: "organism" },
+    { label: "Sensitivity",  key: "sensitivity" },
+    { label: "Result",       key: "result" },
+    { label: "Collected At", key: "collected" },
+    { label: "Notes",        key: "notes", multiline: true },
+  ],
+  lt4: [
+    { label: "Fasting Blood Sugar", key: "fbs", unit: "mmol/L" },
+    { label: "Reference Range",     key: "ref" },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  lt5: [
+    { label: "Total Cholesterol", key: "total_chol", unit: "mmol/L" },
+    { label: "LDL",               key: "ldl",        unit: "mmol/L" },
+    { label: "HDL",               key: "hdl",        unit: "mmol/L" },
+    { label: "Triglycerides",     key: "trig",       unit: "mmol/L" },
+    { label: "Collected At",      key: "collected" },
+    { label: "Notes",             key: "notes", multiline: true },
+  ],
+};
+
+// ─── Seed past lab records ────────────────────────────────────────────────────
+
+interface PastLabRecord {
+  id: string;
+  date: string;
+  dateRange: string;
+  orderedBy: string;
+  tests: { name: string; result: string; unit: string; ref: string }[];
+}
+
+const SEED_PAST_LAB_RECORDS: PastLabRecord[] = [
+  {
+    id: "pr-1",
+    date: "21 Feb 2025",
+    dateRange: "21 Feb 2025 · Reported 23 Feb 2025",
+    orderedBy: "Dr. Emily Wong",
+    tests: [
+      { name: "CBC",                    result: "Normal", unit: "—",       ref: "Normal range" },
+      { name: "Lipid Profile",          result: "4.2",    unit: "mmol/L",  ref: "< 5.2 mmol/L" },
+      { name: "Blood Sugar (Fasting)",  result: "5.8",    unit: "mmol/L",  ref: "3.9–5.5 mmol/L" },
+    ],
+  },
+  {
+    id: "pr-2",
+    date: "14 Jan 2025",
+    dateRange: "14 Jan 2025 · Reported 15 Jan 2025",
+    orderedBy: "Dr. Asif Imam",
+    tests: [
+      { name: "CRP",         result: "12",               unit: "mg/L", ref: "< 10 mg/L" },
+      { name: "Throat Swab", result: "Strep A positive", unit: "—",    ref: "Negative" },
+    ],
+  },
+];
+
 // ─── Lab Panel (fullscreen slide-over) ───────────────────────────────────────
 
 function LabPanel({ entry, onClose, onComplete }: {
   entry: MultiEntry; onClose: () => void; onComplete: () => void;
 }) {
-  const p                             = entry.patient;
-  const [fullscreen, setFullscreen]   = useState(false);
+  const p = entry.patient;
+  const [fullscreen, setFullscreen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const totalTests   = SEED_LAB_ORDERS.reduce((s, o) => s + o.tests.length, 0);
-  const pendingCount = SEED_LAB_ORDERS.reduce((s, o) => s + o.tests.filter(t => t.status === "pending").length, 0);
+  // Local test state so Save Result updates the pill reactively
+  const [localTests, setLocalTests] = useState<LabTest[]>(
+    SEED_LAB_ORDERS.flatMap(o => o.tests)
+  );
+  const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
+  const [rightTab, setRightTab] = useState<"form" | "preview">("form");
+  const [resultValues, setResultValues] = useState<Record<string, Record<string, string>>>({});
+  const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
+
+  const pendingCount = localTests.filter(t => t.status === "pending").length;
+  const selectedTest = localTests.find(t => t.id === selectedTestId) ?? null;
+  const selectedFields = selectedTestId ? (RESULT_FIELDS[selectedTestId] ?? []) : [];
+  const selectedValues = selectedTestId ? (resultValues[selectedTestId] ?? {}) : {};
+
+  // Rebuild orders with live local test statuses
+  const currentOrder = {
+    ...SEED_LAB_ORDERS[0],
+    tests: SEED_LAB_ORDERS[0].tests.map(t => localTests.find(lt => lt.id === t.id) ?? t),
+  };
+
+  function setFieldValue(key: string, value: string) {
+    if (!selectedTestId) return;
+    setResultValues(rv => ({ ...rv, [selectedTestId]: { ...(rv[selectedTestId] ?? {}), [key]: value } }));
+  }
+
+  function saveResult() {
+    if (!selectedTestId) return;
+    const now = new Date();
+    const formatted =
+      now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) + ", " +
+      now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    setLocalTests(ts => ts.map(t => t.id === selectedTestId ? { ...t, status: "completed", updatedAt: formatted } : t));
+  }
 
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
-      <div className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col border-l border-slate-200 transition-all duration-200 ${fullscreen ? "w-full" : "w-[80%]"}`}>
+      <div className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col border-l border-slate-200 transition-all duration-200 ${fullscreen ? "w-full" : "w-[85%]"}`}>
 
-        {/* Sub-header */}
+        {/* ── Header ─────────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-4 px-5 py-3 border-b border-slate-100 bg-white flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
@@ -107,72 +233,237 @@ function LabPanel({ entry, onClose, onComplete }: {
           </div>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto bg-slate-50/40">
-          <div className="p-5 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 flex items-center gap-2">
-                <TestTube2 className="h-4 w-4 text-[#4982CF]" />
-                <span className="text-xs font-bold text-[#4982CF]">{totalTests} test{totalTests !== 1 ? "s" : ""} ordered</span>
-              </div>
-              {pendingCount > 0 ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-amber-600" />
-                  <span className="text-xs font-bold text-amber-800">{pendingCount} pending</span>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  <span className="text-xs font-bold text-emerald-800">All completed</span>
-                </div>
-              )}
-            </div>
+        {/* ── Two-column body ─────────────────────────────────────────────────── */}
+        <div className="flex flex-1 overflow-hidden">
 
-            {SEED_LAB_ORDERS.map(order => (
-              <div key={order.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-100">
-                  <Package className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-700">Order · {order.orderDate}</p>
-                    <p className="text-[10px] text-slate-400">Ordered by {order.orderedBy}</p>
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    {order.tests.filter(t => t.status === "completed").length}/{order.tests.length} done
-                  </span>
-                </div>
-                <div className="divide-y divide-slate-50">
-                  {order.tests.map(test => (
-                    <div key={test.id} className="flex items-center gap-4 px-4 py-3">
-                      <span className="text-[10px] font-black text-slate-400 w-5 flex-shrink-0 text-right">{test.serial}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 leading-tight">{test.name}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
-                          <FlaskConical className="h-3 w-3" /> {test.lab}
-                        </p>
+          {/* LEFT: Patient Record */}
+          <div className="w-[38%] border-r border-slate-200 flex flex-col flex-shrink-0">
+            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Record</p>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+
+              {/* Patient Info */}
+              <Collapsible title="Patient Info" defaultOpen={false}>
+                {p ? (
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-1.5 text-xs">
+                    {([["Name", p.name], ["MRN", p.mrn], ["Gender", p.gender === "M" ? "Male" : "Female"], ["DOB", p.dob], ["Phone", p.phone]] as [string, string][]).map(([l, v]) => (
+                      <div key={l} className="flex justify-between">
+                        <span className="text-slate-400">{l}</span>
+                        <span className="font-semibold text-slate-800">{v}</span>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                    ))}
+                  </div>
+                ) : <p className="text-xs text-slate-400 italic">No patient on file</p>}
+              </Collapsible>
+
+              {/* Required Actions */}
+              <Collapsible title="Required Actions" badge={currentOrder.tests.filter(t => t.status === "pending").length} accent defaultOpen>
+                <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 mb-2">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <p className="text-xs font-bold text-slate-700">Order · {currentOrder.orderDate}</p>
+                    <p className="text-[10px] text-slate-400">{currentOrder.orderedBy}</p>
+                  </div>
+                  <div className="space-y-1">
+                    {currentOrder.tests.map(test => (
+                      <button
+                        key={test.id}
+                        onClick={() => { setSelectedTestId(test.id); setRightTab("form"); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${selectedTestId === test.id ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50 border border-transparent"}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-slate-800 leading-tight">{test.name}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{test.lab}</p>
+                        </div>
                         {test.status === "completed" ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                            <CheckCircle2 className="h-3 w-3" /> Completed
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700 flex-shrink-0">
+                            <CheckCircle2 className="h-3 w-3" /> Done
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700 flex-shrink-0">
                             <Clock className="h-3 w-3" /> Pending
                           </span>
                         )}
-                        {test.status === "completed" && test.updatedAt && (
-                          <span className="text-[10px] text-slate-400">{test.updatedAt}</span>
-                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-2.5 pt-2.5 border-t border-slate-100 text-[11px] text-slate-500">
+                    <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 inline-block" /> In progress</span>
+                    <span className="text-slate-300">·</span>
+                    <span className="flex items-center gap-1"><FlaskConical className="h-3 w-3" /> Lab / Sample</span>
+                    <span className="text-slate-300">·</span>
+                    <span className="flex items-center gap-1"><User className="h-3 w-3" /> {currentOrder.orderedBy}</span>
+                  </div>
+                </div>
+              </Collapsible>
+
+              {/* All Records */}
+              <Collapsible title="All Records" badge={SEED_PAST_LAB_RECORDS.length} defaultOpen>
+                {SEED_PAST_LAB_RECORDS.map(rec => (
+                  <div key={rec.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs mb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-semibold text-slate-800 leading-tight flex-1">
+                        {rec.tests.map(t => t.name).join(" · ")} · {rec.tests.length} test{rec.tests.length !== 1 ? "s" : ""}
+                      </p>
+                      <button
+                        onClick={() => setExpandedRecords(er => ({ ...er, [rec.id]: !er[rec.id] }))}
+                        className="text-[10px] font-bold text-[#4982CF] hover:underline flex-shrink-0 flex items-center gap-1"
+                      >
+                        {expandedRecords[rec.id] ? <><ChevronUp className="h-3 w-3" /> Collapse</> : <><Maximize2 className="h-3 w-3" /> Expand</>}
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 justify-between mt-1.5">
+                      <span>{rec.dateRange}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1"><User className="h-3 w-3" />{rec.orderedBy}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">Completed</span>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+                    {expandedRecords[rec.id] && (
+                      <div className="mt-3 pt-3 border-t border-slate-100">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Lab Results</p>
+                        <div className="rounded-lg overflow-hidden border border-slate-100">
+                          <div className="flex items-center px-2.5 py-1.5 bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            <span className="flex-1">Test</span>
+                            <span className="w-16 text-right">Result</span>
+                            <span className="w-16 text-right">Unit</span>
+                            <span className="w-20 text-right">Ref Range</span>
+                          </div>
+                          {rec.tests.map((t, i) => (
+                            <div key={t.name} className={`flex items-center px-2.5 py-1.5 ${i % 2 === 0 ? "bg-blue-50" : "bg-white"}`}>
+                              <span className="flex-1 text-slate-800 font-semibold">{t.name}</span>
+                              <span className="w-16 text-right text-slate-700">{t.result}</span>
+                              <span className="w-16 text-right text-slate-400">{t.unit}</span>
+                              <span className="w-20 text-right text-slate-400">{t.ref}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </Collapsible>
+
+            </div>
           </div>
+
+          {/* RIGHT: Result Entry */}
+          <div className="flex-1 flex flex-col bg-slate-50/40 min-w-0">
+            <div className="px-5 py-3 border-b border-slate-100 bg-white flex-shrink-0 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TestTube2 className="h-4 w-4 text-[#4982CF]" />
+                <p className="text-sm font-bold text-slate-800">Result Entry</p>
+              </div>
+              <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg">
+                <button
+                  onClick={() => setRightTab("form")}
+                  className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${rightTab === "form" ? "bg-white shadow-sm text-[#4982CF]" : "text-slate-500 hover:text-slate-700"}`}
+                >Form</button>
+                <button
+                  onClick={() => setRightTab("preview")}
+                  className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${rightTab === "preview" ? "bg-white shadow-sm text-[#4982CF]" : "text-slate-500 hover:text-slate-700"}`}
+                >Preview</button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {!selectedTest ? (
+                <div className="flex flex-col items-center justify-center h-full text-center pb-16">
+                  <div className="h-14 w-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-4">
+                    <FlaskConical className="h-7 w-7 text-[#4982CF]" />
+                  </div>
+                  <p className="text-sm font-semibold text-slate-600">Select a test to enter results</p>
+                  <p className="text-xs text-slate-400 mt-1">Click a test from Required Actions on the left</p>
+                </div>
+              ) : rightTab === "form" ? (
+                <div className="max-w-lg">
+                  <div className="mb-5">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <FlaskConical className="h-4 w-4 text-[#4982CF]" />
+                      <p className="text-sm font-bold text-slate-800">{selectedTest.name}</p>
+                    </div>
+                    <p className="text-[10px] text-slate-400 ml-6">{selectedTest.lab}</p>
+                  </div>
+                  <div className="space-y-4">
+                    {selectedFields.map(field => (
+                      <div key={field.key}>
+                        <label className="text-xs font-semibold text-slate-600 block mb-1">
+                          {field.label}{field.unit && <span className="font-normal text-slate-400"> ({field.unit})</span>}
+                        </label>
+                        {field.multiline ? (
+                          <textarea
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF] resize-none"
+                            rows={2}
+                            placeholder="Enter notes..."
+                            value={selectedValues[field.key] ?? ""}
+                            onChange={e => setFieldValue(field.key, e.target.value)}
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF]"
+                            placeholder={`Enter ${field.label.toLowerCase()}...`}
+                            value={selectedValues[field.key] ?? ""}
+                            onChange={e => setFieldValue(field.key, e.target.value)}
+                          />
+                        )}
+                      </div>
+                    ))}
+                    <div className="pt-2 flex items-center gap-3">
+                      <Button
+                        onClick={saveResult}
+                        className="h-9 px-6 text-sm font-semibold text-white gap-1.5"
+                        style={{ backgroundColor: LAB_ACCENT }}
+                        disabled={selectedTest.status === "completed"}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        {selectedTest.status === "completed" ? "Result Saved" : "Save Result"}
+                      </Button>
+                      {selectedTest.status === "completed" && (
+                        <p className="text-[11px] text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Saved at {selectedTest.updatedAt}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Preview tab */
+                <div className="max-w-lg">
+                  <div className="mb-5">
+                    <p className="text-sm font-bold text-slate-800 mb-0.5">{selectedTest.name}</p>
+                    <p className="text-[10px] text-slate-400">{selectedTest.lab}</p>
+                  </div>
+                  {Object.keys(selectedValues).filter(k => selectedValues[k]).length === 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center">
+                      <p className="text-sm text-slate-400 italic">No result entered yet</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                      <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
+                        <p className="text-xs font-bold text-slate-600">Result Summary</p>
+                        {selectedTest.updatedAt && <p className="text-[10px] text-slate-400 mt-0.5">Saved: {selectedTest.updatedAt}</p>}
+                      </div>
+                      {selectedFields.map((field, i) => {
+                        const val = selectedValues[field.key];
+                        if (!val) return null;
+                        return (
+                          <div key={field.key} className={`flex items-start justify-between px-4 py-2.5 ${i % 2 === 0 ? "bg-blue-50" : "bg-white"}`}>
+                            <span className="text-xs text-slate-500">{field.label}{field.unit ? ` (${field.unit})` : ""}</span>
+                            <span className="text-xs font-semibold text-slate-800 text-right max-w-[55%]">{val}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
 
-        {/* Confirm modal */}
+        {/* ── Confirm modal ───────────────────────────────────────────────────── */}
         {showConfirm && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40" onClick={() => setShowConfirm(false)} />
