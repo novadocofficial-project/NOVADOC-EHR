@@ -860,20 +860,29 @@ export function CorporatePricingModule({
               </div>
             </TabsContent>
 
-            {/* ── SERVICE PRICES TAB (provider-sourced) ── */}
+            {/* ── SERVICE PRICES TAB ── */}
             <TabsContent value="services" className="flex-1 overflow-y-auto px-6 py-5 mt-0">
-              <ProviderServicePricingView
-                entity={selectedEntity}
-                doctors={doctors}
-                doctorFees={doctorFees}
-                labProviders={labProviders}
-                labSections={labSections}
-                pharmacyPartners={pharmacyPartners}
-                consumableProviders={consumableProviders}
-                procPartners={procPartners}
-                procSections={procSections}
-                imagingPartners={imagingPartners}
-              />
+              {entityLabel === "Corporate" ? (
+                <ProviderServicePricingView
+                  entity={selectedEntity}
+                  doctors={doctors}
+                  doctorFees={doctorFees}
+                  labProviders={labProviders}
+                  labSections={labSections}
+                  pharmacyPartners={pharmacyPartners}
+                  consumableProviders={consumableProviders}
+                  procPartners={procPartners}
+                  procSections={procSections}
+                  imagingPartners={imagingPartners}
+                />
+              ) : (
+                <LegacyServicePricingView
+                  groupedServices={groupedServices}
+                  entityServiceMap={entityServiceMap}
+                  updateServicePrice={updateServicePrice}
+                  onOpenBulk={() => setShowBulkDialog(true)}
+                />
+              )}
             </TabsContent>
           </Tabs>
         )}
@@ -1262,6 +1271,59 @@ function InfoField({ label, value }: { label: string; value: string }) {
   );
 }
 
+// ─── Legacy Service Pricing View (Insurance) ──────────────────────────────────
+
+function LegacyServicePricingView({
+  groupedServices,
+  entityServiceMap,
+  updateServicePrice,
+  onOpenBulk,
+}: {
+  groupedServices: { st: ServiceType; svcs: Service[] }[];
+  entityServiceMap: Record<string, number>;
+  updateServicePrice: (serviceId: string, price: string) => void;
+  onOpenBulk: () => void;
+}) {
+  if (groupedServices.length === 0) {
+    return <p className="text-sm text-slate-400 text-center py-10">No services configured. Add service types and services in the Pricing Rules tab first.</p>;
+  }
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-slate-500">Override service prices for this entity. Leave blank to use the entity's computed price from Pricing Rules.</p>
+        <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={onOpenBulk}>
+          <TrendingUp className="h-3 w-3" />Bulk Adjust
+        </Button>
+      </div>
+      {groupedServices.map(({ st, svcs }) => (
+        <div key={st.id} className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+          <div className="bg-slate-50 border-b border-slate-100 px-4 py-2 flex items-center gap-2">
+            <span className="text-xs font-black uppercase tracking-widest text-slate-600">{st.name}</span>
+            <span className="text-[10px] text-slate-400">{svcs.length} service{svcs.length !== 1 ? "s" : ""}</span>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {svcs.map(svc => (
+              <div key={svc.id} className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50/40">
+                <span className="flex-1 text-xs text-slate-700 font-medium">{svc.name}</span>
+                <span className="text-[10px] text-slate-400 mr-2">Base: Rs. {svc.basePrice.toLocaleString()}</span>
+                <div className="relative w-28">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-medium pointer-events-none">Rs.</span>
+                  <Input
+                    className="h-7 pl-7 text-xs text-right tabular-nums"
+                    value={entityServiceMap[svc.id] !== undefined ? String(entityServiceMap[svc.id]) : ""}
+                    onChange={e => updateServicePrice(svc.id, e.target.value)}
+                    placeholder={svc.basePrice.toString()}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Rate List Card ────────────────────────────────────────────────────────────
 
 function RateListCard({
@@ -1404,9 +1466,15 @@ function ProviderServicePricingView({
       }))
     : [];
 
-  // ── Consumables ──────────────────────────────────────────────────────────────
+  // ── Consumables (live localStorage → seed fallback) ──────────────────────────
   const conProvider = consumableProviders.find(p => p.id === rl.consumableProviderId) ?? null;
-  const consItems = CONSUMABLE_SEED_ITEMS;
+  const consItems = useMemo<Array<{ id: string; name: string }>>(() => {
+    try {
+      const raw = localStorage.getItem("ehr-consumables-catalogue-v1");
+      if (raw) return JSON.parse(raw) as Array<{ id: string; name: string }>;
+    } catch { /**/ }
+    return CONSUMABLE_SEED_ITEMS;
+  }, []);
   const conRows: { name: string; price: string }[] = conProvider
     ? conProvider.selectedItems.map(iid => ({
         name: consItems.find(c => c.id === iid)?.name ?? iid,
@@ -1424,11 +1492,18 @@ function ProviderServicePricingView({
       }))
     : [];
 
-  // ── Imaging ───────────────────────────────────────────────────────────────────
+  // ── Imaging (live localStorage → seed fallback) ──────────────────────────────
   const imgPartner = imagingPartners.find(p => p.id === rl.imagingPartnerId) ?? null;
+  const imagingTests = useMemo<Array<{ id: string; name: string }>>(() => {
+    try {
+      const raw = localStorage.getItem("ehr-imaging-catalogue-v1");
+      if (raw) return JSON.parse(raw) as Array<{ id: string; name: string }>;
+    } catch { /**/ }
+    return IMAGING_SEED_TESTS;
+  }, []);
   const imgRows: { name: string; price: string }[] = imgPartner
     ? imgPartner.selectedTests.map(tid => ({
-        name: IMAGING_SEED_TESTS.find(t => t.id === tid)?.name ?? tid,
+        name: imagingTests.find(t => t.id === tid)?.name ?? tid,
         price: imgPartner.pricing[tid] ?? "",
       }))
     : [];
