@@ -338,7 +338,7 @@ function LabPanel({ entry, onClose, onComplete }: {
                   <div key={rec.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs mb-2">
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-semibold text-slate-800 leading-tight flex-1">
-                        {rec.tests.map(t => t.name).join(" · ")} · {rec.tests.length} test{rec.tests.length !== 1 ? "s" : ""} — {rec.date}
+                        {rec.tests.map(t => t.name).join(" · ")} · {rec.tests.length} test{rec.tests.length !== 1 ? "s" : ""}
                       </p>
                       <button
                         onClick={() => setExpandedRecords(er => ({ ...er, [rec.id]: !er[rec.id] }))}
