@@ -3,7 +3,7 @@ import {
   GripVertical, Save, Plus, X, CheckCircle2,
   FlaskConical, ClipboardList, Activity, Stethoscope,
   FileText, Pill, Image, Heart, BookOpen, Target,
-  BookMarked, Users, RotateCcw, ChevronDown,
+  BookMarked, Users, RotateCcw, ChevronDown, Microscope,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -47,6 +47,7 @@ const DEFAULT_SECTIONS: Omit<SoapSection, "visibility" | "active">[] = [
   { id: "vitals",           label: "Vitals",             defaultLabel: "Vitals",             icon: Activity       },
   { id: "physical-exam",   label: "Physical Examination",defaultLabel: "Physical Examination",icon: Stethoscope   },
   { id: "poc-labs",         label: "POC Labs",           defaultLabel: "POC Labs",           icon: FlaskConical   },
+  { id: "diagnosis",        label: "Diagnosis",          defaultLabel: "Diagnosis",          icon: Microscope     },
   { id: "labs",             label: "Labs",               defaultLabel: "Labs",               icon: FlaskConical   },
   { id: "imaging",          label: "Imaging",            defaultLabel: "Imaging",            icon: Image          },
   { id: "formulary",        label: "Formulary",          defaultLabel: "Formulary",          icon: Pill           },
