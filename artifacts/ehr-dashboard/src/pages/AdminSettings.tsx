@@ -4,7 +4,6 @@ import {
   Activity,
   Banknote,
   Bell,
-  BookOpen,
   FileText,
   FlaskConical,
   Sliders,
@@ -539,38 +538,23 @@ export function AdminSettings() {
             </button>
             {navExpanded.soapConfig && (
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("soap-note-structure", <FileText className="h-3.5 w-3.5" />, "Note Structure")}
-                {subNavItem("soap-vitals-config",  <Sliders className="h-3.5 w-3.5" />, "Vitals Config")}
-                {subNavItem("hpi-templates",       <ClipboardList className="h-3.5 w-3.5" />, "HPI Templates")}
-                {subNavItem("pe-builder",          <Stethoscope className="h-3.5 w-3.5" />, "PE Builder")}
-                {subNavItem("template-manager",    <FileText className="h-3.5 w-3.5" />, "Template Manager")}
-              </div>
-            )}
-
-            {/* ── Clinical Libraries Group ── */}
-            <button
-              type="button"
-              onClick={() => toggleNav("clinicalLibraries")}
-              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <BookOpen className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Clinical Libraries</span>
-              {navExpanded.clinicalLibraries ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-            </button>
-            {navExpanded.clinicalLibraries && (
-              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("clinical-complaints",   <Activity className="h-3.5 w-3.5" />, "Chief Complaints")}
-                {subNavItem("clinical-icd10",        <FileText className="h-3.5 w-3.5" />, "ICD-10 Codes")}
-                {subNavItem("clinical-poc",          <FlaskConical className="h-3.5 w-3.5" />, "POC Tests")}
+                {subNavItem("soap-note-structure",   <FileText className="h-3.5 w-3.5" />,      "Note Structure")}
+                {subNavItem("soap-vitals-config",    <Sliders className="h-3.5 w-3.5" />,       "Vitals Config")}
+                {subNavItem("hpi-templates",         <ClipboardList className="h-3.5 w-3.5" />, "HPI Templates")}
+                {subNavItem("pe-builder",            <Stethoscope className="h-3.5 w-3.5" />,   "PE Builder")}
+                {subNavItem("template-manager",      <FileText className="h-3.5 w-3.5" />,      "Template Manager")}
+                {subNavItem("clinical-complaints",   <Activity className="h-3.5 w-3.5" />,      "Chief Complaints")}
+                {subNavItem("clinical-icd10",        <FileText className="h-3.5 w-3.5" />,      "ICD-10 Codes")}
+                {subNavItem("clinical-poc",          <FlaskConical className="h-3.5 w-3.5" />,  "POC Tests")}
                 {subNavItem("clinical-ros",          <ClipboardList className="h-3.5 w-3.5" />, "ROS Config")}
-                {subNavItem("clinical-allergies",    <Bell className="h-3.5 w-3.5" />, "Allergies")}
-                {subNavItem("clinical-med-surgical", <Stethoscope className="h-3.5 w-3.5" />, "Med/Surgical History")}
-                {subNavItem("clinical-family",       <Users className="h-3.5 w-3.5" />, "Family History")}
-                {subNavItem("clinical-social",       <UserRound className="h-3.5 w-3.5" />, "Social History")}
-                {subNavItem("care-plan-library",     <ClipboardCheck className="h-3.5 w-3.5" />, "Care Plan Tasks")}
-                {subNavItem("goals-library",         <Target className="h-3.5 w-3.5" />, "Patient Goals")}
-                {subNavItem("referral-destinations", <MapPin className="h-3.5 w-3.5" />, "Referral Destinations")}
-                {subNavItem("comorbidities",         <Heart className="h-3.5 w-3.5" />, "Comorbidities")}
+                {subNavItem("clinical-allergies",    <Bell className="h-3.5 w-3.5" />,          "Allergies")}
+                {subNavItem("clinical-med-surgical", <Stethoscope className="h-3.5 w-3.5" />,   "Med/Surgical History")}
+                {subNavItem("clinical-family",       <Users className="h-3.5 w-3.5" />,         "Family History")}
+                {subNavItem("clinical-social",       <UserRound className="h-3.5 w-3.5" />,     "Social History")}
+                {subNavItem("care-plan-library",     <ClipboardCheck className="h-3.5 w-3.5" />,"Care Plan Tasks")}
+                {subNavItem("goals-library",         <Target className="h-3.5 w-3.5" />,        "Patient Goals")}
+                {subNavItem("referral-destinations", <MapPin className="h-3.5 w-3.5" />,        "Referral Destinations")}
+                {subNavItem("comorbidities",         <Heart className="h-3.5 w-3.5" />,         "Comorbidities")}
               </div>
             )}
 
