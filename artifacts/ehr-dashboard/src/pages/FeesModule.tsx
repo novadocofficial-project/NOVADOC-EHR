@@ -29,6 +29,12 @@ type FeeRow = {
   followUpFee: string;
   followUpShareType: SubShareType;
   followUpShareAmount: string;
+  emergencyFee: string;
+  emergencyShareType: SubShareType;
+  emergencyShareAmount: string;
+  teleFee: string;
+  teleShareType: SubShareType;
+  teleShareAmount: string;
 };
 
 type DocServiceRow = {
@@ -46,7 +52,13 @@ function buildFeeRows(doctor: Doctor): FeeRow[] {
   const rows: FeeRow[] = [];
   doctor.departments.forEach(deptId => {
     (doctor.subDepartments[deptId] ?? []).forEach(subDeptId => {
-      rows.push({ deptId, subDeptId, consultationFee: "", shareType: "percentage", shareAmount: "", followUpFee: "", followUpShareType: "percentage", followUpShareAmount: "" });
+      rows.push({
+        deptId, subDeptId,
+        consultationFee: "", shareType: "percentage", shareAmount: "",
+        followUpFee: "", followUpShareType: "percentage", followUpShareAmount: "",
+        emergencyFee: "", emergencyShareType: "percentage", emergencyShareAmount: "",
+        teleFee: "", teleShareType: "percentage", teleShareAmount: "",
+      });
     });
   });
   return rows;
@@ -84,6 +96,25 @@ function SubShareToggle({ value, onChange }: { value: SubShareType; onChange: (v
     </div>
   );
 }
+
+// ─── Fee type definitions (drives Consultation Fees tab rows) ─────────────────
+
+type FeeTypeDef = {
+  label: string;
+  badge?: string;
+  badgeColor?: string;
+  feeKey: keyof FeeRow;
+  stKey: keyof FeeRow;
+  saKey: keyof FeeRow;
+  labelColor: string;
+};
+
+const FEE_TYPE_DEFS: FeeTypeDef[] = [
+  { label: "Consultation",  feeKey: "consultationFee",  stKey: "shareType",          saKey: "shareAmount",          labelColor: "text-slate-700" },
+  { label: "Follow-up",     feeKey: "followUpFee",      stKey: "followUpShareType",  saKey: "followUpShareAmount",  labelColor: "text-slate-500" },
+  { label: "Emergency",     feeKey: "emergencyFee",     stKey: "emergencyShareType", saKey: "emergencyShareAmount", labelColor: "text-rose-600",  badge: "Emergency",  badgeColor: "bg-rose-50 text-rose-600 border-rose-200" },
+  { label: "Tele-Consult",  feeKey: "teleFee",          stKey: "teleShareType",      saKey: "teleShareAmount",      labelColor: "text-sky-600",   badge: "Tele",       badgeColor: "bg-sky-50 text-sky-600 border-sky-200" },
+];
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 
@@ -171,7 +202,9 @@ export function FeesModule({
   const doctorRows = selectedDoctorId ? (fees[selectedDoctorId] ?? []) : [];
   const doctorServiceRows = selectedDoctorId ? (docServices[selectedDoctorId] ?? []) : [];
 
-  const configuredCount = doctorRows.filter(r => r.consultationFee.trim() !== "").length;
+  const configuredCount = doctorRows.filter(r =>
+    r.consultationFee.trim() !== "" || r.emergencyFee.trim() !== "" || r.teleFee.trim() !== "" || r.followUpFee.trim() !== ""
+  ).length;
   const servicesConfigured = doctorServiceRows.filter(r => r.shareValue.trim() !== "").length;
 
   const groupedFeeRows = selectedDoctor
@@ -589,12 +622,13 @@ export function FeesModule({
                   )}
                 </TabsContent>
 
-                {/* ── CONSULTATION FEES TAB (existing, unchanged) ── */}
+                {/* ── CONSULTATION FEES TAB ── */}
                 <TabsContent value="consult-fees" className="flex-1 overflow-y-auto mt-3 space-y-3">
                   <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5">
                     <Info className="mt-0.5 h-3.5 w-3.5 flex-none text-amber-600" />
                     <p className="text-xs text-amber-700">
-                      Consultation fees apply per sub-department. Toggle <strong>Rs.</strong> for a fixed share or <strong>%</strong> for a percentage.
+                      Set fees and doctor share per consultation type, per sub-department.
+                      Toggle <strong>Rs.</strong> for a fixed share or <strong>%</strong> for a percentage.
                     </p>
                   </div>
 
@@ -604,71 +638,104 @@ export function FeesModule({
                       <p className="mt-1 text-xs">Assign sub-departments from Doctor Profiles first.</p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {groupedFeeRows.map(({ deptId, deptName, rows }) => (
                         <div key={deptId} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                          {/* Dept header */}
                           <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-2.5">
                             <span className="font-bold text-slate-800">{deptName}</span>
                             <span className="ml-auto text-xs text-slate-400">{rows.length} sub-dept{rows.length !== 1 ? "s" : ""}</span>
                           </div>
-                          <div className="grid grid-cols-[160px_1fr_100px_1fr_1fr_100px_1fr] items-center gap-3 border-b border-slate-100 bg-slate-50/40 px-5 py-2">
-                            {["Sub-Dept", "Consult Fee", "Share", "Share Amt", "Follow-up Fee", "F/U Share", "F/U Amt"].map(h => (
-                              <span key={h} className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{h}</span>
+
+                          {/* Per sub-dept blocks */}
+                          <div className="divide-y divide-slate-100">
+                            {rows.map((row, rowIdx) => (
+                              <div key={row.subDeptId}>
+                                {/* Sub-dept label row */}
+                                <div className="flex items-center gap-3 bg-slate-50/50 px-5 py-2 border-b border-slate-100">
+                                  <span className="text-sm font-semibold text-slate-700">{getSubDeptName(row.deptId, row.subDeptId)}</span>
+                                  {/* Column headers inline on first sub-dept */}
+                                  {rowIdx === 0 && (
+                                    <div className="ml-auto grid items-center gap-3 text-right"
+                                      style={{ gridTemplateColumns: "1fr 106px 1fr" }}>
+                                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Fee Amount</span>
+                                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Share</span>
+                                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Dr. Share Amt</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* 4 fee type rows */}
+                                {FEE_TYPE_DEFS.map((ft, ftIdx) => {
+                                  const feeVal = String(row[ft.feeKey] ?? "");
+                                  const stVal = (row[ft.stKey] ?? "percentage") as SubShareType;
+                                  const saVal = String(row[ft.saKey] ?? "");
+                                  const equiv = computeEquiv(feeVal, stVal, saVal);
+                                  const isLast = ftIdx === FEE_TYPE_DEFS.length - 1;
+                                  return (
+                                    <div key={ft.label}
+                                      className={`grid items-center gap-3 px-5 py-2.5 hover:bg-slate-50/60 transition-colors ${!isLast ? "border-b border-slate-50" : ""}`}
+                                      style={{ gridTemplateColumns: "140px 1fr 106px 1fr" }}>
+
+                                      {/* Fee type label */}
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-xs font-semibold ${ft.labelColor}`}>{ft.label}</span>
+                                        {ft.badge && (
+                                          <span className={`inline-flex items-center rounded-full border px-1.5 py-0 text-[9px] font-bold ${ft.badgeColor}`}>
+                                            {ft.badge}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Fee amount input */}
+                                      <div className="relative">
+                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">Rs.</span>
+                                        <Input type="number" min={0} placeholder="0" value={feeVal}
+                                          onChange={e => updateFee(selectedDoctorId!, deptId, row.subDeptId, ft.feeKey, e.target.value)}
+                                          className="h-8 pl-8 text-sm" />
+                                      </div>
+
+                                      {/* Share toggle */}
+                                      <SubShareToggle value={stVal}
+                                        onChange={v => updateFee(selectedDoctorId!, deptId, row.subDeptId, ft.stKey, v)} />
+
+                                      {/* Share amount */}
+                                      <div>
+                                        <Input type="number" min={0} max={stVal === "percentage" ? 100 : undefined}
+                                          placeholder={stVal === "percentage" ? "e.g. 30" : "e.g. 500"} value={saVal}
+                                          onChange={e => updateFee(selectedDoctorId!, deptId, row.subDeptId, ft.saKey, e.target.value)}
+                                          className="h-8 text-sm" />
+                                        {equiv && <span className="mt-0.5 block text-[10px] font-medium text-[#4982CF]">{equiv}</span>}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             ))}
                           </div>
-                          <div className="divide-y divide-slate-100">
-                            {rows.map(row => {
-                              const shareEquiv = computeEquiv(row.consultationFee, row.shareType, row.shareAmount);
-                              const fuEquiv = computeEquiv(row.followUpFee, row.followUpShareType, row.followUpShareAmount);
-                              return (
-                                <div key={row.subDeptId} className="grid grid-cols-[160px_1fr_100px_1fr_1fr_100px_1fr] items-start gap-3 px-5 py-3.5 hover:bg-slate-50/60 transition-colors">
-                                  <div className="pt-1.5">
-                                    <p className="truncate text-sm font-semibold text-slate-700">{getSubDeptName(row.deptId, row.subDeptId)}</p>
-                                  </div>
-                                  <div className="relative">
-                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">Rs.</span>
-                                    <Input type="number" min={0} placeholder="0" value={row.consultationFee}
-                                      onChange={e => updateFee(selectedDoctorId!, deptId, row.subDeptId, "consultationFee", e.target.value)}
-                                      className="h-8 pl-8 text-sm" />
-                                  </div>
-                                  <SubShareToggle value={row.shareType} onChange={v => updateFee(selectedDoctorId!, deptId, row.subDeptId, "shareType", v)} />
-                                  <div>
-                                    <Input type="number" min={0} max={row.shareType === "percentage" ? 100 : undefined}
-                                      placeholder={row.shareType === "percentage" ? "%" : "Rs."} value={row.shareAmount}
-                                      onChange={e => updateFee(selectedDoctorId!, deptId, row.subDeptId, "shareAmount", e.target.value)}
-                                      className="h-8 text-sm" />
-                                    {shareEquiv && <span className="mt-0.5 block text-[10px] font-medium text-[#4982CF]">{shareEquiv}</span>}
-                                  </div>
-                                  <div className="relative">
-                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">Rs.</span>
-                                    <Input type="number" min={0} placeholder="0" value={row.followUpFee}
-                                      onChange={e => updateFee(selectedDoctorId!, deptId, row.subDeptId, "followUpFee", e.target.value)}
-                                      className="h-8 pl-8 text-sm" />
-                                  </div>
-                                  <SubShareToggle value={row.followUpShareType} onChange={v => updateFee(selectedDoctorId!, deptId, row.subDeptId, "followUpShareType", v)} />
-                                  <div>
-                                    <Input type="number" min={0} max={row.followUpShareType === "percentage" ? 100 : undefined}
-                                      placeholder={row.followUpShareType === "percentage" ? "%" : "Rs."} value={row.followUpShareAmount}
-                                      onChange={e => updateFee(selectedDoctorId!, deptId, row.subDeptId, "followUpShareAmount", e.target.value)}
-                                      className="h-8 text-sm" />
-                                    {fuEquiv && <span className="mt-0.5 block text-[10px] font-medium text-[#4982CF]">{fuEquiv}</span>}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          {rows.some(r => r.consultationFee) && (
+
+                          {/* Summary footer — show configured fees */}
+                          {rows.some(r => r.consultationFee || r.emergencyFee || r.teleFee || r.followUpFee) && (
                             <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-2.5">
-                              <div className="flex flex-wrap gap-4">
-                                {rows.filter(r => r.consultationFee).map(r => (
-                                  <div key={r.subDeptId} className="flex items-center gap-2">
-                                    <span className="text-xs text-slate-500">{getSubDeptName(r.deptId, r.subDeptId)}:</span>
-                                    <span className="text-xs font-bold text-slate-700">Rs. {r.consultationFee}</span>
-                                    {r.shareAmount && (
-                                      <span className="text-[10px] text-slate-400">(share: {r.shareType === "percentage" ? `${r.shareAmount}%` : `Rs. ${r.shareAmount}`})</span>
-                                    )}
-                                  </div>
-                                ))}
+                              <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+                                {rows.map(r => {
+                                  const entries: { type: string; fee: string; color: string }[] = [];
+                                  if (r.consultationFee)  entries.push({ type: "Consult",   fee: r.consultationFee,  color: "text-slate-700" });
+                                  if (r.followUpFee)      entries.push({ type: "Follow-up", fee: r.followUpFee,      color: "text-slate-500" });
+                                  if (r.emergencyFee)     entries.push({ type: "Emergency", fee: r.emergencyFee,     color: "text-rose-600"  });
+                                  if (r.teleFee)          entries.push({ type: "Tele",      fee: r.teleFee,          color: "text-sky-600"   });
+                                  if (entries.length === 0) return null;
+                                  return (
+                                    <div key={r.subDeptId} className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-[10px] font-semibold text-slate-400">{getSubDeptName(r.deptId, r.subDeptId)}:</span>
+                                      {entries.map(e => (
+                                        <span key={e.type} className={`text-[10px] font-bold ${e.color}`}>
+                                          {e.type} Rs.{e.fee}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
