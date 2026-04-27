@@ -21,7 +21,17 @@ export interface LabTest {
   id: string;
   name: string;
   description: string;
+  sampleType?: string;
+  fastingRequired?: boolean;
 }
+
+const DEFAULT_SAMPLE_TYPES = [
+  "Blood (Venous)", "Blood (Capillary)", "Serum / Plasma",
+  "Urine (Spot)", "Urine (24-hr)", "Stool / Feces",
+  "Sputum", "Throat Swab", "Wound Swab",
+  "CSF", "Pleural Fluid", "Ascitic Fluid",
+  "Tissue / Biopsy", "N/A",
+];
 
 export interface LabSection {
   id: string;
@@ -44,44 +54,44 @@ export interface LabProvider {
 const SEED_SECTIONS: LabSection[] = [
   {
     id: "ls1", name: "Haematology", expanded: true, tests: [
-      { id: "t1",  name: "Complete Blood Count (CBC)",      description: "WBC, RBC, Haemoglobin, Platelets" },
-      { id: "t2",  name: "ESR",                             description: "Erythrocyte Sedimentation Rate" },
-      { id: "t3",  name: "Peripheral Blood Film",           description: "" },
-      { id: "t4",  name: "Reticulocyte Count",              description: "" },
-      { id: "t5",  name: "Coagulation Profile (PT/APTT)",  description: "" },
+      { id: "t1",  name: "Complete Blood Count (CBC)",      description: "WBC, RBC, Haemoglobin, Platelets", sampleType: "Blood (Venous)", fastingRequired: false },
+      { id: "t2",  name: "ESR",                             description: "Erythrocyte Sedimentation Rate",   sampleType: "Blood (Venous)", fastingRequired: false },
+      { id: "t3",  name: "Peripheral Blood Film",           description: "",                                 sampleType: "Blood (Venous)", fastingRequired: false },
+      { id: "t4",  name: "Reticulocyte Count",              description: "",                                 sampleType: "Blood (Venous)", fastingRequired: false },
+      { id: "t5",  name: "Coagulation Profile (PT/APTT)",  description: "",                                 sampleType: "Blood (Venous)", fastingRequired: false },
     ],
   },
   {
     id: "ls2", name: "Blood Chemistry", expanded: false, tests: [
-      { id: "t6",  name: "Fasting Blood Sugar",  description: "" },
-      { id: "t7",  name: "HbA1c",               description: "" },
-      { id: "t8",  name: "Lipid Profile",        description: "Cholesterol, Triglycerides, HDL, LDL" },
-      { id: "t9",  name: "Liver Function Tests", description: "ALT, AST, ALP, Bilirubin" },
-      { id: "t10", name: "Kidney Function Tests",description: "Urea, Creatinine, eGFR" },
-      { id: "t11", name: "Uric Acid",            description: "" },
+      { id: "t6",  name: "Fasting Blood Sugar",  description: "",                                            sampleType: "Blood (Venous)", fastingRequired: true },
+      { id: "t7",  name: "HbA1c",               description: "",                                             sampleType: "Blood (Venous)", fastingRequired: false },
+      { id: "t8",  name: "Lipid Profile",        description: "Cholesterol, Triglycerides, HDL, LDL",       sampleType: "Serum / Plasma", fastingRequired: true },
+      { id: "t9",  name: "Liver Function Tests", description: "ALT, AST, ALP, Bilirubin",                   sampleType: "Serum / Plasma", fastingRequired: false },
+      { id: "t10", name: "Kidney Function Tests",description: "Urea, Creatinine, eGFR",                     sampleType: "Serum / Plasma", fastingRequired: false },
+      { id: "t11", name: "Uric Acid",            description: "",                                            sampleType: "Serum / Plasma", fastingRequired: false },
     ],
   },
   {
     id: "ls3", name: "Microbiology", expanded: false, tests: [
-      { id: "t12", name: "Culture & Sensitivity (Urine)", description: "" },
-      { id: "t13", name: "Culture & Sensitivity (Sputum)",description: "" },
-      { id: "t14", name: "Mantoux / TB Screen",           description: "" },
+      { id: "t12", name: "Culture & Sensitivity (Urine)", description: "",  sampleType: "Urine (Spot)", fastingRequired: false },
+      { id: "t13", name: "Culture & Sensitivity (Sputum)",description: "",  sampleType: "Sputum",       fastingRequired: false },
+      { id: "t14", name: "Mantoux / TB Screen",           description: "",  sampleType: "N/A",          fastingRequired: false },
     ],
   },
   {
     id: "ls4", name: "Urinalysis", expanded: false, tests: [
-      { id: "t15", name: "Urine R/E",        description: "Routine examination" },
-      { id: "t16", name: "Urine C/S",        description: "Culture & Sensitivity" },
-      { id: "t17", name: "24-hr Urine Protein",description: "" },
+      { id: "t15", name: "Urine R/E",           description: "Routine examination",  sampleType: "Urine (Spot)", fastingRequired: false },
+      { id: "t16", name: "Urine C/S",           description: "Culture & Sensitivity", sampleType: "Urine (Spot)", fastingRequired: false },
+      { id: "t17", name: "24-hr Urine Protein", description: "",                      sampleType: "Urine (24-hr)", fastingRequired: false },
     ],
   },
   {
     id: "ls5", name: "Hormones", expanded: false, tests: [
-      { id: "t18", name: "TSH",              description: "Thyroid Stimulating Hormone" },
-      { id: "t19", name: "T3 / T4",         description: "" },
-      { id: "t20", name: "FSH / LH",        description: "" },
-      { id: "t21", name: "Testosterone",    description: "" },
-      { id: "t22", name: "Cortisol (morning)",description: "" },
+      { id: "t18", name: "TSH",               description: "Thyroid Stimulating Hormone", sampleType: "Serum / Plasma", fastingRequired: false },
+      { id: "t19", name: "T3 / T4",          description: "",                              sampleType: "Serum / Plasma", fastingRequired: false },
+      { id: "t20", name: "FSH / LH",         description: "",                              sampleType: "Serum / Plasma", fastingRequired: false },
+      { id: "t21", name: "Testosterone",     description: "",                              sampleType: "Serum / Plasma", fastingRequired: false },
+      { id: "t22", name: "Cortisol (morning)",description: "",                             sampleType: "Serum / Plasma", fastingRequired: false },
     ],
   },
 ];
@@ -112,11 +122,20 @@ function LabMasterList({
   const [editSectionName, setEditSectionName] = useState("");
   const [newSectionName, setNewSectionName]   = useState("");
   const [addTestSectionId, setAddTestSectionId] = useState<string | null>(null);
-  const [newTestName, setNewTestName]   = useState("");
-  const [newTestDesc, setNewTestDesc]   = useState("");
+  const [newTestName, setNewTestName]           = useState("");
+  const [newTestDesc, setNewTestDesc]           = useState("");
+  const [newTestSampleType, setNewTestSampleType] = useState("");
+  const [newTestFasting, setNewTestFasting]       = useState(false);
+  const [newCustomSampleType, setNewCustomSampleType] = useState("");
+  const [showNewCustomInput, setShowNewCustomInput]   = useState(false);
+  const [customSampleTypes, setCustomSampleTypes]     = useState<string[]>([]);
   const [editTestId, setEditTestId]     = useState<string | null>(null);
   const [editTestName, setEditTestName] = useState("");
   const [editTestDesc, setEditTestDesc] = useState("");
+  const [editTestSampleType, setEditTestSampleType] = useState("");
+  const [editTestFasting, setEditTestFasting]       = useState(false);
+  const [showEditCustomInput, setShowEditCustomInput] = useState(false);
+  const [editCustomSampleType, setEditCustomSampleType] = useState("");
   const [dragSecIdx, setDragSecIdx]     = useState<number | null>(null);
   const [dropSecIdx, setDropSecIdx]     = useState<number | null>(null);
   const [dragTestSec, setDragTestSec]   = useState<string | null>(null);
@@ -139,9 +158,11 @@ function LabMasterList({
   function addTest(sectionId: string) {
     if (!newTestName.trim()) return;
     setSections(ss => ss.map(s => s.id === sectionId
-      ? { ...s, tests: [...s.tests, { id: uid(), name: newTestName.trim(), description: newTestDesc.trim() }] }
+      ? { ...s, tests: [...s.tests, { id: uid(), name: newTestName.trim(), description: newTestDesc.trim(), sampleType: newTestSampleType || undefined, fastingRequired: newTestFasting }] }
       : s));
-    setNewTestName(""); setNewTestDesc(""); setAddTestSectionId(null);
+    setNewTestName(""); setNewTestDesc(""); setNewTestSampleType(""); setNewTestFasting(false);
+    setShowNewCustomInput(false); setNewCustomSampleType("");
+    setAddTestSectionId(null);
   }
 
   function saveEditSection(id: string) {
@@ -152,14 +173,42 @@ function LabMasterList({
 
   function saveEditTest(sectionId: string, testId: string) {
     setSections(ss => ss.map(s => s.id === sectionId
-      ? { ...s, tests: s.tests.map(t => t.id === testId ? { ...t, name: editTestName, description: editTestDesc } : t) }
+      ? { ...s, tests: s.tests.map(t => t.id === testId ? { ...t, name: editTestName, description: editTestDesc, sampleType: editTestSampleType || undefined, fastingRequired: editTestFasting } : t) }
       : s));
     setEditTestId(null);
+    setShowEditCustomInput(false); setEditCustomSampleType("");
+  }
+
+  function openEditTest(t: LabTest) {
+    setEditTestId(t.id);
+    setEditTestName(t.name);
+    setEditTestDesc(t.description);
+    setEditTestSampleType(t.sampleType ?? "");
+    setEditTestFasting(t.fastingRequired ?? false);
+    setShowEditCustomInput(false); setEditCustomSampleType("");
+  }
+
+  const allSampleTypes = [...DEFAULT_SAMPLE_TYPES, ...customSampleTypes];
+
+  function commitNewCustom() {
+    const v = newCustomSampleType.trim();
+    if (!v) return;
+    if (!customSampleTypes.includes(v)) setCustomSampleTypes(cs => [...cs, v]);
+    setNewTestSampleType(v);
+    setNewCustomSampleType(""); setShowNewCustomInput(false);
+  }
+
+  function commitEditCustom() {
+    const v = editCustomSampleType.trim();
+    if (!v) return;
+    if (!customSampleTypes.includes(v)) setCustomSampleTypes(cs => [...cs, v]);
+    setEditTestSampleType(v);
+    setEditCustomSampleType(""); setShowEditCustomInput(false);
   }
 
   function exportCSV() {
-    const rows = [["Section", "Test Name", "Description"]];
-    sections.forEach(s => s.tests.forEach(t => rows.push([s.name, t.name, t.description])));
+    const rows = [["Section", "Test Name", "Description", "Sample Type", "Fasting Required"]];
+    sections.forEach(s => s.tests.forEach(t => rows.push([s.name, t.name, t.description, t.sampleType ?? "", t.fastingRequired ? "Yes" : "No"])));
     const csv = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -229,11 +278,45 @@ function LabMasterList({
               <div>
                 {/* Add test inline */}
                 {addTestSectionId === sec.id && (
-                  <div className="flex gap-2 px-4 py-2 bg-blue-50/50 border-b border-[#4982CF]/20">
-                    <Input value={newTestName} onChange={e => setNewTestName(e.target.value)} placeholder="Test name…" className="h-7 text-xs flex-1" autoFocus />
-                    <Input value={newTestDesc} onChange={e => setNewTestDesc(e.target.value)} placeholder="Description (optional)…" className="h-7 text-xs flex-1" onKeyDown={e => e.key === "Enter" && addTest(sec.id)} />
-                    <Button onClick={() => addTest(sec.id)} className="h-7 text-xs bg-[#4982CF] text-white px-2">Add</Button>
-                    <Button variant="outline" onClick={() => { setAddTestSectionId(null); setNewTestName(""); setNewTestDesc(""); }} className="h-7 text-xs px-2">Cancel</Button>
+                  <div className="flex flex-col gap-1.5 px-4 py-3 bg-blue-50/40 border-b border-[#4982CF]/20">
+                    <div className="flex gap-2">
+                      <Input value={newTestName} onChange={e => setNewTestName(e.target.value)} placeholder="Test name…" className="h-7 text-xs flex-1" autoFocus />
+                      <Input value={newTestDesc} onChange={e => setNewTestDesc(e.target.value)} placeholder="Description (optional)…" className="h-7 text-xs flex-1" />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Sample type selector */}
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={newTestSampleType}
+                          onChange={e => setNewTestSampleType(e.target.value)}
+                          className="h-7 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#4982CF]"
+                        >
+                          <option value="">Sample type…</option>
+                          {allSampleTypes.map(st => <option key={st} value={st}>{st}</option>)}
+                        </select>
+                        {!showNewCustomInput ? (
+                          <button onClick={() => setShowNewCustomInput(true)} className="flex items-center gap-0.5 h-7 px-1.5 rounded border border-dashed border-[#4982CF]/40 text-[10px] font-bold text-[#4982CF] hover:bg-[#4982CF]/5">
+                            <Plus className="h-3 w-3" /> Custom
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <Input value={newCustomSampleType} onChange={e => setNewCustomSampleType(e.target.value)} placeholder="Type name…" className="h-7 text-xs w-32"
+                              onKeyDown={e => e.key === "Enter" && commitNewCustom()} autoFocus />
+                            <Button onClick={commitNewCustom} className="h-7 text-[10px] bg-[#4982CF] text-white px-2">Add</Button>
+                            <Button variant="outline" onClick={() => { setShowNewCustomInput(false); setNewCustomSampleType(""); }} className="h-7 text-[10px] px-2">×</Button>
+                          </div>
+                        )}
+                      </div>
+                      {/* Fasting toggle */}
+                      <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+                        <Switch checked={newTestFasting} onCheckedChange={setNewTestFasting} className="data-[state=checked]:bg-amber-500 scale-90" />
+                        <span className={newTestFasting ? "font-semibold text-amber-600" : ""}>Fasting Required</span>
+                      </label>
+                      <div className="flex gap-1 ml-auto">
+                        <Button onClick={() => addTest(sec.id)} className="h-7 text-xs bg-[#4982CF] text-white px-3">Add</Button>
+                        <Button variant="outline" onClick={() => { setAddTestSectionId(null); setNewTestName(""); setNewTestDesc(""); setNewTestSampleType(""); setNewTestFasting(false); setShowNewCustomInput(false); }} className="h-7 text-xs px-2">Cancel</Button>
+                      </div>
+                    </div>
                   </div>
                 )}
                 {/* Tests */}
@@ -251,18 +334,59 @@ function LabMasterList({
                     className={`flex items-center gap-3 px-4 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/50 group ${dropTestIdx === ti && dragTestSec === sec.id ? "border-t-2 border-[#4982CF]" : ""}`}>
                     <GripVertical className="h-3.5 w-3.5 text-slate-200 cursor-grab flex-shrink-0" />
                     {editTestId === t.id ? (
-                      <>
-                        <Input value={editTestName} onChange={e => setEditTestName(e.target.value)} className="h-6 text-xs flex-1" autoFocus />
-                        <Input value={editTestDesc} onChange={e => setEditTestDesc(e.target.value)} placeholder="Description…" className="h-6 text-xs flex-1" onKeyDown={e => e.key === "Enter" && saveEditTest(sec.id, t.id)} />
-                        <Button onClick={() => saveEditTest(sec.id, t.id)} className="h-6 text-[10px] bg-[#4982CF] text-white px-2">Save</Button>
-                        <Button variant="outline" onClick={() => setEditTestId(null)} className="h-6 text-[10px] px-2">×</Button>
-                      </>
+                      <div className="flex flex-col gap-1.5 flex-1">
+                        <div className="flex gap-2">
+                          <Input value={editTestName} onChange={e => setEditTestName(e.target.value)} className="h-6 text-xs flex-1" autoFocus />
+                          <Input value={editTestDesc} onChange={e => setEditTestDesc(e.target.value)} placeholder="Description…" className="h-6 text-xs flex-1" />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <select value={editTestSampleType} onChange={e => setEditTestSampleType(e.target.value)}
+                              className="h-6 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#4982CF]">
+                              <option value="">Sample type…</option>
+                              {allSampleTypes.map(st => <option key={st} value={st}>{st}</option>)}
+                            </select>
+                            {!showEditCustomInput ? (
+                              <button onClick={() => setShowEditCustomInput(true)} className="flex items-center gap-0.5 h-6 px-1.5 rounded border border-dashed border-[#4982CF]/40 text-[10px] font-bold text-[#4982CF] hover:bg-[#4982CF]/5">
+                                <Plus className="h-3 w-3" /> Custom
+                              </button>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <Input value={editCustomSampleType} onChange={e => setEditCustomSampleType(e.target.value)} placeholder="Type name…" className="h-6 text-xs w-28"
+                                  onKeyDown={e => e.key === "Enter" && commitEditCustom()} autoFocus />
+                                <Button onClick={commitEditCustom} className="h-6 text-[10px] bg-[#4982CF] text-white px-1.5">Add</Button>
+                                <Button variant="outline" onClick={() => { setShowEditCustomInput(false); setEditCustomSampleType(""); }} className="h-6 text-[10px] px-1.5">×</Button>
+                              </div>
+                            )}
+                          </div>
+                          <label className="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
+                            <Switch checked={editTestFasting} onCheckedChange={setEditTestFasting} className="data-[state=checked]:bg-amber-500 scale-75" />
+                            <span className={editTestFasting ? "font-semibold text-amber-600" : ""}>Fasting</span>
+                          </label>
+                          <Button onClick={() => saveEditTest(sec.id, t.id)} className="h-6 text-[10px] bg-[#4982CF] text-white px-2 ml-auto">Save</Button>
+                          <Button variant="outline" onClick={() => setEditTestId(null)} className="h-6 text-[10px] px-2">×</Button>
+                        </div>
+                      </div>
                     ) : (
                       <>
-                        <span className="text-xs font-medium text-slate-700 flex-1">{t.name}</span>
-                        {t.description && <span className="text-[10px] text-slate-400 flex-1">{t.description}</span>}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-medium text-slate-700">{t.name}</span>
+                            {t.sampleType && (
+                              <span className="inline-flex items-center rounded-full border border-[#4982CF]/30 bg-[#4982CF]/10 px-1.5 py-0 text-[10px] font-medium text-[#4982CF]">
+                                {t.sampleType}
+                              </span>
+                            )}
+                            {t.fastingRequired && (
+                              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] font-semibold text-amber-700">
+                                Fasting
+                              </span>
+                            )}
+                          </div>
+                          {t.description && <p className="text-[10px] text-slate-400 mt-0.5">{t.description}</p>}
+                        </div>
                         <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
-                          <button onClick={() => { setEditTestId(t.id); setEditTestName(t.name); setEditTestDesc(t.description); }} className="p-1 rounded hover:bg-slate-100 text-slate-300 hover:text-[#4982CF]"><Edit2 className="h-3 w-3" /></button>
+                          <button onClick={() => openEditTest(t)} className="p-1 rounded hover:bg-slate-100 text-slate-300 hover:text-[#4982CF]"><Edit2 className="h-3 w-3" /></button>
                           <button onClick={() => setSections(ss => ss.map(s => s.id === sec.id ? { ...s, tests: s.tests.filter(x => x.id !== t.id) } : s))} className="p-1 rounded hover:bg-rose-50 text-slate-300 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button>
                         </div>
                       </>
