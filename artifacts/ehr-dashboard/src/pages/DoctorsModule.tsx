@@ -68,6 +68,7 @@ export type Doctor = {
 
 const ALL_SERVICES = [
   "Consultation", "FollowUp", "Emergency", "Tele-consultation", "Vaccinations", "Procedures",
+  "Consumables", "Pharmacy", "Imaging", "Lab",
 ];
 
 const SHIFTS = ["Morning", "Afternoon", "Evening", "Night"];
