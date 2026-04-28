@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { NoteState } from "@/pages/ClinicalNoteDrawer";
 
 const LS_PREFIX = "soap_draft_";
 const DEBOUNCE_MS = 800;
+
+function draftKey(entryId: string) {
+  return `${LS_PREFIX}${entryId}`;
+}
 
 function readDraft(key: string): NoteState | null {
   try {
@@ -13,14 +17,20 @@ function readDraft(key: string): NoteState | null {
   }
 }
 
-export function useSoapNoteDraft(entryId: string) {
-  const key = `${LS_PREFIX}${entryId}`;
-
-  // Read the draft only once — captured at first render
-  const draftRef = useRef<NoteState | null>(undefined as unknown as NoteState | null);
-  if (draftRef.current === (undefined as unknown as NoteState | null)) {
-    draftRef.current = readDraft(key);
+/** Standalone utility — call from outside a component (e.g. on consultation complete). */
+export function clearSoapDraft(entryId: string) {
+  try {
+    localStorage.removeItem(draftKey(entryId));
+  } catch {
+    // ignore
   }
+}
+
+export function useSoapNoteDraft(entryId: string) {
+  const key = useMemo(() => draftKey(entryId), [entryId]);
+
+  // Read the draft from localStorage once per key (re-reads if entryId changes)
+  const draft = useMemo(() => readDraft(key), [key]);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -40,15 +50,11 @@ export function useSoapNoteDraft(entryId: string) {
 
   const clearDraft = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    try {
-      localStorage.removeItem(key);
-    } catch {
-      // ignore
-    }
-  }, [key]);
+    clearSoapDraft(entryId);
+  }, [entryId]);
 
   // Cancel any pending save on unmount
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
-  return { draft: draftRef.current, saveDraft, clearDraft };
+  return { draft, saveDraft, clearDraft };
 }

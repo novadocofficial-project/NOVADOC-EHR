@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
+import { clearSoapDraft } from "@/hooks/useSoapNoteDraft";
 import { useToast } from "@/hooks/use-toast";
 import type { SignedRecord } from "@/pages/SoapNotePage";
 import { PatientFaceSheet } from "@/pages/PatientFaceSheet";
@@ -111,6 +112,7 @@ export function DoctorUser() {
   function handleFaceSheetComplete(id: string) {
     const entry = queue.find(e => e.id === id);
     docCompleteConsultation(id);
+    clearSoapDraft(id);
     setFaceSheetEntry(null);
     toast({ title: `Consultation complete — ${entry?.tokenNumber ?? id} advanced to next step` });
   }
@@ -119,6 +121,7 @@ export function DoctorUser() {
   function handleCompleteWithoutSoap(id: string, reason: string, nextAppt: string) {
     const entry = queue.find(e => e.id === id);
     docMarkComplete(id);
+    clearSoapDraft(id);
     setFaceSheetEntry(null);
     toast({ title: `${entry?.tokenNumber ?? id} marked complete · Next appt: ${nextAppt}` });
   }
