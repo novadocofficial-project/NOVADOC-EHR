@@ -627,6 +627,11 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     ? readActiveLabOrder(entryId)?.sentAt ?? null
     : null;
 
+  // true when the dispatched lab order has been voided — unlocks "Send to Lab" again
+  const activeOrderIsVoided = awaitingLab
+    ? labOrders.some(o => o.sentAt === activeLabSentAt && o.voided)
+    : false;
+
   const [voidPending,       setVoidPending]       = useState<{ idx: number } | null>(null);
   const [voidReasonInput,   setVoidReasonInput]   = useState("");
   const [labOpen,           setLabOpen]           = useState(false);
@@ -1560,7 +1565,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
           <LabDrawer
             isDone={labDone}
             savedData={labOrders[labOrders.length - 1] ?? null}
-            awaitingLab={awaitingLab}
+            awaitingLab={awaitingLab && !activeOrderIsVoided}
             labResultsReady={labResultsReady}
             onSave={handleLabSave}
             onSendToLab={handleSendToLab}
