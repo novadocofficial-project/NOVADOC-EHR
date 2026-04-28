@@ -1,3 +1,5 @@
+import type { LabOrder } from "../pages/LabDrawer";
+
 // ─── SOAP Dummy Note Interface ────────────────────────────────────────────────
 
 export interface SoapDummyNote {
@@ -14,6 +16,7 @@ export interface SoapDummyNote {
   pocLabs:          { test: string; result: string; unit: string; status: "Normal" | "Abnormal" }[];
   diagnoses:        { code: string; name: string; severity: "Low" | "Moderate" | "High" }[];
   labs:             string[];
+  labOrders?:       LabOrder[];
   prescriptions:    { drug: string; sig: string; qty: number }[];
   imaging:          string[];
   carePlan:         string[];

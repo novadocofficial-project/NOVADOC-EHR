@@ -333,13 +333,44 @@ function SoapNotePreview({ note }: { note: SoapDummyNote }) {
           </Section>
 
           {/* Lab Orders */}
-          {note.labs.length > 0 && (
+          {((note.labOrders ?? []).length > 0 || note.labs.length > 0) && (
             <Section icon={<Microscope className="h-3.5 w-3.5" />} title="Lab Orders" color="#f59e0b">
-              <div className="flex flex-wrap gap-1.5">
-                {note.labs.map(l => (
-                  <span key={l} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">{l}</span>
-                ))}
-              </div>
+              {(note.labOrders ?? []).length > 0 ? (
+                <div className="space-y-2">
+                  {(note.labOrders ?? []).map((order, idx) => (
+                    <div key={idx} className={`rounded-lg border px-3 py-2 ${order.voided ? "border-rose-100 bg-rose-50/60" : "border-amber-100 bg-amber-50/40"}`}>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${order.voided ? "text-rose-400 line-through" : "text-amber-700"}`}>
+                          Order {idx + 1}
+                          {idx === 0 ? " · Original" : " · Follow-up"}
+                        </span>
+                        {order.sentAt && (
+                          <span className="text-[9px] text-slate-400">
+                            · {new Date(order.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                          </span>
+                        )}
+                        {order.voided && (
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 border border-rose-200">VOIDED</span>
+                        )}
+                      </div>
+                      {order.voided && order.voidReason && (
+                        <p className="text-[9px] text-rose-400 italic mb-1">Reason: {order.voidReason}</p>
+                      )}
+                      <div className="flex flex-wrap gap-1">
+                        {order.tests.map(t => (
+                          <span key={t.id} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${order.voided ? "bg-slate-50 text-slate-400 border-slate-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>{t.name}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {note.labs.map(l => (
+                    <span key={l} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">{l}</span>
+                  ))}
+                </div>
+              )}
             </Section>
           )}
 

@@ -622,6 +622,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     const legacy = (initialNote as (NoteState & { labOrder?: LabOrder | null }) | undefined)?.labOrder;
     return legacy ? [legacy] : [];
   });
+  const [voidPending,       setVoidPending]       = useState<{ idx: number } | null>(null);
+  const [voidReasonInput,   setVoidReasonInput]   = useState("");
   const [labOpen,           setLabOpen]           = useState(false);
   const [pocOpen,           setPocOpen]           = useState(false);
   const [formularyOpen,     setFormularyOpen]     = useState(false);
@@ -722,12 +724,30 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     onSendToLab?.();
   }
 
-  function handleVoidOrder(idx: number) {
+  function handleVoidOrder(idx: number, reason?: string) {
+    const isCurrentlyVoided = labOrders[idx]?.voided;
+    if (!isCurrentlyVoided && !reason) return;
     const nextOrders = labOrders.map((o, i) =>
-      i === idx ? { ...o, voided: !o.voided, voidedAt: !o.voided ? new Date().toISOString() : undefined } : o
+      i === idx
+        ? { ...o, voided: !o.voided, voidedAt: !o.voided ? new Date().toISOString() : undefined, voidReason: !o.voided ? reason : undefined }
+        : o
     );
     setLabOrders(nextOrders);
     setNote(prev => ({ ...prev, labOrders: nextOrders }));
+  }
+
+  function openVoidModal(idx: number) {
+    setVoidPending({ idx });
+    setVoidReasonInput("");
+  }
+
+  function confirmVoid() {
+    if (!voidPending) return;
+    const reason = voidReasonInput.trim();
+    if (!reason) return;
+    handleVoidOrder(voidPending.idx, reason);
+    setVoidPending(null);
+    setVoidReasonInput("");
   }
 
   function handleImport(key: keyof NoteState, value: string) {
@@ -1082,9 +1102,12 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                             <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500 no-underline" style={{ textDecoration: "none" }}>· VOIDED</span>
                           )}
                         </p>
+                        {order.voided && order.voidReason && (
+                          <p className="text-[9px] text-rose-400 italic mt-0.5 ml-0.5">Reason: {order.voidReason}</p>
+                        )}
                         {order.sentAt && (
                           <button
-                            onClick={() => handleVoidOrder(idx)}
+                            onClick={() => order.voided ? handleVoidOrder(idx) : openVoidModal(idx)}
                             title={order.voided ? "Restore order" : "Void order"}
                             className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
                               order.voided
@@ -1119,9 +1142,12 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                               <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500" style={{ textDecoration: "none" }}>· VOIDED</span>
                             )}
                           </p>
+                          {latest.voided && latest.voidReason && (
+                            <p className="text-[9px] text-rose-400 italic mt-0.5 ml-0.5">Reason: {latest.voidReason}</p>
+                          )}
                           {latest.sentAt && (
                             <button
-                              onClick={() => handleVoidOrder(latestIdx)}
+                              onClick={() => latest.voided ? handleVoidOrder(latestIdx) : openVoidModal(latestIdx)}
                               title={latest.voided ? "Restore order" : "Void order"}
                               className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
                                 latest.voided
@@ -1160,8 +1186,11 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                             <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500" style={{ textDecoration: "none" }}>· VOIDED</span>
                           )}
                         </p>
+                        {singleOrder.voided && singleOrder.voidReason && (
+                          <p className="text-[9px] text-rose-400 italic mt-0.5 ml-0.5">Reason: {singleOrder.voidReason}</p>
+                        )}
                         <button
-                          onClick={() => handleVoidOrder(0)}
+                          onClick={() => singleOrder.voided ? handleVoidOrder(0) : openVoidModal(0)}
                           title={singleOrder.voided ? "Restore order" : "Void order"}
                           className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
                             singleOrder.voided
@@ -1556,6 +1585,68 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
             onSave={v => set("referrals", v)}
             onClose={() => setReferralOpen(false)}
           />
+        )}
+
+        {/* ── Void Reason Modal ── */}
+        {voidPending && (
+          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
+            <div className="bg-white rounded-xl shadow-2xl w-[360px] mx-4 overflow-hidden">
+              <div className="flex items-start gap-3 p-5 border-b border-slate-100">
+                <div className="flex-shrink-0 mt-0.5 h-9 w-9 rounded-full bg-rose-50 flex items-center justify-center">
+                  <Trash2 className="h-4.5 w-4.5 text-rose-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">Void this lab order?</p>
+                  <p className="mt-1 text-xs text-slate-500 leading-relaxed">Please select or enter a reason for voiding this order.</p>
+                </div>
+              </div>
+              <div className="p-5 space-y-3">
+                <div className="flex flex-wrap gap-1.5">
+                  {["Ordered in error", "Patient declined", "Duplicate order", "Test not available", "Patient not fasting"].map(preset => (
+                    <button
+                      key={preset}
+                      onClick={() => setVoidReasonInput(preset)}
+                      className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
+                        voidReasonInput === preset
+                          ? "bg-rose-100 text-rose-700 border-rose-300"
+                          : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200"
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={voidReasonInput}
+                  onChange={e => setVoidReasonInput(e.target.value)}
+                  placeholder="Or type a custom reason…"
+                  className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-rose-300 placeholder:text-slate-400"
+                />
+              </div>
+              {!voidReasonInput.trim() && (
+                <p className="px-5 pb-2 text-[10px] text-rose-400 italic">A reason is required to void this order.</p>
+              )}
+              <div className="flex justify-end gap-2 px-5 py-3 bg-slate-50 border-t border-slate-100">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setVoidPending(null); setVoidReasonInput(""); }}
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={confirmVoid}
+                  disabled={!voidReasonInput.trim()}
+                  className="text-xs bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Void Order
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── Discard Confirmation Overlay ── */}

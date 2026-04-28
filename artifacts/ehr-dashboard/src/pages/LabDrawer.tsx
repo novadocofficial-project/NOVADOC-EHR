@@ -27,6 +27,7 @@ export interface LabOrder {
   sentAt?:          string;
   voided?:          boolean;
   voidedAt?:        string;
+  voidReason?:      string;
 }
 
 // ─── Lab Categories ───────────────────────────────────────────────────────────
