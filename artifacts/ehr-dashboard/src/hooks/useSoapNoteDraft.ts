@@ -38,16 +38,20 @@ export function useSoapNoteDraft(entryId: string) {
     setDraft(readDraft(key));
   }, [key]);
 
-  const timerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Track the latest note so we can flush on unmount without stale closures.
-  const pendingRef   = useRef<NoteState | null>(null);
+  const timerRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track the latest pending note for unmount flush.
+  const pendingRef    = useRef<NoteState | null>(null);
   const pendingKeyRef = useRef(key);
+  // Guard: set to true when draft is explicitly cleared so the unmount flush
+  // doesn't recreate the draft after clearDraft / clearSoapDraft was called.
+  const clearedRef    = useRef(false);
 
-  // Keep pendingKeyRef in sync so the unmount flush uses the right key.
-  useEffect(() => { pendingKeyRef.current = key; }, [key]);
+  // Keep pendingKeyRef current across key changes.
+  useEffect(() => { pendingKeyRef.current = key; clearedRef.current = false; }, [key]);
 
   const saveDraft = useCallback(
     (note: NoteState) => {
+      clearedRef.current = false;
       // Update state immediately so subsequent remounts use the latest value.
       setDraft(note);
       pendingRef.current = note;
@@ -66,6 +70,7 @@ export function useSoapNoteDraft(entryId: string) {
   );
 
   const clearDraft = useCallback(() => {
+    clearedRef.current = true;
     if (timerRef.current) clearTimeout(timerRef.current);
     pendingRef.current = null;
     timerRef.current = null;
@@ -73,10 +78,11 @@ export function useSoapNoteDraft(entryId: string) {
     clearSoapDraft(entryId);
   }, [entryId]);
 
-  // On unmount: flush any pending debounced write immediately so no edits are lost.
+  // On unmount: flush any pending debounced write immediately so no edits are
+  // lost. Skipped if the draft was explicitly cleared (avoid re-creating it).
   useEffect(() => {
     return () => {
-      if (timerRef.current && pendingRef.current) {
+      if (!clearedRef.current && timerRef.current && pendingRef.current) {
         clearTimeout(timerRef.current);
         try {
           localStorage.setItem(pendingKeyRef.current, JSON.stringify(pendingRef.current));
