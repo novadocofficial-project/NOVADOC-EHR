@@ -623,10 +623,12 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
     setNote(prev => ({ ...prev, [key]: val }));
   }
 
-  // Notify parent of every note change so it can persist the draft
+  // Notify parent of every note change so it can persist the draft.
+  // Use a ref so the callback is always current without it being a dep.
+  const onNoteChangeRef = useRef(onNoteChange);
+  useEffect(() => { onNoteChangeRef.current = onNoteChange; });
   useEffect(() => {
-    onNoteChange?.(note);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    onNoteChangeRef.current?.(note);
   }, [note]);
 
   function togglePlanTag(tag: string) {

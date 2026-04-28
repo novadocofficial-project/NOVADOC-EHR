@@ -143,6 +143,7 @@ export function DoctorUser() {
     const reasonText = skipReason === "Other" ? skipOtherText.trim() : skipReason;
     if (!reasonText) return;
     docMarkComplete(skipModalId);
+    clearSoapDraft(skipModalId);
     const entry = queue.find(e => e.id === skipModalId);
     setSkipModalId(null);
     toast({ title: `${entry?.tokenNumber ?? skipModalId} marked complete (skipped — no SOAP note)` });
