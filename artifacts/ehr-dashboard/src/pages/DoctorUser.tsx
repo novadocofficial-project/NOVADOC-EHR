@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   PhoneCall, SkipForward, RotateCcw,
   ChevronUp, Clock, AlertCircle, X,
@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
-import { clearSoapDraft } from "@/hooks/useSoapNoteDraft";
+import { clearSoapDraft, hasSoapDraft } from "@/hooks/useSoapNoteDraft";
 import { useToast } from "@/hooks/use-toast";
 import type { SignedRecord } from "@/pages/SoapNotePage";
 import { PatientFaceSheet } from "@/pages/PatientFaceSheet";
@@ -38,8 +38,9 @@ export function DoctorUser() {
   const [showPendingLab, setShowPendingLab] = useState(false);
   const [faceSheetEntry, setFaceSheetEntry] = useState<MultiEntry | null>(null);
 
-  // Tracks which token IDs had SOAP Note clicked this session
-  const [soapNoteDone, setSoapNoteDone] = useState<Set<string>>(new Set());
+  // Tracks which token IDs had SOAP Note clicked this session (in-memory bridge
+  // for the ~800ms before the first debounced draft hits localStorage).
+  const [soapNoteDoneSession, setSoapNoteDoneSession] = useState<Set<string>>(new Set());
 
   // Tracks doctor-signed notes per entry
   const [signedRecordsMap, setSignedRecordsMap] = useState<Map<string, SignedRecord[]>>(new Map());
@@ -72,6 +73,16 @@ export function DoctorUser() {
     .filter(e => e.step === 3 && e.status !== "completed" && !e.skipped && !e.pendingLab)
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
+  // Derived: set of entry IDs with a SOAP note in progress, combining
+  // (a) entries the doctor has interacted with this session and
+  // (b) entries with a persisted draft on disk (survives page navigation).
+  // Re-evaluated each tick (1s) so freshly-saved drafts are picked up promptly.
+  const soapNoteDone = useMemo(() => {
+    const merged = new Set(soapNoteDoneSession);
+    queue.forEach(e => { if (hasSoapDraft(e.id)) merged.add(e.id); });
+    return merged;
+  }, [soapNoteDoneSession, queue, tick]);
+
   const skippedQueue   = queue.filter(e => e.step === 3 && e.skipped);
   const pendingLabQueue = queue.filter(e => e.step === 3 && e.pendingLab && !e.skipped && e.status !== "completed");
 
@@ -94,7 +105,7 @@ export function DoctorUser() {
   }
 
   function handleSoapNoteClick(id: string) {
-    setSoapNoteDone(prev => new Set([...prev, id]));
+    setSoapNoteDoneSession(prev => new Set([...prev, id]));
     toast({ title: "SOAP Note marked as created" });
   }
 

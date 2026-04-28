@@ -26,6 +26,15 @@ export function clearSoapDraft(entryId: string) {
   }
 }
 
+/** Synchronously check whether a persisted SOAP draft exists for this entry. */
+export function hasSoapDraft(entryId: string): boolean {
+  try {
+    return localStorage.getItem(draftKey(entryId)) !== null;
+  } catch {
+    return false;
+  }
+}
+
 export function useSoapNoteDraft(entryId: string) {
   const key = useMemo(() => draftKey(entryId), [entryId]);
 
