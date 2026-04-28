@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { NoteState } from "@/pages/ClinicalNoteDrawer";
 
 const LS_PREFIX = "soap_draft_";
@@ -29,13 +29,22 @@ export function clearSoapDraft(entryId: string) {
 export function useSoapNoteDraft(entryId: string) {
   const key = useMemo(() => draftKey(entryId), [entryId]);
 
-  // Read the draft from localStorage once per key (re-reads if entryId changes)
-  const draft = useMemo(() => readDraft(key), [key]);
+  // Reactive draft state — updated immediately on every save so drawer
+  // remounts (close → reopen) always receive the latest note content.
+  const [draft, setDraft] = useState<NoteState | null>(() => readDraft(draftKey(entryId)));
+
+  // When entryId changes (patient switch), reload draft from localStorage
+  useEffect(() => {
+    setDraft(readDraft(key));
+  }, [key]);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const saveDraft = useCallback(
     (note: NoteState) => {
+      // Update state immediately so subsequent remounts use the latest value
+      setDraft(note);
+      // Debounce the actual localStorage write
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         try {
@@ -50,6 +59,7 @@ export function useSoapNoteDraft(entryId: string) {
 
   const clearDraft = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    setDraft(null);
     clearSoapDraft(entryId);
   }, [entryId]);
 
