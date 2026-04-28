@@ -73,15 +73,22 @@ export function DoctorUser() {
     .filter(e => e.step === 3 && e.status !== "completed" && !e.skipped && !e.pendingLab)
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
-  // Derived: set of entry IDs with a SOAP note in progress, combining
-  // (a) entries the doctor has interacted with this session and
-  // (b) entries with a persisted draft on disk (survives page navigation).
-  // Re-evaluated each tick (1s) so freshly-saved drafts are picked up promptly.
+  // Derived: set of entry IDs the queue should treat as "has SOAP note".
+  // Three sources, in order of authority:
+  //   (a) entries with a persisted draft on disk (survives page navigation)
+  //   (b) entries with at least one signed record in this session
+  //   (c) short-lived session bridge for the ~800ms before the first
+  //       debounced draft save lands in localStorage
+  // Re-evaluated each tick (1s) so freshly-saved drafts surface promptly.
   const soapNoteDone = useMemo(() => {
-    const merged = new Set(soapNoteDoneSession);
+    const merged = new Set<string>();
     queue.forEach(e => { if (hasSoapDraft(e.id)) merged.add(e.id); });
+    signedRecordsMap.forEach((records, id) => {
+      if (records.length > 0) merged.add(id);
+    });
+    soapNoteDoneSession.forEach(id => merged.add(id));
     return merged;
-  }, [soapNoteDoneSession, queue, tick]);
+  }, [soapNoteDoneSession, queue, tick, signedRecordsMap]);
 
   const skippedQueue   = queue.filter(e => e.step === 3 && e.skipped);
   const pendingLabQueue = queue.filter(e => e.step === 3 && e.pendingLab && !e.skipped && e.status !== "completed");
@@ -109,6 +116,18 @@ export function DoctorUser() {
     toast({ title: "SOAP Note marked as created" });
   }
 
+  // Drop the session-bridge entry for an id whenever the underlying draft is
+  // (or about to be) cleared. After this runs, `soapNoteDone` is driven solely
+  // by the authoritative sources (persisted draft + signed records).
+  function pruneSoapNoteSession(id: string) {
+    setSoapNoteDoneSession(prev => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
   function handleConsultation(entry: MultiEntry) {
     docAtCounter(entry.id);
     setFaceSheetEntry(entry);
@@ -124,6 +143,7 @@ export function DoctorUser() {
     const entry = queue.find(e => e.id === id);
     docCompleteConsultation(id);
     clearSoapDraft(id);
+    pruneSoapNoteSession(id);
     setFaceSheetEntry(null);
     toast({ title: `Consultation complete — ${entry?.tokenNumber ?? id} advanced to next step` });
   }
@@ -133,6 +153,7 @@ export function DoctorUser() {
     const entry = queue.find(e => e.id === id);
     docMarkComplete(id);
     clearSoapDraft(id);
+    pruneSoapNoteSession(id);
     setFaceSheetEntry(null);
     toast({ title: `${entry?.tokenNumber ?? id} marked complete · Next appt: ${nextAppt}` });
   }
@@ -155,6 +176,7 @@ export function DoctorUser() {
     if (!reasonText) return;
     docMarkComplete(skipModalId);
     clearSoapDraft(skipModalId);
+    pruneSoapNoteSession(skipModalId);
     const entry = queue.find(e => e.id === skipModalId);
     setSkipModalId(null);
     toast({ title: `${entry?.tokenNumber ?? skipModalId} marked complete (skipped — no SOAP note)` });
@@ -191,6 +213,9 @@ export function DoctorUser() {
       next.set(id, [...(next.get(id) ?? []), record]);
       return next;
     });
+    // Sign also triggers clearDraft() inside SoapNotePage, so drop the
+    // session-bridge entry — the signed record itself now drives soapNoteDone.
+    pruneSoapNoteSession(id);
   }
 
   const skipReasonFilled =
