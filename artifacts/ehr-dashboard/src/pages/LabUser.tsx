@@ -95,8 +95,15 @@ interface ResultField {
   max?: number;
 }
 
+const GENERIC_RESULT_FIELDS: ResultField[] = [
+  { label: "Result",       key: "result",    multiline: true },
+  { label: "Collected At", key: "collected" },
+  { label: "Notes",        key: "notes",     multiline: true },
+];
+
 const RESULT_FIELDS: Record<string, ResultField[]> = {
-  lt1: [
+  // Hematology
+  cbc: [
     { label: "WBC Count",    key: "wbc",  unit: "×10³/µL", normalRange: "4.0–11.0",  min: 4.0,  max: 11.0 },
     { label: "RBC Count",    key: "rbc",  unit: "×10⁶/µL", normalRange: "4.0–5.5",   min: 4.0,  max: 5.5  },
     { label: "Haemoglobin",  key: "hgb",  unit: "g/dL",    normalRange: "12.0–17.5", min: 12.0, max: 17.5 },
@@ -105,30 +112,161 @@ const RESULT_FIELDS: Record<string, ResultField[]> = {
     { label: "Collected At", key: "collected" },
     { label: "Notes",        key: "notes", multiline: true },
   ],
-  lt2: [
+  esr: [
+    { label: "ESR",          key: "esr",  unit: "mm/hr", normalRange: "0–20", min: 0, max: 20 },
+    { label: "Collected At", key: "collected" },
+    { label: "Notes",        key: "notes", multiline: true },
+  ],
+  // Inflammatory markers
+  crp: [
     { label: "CRP Value",    key: "crp",  unit: "mg/L", normalRange: "< 10", max: 10 },
     { label: "Collected At", key: "collected" },
     { label: "Notes",        key: "notes", multiline: true },
   ],
-  lt3: [
+  crp_hs: [
+    { label: "hsCRP",        key: "hscrp", unit: "mg/L", normalRange: "< 3", max: 3 },
+    { label: "Collected At", key: "collected" },
+    { label: "Notes",        key: "notes", multiline: true },
+  ],
+  // Microbiology
+  throat_sw: [
     { label: "Organism",     key: "organism" },
     { label: "Sensitivity",  key: "sensitivity" },
     { label: "Result",       key: "result" },
     { label: "Collected At", key: "collected" },
     { label: "Notes",        key: "notes", multiline: true },
   ],
-  lt4: [
+  urine_cx: [
+    { label: "Organism",     key: "organism" },
+    { label: "Sensitivity",  key: "sensitivity" },
+    { label: "Colony Count", key: "colony_count" },
+    { label: "Collected At", key: "collected" },
+    { label: "Notes",        key: "notes", multiline: true },
+  ],
+  blood_cx: [
+    { label: "Organism",     key: "organism" },
+    { label: "Sensitivity",  key: "sensitivity" },
+    { label: "Result",       key: "result" },
+    { label: "Collected At", key: "collected" },
+    { label: "Notes",        key: "notes", multiline: true },
+  ],
+  sputum_cs: [
+    { label: "Organism",     key: "organism" },
+    { label: "Sensitivity",  key: "sensitivity" },
+    { label: "Result",       key: "result" },
+    { label: "Collected At", key: "collected" },
+    { label: "Notes",        key: "notes", multiline: true },
+  ],
+  stool_cs: [
+    { label: "Organism",     key: "organism" },
+    { label: "Result",       key: "result" },
+    { label: "Collected At", key: "collected" },
+    { label: "Notes",        key: "notes", multiline: true },
+  ],
+  // Blood Chemistry
+  glucose_f: [
     { label: "Fasting Blood Sugar", key: "fbs", unit: "mmol/L", normalRange: "3.9–5.5", min: 3.9, max: 5.5 },
     { label: "Collected At",        key: "collected" },
     { label: "Notes",               key: "notes", multiline: true },
   ],
-  lt5: [
-    { label: "Total Cholesterol", key: "total_chol", unit: "mmol/L", normalRange: "< 5.2",  max: 5.2 },
-    { label: "LDL",               key: "ldl",        unit: "mmol/L", normalRange: "< 3.4",  max: 3.4 },
-    { label: "HDL",               key: "hdl",        unit: "mmol/L", normalRange: "> 1.0",  min: 1.0 },
-    { label: "Triglycerides",     key: "trig",       unit: "mmol/L", normalRange: "< 1.7",  max: 1.7 },
-    { label: "Collected At",      key: "collected" },
-    { label: "Notes",             key: "notes", multiline: true },
+  glucose_r: [
+    { label: "Random Blood Sugar",  key: "rbs", unit: "mmol/L", normalRange: "< 7.8", max: 7.8 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  glucose_2h: [
+    { label: "2-hr Post-Prandial",  key: "ppbs", unit: "mmol/L", normalRange: "< 7.8", max: 7.8 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  hba1c: [
+    { label: "HbA1c",               key: "hba1c", unit: "%", normalRange: "< 5.7", max: 5.7 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  bun: [
+    { label: "BUN",                 key: "bun",  unit: "mmol/L", normalRange: "2.5–6.4", min: 2.5, max: 6.4 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  creatinine: [
+    { label: "Creatinine (Serum)",  key: "cr",   unit: "µmol/L", normalRange: "44–106", min: 44, max: 106 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  uric_acid: [
+    { label: "Uric Acid",           key: "ua",   unit: "mmol/L", normalRange: "0.18–0.42", min: 0.18, max: 0.42 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  // Liver Function
+  alt: [
+    { label: "ALT",                 key: "alt",  unit: "U/L", normalRange: "7–56", min: 7, max: 56 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  ast: [
+    { label: "AST",                 key: "ast",  unit: "U/L", normalRange: "10–40", min: 10, max: 40 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  alp: [
+    { label: "ALP",                 key: "alp",  unit: "U/L", normalRange: "44–147", min: 44, max: 147 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  bilirubin_t: [
+    { label: "Total Bilirubin",     key: "tbil", unit: "µmol/L", normalRange: "3.4–20.5", min: 3.4, max: 20.5 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  bilirubin_d: [
+    { label: "Direct Bilirubin",    key: "dbil", unit: "µmol/L", normalRange: "0–5.1", min: 0, max: 5.1 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  albumin: [
+    { label: "Albumin",             key: "alb",  unit: "g/L", normalRange: "35–50", min: 35, max: 50 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  // Lipids — individual tests
+  cholesterol: [
+    { label: "Total Cholesterol",   key: "total_chol", unit: "mmol/L", normalRange: "< 5.2",  max: 5.2 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  ldl: [
+    { label: "LDL Cholesterol",     key: "ldl",        unit: "mmol/L", normalRange: "< 3.4",  max: 3.4 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  hdl: [
+    { label: "HDL Cholesterol",     key: "hdl",        unit: "mmol/L", normalRange: "> 1.0",  min: 1.0 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  tg: [
+    { label: "Triglycerides",       key: "trig",       unit: "mmol/L", normalRange: "< 1.7",  max: 1.7 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  // Cardiac
+  troponin_i: [
+    { label: "Troponin I (hs)",     key: "trop",  unit: "ng/L", normalRange: "< 26", max: 26 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  bnp: [
+    { label: "BNP",                 key: "bnp",   unit: "pg/mL", normalRange: "< 100", max: 100 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
+  ],
+  // Ferritin
+  ferritin: [
+    { label: "Ferritin",            key: "ferritin", unit: "ng/mL", normalRange: "12–300", min: 12, max: 300 },
+    { label: "Collected At",        key: "collected" },
+    { label: "Notes",               key: "notes", multiline: true },
   ],
 };
 
@@ -303,7 +441,7 @@ function LabPanel({ entry, onClose, onComplete }: {
 
   const pendingCount = localTests.filter(t => t.status === "pending").length;
   const selectedTest = localTests.find(t => t.id === selectedTestId) ?? null;
-  const selectedFields = selectedTestId ? (RESULT_FIELDS[selectedTestId] ?? []) : [];
+  const selectedFields = selectedTestId ? (RESULT_FIELDS[selectedTestId] ?? GENERIC_RESULT_FIELDS) : [];
   const selectedValues = selectedTestId ? (resultValues[selectedTestId] ?? {}) : {};
 
   // Detect unsaved changes: test already saved but current values differ from snapshot

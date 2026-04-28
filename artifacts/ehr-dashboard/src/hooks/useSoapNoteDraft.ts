@@ -5,7 +5,7 @@ import type { LabOrder as DrawerLabOrder } from "@/pages/LabDrawer";
 
 const LS_PREFIX = "soap_draft_";
 const SIGNED_PREFIX = "soap_signed_";
-const ACTIVE_LAB_PREFIX = "ehr_lab_order_";
+const ACTIVE_LAB_PREFIX = "ehr_active_lab_order_";
 const DEBOUNCE_MS = 800;
 
 function draftKey(entryId: string) {
