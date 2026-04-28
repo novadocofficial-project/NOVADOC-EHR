@@ -141,6 +141,10 @@ function soapDummyToNoteState(dummy: SoapDummyNote): NoteState {
     labOrderDone:    false,
     diagnoses:       [],
     diagnosisDone:   false,
+    hpiSavedData:    {},
+    hpiDoneComplaints: [],
+    peSavedData:     {},
+    peDoneSystemIds: [],
   };
 }
 

@@ -78,6 +78,11 @@ export interface NoteState {
   labOrderDone:    boolean;
   diagnoses:       DiagnosisEntry[];
   diagnosisDone:   boolean;
+  // HPI and Physical Exam drawer-state persisted so they survive refresh
+  hpiSavedData:       Record<string, CoughState>;
+  hpiDoneComplaints:  string[];
+  peSavedData:        Record<string, Record<string, string>>;
+  peDoneSystemIds:    string[];
 }
 
 export const EMPTY_NOTE: NoteState = {
@@ -87,6 +92,7 @@ export const EMPTY_NOTE: NoteState = {
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
   labOrder: null, labOrderDone: false, diagnoses: [], diagnosisDone: false,
+  hpiSavedData: {}, hpiDoneComplaints: [], peSavedData: {}, peDoneSystemIds: [],
 };
 
 const PLAN_TAGS = [
@@ -598,11 +604,11 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
   const [fullscreen,        setFullscreen]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(() => initialNote ?? EMPTY_NOTE);
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
-  const [hpiDoneComplaints, setHpiDoneComplaints] = useState<string[]>([]);
-  const [hpiSavedData,      setHpiSavedData]      = useState<Record<string, CoughState>>({});
+  const [hpiDoneComplaints, setHpiDoneComplaints] = useState<string[]>(() => initialNote?.hpiDoneComplaints ?? []);
+  const [hpiSavedData,      setHpiSavedData]      = useState<Record<string, CoughState>>(() => initialNote?.hpiSavedData ?? {});
   const [peOpenSystem,      setPeOpenSystem]      = useState<string | null>(null);
-  const [peDoneSystemIds,   setPeDoneSystemIds]   = useState<string[]>([]);
-  const [peSavedData,       setPeSavedData]       = useState<Record<string, Record<string, string>>>({});
+  const [peDoneSystemIds,   setPeDoneSystemIds]   = useState<string[]>(() => initialNote?.peDoneSystemIds ?? []);
+  const [peSavedData,       setPeSavedData]       = useState<Record<string, Record<string, string>>>(() => initialNote?.peSavedData ?? {});
   const [diagnosisDone,     setDiagnosisDone]     = useState(() => initialNote?.diagnosisDone ?? false);
   const [diagnosisSaved,    setDiagnosisSaved]    = useState<DiagnosisEntry[]>(() => initialNote?.diagnoses ?? []);
   const [diagnosisOpen,     setDiagnosisOpen]     = useState(false);
@@ -655,19 +661,24 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
     setLabDone(false);
     setLabSaved(null);
     setDiscardConfirm(false);
-    // EMPTY_NOTE already has labOrder:null, labOrderDone:false, etc.
   }
 
   function handleHpiSave(complaint: string, state: CoughState) {
-    setHpiSavedData(prev => ({ ...prev, [complaint]: state }));
-    setHpiDoneComplaints(prev => prev.includes(complaint) ? prev : [...prev, complaint]);
+    const nextSavedData = { ...hpiSavedData, [complaint]: state };
+    const nextDone = hpiDoneComplaints.includes(complaint) ? hpiDoneComplaints : [...hpiDoneComplaints, complaint];
+    setHpiSavedData(nextSavedData);
+    setHpiDoneComplaints(nextDone);
     setHpiOpenComplaint(null);
+    setNote(prev => ({ ...prev, hpiSavedData: nextSavedData, hpiDoneComplaints: nextDone }));
   }
 
   function handlePeSave(systemId: string, findings: Record<string, string>) {
-    setPeSavedData(prev => ({ ...prev, [systemId]: findings }));
-    setPeDoneSystemIds(prev => prev.includes(systemId) ? prev : [...prev, systemId]);
+    const nextPeData = { ...peSavedData, [systemId]: findings };
+    const nextDoneIds = peDoneSystemIds.includes(systemId) ? peDoneSystemIds : [...peDoneSystemIds, systemId];
+    setPeSavedData(nextPeData);
+    setPeDoneSystemIds(nextDoneIds);
     setPeOpenSystem(null);
+    setNote(prev => ({ ...prev, peSavedData: nextPeData, peDoneSystemIds: nextDoneIds }));
   }
 
   function handleDiagnosisSave(entries: DiagnosisEntry[]) {
