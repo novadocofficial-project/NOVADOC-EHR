@@ -20,6 +20,7 @@ import { DiagnosisDrawer, DiagnosisChipsPanel } from "@/pages/DiagnosisDrawer";
 import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
 import { LabDrawer, LabChipsPanel } from "@/pages/LabDrawer";
 import type { LabOrder } from "@/pages/LabDrawer";
+import { saveActiveLabOrder } from "@/hooks/useSoapNoteDraft";
 import { PocLabsChipsPanel, PocLabsDrawer } from "@/pages/PocLabsSection";
 import type { PocTestResult } from "@/pages/PocLabsSection";
 import { FormularyChipsPanel, FormularyDrawer, EMPTY_FORMULARY } from "@/pages/FormularySection";
@@ -584,6 +585,7 @@ function TimerPill({ label, timer }: { label: string; timer: ReturnType<typeof u
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 interface ClinicalNoteDrawerProps {
+  entryId?: string;
   patientName: string;
   faceSheetOpenedAt?: number;
   awaitingLab?: boolean;
@@ -600,7 +602,7 @@ interface ClinicalNoteDrawerProps {
   onCancel?: () => void;
 }
 
-export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, onNoteChange, isAddendumMode = false, onAddendum, onCancel }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, awaitingLab = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, onNoteChange, isAddendumMode = false, onAddendum, onCancel }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(() => initialNote ?? EMPTY_NOTE);
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
@@ -700,6 +702,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
     setLabDone(true);
     setLabOpen(false);
     setNote(prev => ({ ...prev, labOrder: order, labOrderDone: true }));
+    if (entryId) saveActiveLabOrder(entryId, order);
     onSendToLab?.();
   }
 

@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { NoteState } from "@/pages/ClinicalNoteDrawer";
 import type { SignedRecord } from "@/pages/SoapNotePage";
+import type { LabOrder as DrawerLabOrder } from "@/pages/LabDrawer";
 
 const LS_PREFIX = "soap_draft_";
 const SIGNED_PREFIX = "soap_signed_";
+const ACTIVE_LAB_PREFIX = "ehr_lab_order_";
 const DEBOUNCE_MS = 800;
 
 function draftKey(entryId: string) {
@@ -66,6 +68,49 @@ export function saveSignedRecords(entryId: string, records: SignedRecord[]): voi
 export function clearSignedRecords(entryId: string): void {
   try {
     localStorage.removeItem(signedKey(entryId));
+  } catch {
+    // ignore
+  }
+}
+
+// ─── Active lab order persistence ─────────────────────────────────────────────
+
+export interface StoredLabOrder {
+  order: DrawerLabOrder;
+  savedAt: string;
+}
+
+function activeLabKey(entryId: string) {
+  return `${ACTIVE_LAB_PREFIX}${entryId}`;
+}
+
+/** Persist the lab order dispatched by the doctor for this entry. */
+export function saveActiveLabOrder(entryId: string, order: DrawerLabOrder): void {
+  try {
+    const stored: StoredLabOrder = {
+      order,
+      savedAt: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    };
+    localStorage.setItem(activeLabKey(entryId), JSON.stringify(stored));
+  } catch {
+    // storage quota — silently ignore
+  }
+}
+
+/** Read the active dispatched lab order for this entry. Returns null if none. */
+export function readActiveLabOrder(entryId: string): StoredLabOrder | null {
+  try {
+    const raw = localStorage.getItem(activeLabKey(entryId));
+    return raw ? (JSON.parse(raw) as StoredLabOrder) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Remove the active lab order (call when lab marks the patient complete). */
+export function clearActiveLabOrder(entryId: string): void {
+  try {
+    localStorage.removeItem(activeLabKey(entryId));
   } catch {
     // ignore
   }

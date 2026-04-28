@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
+import { readActiveLabOrder } from "@/hooks/useSoapNoteDraft";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -279,10 +280,21 @@ function LabPanel({ entry, onClose, onComplete }: {
   const [fullscreen, setFullscreen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // Read the doctor's dispatched lab order from localStorage
+  const storedOrder = readActiveLabOrder(entry.id);
+  const activeOrderTests: LabTest[] = storedOrder
+    ? storedOrder.order.tests.map((t, i) => ({
+        id: t.id,
+        serial: i + 1,
+        name: t.name,
+        lab: t.category,
+        status: "pending" as const,
+        updatedAt: "",
+      }))
+    : [];
+
   // Local test state so Save Result updates the pill reactively
-  const [localTests, setLocalTests] = useState<LabTest[]>(
-    SEED_LAB_ORDERS.flatMap(o => o.tests)
-  );
+  const [localTests, setLocalTests] = useState<LabTest[]>(activeOrderTests);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState<"form" | "preview" | "trends">("form");
   const [resultValues, setResultValues] = useState<Record<string, Record<string, string>>>({});
@@ -302,11 +314,15 @@ function LabPanel({ entry, onClose, onComplete }: {
     JSON.stringify(selectedValues) !== JSON.stringify(savedSnapshots[selectedTestId])
   );
 
-  // Rebuild orders with live local test statuses
-  const currentOrder = {
-    ...SEED_LAB_ORDERS[0],
-    tests: SEED_LAB_ORDERS[0].tests.map(t => localTests.find(lt => lt.id === t.id) ?? t),
-  };
+  // Rebuild current order with live local test statuses
+  const currentOrder = storedOrder
+    ? {
+        id: entry.id,
+        orderedBy: "Doctor",
+        orderDate: storedOrder.savedAt,
+        tests: activeOrderTests.map(t => localTests.find(lt => lt.id === t.id) ?? t),
+      }
+    : null;
 
   function setFieldValue(key: string, value: string) {
     if (!selectedTestId) return;
@@ -384,43 +400,57 @@ function LabPanel({ entry, onClose, onComplete }: {
               </Collapsible>
 
               {/* Required Actions */}
-              <Collapsible title="Required Actions" badge={1} accent defaultOpen>
-                <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 mb-2">
-                  <div className="flex items-center justify-between mb-2.5">
-                    <p className="text-xs font-bold text-slate-700">Order · {currentOrder.orderDate}</p>
-                    <p className="text-[10px] text-slate-400">{currentOrder.orderedBy}</p>
+              <Collapsible title="Required Actions" badge={currentOrder ? 1 : 0} accent defaultOpen>
+                {currentOrder ? (
+                  <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 mb-2">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <p className="text-xs font-bold text-slate-700">Order · {currentOrder.orderDate}</p>
+                      <p className="text-[10px] text-slate-400">{currentOrder.orderedBy}</p>
+                    </div>
+                    {storedOrder?.order.patientCondition && storedOrder.order.patientCondition !== "Random" && (
+                      <p className="text-[10px] text-amber-600 font-semibold mb-2">Patient condition: {storedOrder.order.patientCondition}</p>
+                    )}
+                    {storedOrder?.order.instructions && (
+                      <p className="text-[10px] text-slate-500 italic mb-2">"{storedOrder.order.instructions}"</p>
+                    )}
+                    <div className="space-y-1">
+                      {currentOrder.tests.map(test => (
+                        <button
+                          key={test.id}
+                          onClick={() => { setSelectedTestId(test.id); setRightTab("form"); }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${selectedTestId === test.id ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50 border border-transparent"}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-slate-800 leading-tight">{test.name}</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">{test.lab}</p>
+                          </div>
+                          {test.status === "completed" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700 flex-shrink-0">
+                              <CheckCircle2 className="h-3 w-3" /> Done
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700 flex-shrink-0">
+                              <Clock className="h-3 w-3" /> Pending
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mt-2.5 pt-2.5 border-t border-slate-100 text-[11px] text-slate-500">
+                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 inline-block" /> In progress</span>
+                      <span className="text-slate-300">·</span>
+                      <span className="flex items-center gap-1"><FlaskConical className="h-3 w-3" /> Lab / Sample</span>
+                      <span className="text-slate-300">·</span>
+                      <span className="flex items-center gap-1"><User className="h-3 w-3" /> {currentOrder.orderedBy}</span>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    {currentOrder.tests.map(test => (
-                      <button
-                        key={test.id}
-                        onClick={() => { setSelectedTestId(test.id); setRightTab("form"); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${selectedTestId === test.id ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50 border border-transparent"}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-slate-800 leading-tight">{test.name}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">{test.lab}</p>
-                        </div>
-                        {test.status === "completed" ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700 flex-shrink-0">
-                            <CheckCircle2 className="h-3 w-3" /> Done
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700 flex-shrink-0">
-                            <Clock className="h-3 w-3" /> Pending
-                          </span>
-                        )}
-                      </button>
-                    ))}
+                ) : (
+                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 mb-2 text-center">
+                    <FlaskConical className="h-5 w-5 text-slate-300 mx-auto mb-1.5" />
+                    <p className="text-xs text-slate-400 font-medium">No lab order details available</p>
+                    <p className="text-[10px] text-slate-300 mt-0.5">The doctor's order will appear here once dispatched</p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 mt-2.5 pt-2.5 border-t border-slate-100 text-[11px] text-slate-500">
-                    <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 inline-block" /> In progress</span>
-                    <span className="text-slate-300">·</span>
-                    <span className="flex items-center gap-1"><FlaskConical className="h-3 w-3" /> Lab / Sample</span>
-                    <span className="text-slate-300">·</span>
-                    <span className="flex items-center gap-1"><User className="h-3 w-3" /> {currentOrder.orderedBy}</span>
-                  </div>
-                </div>
+                )}
               </Collapsible>
 
               {/* All Records */}

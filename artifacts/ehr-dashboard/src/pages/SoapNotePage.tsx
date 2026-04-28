@@ -1002,6 +1002,7 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
       ═══════════════════════════════════════════════════════════════════════ */}
       {showNoteDrawer && (
         <ClinicalNoteDrawer
+          entryId={entry.id}
           patientName={name}
           faceSheetOpenedAt={faceSheetOpenedAt}
           awaitingLab={entry.pendingLab}
