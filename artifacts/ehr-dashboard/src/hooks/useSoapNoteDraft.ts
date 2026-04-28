@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { NoteState } from "@/pages/ClinicalNoteDrawer";
+import type { SignedRecord } from "@/pages/SoapNotePage";
 
 const LS_PREFIX = "soap_draft_";
+const SIGNED_PREFIX = "soap_signed_";
 const DEBOUNCE_MS = 800;
 
 function draftKey(entryId: string) {
@@ -32,6 +34,40 @@ export function hasSoapDraft(entryId: string): boolean {
     return localStorage.getItem(draftKey(entryId)) !== null;
   } catch {
     return false;
+  }
+}
+
+// ─── Signed-record persistence ────────────────────────────────────────────────
+
+function signedKey(entryId: string) {
+  return `${SIGNED_PREFIX}${entryId}`;
+}
+
+/** Read persisted signed records for an entry (returns [] on miss or parse error). */
+export function readSignedRecords(entryId: string): SignedRecord[] {
+  try {
+    const raw = localStorage.getItem(signedKey(entryId));
+    return raw ? (JSON.parse(raw) as SignedRecord[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Persist signed records for an entry. */
+export function saveSignedRecords(entryId: string, records: SignedRecord[]): void {
+  try {
+    localStorage.setItem(signedKey(entryId), JSON.stringify(records));
+  } catch {
+    // storage quota — silently ignore
+  }
+}
+
+/** Remove persisted signed records for an entry (call on consultation complete / skip). */
+export function clearSignedRecords(entryId: string): void {
+  try {
+    localStorage.removeItem(signedKey(entryId));
+  } catch {
+    // ignore
   }
 }
 

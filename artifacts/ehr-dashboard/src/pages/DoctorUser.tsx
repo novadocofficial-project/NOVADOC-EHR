@@ -7,7 +7,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
-import { clearSoapDraft, hasSoapDraft } from "@/hooks/useSoapNoteDraft";
+import {
+  clearSoapDraft, hasSoapDraft,
+  readSignedRecords, saveSignedRecords, clearSignedRecords,
+} from "@/hooks/useSoapNoteDraft";
 import { useToast } from "@/hooks/use-toast";
 import type { SignedRecord } from "@/pages/SoapNotePage";
 import { PatientFaceSheet } from "@/pages/PatientFaceSheet";
@@ -54,6 +57,25 @@ export function DoctorUser() {
     const t = setInterval(() => setTick(p => p + 1), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Hydrate signedRecordsMap from localStorage whenever queue changes.
+  // Only adds entries not already in the map so in-session state wins.
+  useEffect(() => {
+    setSignedRecordsMap(prev => {
+      let changed = false;
+      const next = new Map(prev);
+      queue.forEach(e => {
+        if (!next.has(e.id)) {
+          const persisted = readSignedRecords(e.id);
+          if (persisted.length > 0) {
+            next.set(e.id, persisted);
+            changed = true;
+          }
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [queue]);
 
   // Expire call timers
   useEffect(() => {
@@ -128,6 +150,17 @@ export function DoctorUser() {
     });
   }
 
+  // Remove signed records from both localStorage and in-memory map.
+  function clearSignedState(id: string) {
+    clearSignedRecords(id);
+    setSignedRecordsMap(prev => {
+      if (!prev.has(id)) return prev;
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
   function handleConsultation(entry: MultiEntry) {
     docAtCounter(entry.id);
     setFaceSheetEntry(entry);
@@ -143,6 +176,7 @@ export function DoctorUser() {
     const entry = queue.find(e => e.id === id);
     docCompleteConsultation(id);
     clearSoapDraft(id);
+    clearSignedState(id);
     pruneSoapNoteSession(id);
     setFaceSheetEntry(null);
     toast({ title: `Consultation complete — ${entry?.tokenNumber ?? id} advanced to next step` });
@@ -153,6 +187,7 @@ export function DoctorUser() {
     const entry = queue.find(e => e.id === id);
     docMarkComplete(id);
     clearSoapDraft(id);
+    clearSignedState(id);
     pruneSoapNoteSession(id);
     setFaceSheetEntry(null);
     toast({ title: `${entry?.tokenNumber ?? id} marked complete · Next appt: ${nextAppt}` });
@@ -176,6 +211,7 @@ export function DoctorUser() {
     if (!reasonText) return;
     docMarkComplete(skipModalId);
     clearSoapDraft(skipModalId);
+    clearSignedState(skipModalId);
     pruneSoapNoteSession(skipModalId);
     const entry = queue.find(e => e.id === skipModalId);
     setSkipModalId(null);
@@ -210,7 +246,9 @@ export function DoctorUser() {
     };
     setSignedRecordsMap(prev => {
       const next = new Map(prev);
-      next.set(id, [...(next.get(id) ?? []), record]);
+      const updated = [...(next.get(id) ?? []), record];
+      next.set(id, updated);
+      saveSignedRecords(id, updated);
       return next;
     });
     // Sign also triggers clearDraft() inside SoapNotePage, so drop the
