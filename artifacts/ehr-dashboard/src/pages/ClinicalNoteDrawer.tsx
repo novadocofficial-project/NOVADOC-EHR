@@ -20,7 +20,7 @@ import { DiagnosisDrawer, DiagnosisChipsPanel } from "@/pages/DiagnosisDrawer";
 import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
 import { LabDrawer, LabChipsPanel } from "@/pages/LabDrawer";
 import type { LabOrder } from "@/pages/LabDrawer";
-import { saveActiveLabOrder } from "@/hooks/useSoapNoteDraft";
+import { saveActiveLabOrder, readActiveLabOrder } from "@/hooks/useSoapNoteDraft";
 import { PocLabsChipsPanel, PocLabsDrawer } from "@/pages/PocLabsSection";
 import type { PocTestResult } from "@/pages/PocLabsSection";
 import { FormularyChipsPanel, FormularyDrawer, EMPTY_FORMULARY } from "@/pages/FormularySection";
@@ -734,6 +734,16 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     );
     setLabOrders(nextOrders);
     setNote(prev => ({ ...prev, labOrders: nextOrders }));
+
+    // Propagate void/restore to the Lab Panel localStorage so lab staff see the updated state
+    if (entryId) {
+      const stored = readActiveLabOrder(entryId);
+      const updated = nextOrders[idx];
+      // Match by sentAt — only update if this is the order currently dispatched to the lab
+      if (stored && updated?.sentAt && stored.sentAt === updated.sentAt) {
+        saveActiveLabOrder(entryId, updated);
+      }
+    }
   }
 
   function openVoidModal(idx: number) {

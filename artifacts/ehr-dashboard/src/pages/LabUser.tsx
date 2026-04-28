@@ -8,7 +8,7 @@ import {
   ChevronUp, ChevronDown, Clock, AlertCircle, X,
   CheckCircle2, FlaskConical, User, Heart,
   ChevronRight, Maximize2, Minimize2, TestTube2,
-  AlertTriangle, FileText,
+  AlertTriangle, FileText, Ban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
@@ -540,8 +540,42 @@ function LabPanel({ entry, onClose, onComplete }: {
               </Collapsible>
 
               {/* Required Actions */}
-              <Collapsible title="Required Actions" badge={currentOrder ? 1 : 0} accent defaultOpen>
-                {currentOrder ? (
+              <Collapsible title="Required Actions" badge={currentOrder && !activeOrder?.voided ? 1 : 0} accent defaultOpen>
+                {activeOrder?.voided ? (
+                  /* ── Voided order banner ── */
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 mb-2">
+                    <div className="flex items-start gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-rose-100 border border-rose-200 flex items-center justify-center flex-shrink-0">
+                        <Ban className="h-4 w-4 text-rose-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-black text-rose-700 uppercase tracking-wide">Order Voided by Doctor</p>
+                        <p className="text-xs text-rose-600 mt-1">This lab order has been cancelled. Do not collect samples or enter results for this order.</p>
+                        {activeOrder.voidReason && (
+                          <p className="text-[11px] text-rose-500 mt-1.5 italic">Reason: {activeOrder.voidReason}</p>
+                        )}
+                        {activeOrder.voidedAt && (
+                          <p className="text-[10px] text-rose-400 mt-1">
+                            Voided {new Date(activeOrder.voidedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {/* Dimmed test list for reference only */}
+                    {currentOrder && (
+                      <div className="mt-3 space-y-1 opacity-40 pointer-events-none select-none">
+                        {currentOrder.tests.map(test => (
+                          <div key={test.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-rose-100 bg-white/60">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-slate-600 leading-tight line-through">{test.name}</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">{test.lab}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : currentOrder ? (
                   <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 mb-2">
                     <div className="flex items-center justify-between mb-2.5">
                       <p className="text-xs font-bold text-slate-700">Order · {currentOrder.orderDate}</p>
