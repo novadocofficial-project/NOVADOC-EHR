@@ -8,6 +8,7 @@ import {
   ChevronUp, ChevronDown, Clock, AlertCircle, X,
   CheckCircle2, FlaskConical, User, Heart,
   ChevronRight, Maximize2, Minimize2, TestTube2,
+  AlertTriangle, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
@@ -547,10 +548,16 @@ function LabPanel({ entry, onClose, onComplete }: {
                       <p className="text-[10px] text-slate-400">{currentOrder.orderedBy}</p>
                     </div>
                     {activeOrder?.patientCondition && activeOrder.patientCondition !== "Random" && (
-                      <p className="text-[10px] text-amber-600 font-semibold mb-2">Patient condition: {activeOrder.patientCondition}</p>
+                      <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-300 px-3 py-2 mb-2.5">
+                        <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs font-bold text-amber-800">{activeOrder.patientCondition} required before collection.</p>
+                      </div>
                     )}
                     {activeOrder?.instructions && (
-                      <p className="text-[10px] text-slate-500 italic mb-2">"{activeOrder.instructions}"</p>
+                      <div className="flex items-start gap-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 mb-2.5">
+                        <FileText className="h-4 w-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-slate-700">{activeOrder.instructions}</p>
+                      </div>
                     )}
                     <div className="space-y-1">
                       {currentOrder.tests.map(test => (
