@@ -74,8 +74,8 @@ export interface NoteState {
   visitNote:       string;
   followUpDate:    string;
   planTags:        string[];
-  // Lab order and diagnosis captured outside the note module sections
-  labOrder:        LabOrder | null;
+  // Lab orders and diagnosis captured outside the note module sections
+  labOrders:       LabOrder[];
   labOrderDone:    boolean;
   diagnoses:       DiagnosisEntry[];
   diagnosisDone:   boolean;
@@ -92,7 +92,7 @@ export const EMPTY_NOTE: NoteState = {
   ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING, carePlan: EMPTY_CARE_PLAN, healthEd: EMPTY_HEALTH_ED, referrals: EMPTY_REFERRAL_DATA, procedureOrders: EMPTY_PROCEDURE_ORDERS, patientGoals: EMPTY_PATIENT_GOALS,
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
-  labOrder: null, labOrderDone: false, diagnoses: [], diagnosisDone: false,
+  labOrders: [], labOrderDone: false, diagnoses: [], diagnosisDone: false,
   hpiSavedData: {}, hpiDoneComplaints: [], peSavedData: {}, peDoneSystemIds: [],
 };
 
@@ -615,8 +615,13 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
   const [diagnosisDone,     setDiagnosisDone]     = useState(() => initialNote?.diagnosisDone ?? false);
   const [diagnosisSaved,    setDiagnosisSaved]    = useState<DiagnosisEntry[]>(() => initialNote?.diagnoses ?? []);
   const [diagnosisOpen,     setDiagnosisOpen]     = useState(false);
-  const [labDone,           setLabDone]           = useState(() => initialNote?.labOrderDone ?? false);
-  const [labSaved,          setLabSaved]          = useState<LabOrder | null>(() => initialNote?.labOrder ?? null);
+  const [labDone,           setLabDone]           = useState(() => (initialNote?.labOrders?.length ?? 0) > 0 || (initialNote?.labOrderDone ?? false));
+  const [labOrders,         setLabOrders]         = useState<LabOrder[]>(() => {
+    if (initialNote?.labOrders?.length) return initialNote.labOrders;
+    // backward-compat: old drafts stored a single labOrder field
+    const legacy = (initialNote as (NoteState & { labOrder?: LabOrder | null }) | undefined)?.labOrder;
+    return legacy ? [legacy] : [];
+  });
   const [labOpen,           setLabOpen]           = useState(false);
   const [pocOpen,           setPocOpen]           = useState(false);
   const [formularyOpen,     setFormularyOpen]     = useState(false);
@@ -662,7 +667,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     setDiagnosisSaved([]);
     if (labDone || awaitingLab) onDiscardLab?.();
     setLabDone(false);
-    setLabSaved(null);
+    setLabOrders([]);
     setDiscardConfirm(false);
   }
 
@@ -692,17 +697,26 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
   }
 
   function handleLabSave(order: LabOrder) {
-    setLabSaved(order);
+    // Save / update the most recent order draft (does not append in second-order mode).
+    const nextOrders = labResultsReady
+      ? [...labOrders, order]                                     // second-order: append
+      : labOrders.length === 0 ? [order] : [...labOrders.slice(0, -1), order]; // first-order: upsert last
+    setLabOrders(nextOrders);
     setLabDone(true);
     setLabOpen(false);
-    setNote(prev => ({ ...prev, labOrder: order, labOrderDone: true }));
+    setNote(prev => ({ ...prev, labOrders: nextOrders, labOrderDone: true }));
   }
 
   function handleSendToLab(order: LabOrder) {
-    setLabSaved(order);
+    // In second-order mode (results ready), append the new order so both are preserved.
+    // In first-order mode, upsert the last element (commit the draft in place).
+    const nextOrders = labResultsReady
+      ? [...labOrders, order]   // second order: append
+      : labOrders.length === 0 ? [order] : [...labOrders.slice(0, -1), order]; // first order: upsert last
+    setLabOrders(nextOrders);
     setLabDone(true);
     setLabOpen(false);
-    setNote(prev => ({ ...prev, labOrder: order, labOrderDone: true }));
+    setNote(prev => ({ ...prev, labOrders: nextOrders, labOrderDone: true }));
     if (entryId) saveActiveLabOrder(entryId, order);
     onSendToLab?.();
   }
@@ -1025,7 +1039,10 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                 Lab Orders
                 {labDone && (
                   <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center gap-1">
-                    <CheckCircle2 className="h-2.5 w-2.5" /> {labSaved?.tests.length ?? 0} test{(labSaved?.tests.length ?? 0) !== 1 ? "s" : ""}
+                    <CheckCircle2 className="h-2.5 w-2.5" />
+                    {labOrders.length > 1
+                      ? `${labOrders.length} orders · ${labOrders.reduce((s, o) => s + o.tests.length, 0)} tests`
+                      : `${labOrders[0]?.tests.length ?? 0} test${(labOrders[0]?.tests.length ?? 0) !== 1 ? "s" : ""}`}
                   </span>
                 )}
                 {awaitingLab && (
@@ -1034,7 +1051,31 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                   </span>
                 )}
               </p>
-              <LabChipsPanel order={labSaved} onOpen={() => setLabOpen(true)} />
+
+              {/* Show each order in history */}
+              {labOrders.length > 1 && (
+                <div className="space-y-3 mb-3">
+                  {labOrders.slice(0, -1).map((order, idx) => (
+                    <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                        Order {idx + 1}{idx === 0 ? " · Original" : " · Follow-up"}
+                      </p>
+                      <LabChipsPanel order={order} onOpen={() => setLabOpen(true)} readOnly />
+                    </div>
+                  ))}
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/40 px-3 py-2.5">
+                    <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest mb-1.5">
+                      Order {labOrders.length} · Latest
+                    </p>
+                    <LabChipsPanel order={labOrders[labOrders.length - 1]} onOpen={() => setLabOpen(true)} />
+                  </div>
+                </div>
+              )}
+
+              {/* Single order or empty state */}
+              {labOrders.length <= 1 && (
+                <LabChipsPanel order={labOrders[0] ?? null} onOpen={() => setLabOpen(true)} />
+              )}
             </div>
 
             {/* 7c. Formulary / Prescriptions */}
@@ -1250,7 +1291,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                 setDiagnosisDone(false);
                 setDiagnosisSaved([]);
                 setLabDone(false);
-                setLabSaved(null);
+                setLabOrders([]);
               }}
               className="h-9 px-5 text-xs font-black gap-2 text-white flex-shrink-0"
               style={{ backgroundColor: ACCENT }}>
@@ -1311,7 +1352,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
         {labOpen && (
           <LabDrawer
             isDone={labDone}
-            savedData={labSaved}
+            savedData={labOrders[labOrders.length - 1] ?? null}
             awaitingLab={awaitingLab}
             labResultsReady={labResultsReady}
             onSave={handleLabSave}
