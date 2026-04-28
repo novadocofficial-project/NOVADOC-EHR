@@ -153,7 +153,7 @@ export function DoctorUser() {
   function handleSendToLab(id: string) {
     const entry = queue.find(e => e.id === id);
     docSendToLab(id);
-    toast({ title: `Lab order sent — ${entry?.tokenNumber ?? id} moved to Pending Lab Results` });
+    toast({ title: `Lab order sent — ${entry?.tokenNumber ?? id} moved to Lab Queue` });
   }
 
   function handleCancelLab(id: string) {

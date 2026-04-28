@@ -331,15 +331,43 @@ export function useMultiStepQueue() {
   }
 
   function docSendToLab(id: string) {
-    setQueue(prev => prev.map(e =>
-      e.id !== id ? e : { ...e, pendingLab: true, status: "waiting", callTimestamp: null }
-    ));
+    setQueue(prev => prev.map(e => {
+      if (e.id !== id) return e;
+      const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
+      const labStepIdx = vt.steps.findIndex(s => s.toLowerCase().includes("lab"));
+      if (labStepIdx >= 0) {
+        return {
+          ...e,
+          step: labStepIdx + 1,
+          stepLabel: vt.steps[labStepIdx],
+          status: "waiting",
+          callCount: 0,
+          callTimestamp: null,
+          pendingLab: true,
+        };
+      }
+      return { ...e, pendingLab: true, status: "waiting", callTimestamp: null };
+    }));
   }
 
   function docCancelLab(id: string) {
-    setQueue(prev => prev.map(e =>
-      e.id !== id ? e : { ...e, pendingLab: false, status: "called" }
-    ));
+    setQueue(prev => prev.map(e => {
+      if (e.id !== id) return e;
+      const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
+      const docStepIdx = vt.steps.findIndex(s => s.toLowerCase().includes("doctor"));
+      if (docStepIdx >= 0 && e.pendingLab) {
+        return {
+          ...e,
+          step: docStepIdx + 1,
+          stepLabel: vt.steps[docStepIdx],
+          status: "called",
+          callCount: 0,
+          callTimestamp: null,
+          pendingLab: false,
+        };
+      }
+      return { ...e, pendingLab: false, status: "called" };
+    }));
   }
 
   function addEntry(entry: MultiEntry) {
