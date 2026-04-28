@@ -442,25 +442,52 @@ export function LabDrawer({ isDone, savedData, awaitingLab = false, labResultsRe
           <p className="text-sm font-black text-slate-800">Lab Orders</p>
         </div>
 
-        {/* Done badge / Update / Mark Done / Second-order badge */}
+        {/* Done badge / Update / Save Order / Second-order badge
+            Save Order is always accessible so doctors can record tests
+            for a requisition (outside facility / next visit) separately
+            from the "Send to Lab" same-day queue action.               */}
         {labResultsReady ? (
-          <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 flex-shrink-0">
-            <FlaskConical className="h-3 w-3" /> Additional Order
-          </span>
-        ) : isDone && !isDirty ? (
-          <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
-            <CheckCircle2 className="h-3 w-3" /> Done
-          </span>
+          // Second-order mode: show badge + save button side-by-side
+          <>
+            <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 flex-shrink-0">
+              <FlaskConical className="h-3 w-3" /> Additional Order
+            </span>
+            <button
+              onClick={() => onSave(buildOrder())}
+              title="Save as requisition — patient can get this done before next visit"
+              className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white flex-shrink-0"
+              style={{ backgroundColor: ACCENT_LAB }}>
+              <ClipboardCheck className="h-3.5 w-3.5" /> Save Order
+            </button>
+          </>
         ) : isDirty ? (
+          // Unsaved changes — show Update (works in all states incl. awaitingLab)
           <button
             onClick={() => onSave(buildOrder())}
             className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white flex-shrink-0"
             style={{ backgroundColor: "#f59e0b" }}>
             <ClipboardCheck className="h-3.5 w-3.5" /> Update
           </button>
-        ) : (
+        ) : awaitingLab ? (
+          // Patient is at lab, order is clean — keep Save Order available so
+          // doctor can add tests for future use / outside facility requisition
           <button
             onClick={() => onSave(buildOrder())}
+            title="Save as requisition — patient can get this done before next visit"
+            className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white flex-shrink-0"
+            style={{ backgroundColor: "#f59e0b" }}>
+            <ClipboardCheck className="h-3.5 w-3.5" /> Save Order
+          </button>
+        ) : isDone ? (
+          // Normal done state (not awaiting lab)
+          <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
+            <CheckCircle2 className="h-3 w-3" /> Done
+          </span>
+        ) : (
+          // Fresh first order not yet saved
+          <button
+            onClick={() => onSave(buildOrder())}
+            title="Save as requisition — patient can get this done before next visit"
             className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white flex-shrink-0"
             style={{ backgroundColor: ACCENT_LAB }}>
             <ClipboardCheck className="h-3.5 w-3.5" /> Save Order
@@ -757,11 +784,11 @@ export function LabDrawer({ isDone, savedData, awaitingLab = false, labResultsRe
       ) : (
         <div className="flex-shrink-0 border-t-2 border-sky-100 px-4 py-3 bg-sky-50/60 flex items-center gap-3">
           <div className="flex-1">
-            <p className="text-[10px] font-black text-sky-700 uppercase tracking-wide">Send Order to Lab</p>
+            <p className="text-[10px] font-black text-sky-700 uppercase tracking-wide">Send for Same-Day Results</p>
             <p className="text-[9px] text-sky-500 mt-0.5">
               {labResultsReady
-                ? "Select additional tests to send. Previously completed tests cannot be re-ordered."
-                : "Patient will be moved to lab queue. Note stays open — you will be notified when results are ready."}
+                ? "Select additional tests to send now. Previously completed tests cannot be re-ordered."
+                : "Patient moves to the lab queue — results delivered same visit."}
             </p>
           </div>
           <button
