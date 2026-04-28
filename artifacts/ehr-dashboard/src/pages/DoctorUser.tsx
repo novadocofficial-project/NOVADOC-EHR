@@ -113,7 +113,9 @@ export function DoctorUser() {
   }, [soapNoteDoneSession, queue, tick, signedRecordsMap]);
 
   const skippedQueue   = queue.filter(e => e.step === 3 && e.skipped);
-  const pendingLabQueue = queue.filter(e => e.step === 3 && e.pendingLab && !e.skipped && e.status !== "completed");
+  // pendingLab entries move to the lab step (step 4) when sent via docSendToLab,
+  // so the filter must not require step === 3.
+  const pendingLabQueue = queue.filter(e => e.pendingLab && !e.skipped && e.status !== "completed");
 
   // Lab queue (step 4) counts — reactive via shared useMultiStepQueue
   // Entries advance to step 5 when lab is done, so "completed" at step 4 tracks
@@ -209,13 +211,13 @@ export function DoctorUser() {
     if (!skipModalId) return;
     const reasonText = skipReason === "Other" ? skipOtherText.trim() : skipReason;
     if (!reasonText) return;
-    docMarkComplete(skipModalId);
+    docSkip(skipModalId);
     clearSoapDraft(skipModalId);
     clearSignedState(skipModalId);
     pruneSoapNoteSession(skipModalId);
     const entry = queue.find(e => e.id === skipModalId);
     setSkipModalId(null);
-    toast({ title: `${entry?.tokenNumber ?? skipModalId} marked complete (skipped — no SOAP note)` });
+    toast({ title: `${entry?.tokenNumber ?? skipModalId} skipped — use Skipped panel to recall` });
   }
 
   function handleRecall(id: string, tokenNum: string) {
