@@ -418,10 +418,10 @@ function LabPanel({ entry, onClose, onComplete }: {
   const [fullscreen, setFullscreen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Read the doctor's dispatched lab order from localStorage
-  const storedOrder = readActiveLabOrder(entry.id);
-  const activeOrderTests: LabTest[] = storedOrder
-    ? storedOrder.order.tests.map((t, i) => ({
+  // Read the doctor's dispatched lab order from localStorage (raw LabOrder | null)
+  const activeOrder = readActiveLabOrder(entry.id);
+  const activeOrderTests: LabTest[] = activeOrder
+    ? activeOrder.tests.map((t, i) => ({
         id: t.id,
         serial: i + 1,
         name: t.name,
@@ -453,11 +453,12 @@ function LabPanel({ entry, onClose, onComplete }: {
   );
 
   // Rebuild current order with live local test statuses
-  const currentOrder = storedOrder
+  const orderDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const currentOrder = activeOrder
     ? {
         id: entry.id,
         orderedBy: "Doctor",
-        orderDate: storedOrder.savedAt,
+        orderDate,
         tests: activeOrderTests.map(t => localTests.find(lt => lt.id === t.id) ?? t),
       }
     : null;
@@ -545,11 +546,11 @@ function LabPanel({ entry, onClose, onComplete }: {
                       <p className="text-xs font-bold text-slate-700">Order · {currentOrder.orderDate}</p>
                       <p className="text-[10px] text-slate-400">{currentOrder.orderedBy}</p>
                     </div>
-                    {storedOrder?.order.patientCondition && storedOrder.order.patientCondition !== "Random" && (
-                      <p className="text-[10px] text-amber-600 font-semibold mb-2">Patient condition: {storedOrder.order.patientCondition}</p>
+                    {activeOrder?.patientCondition && activeOrder.patientCondition !== "Random" && (
+                      <p className="text-[10px] text-amber-600 font-semibold mb-2">Patient condition: {activeOrder.patientCondition}</p>
                     )}
-                    {storedOrder?.order.instructions && (
-                      <p className="text-[10px] text-slate-500 italic mb-2">"{storedOrder.order.instructions}"</p>
+                    {activeOrder?.instructions && (
+                      <p className="text-[10px] text-slate-500 italic mb-2">"{activeOrder.instructions}"</p>
                     )}
                     <div className="space-y-1">
                       {currentOrder.tests.map(test => (

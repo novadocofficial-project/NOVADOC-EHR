@@ -75,33 +75,24 @@ export function clearSignedRecords(entryId: string): void {
 
 // ─── Active lab order persistence ─────────────────────────────────────────────
 
-export interface StoredLabOrder {
-  order: DrawerLabOrder;
-  savedAt: string;
-}
-
 function activeLabKey(entryId: string) {
   return `${ACTIVE_LAB_PREFIX}${entryId}`;
 }
 
-/** Persist the lab order dispatched by the doctor for this entry. */
+/** Persist the raw lab order dispatched by the doctor for this entry. */
 export function saveActiveLabOrder(entryId: string, order: DrawerLabOrder): void {
   try {
-    const stored: StoredLabOrder = {
-      order,
-      savedAt: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-    };
-    localStorage.setItem(activeLabKey(entryId), JSON.stringify(stored));
+    localStorage.setItem(activeLabKey(entryId), JSON.stringify(order));
   } catch {
     // storage quota — silently ignore
   }
 }
 
 /** Read the active dispatched lab order for this entry. Returns null if none. */
-export function readActiveLabOrder(entryId: string): StoredLabOrder | null {
+export function readActiveLabOrder(entryId: string): DrawerLabOrder | null {
   try {
     const raw = localStorage.getItem(activeLabKey(entryId));
-    return raw ? (JSON.parse(raw) as StoredLabOrder) : null;
+    return raw ? (JSON.parse(raw) as DrawerLabOrder) : null;
   } catch {
     return null;
   }
