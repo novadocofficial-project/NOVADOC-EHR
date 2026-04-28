@@ -11,7 +11,7 @@ import {
   Printer, FilePenLine, GitBranch,
 } from "lucide-react";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
-import { useSoapNoteDraft } from "@/hooks/useSoapNoteDraft";
+import { useSoapNoteDraft, saveRoutingSnapshot } from "@/hooks/useSoapNoteDraft";
 import { Button } from "@/components/ui/button";
 import { View360Drawer } from "@/pages/View360Drawer";
 import { LabsDrawer } from "@/pages/LabsDrawer";
@@ -1044,7 +1044,16 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
           signed={signedRecords.length > 0}
           initialNote={draft ?? undefined}
           onNoteChange={saveDraft}
-          onDoctorSign={() => { clearDraft(); onDoctorSign?.(); setShowNoteDrawer(false); }}
+          onDoctorSign={() => {
+            // Capture routing flags before wiping the draft — handleFaceSheetComplete reads these
+            saveRoutingSnapshot(entry.id, {
+              hasUnsentLabOrders: (draft?.labOrders ?? []).some(o => !o.sentAt && !o.voided),
+              hasPrescription: (draft?.formulary?.medicines?.length ?? 0) > 0,
+            });
+            clearDraft();
+            onDoctorSign?.();
+            setShowNoteDrawer(false);
+          }}
           onClose={() => setShowNoteDrawer(false)}
         />
       )}

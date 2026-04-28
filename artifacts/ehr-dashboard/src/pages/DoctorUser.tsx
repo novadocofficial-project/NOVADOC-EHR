@@ -9,6 +9,7 @@ import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import {
   clearSoapDraft, hasSoapDraft, readSoapDraft,
+  readRoutingSnapshot, clearRoutingSnapshot,
   readSignedRecords, saveSignedRecords, clearSignedRecords,
 } from "@/hooks/useSoapNoteDraft";
 import { useToast } from "@/hooks/use-toast";
@@ -173,14 +174,21 @@ export function DoctorUser() {
     setFaceSheetEntry(entry);
   }
 
-  // With SOAP note — advance to next step based on what the doctor ordered
+  // With SOAP note — advance to next step based on what the doctor ordered.
+  // Priority: routing snapshot (written at sign time, before draft is cleared) →
+  // live draft (unsigned / quick-complete path).
   function handleFaceSheetComplete(id: string) {
     const entry = queue.find(e => e.id === id);
-    const draft = readSoapDraft(id);
 
-    const hasUnsentLabOrders = (draft?.labOrders ?? []).some(o => !o.sentAt && !o.voided);
-    const hasPrescription    = (draft?.formulary?.medicines?.length ?? 0) > 0;
+    const snapshot = readRoutingSnapshot(id);
+    const draft    = snapshot ? null : readSoapDraft(id);
 
+    const hasUnsentLabOrders = snapshot?.hasUnsentLabOrders
+      ?? (draft?.labOrders ?? []).some(o => !o.sentAt && !o.voided);
+    const hasPrescription = snapshot?.hasPrescription
+      ?? (draft?.formulary?.medicines?.length ?? 0) > 0;
+
+    clearRoutingSnapshot(id);
     docCompleteConsultation(id, { hasPrescription, hasUnsentLabOrders });
     clearSoapDraft(id);
     clearSignedState(id);
@@ -200,6 +208,7 @@ export function DoctorUser() {
   function handleCompleteWithoutSoap(id: string, reason: string, nextAppt: string) {
     const entry = queue.find(e => e.id === id);
     docMarkComplete(id);
+    clearRoutingSnapshot(id);
     clearSoapDraft(id);
     clearSignedState(id);
     pruneSoapNoteSession(id);
@@ -224,6 +233,7 @@ export function DoctorUser() {
     const reasonText = skipReason === "Other" ? skipOtherText.trim() : skipReason;
     if (!reasonText) return;
     docSkip(skipModalId);
+    clearRoutingSnapshot(skipModalId);
     clearSoapDraft(skipModalId);
     clearSignedState(skipModalId);
     pruneSoapNoteSession(skipModalId);

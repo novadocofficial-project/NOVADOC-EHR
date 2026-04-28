@@ -44,6 +44,45 @@ export function readSoapDraft(entryId: string): NoteState | null {
   return readDraft(draftKey(entryId));
 }
 
+// ─── Routing snapshot persistence ─────────────────────────────────────────────
+// Saved at sign time (before draft is cleared) so completion routing can read
+// the correct flags even after the draft has been wiped from localStorage.
+
+const ROUTING_PREFIX = "soap_routing_";
+
+export interface RoutingSnapshot {
+  hasUnsentLabOrders: boolean;
+  hasPrescription: boolean;
+}
+
+/** Persist routing flags derived from the note at sign time. */
+export function saveRoutingSnapshot(entryId: string, flags: RoutingSnapshot): void {
+  try {
+    localStorage.setItem(`${ROUTING_PREFIX}${entryId}`, JSON.stringify(flags));
+  } catch {
+    // storage quota — silently ignore
+  }
+}
+
+/** Read the persisted routing snapshot for this entry. Returns null if not set. */
+export function readRoutingSnapshot(entryId: string): RoutingSnapshot | null {
+  try {
+    const raw = localStorage.getItem(`${ROUTING_PREFIX}${entryId}`);
+    return raw ? (JSON.parse(raw) as RoutingSnapshot) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Remove the routing snapshot (call after consultation is completed). */
+export function clearRoutingSnapshot(entryId: string): void {
+  try {
+    localStorage.removeItem(`${ROUTING_PREFIX}${entryId}`);
+  } catch {
+    // ignore
+  }
+}
+
 // ─── Signed-record persistence ────────────────────────────────────────────────
 
 function signedKey(entryId: string) {
