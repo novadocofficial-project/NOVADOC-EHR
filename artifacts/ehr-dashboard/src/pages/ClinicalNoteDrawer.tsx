@@ -722,6 +722,14 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     onSendToLab?.();
   }
 
+  function handleVoidOrder(idx: number) {
+    const nextOrders = labOrders.map((o, i) =>
+      i === idx ? { ...o, voided: !o.voided, voidedAt: !o.voided ? new Date().toISOString() : undefined } : o
+    );
+    setLabOrders(nextOrders);
+    setNote(prev => ({ ...prev, labOrders: nextOrders }));
+  }
+
   function handleImport(key: keyof NoteState, value: string) {
     set(key, value);
   }
@@ -1041,9 +1049,13 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                 {labDone && (
                   <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center gap-1">
                     <CheckCircle2 className="h-2.5 w-2.5" />
-                    {labOrders.length > 1
-                      ? `${labOrders.length} orders · ${labOrders.reduce((s, o) => s + o.tests.length, 0)} tests`
-                      : `${labOrders[0]?.tests.length ?? 0} test${(labOrders[0]?.tests.length ?? 0) !== 1 ? "s" : ""}`}
+                    {(() => {
+                      const active = labOrders.filter(o => !o.voided);
+                      if (active.length === 0) return "all voided";
+                      if (active.length > 1)
+                        return `${active.length} orders · ${active.reduce((s, o) => s + o.tests.length, 0)} tests`;
+                      return `${active[0].tests.length} test${active[0].tests.length !== 1 ? "s" : ""}`;
+                    })()}
                   </span>
                 )}
                 {awaitingLab && (
@@ -1057,36 +1069,117 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
               {labOrders.length > 1 && (
                 <div className="space-y-3 mb-3">
                   {labOrders.slice(0, -1).map((order, idx) => (
-                    <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                        Order {idx + 1}{idx === 0 ? " · Original" : " · Follow-up"}
+                    <div key={idx} className={`rounded-xl border px-3 py-2.5 ${order.voided ? "border-rose-100 bg-rose-50/40 opacity-70" : "border-slate-100 bg-slate-50/60"}`}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${order.voided ? "text-rose-400 line-through" : "text-slate-400"}`}>
+                          Order {idx + 1}{idx === 0 ? " · Original" : " · Follow-up"}
+                          {order.sentAt && (
+                            <span className="normal-case font-medium tracking-normal no-underline" style={{ textDecoration: "none" }}>
+                              · {new Date(order.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                            </span>
+                          )}
+                          {order.voided && (
+                            <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500 no-underline" style={{ textDecoration: "none" }}>· VOIDED</span>
+                          )}
+                        </p>
                         {order.sentAt && (
-                          <span className="normal-case font-medium tracking-normal">
-                            · {new Date(order.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                          </span>
+                          <button
+                            onClick={() => handleVoidOrder(idx)}
+                            title={order.voided ? "Restore order" : "Void order"}
+                            className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
+                              order.voided
+                                ? "text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200"
+                                : "text-rose-500 hover:text-rose-700 hover:bg-rose-100"
+                            }`}
+                          >
+                            <Trash2 className="h-2.5 w-2.5" />
+                            {order.voided ? "Restore" : "Void"}
+                          </button>
                         )}
-                      </p>
-                      <LabChipsPanel order={order} onOpen={() => setLabOpen(true)} readOnly />
+                      </div>
+                      <div className={order.voided ? "opacity-50 pointer-events-none" : ""}>
+                        <LabChipsPanel order={order} onOpen={() => setLabOpen(true)} readOnly />
+                      </div>
                     </div>
                   ))}
-                  <div className="rounded-xl border border-amber-200 bg-amber-50/40 px-3 py-2.5">
-                    <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                      Order {labOrders.length} · Latest
-                      {labOrders[labOrders.length - 1]?.sentAt && (
-                        <span className="normal-case font-medium tracking-normal">
-                          · {new Date(labOrders[labOrders.length - 1].sentAt!).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                        </span>
-                      )}
-                    </p>
-                    <LabChipsPanel order={labOrders[labOrders.length - 1]} onOpen={() => setLabOpen(true)} />
-                  </div>
+                  {(() => {
+                    const latest = labOrders[labOrders.length - 1];
+                    const latestIdx = labOrders.length - 1;
+                    return (
+                      <div className={`rounded-xl border px-3 py-2.5 ${latest.voided ? "border-rose-100 bg-rose-50/40 opacity-70" : "border-amber-200 bg-amber-50/40"}`}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${latest.voided ? "text-rose-400 line-through" : "text-amber-700"}`}>
+                            Order {labOrders.length} · Latest
+                            {latest.sentAt && (
+                              <span className="normal-case font-medium tracking-normal" style={{ textDecoration: "none" }}>
+                                · {new Date(latest.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                              </span>
+                            )}
+                            {latest.voided && (
+                              <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500" style={{ textDecoration: "none" }}>· VOIDED</span>
+                            )}
+                          </p>
+                          {latest.sentAt && (
+                            <button
+                              onClick={() => handleVoidOrder(latestIdx)}
+                              title={latest.voided ? "Restore order" : "Void order"}
+                              className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
+                                latest.voided
+                                  ? "text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200"
+                                  : "text-rose-500 hover:text-rose-700 hover:bg-rose-100"
+                              }`}
+                            >
+                              <Trash2 className="h-2.5 w-2.5" />
+                              {latest.voided ? "Restore" : "Void"}
+                            </button>
+                          )}
+                        </div>
+                        <div className={latest.voided ? "opacity-50 pointer-events-none" : ""}>
+                          <LabChipsPanel order={latest} onOpen={() => setLabOpen(true)} />
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
               {/* Single order or empty state */}
-              {labOrders.length <= 1 && (
-                <LabChipsPanel order={labOrders[0] ?? null} onOpen={() => setLabOpen(true)} />
-              )}
+              {labOrders.length <= 1 && (() => {
+                const singleOrder = labOrders[0] ?? null;
+                if (!singleOrder) return <LabChipsPanel order={null} onOpen={() => setLabOpen(true)} />;
+                return (
+                  <div className={`rounded-xl border px-3 py-2.5 ${singleOrder.voided ? "border-rose-100 bg-rose-50/40 opacity-70" : "border-transparent bg-transparent p-0"}`}>
+                    {singleOrder.sentAt && (
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${singleOrder.voided ? "text-rose-400 line-through" : "text-slate-400"}`}>
+                          Order 1 · Original
+                          <span className="normal-case font-medium tracking-normal" style={{ textDecoration: "none" }}>
+                            · {new Date(singleOrder.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                          </span>
+                          {singleOrder.voided && (
+                            <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500" style={{ textDecoration: "none" }}>· VOIDED</span>
+                          )}
+                        </p>
+                        <button
+                          onClick={() => handleVoidOrder(0)}
+                          title={singleOrder.voided ? "Restore order" : "Void order"}
+                          className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
+                            singleOrder.voided
+                              ? "text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200"
+                              : "text-rose-500 hover:text-rose-700 hover:bg-rose-100"
+                          }`}
+                        >
+                          <Trash2 className="h-2.5 w-2.5" />
+                          {singleOrder.voided ? "Restore" : "Void"}
+                        </button>
+                      </div>
+                    )}
+                    <div className={singleOrder.voided ? "opacity-50 pointer-events-none" : ""}>
+                      <LabChipsPanel order={singleOrder} onOpen={() => setLabOpen(true)} />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* 7c. Formulary / Prescriptions */}

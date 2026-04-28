@@ -25,6 +25,8 @@ export interface LabOrder {
   instructions:     string;
   orderSetName:     string | null;
   sentAt?:          string;
+  voided?:          boolean;
+  voidedAt?:        string;
 }
 
 // ─── Lab Categories ───────────────────────────────────────────────────────────
