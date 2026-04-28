@@ -412,8 +412,8 @@ function SparkFlag({ value, min, max }: { value: number; min?: number; max?: num
 
 // ─── Lab Panel (fullscreen slide-over) ───────────────────────────────────────
 
-function LabPanel({ entry, onClose, onComplete }: {
-  entry: MultiEntry; onClose: () => void; onComplete: () => void;
+function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
+  entry: MultiEntry; onClose: () => void; onComplete: () => void; doctorCancelled?: boolean;
 }) {
   const p = entry.patient;
   const [fullscreen, setFullscreen] = useState(false);
@@ -489,6 +489,38 @@ function LabPanel({ entry, onClose, onComplete }: {
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
+
+      {/* ── Doctor-cancelled blocking overlay ─────────────────────────────── */}
+      {doctorCancelled && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-[380px] mx-4 overflow-hidden">
+            <div className="flex items-start gap-4 px-5 pt-6 pb-4">
+              <div className="flex-shrink-0 h-11 w-11 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center">
+                <AlertTriangle className="h-6 w-6 text-rose-500" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-slate-900 leading-tight">Lab Order Cancelled</p>
+                <p className="text-[11px] text-rose-600 font-semibold mt-0.5">
+                  {entry.tokenNumber}{p ? ` · ${p.name}` : ""}
+                </p>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  The doctor has cancelled this patient's lab order. Please return to the queue.
+                </p>
+              </div>
+            </div>
+            <div className="px-5 pb-5 flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-5 py-2 rounded-xl text-sm font-black text-white transition-colors"
+                style={{ backgroundColor: LAB_ACCENT }}
+              >
+                OK, Return to Queue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col border-l border-slate-200 transition-all duration-200 ${fullscreen ? "w-full" : "w-[85%]"}`}>
 
         {/* ── Header ─────────────────────────────────────────────────────────── */}
@@ -1023,19 +1055,51 @@ function LabPanel({ entry, onClose, onComplete }: {
 
 // ─── Lab Drawer (patient summary) ─────────────────────────────────────────────
 
-function LabDrawer({ entry, onClose, onComplete }: {
-  entry: MultiEntry; onClose: () => void; onComplete: () => void;
+function LabDrawer({ entry, onClose, onComplete, doctorCancelled = false }: {
+  entry: MultiEntry; onClose: () => void; onComplete: () => void; doctorCancelled?: boolean;
 }) {
   const [showPanel, setShowPanel] = useState(false);
   const p = entry.patient;
 
   if (showPanel) {
-    return <LabPanel entry={entry} onClose={onClose} onComplete={onComplete} />;
+    return <LabPanel entry={entry} onClose={onClose} onComplete={onComplete} doctorCancelled={doctorCancelled} />;
   }
 
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
+
+      {/* ── Doctor-cancelled blocking overlay ──────────────────────────────── */}
+      {doctorCancelled && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-[380px] mx-4 overflow-hidden">
+            <div className="flex items-start gap-4 px-5 pt-6 pb-4">
+              <div className="flex-shrink-0 h-11 w-11 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center">
+                <AlertTriangle className="h-6 w-6 text-rose-500" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-slate-900 leading-tight">Lab Order Cancelled</p>
+                <p className="text-[11px] text-rose-600 font-semibold mt-0.5">
+                  {entry.tokenNumber}{p ? ` · ${p.name}` : ""}
+                </p>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  The doctor has cancelled this patient's lab order. Please return to the queue.
+                </p>
+              </div>
+            </div>
+            <div className="px-5 pb-5 flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-5 py-2 rounded-xl text-sm font-black text-white transition-colors"
+                style={{ backgroundColor: LAB_ACCENT }}
+              >
+                OK, Return to Queue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col w-[40%] min-w-[480px] border-l border-slate-200">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
           <div>
@@ -1121,10 +1185,11 @@ export function LabUser() {
     labCall, labTimerExpire, labAtCounter, labComplete, labSkip, labRecall,
   } = useMultiStepQueue();
 
-  const [tick, setTick]               = useState(0);
-  const [drawerEntry, setDrawerEntry] = useState<MultiEntry | null>(null);
-  const [showSkipped, setShowSkipped] = useState(false);
-  const [toast, setToast]             = useState<string | null>(null);
+  const [tick, setTick]                         = useState(0);
+  const [drawerEntry, setDrawerEntry]           = useState<MultiEntry | null>(null);
+  const [drawerEntryHadPendingLab, setDrawerEntryHadPendingLab] = useState(false);
+  const [showSkipped, setShowSkipped]           = useState(false);
+  const [toast, setToast]                       = useState<string | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setTick(p => p + 1), 1000);
@@ -1157,9 +1222,23 @@ export function LabUser() {
   const secsLeft = getSecsLeft(activeCallEntry?.callTimestamp ?? null);
   const timerPct = (secsLeft / CALL_WINDOW_SECS) * 100;
 
+  // Detect real-time doctor cancellation: entry had pendingLab when opened, now it's false
+  const doctorCancelledActive =
+    drawerEntry !== null &&
+    drawerEntryHadPendingLab &&
+    !(queue.find(e => e.id === drawerEntry.id)?.pendingLab ?? false);
+
   function handleCall(id: string) { labCall(id); showToastMsg("Token called — 30 second window started"); }
-  function handleLabOrders(entry: MultiEntry) { labAtCounter(entry.id); setDrawerEntry({ ...entry, status: "called" }); }
-  function handleComplete(id: string) { labComplete(id); setDrawerEntry(null); }
+  function handleLabOrders(entry: MultiEntry) {
+    labAtCounter(entry.id);
+    setDrawerEntry({ ...entry, status: "called" });
+    setDrawerEntryHadPendingLab(entry.pendingLab);
+  }
+  function handleComplete(id: string) {
+    labComplete(id);
+    setDrawerEntry(null);
+    setDrawerEntryHadPendingLab(false);
+  }
   function handleSkip(id: string) { labSkip(id); showToastMsg("Token skipped"); }
   function handleRecall(id: string, tokenNum: string) { labRecall(id); showToastMsg(`Token ${tokenNum} recalled to queue`); }
 
@@ -1422,8 +1501,9 @@ export function LabUser() {
       {drawerEntry && (
         <LabDrawer
           entry={drawerEntry}
-          onClose={() => setDrawerEntry(null)}
+          onClose={() => { setDrawerEntry(null); setDrawerEntryHadPendingLab(false); }}
           onComplete={() => handleComplete(drawerEntry.id)}
+          doctorCancelled={doctorCancelledActive}
         />
       )}
     </div>
