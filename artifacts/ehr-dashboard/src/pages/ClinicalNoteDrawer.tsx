@@ -1135,20 +1135,17 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                             {order.voided && order.voidReason && (
                               <p className="text-[9px] text-rose-400 italic">Reason: {order.voidReason}</p>
                             )}
-                            {order.sentAt ? (
+                            {!order.voided && order.sentAt && (
                               <button
-                                onClick={() => order.voided ? handleVoidOrder(idx) : openVoidModal(idx)}
-                                title={order.voided ? "Restore order" : "Void order"}
-                                className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
-                                  order.voided
-                                    ? "text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200"
-                                    : "text-rose-500 hover:text-rose-700 hover:bg-rose-100"
-                                }`}
+                                onClick={() => openVoidModal(idx)}
+                                title="Void order"
+                                className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-rose-500 hover:text-rose-700 hover:bg-rose-100"
                               >
                                 <Trash2 className="h-2.5 w-2.5" />
-                                {order.voided ? "Restore" : "Void"}
+                                Void
                               </button>
-                            ) : (
+                            )}
+                            {!order.sentAt && (
                               <button
                                 onClick={() => handleRemoveOrder(idx)}
                                 title="Remove this order"
@@ -1193,20 +1190,17 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                             {latest.voided && latest.voidReason && (
                               <p className="text-[9px] text-rose-400 italic">Reason: {latest.voidReason}</p>
                             )}
-                            {latest.sentAt ? (
+                            {!latest.voided && latest.sentAt && (
                               <button
-                                onClick={() => latest.voided ? handleVoidOrder(latestIdx) : openVoidModal(latestIdx)}
-                                title={latest.voided ? "Restore order" : "Void order"}
-                                className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
-                                  latest.voided
-                                    ? "text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200"
-                                    : "text-rose-500 hover:text-rose-700 hover:bg-rose-100"
-                                }`}
+                                onClick={() => openVoidModal(latestIdx)}
+                                title="Void order"
+                                className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-rose-500 hover:text-rose-700 hover:bg-rose-100"
                               >
                                 <Trash2 className="h-2.5 w-2.5" />
-                                {latest.voided ? "Restore" : "Void"}
+                                Void
                               </button>
-                            ) : (
+                            )}
+                            {!latest.sentAt && (
                               <button
                                 onClick={() => handleRemoveOrder(latestIdx)}
                                 title="Remove this order"
@@ -1256,20 +1250,17 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                         {singleOrder.voided && singleOrder.voidReason && (
                           <p className="text-[9px] text-rose-400 italic">Reason: {singleOrder.voidReason}</p>
                         )}
-                        {singleOrder.sentAt ? (
+                        {!singleOrder.voided && singleOrder.sentAt && (
                           <button
-                            onClick={() => singleOrder.voided ? handleVoidOrder(0) : openVoidModal(0)}
-                            title={singleOrder.voided ? "Restore order" : "Void order"}
-                            className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
-                              singleOrder.voided
-                                ? "text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200"
-                                : "text-rose-500 hover:text-rose-700 hover:bg-rose-100"
-                            }`}
+                            onClick={() => openVoidModal(0)}
+                            title="Void order"
+                            className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-rose-500 hover:text-rose-700 hover:bg-rose-100"
                           >
                             <Trash2 className="h-2.5 w-2.5" />
-                            {singleOrder.voided ? "Restore" : "Void"}
+                            Void
                           </button>
-                        ) : (
+                        )}
+                        {!singleOrder.sentAt && (
                           <button
                             onClick={() => handleRemoveOrder(0)}
                             title="Remove this order"
