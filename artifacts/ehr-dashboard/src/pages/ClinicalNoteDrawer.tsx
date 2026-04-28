@@ -710,14 +710,15 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
   function handleSendToLab(order: LabOrder) {
     // In second-order mode (results ready), append the new order so both are preserved.
     // In first-order mode, upsert the last element (commit the draft in place).
+    const stamped = { ...order, sentAt: new Date().toISOString() };
     const nextOrders = labResultsReady
-      ? [...labOrders, order]   // second order: append
-      : labOrders.length === 0 ? [order] : [...labOrders.slice(0, -1), order]; // first order: upsert last
+      ? [...labOrders, stamped]   // second order: append
+      : labOrders.length === 0 ? [stamped] : [...labOrders.slice(0, -1), stamped]; // first order: upsert last
     setLabOrders(nextOrders);
     setLabDone(true);
     setLabOpen(false);
     setNote(prev => ({ ...prev, labOrders: nextOrders, labOrderDone: true }));
-    if (entryId) saveActiveLabOrder(entryId, order);
+    if (entryId) saveActiveLabOrder(entryId, stamped);
     onSendToLab?.();
   }
 
@@ -1057,15 +1058,25 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                 <div className="space-y-3 mb-3">
                   {labOrders.slice(0, -1).map((order, idx) => (
                     <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
                         Order {idx + 1}{idx === 0 ? " · Original" : " · Follow-up"}
+                        {order.sentAt && (
+                          <span className="normal-case font-medium tracking-normal">
+                            · {new Date(order.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                          </span>
+                        )}
                       </p>
                       <LabChipsPanel order={order} onOpen={() => setLabOpen(true)} readOnly />
                     </div>
                   ))}
                   <div className="rounded-xl border border-amber-200 bg-amber-50/40 px-3 py-2.5">
-                    <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest mb-1.5">
+                    <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
                       Order {labOrders.length} · Latest
+                      {labOrders[labOrders.length - 1]?.sentAt && (
+                        <span className="normal-case font-medium tracking-normal">
+                          · {new Date(labOrders[labOrders.length - 1].sentAt!).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                        </span>
+                      )}
                     </p>
                     <LabChipsPanel order={labOrders[labOrders.length - 1]} onOpen={() => setLabOpen(true)} />
                   </div>

@@ -24,6 +24,7 @@ export interface LabOrder {
   patientCondition: string;
   instructions:     string;
   orderSetName:     string | null;
+  sentAt?:          string;
 }
 
 // ─── Lab Categories ───────────────────────────────────────────────────────────
@@ -302,6 +303,19 @@ export function LabChipsPanel({ order, onOpen, readOnly = false }: { order: LabO
       {/* Instructions */}
       {order.instructions && (
         <p className="text-[10px] text-slate-500 italic px-1">Note: {order.instructions}</p>
+      )}
+
+      {/* Sent timestamp */}
+      {order.sentAt && (
+        <div className="flex items-center gap-1.5 px-1 pt-0.5">
+          <Clock className="h-3 w-3 text-slate-400 flex-shrink-0" />
+          <span className="text-[9px] text-slate-400 font-medium">
+            Sent {new Date(order.sentAt).toLocaleString(undefined, {
+              month: "short", day: "numeric", year: "numeric",
+              hour: "numeric", minute: "2-digit",
+            })}
+          </span>
+        </div>
       )}
 
       {/* Edit button — hidden in read-only mode (previous orders) */}
