@@ -669,7 +669,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
       : [...note.planTags, tag]);
   }
 
-  function handleDiscard() {
+  function eraseNoteFields() {
     setNote(EMPTY_NOTE);
     setHpiDoneComplaints([]);
     setHpiSavedData({});
@@ -677,6 +677,23 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     setPeSavedData({});
     setDiagnosisDone(false);
     setDiagnosisSaved([]);
+  }
+
+  function handleDiscardAll() {
+    eraseNoteFields();
+    if (labDone || awaitingLab) onDiscardLab?.();
+    setLabDone(false);
+    setLabOrders([]);
+    setDiscardConfirm(false);
+  }
+
+  function handleEraseSoapNote() {
+    eraseNoteFields();
+    // lab orders and labDone intentionally preserved
+    setDiscardConfirm(false);
+  }
+
+  function handleCancelLabQueue() {
     if (labDone || awaitingLab) onDiscardLab?.();
     setLabDone(false);
     setLabOrders([]);
@@ -1719,35 +1736,82 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
           </div>
         )}
 
-        {/* ── Discard Confirmation Overlay ── */}
+        {/* ── Discard Options Overlay ── */}
         {discardConfirm && (
           <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
-            <div className="bg-white rounded-xl shadow-2xl w-[380px] mx-4 overflow-hidden">
-              <div className="flex items-start gap-3 p-5 border-b border-slate-100">
-                <div className="flex-shrink-0 mt-0.5 h-9 w-9 rounded-full bg-red-50 flex items-center justify-center">
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
+            <div className="bg-white rounded-2xl shadow-2xl w-[400px] mx-4 overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-slate-100">
+                <div className="flex-shrink-0 h-9 w-9 rounded-full bg-amber-50 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-800">Discard all changes?</p>
-                  <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                    All selections, entries, and filled sections in this note will be permanently reset. This action cannot be undone.
-                  </p>
+                  <p className="text-sm font-bold text-slate-800">What would you like to reset?</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Choose an action — this cannot be undone.</p>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 px-5 py-3 bg-slate-50">
-                <Button
-                  variant="outline"
-                  size="sm"
+
+              {/* Options */}
+              <div className="p-4 space-y-2.5">
+                {/* Option 1: Discard All */}
+                <button
+                  onClick={handleDiscardAll}
+                  className="w-full text-left flex items-start gap-3.5 px-4 py-3.5 rounded-xl border border-red-100 bg-red-50/60 hover:bg-red-100/70 transition-colors group"
+                >
+                  <div className="flex-shrink-0 mt-0.5 h-8 w-8 rounded-full bg-red-100 group-hover:bg-red-200 flex items-center justify-center transition-colors">
+                    <Trash2 className="h-4 w-4 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-red-700">Discard All Changes</p>
+                    <p className="text-[11px] text-red-500 mt-0.5 leading-relaxed">
+                      Erase the entire SOAP note and remove the patient from the lab queue.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Option 2: Erase SOAP Note only */}
+                <button
+                  onClick={handleEraseSoapNote}
+                  className="w-full text-left flex items-start gap-3.5 px-4 py-3.5 rounded-xl border border-amber-100 bg-amber-50/60 hover:bg-amber-100/70 transition-colors group"
+                >
+                  <div className="flex-shrink-0 mt-0.5 h-8 w-8 rounded-full bg-amber-100 group-hover:bg-amber-200 flex items-center justify-center transition-colors">
+                    <RotateCcw className="h-4 w-4 text-amber-700" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-amber-800">Erase SOAP Note</p>
+                    <p className="text-[11px] text-amber-600 mt-0.5 leading-relaxed">
+                      Clear HPI, PE, and diagnoses only — lab orders remain untouched.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Option 3: Cancel Lab Queue — only shown when lab is active */}
+                {(labDone || awaitingLab) && (
+                  <button
+                    onClick={handleCancelLabQueue}
+                    className="w-full text-left flex items-start gap-3.5 px-4 py-3.5 rounded-xl border border-sky-100 bg-sky-50/60 hover:bg-sky-100/70 transition-colors group"
+                  >
+                    <div className="flex-shrink-0 mt-0.5 h-8 w-8 rounded-full bg-sky-100 group-hover:bg-sky-200 flex items-center justify-center transition-colors">
+                      <FlaskConical className="h-4 w-4 text-sky-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-sky-700">Cancel the Lab Queue</p>
+                      <p className="text-[11px] text-sky-500 mt-0.5 leading-relaxed">
+                        Remove the patient from the lab queue only — SOAP note content is kept.
+                      </p>
+                    </div>
+                  </button>
+                )}
+              </div>
+
+              {/* Go Back */}
+              <div className="px-4 pb-4">
+                <button
                   onClick={() => setDiscardConfirm(false)}
-                  className="h-8 px-4 text-xs font-medium border-slate-200 text-slate-600 hover:bg-white">
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleDiscard}
-                  className="h-8 px-4 text-xs font-bold gap-1.5 bg-red-500 hover:bg-red-600 text-white border-0">
-                  <RotateCcw className="h-3.5 w-3.5" /> Yes, discard
-                </Button>
+                  className="w-full text-xs font-semibold text-slate-500 hover:text-slate-700 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  Go Back
+                </button>
               </div>
             </div>
           </div>
