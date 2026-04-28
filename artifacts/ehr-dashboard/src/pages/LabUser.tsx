@@ -440,6 +440,11 @@ function LabPanel({ entry, onClose, onComplete }: {
   const [savedSnapshots, setSavedSnapshots] = useState<Record<string, Record<string, string>>>({});
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
 
+  // Hard void guard: clear selected test whenever the active order becomes voided
+  useEffect(() => {
+    if (activeOrder?.voided) setSelectedTestId(null);
+  }, [activeOrder?.voided]);
+
   const pendingCount = localTests.filter(t => t.status === "pending").length;
   const selectedTest = localTests.find(t => t.id === selectedTestId) ?? null;
   const selectedFields = selectedTestId ? (RESULT_FIELDS[selectedTestId] ?? GENERIC_RESULT_FIELDS) : [];
@@ -471,6 +476,7 @@ function LabPanel({ entry, onClose, onComplete }: {
 
   function saveResult() {
     if (!selectedTestId) return;
+    if (activeOrder?.voided) return;
     const now = new Date();
     const formatted =
       now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) + ", " +
@@ -793,6 +799,15 @@ function LabPanel({ entry, onClose, onComplete }: {
                     })}
                   </div>
                 </div>
+              ) : activeOrder?.voided ? (
+                /* ── Voided order — right panel locked ── */
+                <div className="flex flex-col items-center justify-center h-full text-center pb-16">
+                  <div className="h-14 w-14 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center mb-4">
+                    <Ban className="h-7 w-7 text-rose-400" />
+                  </div>
+                  <p className="text-sm font-semibold text-rose-700">Order Voided</p>
+                  <p className="text-xs text-rose-400 mt-1 max-w-xs">This order has been cancelled by the doctor. Result entry is not available.</p>
+                </div>
               ) : !selectedTest ? (
                 <div className="flex flex-col items-center justify-center h-full text-center pb-16">
                   <div className="h-14 w-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-4">
@@ -940,8 +955,8 @@ function LabPanel({ entry, onClose, onComplete }: {
               )}
             </div>
 
-            {/* Fixed footer — Save Result button, only on form tab with a test selected */}
-            {selectedTest && rightTab === "form" && (
+            {/* Fixed footer — Save Result button, only on form tab with a test selected and order not voided */}
+            {selectedTest && rightTab === "form" && !activeOrder?.voided && (
               <div className="flex-shrink-0 border-t border-slate-200 bg-white px-6 py-4 flex items-center gap-3">
                 <Button
                   onClick={saveResult}
