@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   ChevronLeft, X, Search, CheckCircle2, ClipboardCheck,
-  FlaskConical, Plus, Send, Layers, ListChecks, AlertCircle,
+  FlaskConical, Plus, Send, Layers, ListChecks, AlertCircle, Clock,
 } from "lucide-react";
 
 // ─── Accent ───────────────────────────────────────────────────────────────────
@@ -316,21 +316,30 @@ export function LabChipsPanel({ order, onOpen }: { order: LabOrder | null; onOpe
 // ─── Lab Drawer ───────────────────────────────────────────────────────────────
 
 interface LabDrawerProps {
-  isDone:        boolean;
-  savedData:     LabOrder | null;
-  onSave:        (order: LabOrder) => void;
-  onSendToLab:   (order: LabOrder) => void;
-  onClose:       () => void;
+  isDone:           boolean;
+  savedData:        LabOrder | null;
+  awaitingLab?:     boolean;
+  labResultsReady?: boolean;
+  onSave:           (order: LabOrder) => void;
+  onSendToLab:      (order: LabOrder) => void;
+  onClose:          () => void;
 }
 
-export function LabDrawer({ isDone, savedData, onSave, onSendToLab, onClose }: LabDrawerProps) {
+export function LabDrawer({ isDone, savedData, awaitingLab = false, labResultsReady = false, onSave, onSendToLab, onClose }: LabDrawerProps) {
   const [tab,               setTab]               = useState<"sets" | "browse">("sets");
   const [search,            setSearch]            = useState("");
   const [selectedCategory,  setSelectedCategory]  = useState(LAB_CATEGORIES[0]);
-  const [selectedTestIds,   setSelectedTestIds]   = useState<string[]>(savedData?.tests.map(t => t.id) ?? []);
+
+  // In second-order mode (labResultsReady), start with empty selection
+  const [selectedTestIds,   setSelectedTestIds]   = useState<string[]>(
+    labResultsReady ? [] : (savedData?.tests.map(t => t.id) ?? [])
+  );
   const [patientCondition,  setPatientCondition]  = useState(savedData?.patientCondition ?? "Random");
   const [instructions,      setInstructions]      = useState(savedData?.instructions ?? "");
   const [orderSetName,      setOrderSetName]      = useState<string | null>(savedData?.orderSetName ?? null);
+
+  // Previously ordered test IDs (shown as Completed badges in second-order mode)
+  const previousTestIds: string[] = labResultsReady ? (savedData?.tests.map(t => t.id) ?? []) : [];
 
   // Custom order set creation
   const [showCustomForm,    setShowCustomForm]    = useState(false);
@@ -340,8 +349,11 @@ export function LabDrawer({ isDone, savedData, onSave, onSendToLab, onClose }: L
   const allOrderSets = [...ORDER_SETS, ...sessionSets];
   const selectedTests = LAB_TESTS.filter(t => selectedTestIds.includes(t.id));
 
-  const savedIds = savedData?.tests.map(t => t.id) ?? [];
-  const isDirty  = isDone && (
+  // In second-order mode the baseline is always empty — the doctor starts fresh.
+  // This prevents isDirty from firing on open (empty selection vs old saved tests)
+  // and prevents any "Update" save action from overwriting the previous order context.
+  const savedIds = labResultsReady ? [] : (savedData?.tests.map(t => t.id) ?? []);
+  const isDirty  = !labResultsReady && isDone && (
     JSON.stringify(selectedTestIds.sort()) !== JSON.stringify(savedIds.sort()) ||
     patientCondition !== (savedData?.patientCondition ?? "Random") ||
     instructions     !== (savedData?.instructions ?? "")
@@ -352,7 +364,8 @@ export function LabDrawer({ isDone, savedData, onSave, onSendToLab, onClose }: L
   }
 
   function applyOrderSet(set: OrderSet) {
-    const newIds = [...new Set([...selectedTestIds, ...set.testIds])];
+    const addableIds = set.testIds.filter(id => !previousTestIds.includes(id));
+    const newIds = [...new Set([...selectedTestIds, ...addableIds])];
     setSelectedTestIds(newIds);
     setOrderSetName(set.name);
   }
@@ -363,6 +376,7 @@ export function LabDrawer({ isDone, savedData, onSave, onSendToLab, onClose }: L
   }
 
   function toggleTest(id: string) {
+    if (previousTestIds.includes(id)) return;
     setSelectedTestIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
@@ -408,8 +422,12 @@ export function LabDrawer({ isDone, savedData, onSave, onSendToLab, onClose }: L
           <p className="text-sm font-black text-slate-800">Lab Orders</p>
         </div>
 
-        {/* Done badge / Update / Mark Done */}
-        {isDone && !isDirty ? (
+        {/* Done badge / Update / Mark Done / Second-order badge */}
+        {labResultsReady ? (
+          <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 flex-shrink-0">
+            <FlaskConical className="h-3 w-3" /> Additional Order
+          </span>
+        ) : isDone && !isDirty ? (
           <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
             <CheckCircle2 className="h-3 w-3" /> Done
           </span>
@@ -465,8 +483,12 @@ export function LabDrawer({ isDone, savedData, onSave, onSendToLab, onClose }: L
 
             <div className="grid grid-cols-2 gap-2.5">
               {allOrderSets.map(set => {
-                const allSelected = set.testIds.every(id => selectedTestIds.includes(id));
-                const someSelected = set.testIds.some(id => selectedTestIds.includes(id));
+                const addableIds   = set.testIds.filter(id => !previousTestIds.includes(id));
+                const completedCount = set.testIds.filter(id => previousTestIds.includes(id)).length;
+                const allSelected  = addableIds.length > 0
+                  ? addableIds.every(id => selectedTestIds.includes(id))
+                  : set.testIds.every(id => previousTestIds.includes(id));
+                const someSelected = set.testIds.some(id => selectedTestIds.includes(id) || previousTestIds.includes(id));
                 return (
                   <button
                     key={set.id}
@@ -489,19 +511,27 @@ export function LabDrawer({ isDone, savedData, onSave, onSendToLab, onClose }: L
                       {allSelected && <CheckCircle2 className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />}
                     </div>
                     <p className="text-[9px] text-slate-400 mb-2">{set.description}</p>
-                    <p className="text-[9px] font-bold text-slate-500">
-                      {set.testIds.length} test{set.testIds.length !== 1 ? "s" : ""}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[9px] font-bold text-slate-500">
+                        {set.testIds.length} test{set.testIds.length !== 1 ? "s" : ""}
+                      </p>
+                      {completedCount > 0 && (
+                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">
+                          {completedCount} completed
+                        </span>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {set.testIds.slice(0, 4).map(id => {
                         const t = LAB_TESTS.find(lt => lt.id === id);
+                        const isCompleted = previousTestIds.includes(id);
                         return t ? (
                           <span
                             key={id}
                             className="text-[8px] font-bold px-1.5 py-0.5 rounded"
                             style={{
-                              backgroundColor: selectedTestIds.includes(id) ? `${set.color}20` : "#f1f5f9",
-                              color:           selectedTestIds.includes(id) ? set.color : "#64748b",
+                              backgroundColor: isCompleted ? "#d1fae5" : selectedTestIds.includes(id) ? `${set.color}20` : "#f1f5f9",
+                              color:           isCompleted ? "#059669" : selectedTestIds.includes(id) ? set.color : "#64748b",
                             }}>
                             {t.name.split(" ")[0]}
                           </span>
@@ -611,33 +641,41 @@ export function LabDrawer({ isDone, savedData, onSave, onSendToLab, onClose }: L
                 </div>
               ) : (
                 filteredTests.map(test => {
-                  const selected = selectedTestIds.includes(test.id);
+                  const selected  = selectedTestIds.includes(test.id);
+                  const completed = previousTestIds.includes(test.id);
                   return (
                     <button
                       key={test.id}
                       onClick={() => toggleTest(test.id)}
+                      disabled={completed}
+                      title={completed ? "Already ordered" : undefined}
                       className={[
                         "w-full text-left px-4 py-2.5 flex items-center gap-3 border-b border-slate-50 transition-colors last:border-0",
-                        selected ? "bg-amber-50" : "hover:bg-slate-50",
+                        completed ? "bg-emerald-50/60 cursor-not-allowed" : selected ? "bg-amber-50" : "hover:bg-slate-50",
                       ].join(" ")}>
                       <div className={[
                         "h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all",
-                        selected ? "border-amber-500 bg-amber-500" : "border-slate-300",
+                        completed ? "border-emerald-400 bg-emerald-400" : selected ? "border-amber-500 bg-amber-500" : "border-slate-300",
                       ].join(" ")}>
-                        {selected && <CheckCircle2 className="h-3 w-3 text-white" />}
+                        {(selected || completed) && <CheckCircle2 className="h-3 w-3 text-white" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-xs ${selected ? "font-bold text-amber-800" : "text-slate-700"}`}>
+                        <p className={`text-xs ${completed ? "text-slate-400" : selected ? "font-bold text-amber-800" : "text-slate-700"}`}>
                           {test.name}
                         </p>
                         <p className="text-[9px] text-slate-400">{test.sampleType}</p>
                       </div>
-                      {test.fastingRequired && (
+                      {completed && (
+                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 flex-shrink-0 flex items-center gap-0.5">
+                          ✓ Completed
+                        </span>
+                      )}
+                      {!completed && test.fastingRequired && (
                         <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 flex-shrink-0">
                           FASTING
                         </span>
                       )}
-                      {search.trim() && (
+                      {search.trim() && !completed && (
                         <span className="text-[9px] text-slate-400 flex-shrink-0">{test.category}</span>
                       )}
                     </button>
@@ -685,26 +723,40 @@ export function LabDrawer({ isDone, savedData, onSave, onSendToLab, onClose }: L
         </div>
       </div>
 
-      {/* ── Footer: Send Order to Lab ── */}
-      <div className="flex-shrink-0 border-t-2 border-sky-100 px-4 py-3 bg-sky-50/60 flex items-center gap-3">
-        <div className="flex-1">
-          <p className="text-[10px] font-black text-sky-700 uppercase tracking-wide">Send Order to Lab</p>
-          <p className="text-[9px] text-sky-500 mt-0.5">
-            Patient will be moved to lab queue. Note stays open — you will be notified when results are ready.
-          </p>
+      {/* ── Footer: Awaiting Lab / Send Order to Lab ── */}
+      {awaitingLab ? (
+        <div className="flex-shrink-0 border-t-2 border-amber-200 px-4 py-3 bg-amber-50 flex items-center gap-3">
+          <Clock className="h-4 w-4 text-amber-500 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide">Patient is currently at the lab</p>
+            <p className="text-[9px] text-amber-600 mt-0.5">
+              Awaiting results — you will be notified when the patient returns.
+            </p>
+          </div>
         </div>
-        <button
-          onClick={() => {
-            if (selectedTests.length === 0) return;
-            onSendToLab(buildOrder());
-          }}
-          disabled={selectedTests.length === 0}
-          className="flex items-center gap-2 text-xs font-black px-4 py-2.5 rounded-xl text-white shadow-sm disabled:opacity-40 transition-all flex-shrink-0"
-          style={{ backgroundColor: ACCENT_SEND }}>
-          <Send className="h-4 w-4" />
-          Send to Lab
-        </button>
-      </div>
+      ) : (
+        <div className="flex-shrink-0 border-t-2 border-sky-100 px-4 py-3 bg-sky-50/60 flex items-center gap-3">
+          <div className="flex-1">
+            <p className="text-[10px] font-black text-sky-700 uppercase tracking-wide">Send Order to Lab</p>
+            <p className="text-[9px] text-sky-500 mt-0.5">
+              {labResultsReady
+                ? "Select additional tests to send. Previously completed tests cannot be re-ordered."
+                : "Patient will be moved to lab queue. Note stays open — you will be notified when results are ready."}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              if (selectedTests.length === 0) return;
+              onSendToLab(buildOrder());
+            }}
+            disabled={selectedTests.length === 0}
+            className="flex items-center gap-2 text-xs font-black px-4 py-2.5 rounded-xl text-white shadow-sm disabled:opacity-40 transition-all flex-shrink-0"
+            style={{ backgroundColor: ACCENT_SEND }}>
+            <Send className="h-4 w-4" />
+            Send to Lab
+          </button>
+        </div>
+      )}
     </div>
   );
 }

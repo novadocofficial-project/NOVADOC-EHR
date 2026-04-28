@@ -589,6 +589,7 @@ interface ClinicalNoteDrawerProps {
   patientName: string;
   faceSheetOpenedAt?: number;
   awaitingLab?: boolean;
+  labResultsReady?: boolean;
   signed?: boolean;
   onSendToLab?: () => void;
   onDiscardLab?: () => void;
@@ -602,7 +603,7 @@ interface ClinicalNoteDrawerProps {
   onCancel?: () => void;
 }
 
-export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, awaitingLab = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, onNoteChange, isAddendumMode = false, onAddendum, onCancel }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, awaitingLab = false, labResultsReady = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, onNoteChange, isAddendumMode = false, onAddendum, onCancel }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(() => initialNote ?? EMPTY_NOTE);
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
@@ -1311,6 +1312,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
           <LabDrawer
             isDone={labDone}
             savedData={labSaved}
+            awaitingLab={awaitingLab}
+            labResultsReady={labResultsReady}
             onSave={handleLabSave}
             onSendToLab={handleSendToLab}
             onClose={() => setLabOpen(false)}

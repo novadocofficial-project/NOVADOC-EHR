@@ -1006,6 +1006,7 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
           patientName={name}
           faceSheetOpenedAt={faceSheetOpenedAt}
           awaitingLab={entry.pendingLab}
+          labResultsReady={entry.labResultsReady}
           onSendToLab={onSendToLab}
           onDiscardLab={onDiscardLab}
           onSaveAndClose={onSaveAndClose}
