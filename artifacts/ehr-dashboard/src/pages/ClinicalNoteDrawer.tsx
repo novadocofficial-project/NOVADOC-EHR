@@ -75,7 +75,7 @@ export interface NoteState {
   planTags:        string[];
 }
 
-const EMPTY_NOTE: NoteState = {
+export const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [], fhGenetic: [], socialHistory: EMPTY_SOCIAL_HISTORY,
   ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING, carePlan: EMPTY_CARE_PLAN, healthEd: EMPTY_HEALTH_ED, referrals: EMPTY_REFERRAL_DATA, procedureOrders: EMPTY_PROCEDURE_ORDERS, patientGoals: EMPTY_PATIENT_GOALS,
@@ -582,12 +582,13 @@ interface ClinicalNoteDrawerProps {
   onSaveAndClose?: () => void;
   onClose: () => void;
   initialNote?: NoteState;
+  onNoteChange?: (note: NoteState) => void;
   isAddendumMode?: boolean;
   onAddendum?: (note: NoteState) => void;
   onCancel?: () => void;
 }
 
-export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, isAddendumMode = false, onAddendum, onCancel }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, onNoteChange, isAddendumMode = false, onAddendum, onCancel }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(() => initialNote ?? EMPTY_NOTE);
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
@@ -621,6 +622,12 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
   function set<K extends keyof NoteState>(key: K, val: NoteState[K]) {
     setNote(prev => ({ ...prev, [key]: val }));
   }
+
+  // Notify parent of every note change so it can persist the draft
+  useEffect(() => {
+    onNoteChange?.(note);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note]);
 
   function togglePlanTag(tag: string) {
     set("planTags", note.planTags.includes(tag)

@@ -11,6 +11,7 @@ import {
   Printer, FilePenLine, GitBranch,
 } from "lucide-react";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
+import { useSoapNoteDraft } from "@/hooks/useSoapNoteDraft";
 import { Button } from "@/components/ui/button";
 import { View360Drawer } from "@/pages/View360Drawer";
 import { LabsDrawer } from "@/pages/LabsDrawer";
@@ -557,6 +558,8 @@ interface SoapNotePageProps {
 }
 
 export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, onDiscardLab, onSaveAndClose, onDoctorSign, signedRecords = [] }: SoapNotePageProps) {
+  const { draft, saveDraft, clearDraft } = useSoapNoteDraft(entry.id);
+
   const [openDrawer, setOpenDrawer]             = useState<string | null>(null);
   const [drawerFullscreen, setDrawerFullscreen] = useState(false);
   const [showNoteDrawer, setShowNoteDrawer]     = useState(false);
@@ -998,7 +1001,9 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
           onDiscardLab={onDiscardLab}
           onSaveAndClose={onSaveAndClose}
           signed={signedRecords.length > 0}
-          onDoctorSign={() => { onDoctorSign?.(); setShowNoteDrawer(false); }}
+          initialNote={draft ?? undefined}
+          onNoteChange={saveDraft}
+          onDoctorSign={() => { clearDraft(); onDoctorSign?.(); setShowNoteDrawer(false); }}
           onClose={() => setShowNoteDrawer(false)}
         />
       )}
