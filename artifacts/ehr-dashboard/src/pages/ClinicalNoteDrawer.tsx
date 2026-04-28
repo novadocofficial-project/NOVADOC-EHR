@@ -1557,7 +1557,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
             isDone={labDone}
             savedData={labOrders[labOrders.length - 1] ?? null}
             awaitingLab={awaitingLab && !activeOrderIsVoided}
-            labResultsReady={labResultsReady}
+            labResultsReady={labResultsReady && !activeOrderIsVoided}
             onSave={handleLabSave}
             onSendToLab={handleSendToLab}
             onClose={() => setLabOpen(false)}
