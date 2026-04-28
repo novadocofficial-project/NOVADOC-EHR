@@ -73,6 +73,11 @@ export interface NoteState {
   visitNote:       string;
   followUpDate:    string;
   planTags:        string[];
+  // Lab order and diagnosis captured outside the note module sections
+  labOrder:        LabOrder | null;
+  labOrderDone:    boolean;
+  diagnoses:       DiagnosisEntry[];
+  diagnosisDone:   boolean;
 }
 
 export const EMPTY_NOTE: NoteState = {
@@ -81,6 +86,7 @@ export const EMPTY_NOTE: NoteState = {
   ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING, carePlan: EMPTY_CARE_PLAN, healthEd: EMPTY_HEALTH_ED, referrals: EMPTY_REFERRAL_DATA, procedureOrders: EMPTY_PROCEDURE_ORDERS, patientGoals: EMPTY_PATIENT_GOALS,
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
+  labOrder: null, labOrderDone: false, diagnoses: [], diagnosisDone: false,
 };
 
 const PLAN_TAGS = [
@@ -597,11 +603,11 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
   const [peOpenSystem,      setPeOpenSystem]      = useState<string | null>(null);
   const [peDoneSystemIds,   setPeDoneSystemIds]   = useState<string[]>([]);
   const [peSavedData,       setPeSavedData]       = useState<Record<string, Record<string, string>>>({});
-  const [diagnosisDone,     setDiagnosisDone]     = useState(false);
-  const [diagnosisSaved,    setDiagnosisSaved]    = useState<DiagnosisEntry[]>([]);
+  const [diagnosisDone,     setDiagnosisDone]     = useState(() => initialNote?.diagnosisDone ?? false);
+  const [diagnosisSaved,    setDiagnosisSaved]    = useState<DiagnosisEntry[]>(() => initialNote?.diagnoses ?? []);
   const [diagnosisOpen,     setDiagnosisOpen]     = useState(false);
-  const [labDone,           setLabDone]           = useState(false);
-  const [labSaved,          setLabSaved]          = useState<LabOrder | null>(null);
+  const [labDone,           setLabDone]           = useState(() => initialNote?.labOrderDone ?? false);
+  const [labSaved,          setLabSaved]          = useState<LabOrder | null>(() => initialNote?.labOrder ?? null);
   const [labOpen,           setLabOpen]           = useState(false);
   const [pocOpen,           setPocOpen]           = useState(false);
   const [formularyOpen,     setFormularyOpen]     = useState(false);
@@ -649,6 +655,7 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
     setLabDone(false);
     setLabSaved(null);
     setDiscardConfirm(false);
+    // EMPTY_NOTE already has labOrder:null, labOrderDone:false, etc.
   }
 
   function handleHpiSave(complaint: string, state: CoughState) {
@@ -667,18 +674,21 @@ export function ClinicalNoteDrawer({ patientName, faceSheetOpenedAt, awaitingLab
     setDiagnosisSaved(entries);
     setDiagnosisDone(true);
     setDiagnosisOpen(false);
+    setNote(prev => ({ ...prev, diagnoses: entries, diagnosisDone: true }));
   }
 
   function handleLabSave(order: LabOrder) {
     setLabSaved(order);
     setLabDone(true);
     setLabOpen(false);
+    setNote(prev => ({ ...prev, labOrder: order, labOrderDone: true }));
   }
 
   function handleSendToLab(order: LabOrder) {
     setLabSaved(order);
     setLabDone(true);
     setLabOpen(false);
+    setNote(prev => ({ ...prev, labOrder: order, labOrderDone: true }));
     onSendToLab?.();
   }
 

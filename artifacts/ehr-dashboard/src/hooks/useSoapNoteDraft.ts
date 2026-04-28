@@ -33,22 +33,30 @@ export function useSoapNoteDraft(entryId: string) {
   // remounts (close → reopen) always receive the latest note content.
   const [draft, setDraft] = useState<NoteState | null>(() => readDraft(draftKey(entryId)));
 
-  // When entryId changes (patient switch), reload draft from localStorage
+  // When entryId changes (patient switch), reload draft from localStorage.
   useEffect(() => {
     setDraft(readDraft(key));
   }, [key]);
 
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track the latest note so we can flush on unmount without stale closures.
+  const pendingRef   = useRef<NoteState | null>(null);
+  const pendingKeyRef = useRef(key);
+
+  // Keep pendingKeyRef in sync so the unmount flush uses the right key.
+  useEffect(() => { pendingKeyRef.current = key; }, [key]);
 
   const saveDraft = useCallback(
     (note: NoteState) => {
-      // Update state immediately so subsequent remounts use the latest value
+      // Update state immediately so subsequent remounts use the latest value.
       setDraft(note);
-      // Debounce the actual localStorage write
+      pendingRef.current = note;
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         try {
           localStorage.setItem(key, JSON.stringify(note));
+          pendingRef.current = null;
+          timerRef.current = null;
         } catch {
           // storage quota — silently ignore
         }
@@ -59,12 +67,25 @@ export function useSoapNoteDraft(entryId: string) {
 
   const clearDraft = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    pendingRef.current = null;
+    timerRef.current = null;
     setDraft(null);
     clearSoapDraft(entryId);
   }, [entryId]);
 
-  // Cancel any pending save on unmount
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  // On unmount: flush any pending debounced write immediately so no edits are lost.
+  useEffect(() => {
+    return () => {
+      if (timerRef.current && pendingRef.current) {
+        clearTimeout(timerRef.current);
+        try {
+          localStorage.setItem(pendingKeyRef.current, JSON.stringify(pendingRef.current));
+        } catch {
+          // ignore
+        }
+      }
+    };
+  }, []);
 
   return { draft, saveDraft, clearDraft };
 }

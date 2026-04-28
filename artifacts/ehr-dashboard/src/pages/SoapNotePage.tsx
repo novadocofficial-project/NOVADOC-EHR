@@ -137,6 +137,10 @@ function soapDummyToNoteState(dummy: SoapDummyNote): NoteState {
     visitNote:       dummy.visitDescription,
     followUpDate:    dummy.followUp,
     planTags:        [],
+    labOrder:        null,
+    labOrderDone:    false,
+    diagnoses:       [],
+    diagnosisDone:   false,
   };
 }
 
