@@ -622,6 +622,11 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     const legacy = (initialNote as (NoteState & { labOrder?: LabOrder | null }) | undefined)?.labOrder;
     return legacy ? [legacy] : [];
   });
+  // sentAt of the order currently being processed at the lab (null when not awaiting)
+  const activeLabSentAt: string | null = awaitingLab && entryId
+    ? readActiveLabOrder(entryId)?.sentAt ?? null
+    : null;
+
   const [voidPending,       setVoidPending]       = useState<{ idx: number } | null>(null);
   const [voidReasonInput,   setVoidReasonInput]   = useState("");
   const [labOpen,           setLabOpen]           = useState(false);
@@ -758,6 +763,13 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     handleVoidOrder(voidPending.idx, reason);
     setVoidPending(null);
     setVoidReasonInput("");
+  }
+
+  function handleRemoveOrder(idx: number) {
+    const nextOrders = labOrders.filter((_, i) => i !== idx);
+    setLabOrders(nextOrders);
+    setNote(prev => ({ ...prev, labOrders: nextOrders, labOrderDone: nextOrders.length > 0 }));
+    if (nextOrders.length === 0) setLabDone(false);
   }
 
   function handleImport(key: keyof NoteState, value: string) {
@@ -1088,59 +1100,74 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                     })()}
                   </span>
                 )}
-                {awaitingLab && (
-                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-sky-100 text-sky-600 border border-sky-200 flex items-center gap-1">
-                    Sent to Lab
-                  </span>
-                )}
               </p>
 
               {/* Show each order in history */}
               {labOrders.length > 1 && (
                 <div className="space-y-3 mb-3">
-                  {labOrders.slice(0, -1).map((order, idx) => (
-                    <div key={idx} className={`rounded-xl border px-3 py-2.5 ${order.voided ? "border-rose-100 bg-rose-50/40 opacity-70" : "border-slate-100 bg-slate-50/60"}`}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${order.voided ? "text-rose-400 line-through" : "text-slate-400"}`}>
-                          Order {idx + 1}{idx === 0 ? " · Original" : " · Follow-up"}
-                          {order.sentAt && (
-                            <span className="normal-case font-medium tracking-normal no-underline" style={{ textDecoration: "none" }}>
-                              · {new Date(order.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                            </span>
-                          )}
-                          {order.voided && (
-                            <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500 no-underline" style={{ textDecoration: "none" }}>· VOIDED</span>
-                          )}
-                        </p>
-                        {order.voided && order.voidReason && (
-                          <p className="text-[9px] text-rose-400 italic mt-0.5 ml-0.5">Reason: {order.voidReason}</p>
-                        )}
-                        {order.sentAt && (
-                          <button
-                            onClick={() => order.voided ? handleVoidOrder(idx) : openVoidModal(idx)}
-                            title={order.voided ? "Restore order" : "Void order"}
-                            className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
-                              order.voided
-                                ? "text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200"
-                                : "text-rose-500 hover:text-rose-700 hover:bg-rose-100"
-                            }`}
-                          >
-                            <Trash2 className="h-2.5 w-2.5" />
-                            {order.voided ? "Restore" : "Void"}
-                          </button>
-                        )}
+                  {labOrders.slice(0, -1).map((order, idx) => {
+                    const isSentToLab = !!(activeLabSentAt && order.sentAt === activeLabSentAt && !order.voided);
+                    return (
+                      <div key={idx} className={`rounded-xl border px-3 py-2.5 ${order.voided ? "border-rose-100 bg-rose-50/40 opacity-70" : "border-slate-100 bg-slate-50/60"}`}>
+                        <div className="flex items-center justify-between mb-1.5 gap-1 flex-wrap">
+                          <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${order.voided ? "text-rose-400 line-through" : "text-slate-400"}`}>
+                            Order {idx + 1}{idx === 0 ? " · Original" : " · Follow-up"}
+                            {order.sentAt && (
+                              <span className="normal-case font-medium tracking-normal no-underline" style={{ textDecoration: "none" }}>
+                                · {new Date(order.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                              </span>
+                            )}
+                            {order.voided && (
+                              <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500 no-underline" style={{ textDecoration: "none" }}>· VOIDED</span>
+                            )}
+                          </p>
+                          <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+                            {isSentToLab && (
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600 border border-sky-200">
+                                Sent to Lab
+                              </span>
+                            )}
+                            {order.voided && order.voidReason && (
+                              <p className="text-[9px] text-rose-400 italic">Reason: {order.voidReason}</p>
+                            )}
+                            {order.sentAt ? (
+                              <button
+                                onClick={() => order.voided ? handleVoidOrder(idx) : openVoidModal(idx)}
+                                title={order.voided ? "Restore order" : "Void order"}
+                                className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
+                                  order.voided
+                                    ? "text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200"
+                                    : "text-rose-500 hover:text-rose-700 hover:bg-rose-100"
+                                }`}
+                              >
+                                <Trash2 className="h-2.5 w-2.5" />
+                                {order.voided ? "Restore" : "Void"}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleRemoveOrder(idx)}
+                                title="Remove this order"
+                                className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-slate-400 hover:text-red-500 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-2.5 w-2.5" />
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className={order.voided ? "opacity-50 pointer-events-none" : ""}>
+                          <LabChipsPanel order={order} onOpen={() => setLabOpen(true)} readOnly />
+                        </div>
                       </div>
-                      <div className={order.voided ? "opacity-50 pointer-events-none" : ""}>
-                        <LabChipsPanel order={order} onOpen={() => setLabOpen(true)} readOnly />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {(() => {
                     const latest = labOrders[labOrders.length - 1];
                     const latestIdx = labOrders.length - 1;
+                    const isSentToLab = !!(activeLabSentAt && latest.sentAt === activeLabSentAt && !latest.voided);
                     return (
                       <div className={`rounded-xl border px-3 py-2.5 ${latest.voided ? "border-rose-100 bg-rose-50/40 opacity-70" : "border-amber-200 bg-amber-50/40"}`}>
-                        <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center justify-between mb-1.5 gap-1 flex-wrap">
                           <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${latest.voided ? "text-rose-400 line-through" : "text-amber-700"}`}>
                             Order {labOrders.length} · Latest
                             {latest.sentAt && (
@@ -1152,25 +1179,42 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                               <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500" style={{ textDecoration: "none" }}>· VOIDED</span>
                             )}
                           </p>
-                          {latest.voided && latest.voidReason && (
-                            <p className="text-[9px] text-rose-400 italic mt-0.5 ml-0.5">Reason: {latest.voidReason}</p>
-                          )}
-                          {latest.sentAt && (
-                            <button
-                              onClick={() => latest.voided ? handleVoidOrder(latestIdx) : openVoidModal(latestIdx)}
-                              title={latest.voided ? "Restore order" : "Void order"}
-                              className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
-                                latest.voided
-                                  ? "text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200"
-                                  : "text-rose-500 hover:text-rose-700 hover:bg-rose-100"
-                              }`}
-                            >
-                              <Trash2 className="h-2.5 w-2.5" />
-                              {latest.voided ? "Restore" : "Void"}
-                            </button>
-                          )}
+                          <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+                            {isSentToLab && (
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600 border border-sky-200">
+                                Sent to Lab
+                              </span>
+                            )}
+                            {latest.voided && latest.voidReason && (
+                              <p className="text-[9px] text-rose-400 italic">Reason: {latest.voidReason}</p>
+                            )}
+                            {latest.sentAt ? (
+                              <button
+                                onClick={() => latest.voided ? handleVoidOrder(latestIdx) : openVoidModal(latestIdx)}
+                                title={latest.voided ? "Restore order" : "Void order"}
+                                className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
+                                  latest.voided
+                                    ? "text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200"
+                                    : "text-rose-500 hover:text-rose-700 hover:bg-rose-100"
+                                }`}
+                              >
+                                <Trash2 className="h-2.5 w-2.5" />
+                                {latest.voided ? "Restore" : "Void"}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleRemoveOrder(latestIdx)}
+                                title="Remove this order"
+                                className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-slate-400 hover:text-red-500 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-2.5 w-2.5" />
+                                Remove
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <div className={latest.voided ? "opacity-50 pointer-events-none" : ""}>
+                        {/* opacity-only on voided latest — no pointer-events-none so Edit button stays clickable */}
+                        <div className={latest.voided ? "opacity-50" : ""}>
                           <LabChipsPanel order={latest} onOpen={() => setLabOpen(true)} />
                         </div>
                       </div>
@@ -1183,37 +1227,57 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
               {labOrders.length <= 1 && (() => {
                 const singleOrder = labOrders[0] ?? null;
                 if (!singleOrder) return <LabChipsPanel order={null} onOpen={() => setLabOpen(true)} />;
+                const isSentToLab = !!(activeLabSentAt && singleOrder.sentAt === activeLabSentAt && !singleOrder.voided);
                 return (
                   <div className={`rounded-xl border px-3 py-2.5 ${singleOrder.voided ? "border-rose-100 bg-rose-50/40 opacity-70" : "border-transparent bg-transparent p-0"}`}>
-                    {singleOrder.sentAt && (
-                      <div className="flex items-center justify-between mb-1.5">
-                        <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${singleOrder.voided ? "text-rose-400 line-through" : "text-slate-400"}`}>
-                          Order 1 · Original
+                    <div className="flex items-center justify-between mb-1.5 gap-1 flex-wrap">
+                      <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${singleOrder.voided ? "text-rose-400 line-through" : "text-slate-400"}`}>
+                        Order 1 · Original
+                        {singleOrder.sentAt && (
                           <span className="normal-case font-medium tracking-normal" style={{ textDecoration: "none" }}>
                             · {new Date(singleOrder.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                           </span>
-                          {singleOrder.voided && (
-                            <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500" style={{ textDecoration: "none" }}>· VOIDED</span>
-                          )}
-                        </p>
-                        {singleOrder.voided && singleOrder.voidReason && (
-                          <p className="text-[9px] text-rose-400 italic mt-0.5 ml-0.5">Reason: {singleOrder.voidReason}</p>
                         )}
-                        <button
-                          onClick={() => singleOrder.voided ? handleVoidOrder(0) : openVoidModal(0)}
-                          title={singleOrder.voided ? "Restore order" : "Void order"}
-                          className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
-                            singleOrder.voided
-                              ? "text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200"
-                              : "text-rose-500 hover:text-rose-700 hover:bg-rose-100"
-                          }`}
-                        >
-                          <Trash2 className="h-2.5 w-2.5" />
-                          {singleOrder.voided ? "Restore" : "Void"}
-                        </button>
+                        {singleOrder.voided && (
+                          <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500" style={{ textDecoration: "none" }}>· VOIDED</span>
+                        )}
+                      </p>
+                      <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+                        {isSentToLab && (
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600 border border-sky-200">
+                            Sent to Lab
+                          </span>
+                        )}
+                        {singleOrder.voided && singleOrder.voidReason && (
+                          <p className="text-[9px] text-rose-400 italic">Reason: {singleOrder.voidReason}</p>
+                        )}
+                        {singleOrder.sentAt ? (
+                          <button
+                            onClick={() => singleOrder.voided ? handleVoidOrder(0) : openVoidModal(0)}
+                            title={singleOrder.voided ? "Restore order" : "Void order"}
+                            className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors ${
+                              singleOrder.voided
+                                ? "text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200"
+                                : "text-rose-500 hover:text-rose-700 hover:bg-rose-100"
+                            }`}
+                          >
+                            <Trash2 className="h-2.5 w-2.5" />
+                            {singleOrder.voided ? "Restore" : "Void"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleRemoveOrder(0)}
+                            title="Remove this order"
+                            className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-slate-400 hover:text-red-500 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-2.5 w-2.5" />
+                            Remove
+                          </button>
+                        )}
                       </div>
-                    )}
-                    <div className={singleOrder.voided ? "opacity-50 pointer-events-none" : ""}>
+                    </div>
+                    {/* opacity-only on voided single order — no pointer-events-none so Edit button stays clickable */}
+                    <div className={singleOrder.voided ? "opacity-50" : ""}>
                       <LabChipsPanel order={singleOrder} onOpen={() => setLabOpen(true)} />
                     </div>
                   </div>
