@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import {
-  clearSoapDraft, hasSoapDraft,
+  clearSoapDraft, hasSoapDraft, readSoapDraft,
   readSignedRecords, saveSignedRecords, clearSignedRecords,
 } from "@/hooks/useSoapNoteDraft";
 import { useToast } from "@/hooks/use-toast";
@@ -173,15 +173,27 @@ export function DoctorUser() {
     setFaceSheetEntry(entry);
   }
 
-  // With SOAP note — advance to next step
+  // With SOAP note — advance to next step based on what the doctor ordered
   function handleFaceSheetComplete(id: string) {
     const entry = queue.find(e => e.id === id);
-    docCompleteConsultation(id);
+    const draft = readSoapDraft(id);
+
+    const hasUnsentLabOrders = (draft?.labOrders ?? []).some(o => !o.sentAt && !o.voided);
+    const hasPrescription    = (draft?.formulary?.medicines?.length ?? 0) > 0;
+
+    docCompleteConsultation(id, { hasPrescription, hasUnsentLabOrders });
     clearSoapDraft(id);
     clearSignedState(id);
     pruneSoapNoteSession(id);
     setFaceSheetEntry(null);
-    toast({ title: `Consultation complete — ${entry?.tokenNumber ?? id} advanced to next step` });
+
+    const token = entry?.tokenNumber ?? id;
+    const routeMsg = hasUnsentLabOrders
+      ? `Lab order queued — ${token} sent to Lab`
+      : hasPrescription
+        ? `Consultation complete — ${token} sent to Pharmacy`
+        : `Consultation complete — ${token} visit finished`;
+    toast({ title: routeMsg });
   }
 
   // Without SOAP note — mark as complete, don't advance

@@ -39,6 +39,11 @@ export function hasSoapDraft(entryId: string): boolean {
   }
 }
 
+/** Synchronously read and parse the full SOAP draft for this entry. Returns null on miss or parse error. */
+export function readSoapDraft(entryId: string): NoteState | null {
+  return readDraft(draftKey(entryId));
+}
+
 // ─── Signed-record persistence ────────────────────────────────────────────────
 
 function signedKey(entryId: string) {

@@ -239,19 +239,38 @@ export function useMultiStepQueue() {
     ));
   }
 
-  function docCompleteConsultation(id: string) {
+  function docCompleteConsultation(id: string, opts?: { hasPrescription?: boolean; hasUnsentLabOrders?: boolean }) {
+    const { hasPrescription = false, hasUnsentLabOrders = false } = opts ?? {};
     setQueue(prev => prev.map(e => {
       if (e.id !== id) return e;
       const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
-      // If lab results are already ready, skip the lab step and go straight to pharmacy
-      if (e.labResultsReady) {
-        const pharmStep = e.step + 2; // skip lab (step 4) → go to step 5
+
+      // Priority 1: unsent lab orders → route to lab (on any visit, including post-lab revisits)
+      if (hasUnsentLabOrders) {
+        const labStepIdx = vt.steps.findIndex(s => s.toLowerCase().includes("lab"));
+        const labStep = labStepIdx >= 0 ? labStepIdx + 1 : e.step + 1;
+        return {
+          ...e,
+          step: labStep,
+          stepLabel: vt.steps[labStep - 1] ?? "Lab / Sample",
+          status: "waiting",
+          callCount: 0,
+          callTimestamp: null,
+          pendingLab: true,
+          labResultsReady: false,
+        };
+      }
+
+      // Priority 2: prescriptions exist → route to pharmacy
+      if (hasPrescription) {
+        const pharmStepIdx = vt.steps.findIndex(s => s.toLowerCase().includes("pharm"));
+        const pharmStep = pharmStepIdx >= 0 ? pharmStepIdx + 1 : e.step + (e.labResultsReady ? 2 : 1);
         if (pharmStep > e.totalSteps) return { ...e, status: "completed", labResultsReady: false };
         return { ...e, step: pharmStep, stepLabel: vt.steps[pharmStep - 1], status: "waiting", callCount: 0, callTimestamp: null, labResultsReady: false };
       }
-      const nextStep = e.step + 1;
-      if (nextStep > e.totalSteps) return { ...e, status: "completed" };
-      return { ...e, step: nextStep, stepLabel: vt.steps[nextStep - 1], status: "waiting", callCount: 0, callTimestamp: null };
+
+      // Priority 3: neither → mark complete
+      return { ...e, status: "completed", labResultsReady: false };
     }));
   }
 
@@ -300,13 +319,15 @@ export function useMultiStepQueue() {
     setQueue(prev => prev.map(e => {
       if (e.id !== id) return e;
       const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
-      // If patient came through Doctor Consultation (step 3 in visit type), return them there with a "lab ready" flag
-      const cameFromDoctor = e.step === 4 && vt.steps[2]?.toLowerCase().includes("doctor");
-      if (cameFromDoctor) {
+      // Only return to doctor if the doctor explicitly dispatched this patient to the lab (pendingLab=true).
+      // Step-number-based routing is intentionally avoided — the flag is the source of truth.
+      if (e.pendingLab) {
+        const docStepIdx = vt.steps.findIndex(s => s.toLowerCase().includes("doctor"));
+        const docStep = docStepIdx >= 0 ? docStepIdx + 1 : Math.max(1, e.step - 1);
         return {
           ...e,
-          step: 3,
-          stepLabel: vt.steps[2],
+          step: docStep,
+          stepLabel: vt.steps[docStep - 1] ?? "Doctor Consultation",
           status: "waiting",
           callCount: 0,
           callTimestamp: null,
@@ -314,6 +335,7 @@ export function useMultiStepQueue() {
           labResultsReady: true,
         };
       }
+      // Not dispatched by doctor — advance to next step in sequence
       const nextStep = e.step + 1;
       if (nextStep > e.totalSteps) return { ...e, status: "completed" };
       return { ...e, step: nextStep, stepLabel: vt.steps[nextStep - 1], status: "waiting", callCount: 0, callTimestamp: null };
