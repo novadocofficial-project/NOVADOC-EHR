@@ -434,6 +434,16 @@ function writeSampleCollectedId(testId: string) {
   } catch { /* ignore */ }
 }
 
+function removeSampleCollectedIds(testIds: string[]) {
+  try {
+    const raw = localStorage.getItem(SAMPLE_COLLECTED_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Record<string, boolean>;
+    testIds.forEach(id => { delete parsed[id]; });
+    localStorage.setItem(SAMPLE_COLLECTED_KEY, JSON.stringify(parsed));
+  } catch { /* ignore */ }
+}
+
 // ─── Lab Panel (fullscreen slide-over) ───────────────────────────────────────
 
 function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
@@ -495,8 +505,15 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
 
   // Hard void guard: only clear the selected test when it belongs to the active order that just got voided.
   // Tests from pending orders must remain selectable even when the sent order is voided.
+  // Also remove any persisted "collected" badges for the now-voided order's test IDs.
   useEffect(() => {
-    if (activeOrder?.voided && selectedIsFromActiveOrder) setSelectedTestId(null);
+    if (activeOrder?.voided) {
+      if (selectedIsFromActiveOrder) setSelectedTestId(null);
+      removeSampleCollectedIds(activeOrderTests.map(t => t.id));
+      setLocalTests(ts => ts.map(t =>
+        activeOrderTests.some(at => at.id === t.id) ? { ...t, sampleCollected: false } : t
+      ));
+    }
   }, [activeOrder?.voided]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pendingCount = localTests.filter(t => t.status === "pending").length;
@@ -1245,7 +1262,7 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
               )}
               <div className="flex gap-2 mt-2">
                 <Button onClick={() => setShowConfirm(false)} variant="outline" className="flex-1 h-9 text-sm">Cancel</Button>
-                <Button onClick={() => { onComplete(); setShowConfirm(false); }} className="flex-1 h-9 text-sm text-white" style={{ background: LAB_ACCENT }}>
+                <Button onClick={() => { removeSampleCollectedIds(localTests.map(t => t.id)); onComplete(); setShowConfirm(false); }} className="flex-1 h-9 text-sm text-white" style={{ background: LAB_ACCENT }}>
                   Confirm
                 </Button>
               </div>
