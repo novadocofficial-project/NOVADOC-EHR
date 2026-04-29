@@ -688,14 +688,6 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     setDiagnosisSaved([]);
   }
 
-  function handleDiscardAll() {
-    eraseNoteFields();
-    if (labDone || awaitingLab) onDiscardLab?.();
-    setLabDone(false);
-    setLabOrders([]);
-    setDiscardConfirm(false);
-  }
-
   function handleEraseSoapNote() {
     eraseNoteFields();
     // lab orders and labDone intentionally preserved
@@ -1713,23 +1705,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
 
               {/* Options */}
               <div className="p-4 space-y-2.5">
-                {/* Option 1: Discard All */}
-                <button
-                  onClick={handleDiscardAll}
-                  className="w-full text-left flex items-start gap-3.5 px-4 py-3.5 rounded-xl border border-red-100 bg-red-50/60 hover:bg-red-100/70 transition-colors group"
-                >
-                  <div className="flex-shrink-0 mt-0.5 h-8 w-8 rounded-full bg-red-100 group-hover:bg-red-200 flex items-center justify-center transition-colors">
-                    <Trash2 className="h-4 w-4 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-red-700">Discard All Changes</p>
-                    <p className="text-[11px] text-red-500 mt-0.5 leading-relaxed">
-                      Erase the entire SOAP note and remove the patient from the lab queue.
-                    </p>
-                  </div>
-                </button>
-
-                {/* Option 2: Erase SOAP Note only */}
+                {/* Option 1: Erase SOAP Note only */}
                 <button
                   onClick={handleEraseSoapNote}
                   className="w-full text-left flex items-start gap-3.5 px-4 py-3.5 rounded-xl border border-amber-100 bg-amber-50/60 hover:bg-amber-100/70 transition-colors group"
