@@ -1,0 +1,20 @@
+Plan# 72 Done looks like
+* Doctor writes a SOAP note (or part of one) → clicks "Send to Lab" → patient moves to lab queue → face sheet closes automatically, doctor is returned to the queue
+* Patient returns from lab (labResultsReady=true) → appears in the "Pending Lab Results" panel at the bottom of the doctor queue (NOT in the main queue list) with an "Open Facesheet" button
+* Doctor clicks "Open Facesheet" for the returning patient:
+    * If the patient has an unsigned draft → face sheet shows "SOAP Note in Progress" badge and "Complete Consultation" is disabled
+    * If the patient's note was already signed before sending to lab → face sheet shows "SOAP note created" and Complete Consultation is enabled
+* Doctor clicks the "SOAP Note in Progress" button → SOAP note opens with the same draft they left before the lab visit (draft was never cleared)
+* Doctor reviews lab results, finishes the note, clicks "Doctor Sign" → draft clears, signed record saved → face sheet now enables Complete Consultation
+* Doctor clicks Complete Consultation → routed to pharmacy (if prescriptions) or marked complete
+* Unsent lab orders routing (via Complete Consultation) is unaffected — those patients do NOT return to the doctor (pendingLab=false, already correct)
+
+ Actual Done looks like I want
+
+* Doctor writes a SOAP note (or part of one) → clicks "Send to Lab" → patient moves to lab queue → face sheet does not closed automatically, doctor continue to work on draft. Doctor click on save and close return to facesheet it shows soap note in progress and complete consultation disabled.
+* Doctor returns to the queue, patient is showing in pending lab results with open facesheet button. Doctor clicks "Open Facesheet" face sheet shows "SOAP Note in Progress" badge and "Complete Consultation" is disabled
+* Patient returns from lab (labResultsReady=true) → appears in the active queue with lab ready badge. Doctor clicks on Call, clicks on open facesheet. face sheet shows "SOAP Note in Progress" badge and "Complete Consultation" is disabled
+* Doctor clicks the "SOAP Note in Progress" button → SOAP note opens with the same draft they left before the lab visit (draft was never cleared)
+* Doctor reviews lab results, finishes the note, clicks "Doctor Sign" → draft clears, signed record saved → face sheet now enables Complete Consultation
+* Doctor clicks Complete Consultation → routed to pharmacy (if prescriptions) or marked complete
+* Unsent lab orders routing (via Complete Consultation) is unaffected — those patients do NOT return to the doctor (pendingLab=false, already correct)
