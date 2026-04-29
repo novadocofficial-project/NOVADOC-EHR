@@ -224,20 +224,19 @@ export function AdminSettings() {
       const raw = localStorage.getItem("ehr-imaging-partners-v1");
       if (raw) return JSON.parse(raw) as ImagingPartner[];
     } catch { /**/ }
-    return [
+    const seed: ImagingPartner[] = [
       {
         id: "ip1", name: "In-House Radiology", type: "Internal Radiology", contact: "", active: true,
         selectedTests: ["xray-chest","xray-abdomen","xray-knee","us-abdomen","us-thyroid","echo-2d"],
-        pricing:    { "xray-chest": "800", "xray-abdomen": "900", "xray-knee": "700", "us-abdomen": "1500", "us-thyroid": "1200", "echo-2d": "3500" },
-        doctorRate: { "xray-chest": "0",   "xray-abdomen": "0",   "xray-knee": "0",   "us-abdomen": "400",  "us-thyroid": "350",  "echo-2d": "1000" },
+        pricing: { "xray-chest": "800", "xray-abdomen": "900", "xray-knee": "700", "us-abdomen": "1500", "us-thyroid": "1200", "echo-2d": "3500" },
       },
       {
         id: "ip2", name: "City Diagnostics Centre", type: "External Centre", contact: "0300-9876543", active: true,
         selectedTests: ["ct-brain","ct-chest","ct-abdo-pelvis","mri-brain","mri-knee","nuc-pet-ct"],
-        pricing:    { "ct-brain": "7000", "ct-chest": "8000", "ct-abdo-pelvis": "9000", "mri-brain": "12000", "mri-knee": "10000", "nuc-pet-ct": "35000" },
-        doctorRate: { "ct-brain": "1500", "ct-chest": "1500", "ct-abdo-pelvis": "2000", "mri-brain": "2500",  "mri-knee": "2000",  "nuc-pet-ct": "5000"  },
+        pricing: { "ct-brain": "7000", "ct-chest": "8000", "ct-abdo-pelvis": "9000", "mri-brain": "12000", "mri-knee": "10000", "nuc-pet-ct": "35000" },
       },
     ];
+    return seed;
   });
 
   const [consumableProviders] = useState<ConsumableProvider[]>(() => {
