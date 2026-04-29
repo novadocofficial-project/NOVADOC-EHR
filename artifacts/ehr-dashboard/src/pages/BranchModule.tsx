@@ -878,7 +878,33 @@ function PharmacyPartnersTab({ branches, pharmacyPartners, onNavigate }: {
 
 // ─── Queue Visit Types Tab ─────────────────────────────────────────────────────
 
+type BranchQueueMode = "single" | "partitioned" | "multi-step";
+
+const QUEUE_MODES: { value: BranchQueueMode; label: string; desc: string }[] = [
+  {
+    value: "single",
+    label: "Single Queue",
+    desc: "All patients share one unified queue, served in token order.",
+  },
+  {
+    value: "partitioned",
+    label: "Partitioned Queue",
+    desc: "Queue is split by doctor or department; each partition manages its own order.",
+  },
+  {
+    value: "multi-step",
+    label: "Multistep Visit Queue",
+    desc: "Patients progress through sequential workflow steps — registration, vitals, doctor, lab, pharmacy.",
+  },
+];
+
 function QueueVisitTypesTab({ branches, visitTypes }: { branches: Branch[]; visitTypes: VisitType[] }) {
+  const [branchMode, setBranchMode] = useState<Record<string, BranchQueueMode>>(() => {
+    const init: Record<string, BranchQueueMode> = {};
+    branches.forEach(b => { init[b.id] = "single"; });
+    return init;
+  });
+
   const [selected, setSelected] = useState<Record<string, string[]>>(() => {
     const init: Record<string, string[]> = {};
     branches.forEach(b => { init[b.id] = []; });
@@ -895,23 +921,18 @@ function QueueVisitTypesTab({ branches, visitTypes }: { branches: Branch[]; visi
     });
   }
 
-  if (visitTypes.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-2">
-        <Layers className="h-10 w-10 opacity-20" />
-        <p className="text-sm font-medium">No visit types configured</p>
-        <p className="text-xs">Add visit types in Queue Management first.</p>
-      </div>
-    );
-  }
+  const multiStepVTs = visitTypes.filter(vt => vt.queueMode === "multi-step");
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {branches.map(branch => {
+        const mode = branchMode[branch.id] ?? "single";
         const branchSelected = selected[branch.id] ?? [];
         return (
-          <div key={branch.id} className="rounded-xl border border-slate-200 bg-white shadow-sm px-5 py-4">
-            <div className="flex items-center gap-3 mb-4">
+          <div key={branch.id} className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+
+            {/* Branch header */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
               <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
                 <GitBranch className="h-4 w-4 text-slate-500" />
               </div>
@@ -919,41 +940,83 @@ function QueueVisitTypesTab({ branches, visitTypes }: { branches: Branch[]; visi
                 <p className="text-sm font-bold text-slate-800">{branch.name}</p>
                 <span className="font-mono text-[10px] font-bold text-[#4982CF] bg-[#4982CF]/8 px-1.5 py-0.5 rounded">{branch.code}</span>
               </div>
-              <div className="ml-auto flex items-center gap-2">
-                {branchSelected.length > 0 && (
-                  <span className="text-[10px] font-bold text-[#4982CF] bg-[#4982CF]/8 px-2 py-0.5 rounded-full">
-                    {branchSelected.length} selected
-                  </span>
-                )}
-                {branch.status === "inactive" && (
-                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">Inactive</span>
-                )}
+              {branch.status === "inactive" && (
+                <span className="ml-auto text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">Inactive</span>
+              )}
+            </div>
+
+            {/* Queue system selector */}
+            <div className="px-5 py-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Queue System</p>
+              <div className="grid grid-cols-3 gap-3">
+                {QUEUE_MODES.map(m => {
+                  const active = mode === m.value;
+                  return (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => setBranchMode(prev => ({ ...prev, [branch.id]: m.value }))}
+                      className={`flex flex-col items-start gap-1.5 rounded-xl border-2 px-4 py-3 text-left transition-all ${
+                        active
+                          ? "border-[#4982CF] bg-[#4982CF]/5 shadow-sm"
+                          : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className={`text-xs font-bold ${active ? "text-[#4982CF]" : "text-slate-700"}`}>{m.label}</span>
+                        {active && <Check className="h-3.5 w-3.5 text-[#4982CF] flex-shrink-0" />}
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">{m.desc}</p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <div className="flex flex-wrap gap-3">
-              {visitTypes.map(vt => {
-                const isSelected = branchSelected.includes(vt.id);
-                return (
-                  <button
-                    key={vt.id}
-                    type="button"
-                    onClick={() => toggle(branch.id, vt.id)}
-                    className={`flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-left transition-all focus:outline-none ${
-                      isSelected
-                        ? "border-[#4982CF] bg-[#4982CF]/5 shadow-sm ring-1 ring-[#4982CF]/30"
-                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: vt.color }} />
-                    <div>
-                      <p className={`text-xs font-bold ${isSelected ? "text-[#4982CF]" : "text-slate-700"}`}>{vt.name}</p>
-                      <p className="text-[10px] text-slate-400 font-mono">{vt.code} · {vt.tokenPrefix}###</p>
-                    </div>
-                    {isSelected && <Check className="h-3.5 w-3.5 text-[#4982CF] ml-1 flex-shrink-0" />}
-                  </button>
-                );
-              })}
-            </div>
+
+            {/* Visit type assignment — only visible for multi-step mode */}
+            {mode === "multi-step" && (
+              <div className="border-t border-slate-100 px-5 py-4 bg-slate-50/50">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+                  Enabled Visit Types
+                  {branchSelected.length > 0 && (
+                    <span className="ml-2 normal-case font-semibold text-[#4982CF]">
+                      {branchSelected.length} selected
+                    </span>
+                  )}
+                </p>
+                {multiStepVTs.length === 0 ? (
+                  <div className="flex items-center gap-2 py-3 text-slate-400">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <p className="text-xs">No multi-step visit types configured. Add them in Queue Setup → Visit Types first.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-3">
+                    {multiStepVTs.map(vt => {
+                      const isSelected = branchSelected.includes(vt.id);
+                      return (
+                        <button
+                          key={vt.id}
+                          type="button"
+                          onClick={() => toggle(branch.id, vt.id)}
+                          className={`flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-left transition-all focus:outline-none ${
+                            isSelected
+                              ? "border-[#4982CF] bg-[#4982CF]/5 shadow-sm ring-1 ring-[#4982CF]/30"
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: vt.color }} />
+                          <div>
+                            <p className={`text-xs font-bold ${isSelected ? "text-[#4982CF]" : "text-slate-700"}`}>{vt.name}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">{vt.code} · {vt.tokenPrefix}###</p>
+                          </div>
+                          {isSelected && <Check className="h-3.5 w-3.5 text-[#4982CF] ml-1 flex-shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
       })}
