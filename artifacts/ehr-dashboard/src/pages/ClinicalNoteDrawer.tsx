@@ -1139,12 +1139,16 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
               ) : (
                 <div className="space-y-3">
                   {(() => {
-                    // true while a sent+un-voided order is still in-flight (clears once results are ready)
-                    const hasActiveSent = !labResultsReady && labOrders.some(o => !!o.sentAt && !o.voided);
+                    // An order is blocked from sending only while the patient is actively in the lab.
+                    // awaitingLab=true means exactly one order is in-flight right now.
+                    const hasActiveSent = awaitingLab;
                     return labOrders.map((order, idx) => {
                       const isSent   = !!order.sentAt && !order.voided;
                       const isVoided = !!order.voided;
                       const isUnsent = !order.sentAt && !isVoided;
+                      // True only for the specific order currently being processed at the lab.
+                      // Older sent orders from prior rounds have a different sentAt value.
+                      const isCurrentlyInLab = awaitingLab && !!activeLabSentAt && order.sentAt === activeLabSentAt;
                       return (
                         <div
                           key={order.id ?? idx}
@@ -1176,8 +1180,10 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                                   <Send className="h-2.5 w-2.5" /> Sent to Lab
                                 </span>
                               )}
-                              {/* Results Complete badge — shown when lab results have been returned */}
-                              {isSent && labResultsReady && (
+                              {/* Results Complete badge — shown when this specific order's round is done.
+                                  Uses isCurrentlyInLab to avoid clearing the badge on prior-round orders
+                                  when a second order is dispatched (labResultsReady would be false then). */}
+                              {isSent && (!isCurrentlyInLab || labResultsReady) && (
                                 <span className="flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300">
                                   <CheckCircle2 className="h-2.5 w-2.5" /> Results Complete
                                 </span>
@@ -1186,8 +1192,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                               {isVoided && order.voidReason && (
                                 <p className="text-[9px] text-rose-400 italic">Reason: {order.voidReason}</p>
                               )}
-                              {/* Void button — only for sent, un-voided orders that are not yet result-complete */}
-                              {isSent && !labResultsReady && (
+                              {/* Void button — only for the order currently in-flight at the lab, not prior completed orders */}
+                              {isSent && isCurrentlyInLab && !labResultsReady && (
                                 <button
                                   onClick={() => openVoidModal(order.id)}
                                   title="Void this order"
