@@ -199,8 +199,11 @@ export function DoctorUser() {
     const hasPrescription = snapshot?.hasPrescription
       ?? (draft?.formulary?.medicines?.length ?? 0) > 0;
 
-    // When routing through the unsent-lab-orders path, capture the orders NOW
-    // (before the SOAP draft is cleared) so the Lab Panel can display them.
+    // Unsigned path: capture unsent orders NOW before clearSoapDraft() wipes them.
+    // Signed path: SoapNotePage.onDoctorSign already persisted them at sign time
+    // (before clearDraft()), so readSoapDraft returns null here and this is a no-op.
+    // Both paths intentionally converge on savePendingLabOrders — the Lab Panel reads
+    // from ehr_pending_lab_orders_{id} because the SOAP draft may already be gone.
     if (hasUnsentLabOrders) {
       const currentDraft = readSoapDraft(id);
       const unsentOrders = (currentDraft?.labOrders ?? []).filter(o => !o.sentAt && !o.voided);
