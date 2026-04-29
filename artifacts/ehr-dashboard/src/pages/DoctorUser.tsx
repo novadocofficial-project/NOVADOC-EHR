@@ -11,7 +11,7 @@ import {
   clearSoapDraft, hasSoapDraft, readSoapDraft,
   readRoutingSnapshot, clearRoutingSnapshot,
   readSignedRecords, saveSignedRecords, clearSignedRecords,
-  savePendingLabOrders, clearPendingLabOrders,
+  savePendingLabOrders, clearPendingLabOrders, clearActiveLabOrder,
 } from "@/hooks/useSoapNoteDraft";
 import { useToast } from "@/hooks/use-toast";
 import type { SignedRecord } from "@/pages/SoapNotePage";
@@ -277,6 +277,7 @@ export function DoctorUser() {
 
   function handleCancelLab(id: string) {
     docCancelLab(id);
+    clearActiveLabOrder(id);   // erase the sent/voided order — stale slot must not persist across cycles
     clearPendingLabOrders(id); // patient returned to doctor — lab panel no longer needs these
   }
 
