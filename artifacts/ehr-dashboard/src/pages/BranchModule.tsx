@@ -898,13 +898,17 @@ const QUEUE_MODES: { value: BranchQueueMode; label: string; desc: string }[] = [
   },
 ];
 
-function QueueVisitTypesTab({ branches, visitTypes }: { branches: Branch[]; visitTypes: VisitType[] }) {
-  const [branchMode, setBranchMode] = useState<Record<string, BranchQueueMode>>(() => {
-    const init: Record<string, BranchQueueMode> = {};
-    branches.forEach(b => { init[b.id] = "single"; });
-    return init;
-  });
-
+function QueueVisitTypesTab({
+  branches,
+  visitTypes,
+  branchMode,
+  setBranchMode,
+}: {
+  branches: Branch[];
+  visitTypes: VisitType[];
+  branchMode: Record<string, BranchQueueMode>;
+  setBranchMode: React.Dispatch<React.SetStateAction<Record<string, BranchQueueMode>>>;
+}) {
   const [selected, setSelected] = useState<Record<string, string[]>>(() => {
     const init: Record<string, string[]> = {};
     branches.forEach(b => { init[b.id] = []; });
@@ -1042,6 +1046,11 @@ interface BranchModuleProps {
 export function BranchModule({ labProviders = [], labSections = [], procPartners = [], procSections = [], imagingPartners = [], consumableProviders = [], pharmacyPartners = [], onNavigate }: BranchModuleProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("branches");
   const [branches, setBranches] = useState<Branch[]>(SEED);
+  const [branchMode, setBranchMode] = useState<Record<string, BranchQueueMode>>(() => {
+    const init: Record<string, BranchQueueMode> = {};
+    SEED.forEach(b => { init[b.id] = "single"; });
+    return init;
+  });
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1080,7 +1089,9 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
     if (editingId) {
       setBranches(p => p.map(b => b.id === editingId ? { ...b, ...payload } : b));
     } else {
-      setBranches(p => [...p, { ...payload, id: `br-${Date.now()}`, createdAt: new Date().toISOString() }]);
+      const newId = `br-${Date.now()}`;
+      setBranches(p => [...p, { ...payload, id: newId, createdAt: new Date().toISOString() }]);
+      setBranchMode(prev => ({ ...prev, [newId]: "single" }));
     }
     setShowForm(false);
   }
@@ -1135,8 +1146,8 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
 
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="grid border-b border-slate-100 bg-slate-50/80 px-5 py-3"
-              style={{ gridTemplateColumns: "1fr 110px 160px 120px 120px 90px 110px" }}>
-              {["Branch Name", "Code", "Timezone", "Working Hours", "Token Reset", "Status", "Created"].map(h => (
+              style={{ gridTemplateColumns: "1fr 110px 130px 160px 120px 120px 90px 110px" }}>
+              {["Branch Name", "Code", "Queue Mode", "Timezone", "Working Hours", "Token Reset", "Status", "Created"].map(h => (
                 <span key={h} className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{h}</span>
               ))}
             </div>
@@ -1147,33 +1158,45 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {filtered.map(b => (
-                  <div key={b.id} className="grid items-center px-5 py-4 hover:bg-slate-50 group transition-colors"
-                    style={{ gridTemplateColumns: "1fr 110px 160px 120px 120px 90px 110px" }}>
-                    <div><p className="text-sm font-semibold text-slate-800">{b.name}</p></div>
-                    <span className="font-mono text-xs font-bold text-[#4982CF] bg-[#4982CF]/8 px-2 py-0.5 rounded w-fit">{b.code}</span>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500"><Globe className="h-3 w-3" />{b.timezone}</div>
-                    <div className="flex items-center gap-1 text-xs text-slate-600">
-                      <Clock className="h-3 w-3 text-slate-400" />{fmt12(b.workingHoursStart)} – {fmt12(b.workingHoursEnd)}
-                    </div>
-                    <span className="text-xs text-slate-600 font-mono">{fmt12(b.tokenResetTime)}</span>
-                    <div className="flex items-center gap-1.5">
-                      <Switch checked={b.status === "active"}
-                        onCheckedChange={v => setBranches(p => p.map(br => br.id === b.id ? { ...br, status: v ? "active" : "inactive" } : br))}
-                        className="data-[state=checked]:bg-emerald-500 scale-75" />
-                      <span className={`text-xs font-medium ${b.status === "active" ? "text-emerald-600" : "text-slate-400"}`}>
-                        {b.status === "active" ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-400">{fmtDate(b.createdAt)}</span>
-                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openEdit(b)} className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-[#4982CF]"><Edit2 className="h-3.5 w-3.5" /></button>
-                        <button onClick={() => setDeleteId(b.id)} className="p-1 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                {(() => {
+                  const modeMeta: Record<BranchQueueMode, { label: string; cls: string }> = {
+                    "single":      { label: "Single",      cls: "bg-slate-100 text-slate-600" },
+                    "partitioned": { label: "Partitioned", cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200" },
+                    "multi-step":  { label: "Multistep",   cls: "bg-violet-50 text-violet-700 ring-1 ring-violet-200" },
+                  };
+                  return filtered.map(b => {
+                  const mode = branchMode[b.id] ?? "single";
+                  const { label: modeLabel, cls: modeCls } = modeMeta[mode];
+                  return (
+                    <div key={b.id} className="grid items-center px-5 py-4 hover:bg-slate-50 group transition-colors"
+                      style={{ gridTemplateColumns: "1fr 110px 130px 160px 120px 120px 90px 110px" }}>
+                      <div><p className="text-sm font-semibold text-slate-800">{b.name}</p></div>
+                      <span className="font-mono text-xs font-bold text-[#4982CF] bg-[#4982CF]/8 px-2 py-0.5 rounded w-fit">{b.code}</span>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${modeCls}`}>{modeLabel}</span>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500"><Globe className="h-3 w-3" />{b.timezone}</div>
+                      <div className="flex items-center gap-1 text-xs text-slate-600">
+                        <Clock className="h-3 w-3 text-slate-400" />{fmt12(b.workingHoursStart)} – {fmt12(b.workingHoursEnd)}
+                      </div>
+                      <span className="text-xs text-slate-600 font-mono">{fmt12(b.tokenResetTime)}</span>
+                      <div className="flex items-center gap-1.5">
+                        <Switch checked={b.status === "active"}
+                          onCheckedChange={v => setBranches(p => p.map(br => br.id === b.id ? { ...br, status: v ? "active" : "inactive" } : br))}
+                          className="data-[state=checked]:bg-emerald-500 scale-75" />
+                        <span className={`text-xs font-medium ${b.status === "active" ? "text-emerald-600" : "text-slate-400"}`}>
+                          {b.status === "active" ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">{fmtDate(b.createdAt)}</span>
+                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openEdit(b)} className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-[#4982CF]"><Edit2 className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => setDeleteId(b.id)} className="p-1 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                });
+                })()}
               </div>
             )}
           </div>
@@ -1182,7 +1205,7 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
 
       {/* ── Queue Visit Types tab ── */}
       {activeTab === "queue-visit-types" && (
-        <QueueVisitTypesTab branches={branches} visitTypes={SEED_VISIT_TYPES} />
+        <QueueVisitTypesTab branches={branches} visitTypes={SEED_VISIT_TYPES} branchMode={branchMode} setBranchMode={setBranchMode} />
       )}
 
       {/* ── Lab Assignment tab ── */}
@@ -1274,7 +1297,7 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
           <p className="text-sm text-slate-600 mt-1">Are you sure you want to delete <strong>{branches.find(b => b.id === deleteId)?.name}</strong>? This cannot be undone.</p>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setDeleteId(null)} className="h-8 text-sm">Cancel</Button>
-            <Button onClick={() => { setBranches(p => p.filter(b => b.id !== deleteId)); setDeleteId(null); }} className="bg-rose-500 hover:bg-rose-600 text-white h-8 text-sm gap-2"><Trash2 className="h-3.5 w-3.5" />Delete</Button>
+            <Button onClick={() => { setBranches(p => p.filter(b => b.id !== deleteId)); setBranchMode(prev => { const n = { ...prev }; if (deleteId) delete n[deleteId]; return n; }); setDeleteId(null); }} className="bg-rose-500 hover:bg-rose-600 text-white h-8 text-sm gap-2"><Trash2 className="h-3.5 w-3.5" />Delete</Button>
           </div>
         </DialogContent>
       </Dialog>
