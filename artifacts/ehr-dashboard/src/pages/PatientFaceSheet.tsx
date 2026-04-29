@@ -613,12 +613,17 @@ export function PatientFaceSheet({
             </Button>
           )}
           {(() => {
-            const signBlocked = soapNoteCreated && !doctorSigned;
-            const isBlocked = entry.pendingLab || signBlocked;
+            // Block complete when patient is in the lab journey (sent to lab OR
+            // returned with results) AND the SOAP note is not yet signed.
+            // Normal (non-lab) patients with an unsigned draft are NOT blocked —
+            // they can still choose "complete without SOAP note".
+            const labJourney = entry.pendingLab || entry.labResultsReady;
+            const soapInProgress = soapNoteCreated && !doctorSigned && labJourney;
+            const isBlocked = entry.pendingLab || soapInProgress;
             const blockTitle = entry.pendingLab
-              ? "Lab results awaited."
-              : signBlocked
-              ? "Doctor must sign the note before completing consultation."
+              ? "Patient is in the lab — complete consultation after results are reviewed."
+              : soapInProgress
+              ? "Sign the SOAP note before completing the consultation."
               : undefined;
             return (
               <span title={blockTitle} className={isBlocked ? "cursor-not-allowed" : undefined}>
