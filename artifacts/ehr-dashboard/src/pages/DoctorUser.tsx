@@ -191,17 +191,8 @@ export function DoctorUser() {
     clearRoutingSnapshot(id);
     docCompleteConsultation(id, { hasPrescription, hasUnsentLabOrders });
     clearSoapDraft(id);
-
-    // When routing to lab the patient will return to the doctor for a second
-    // visit (labResultsReady=true). Preserve signed records and session state
-    // so soapNoteDone remains true on that return visit.
-    // Only wipe them when the patient is truly leaving the doctor for good
-    // (going to pharmacy or being marked complete).
-    if (!hasUnsentLabOrders) {
-      clearSignedState(id);
-      pruneSoapNoteSession(id);
-    }
-
+    clearSignedState(id);
+    pruneSoapNoteSession(id);
     setFaceSheetEntry(null);
 
     const token = entry?.tokenNumber ?? id;

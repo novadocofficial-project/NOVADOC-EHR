@@ -245,9 +245,10 @@ export function useMultiStepQueue() {
       if (e.id !== id) return e;
       const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
 
-      // Priority 1: unsent lab orders → route to lab, then return to doctor.
-      // pendingLab=true tells labComplete() to send the patient back to the
-      // doctor queue (with labResultsReady=true) after the lab finishes.
+      // Priority 1: unsent lab orders → route to lab and continue forward.
+      // pendingLab=false so labComplete() advances to the next step (pharmacy /
+      // complete) instead of returning to the doctor. Only the explicit
+      // "Send to Lab" button sets pendingLab=true (doctor wants results back).
       if (hasUnsentLabOrders) {
         const labStepIdx = vt.steps.findIndex(s => s.toLowerCase().includes("lab"));
         const labStep = labStepIdx >= 0 ? labStepIdx + 1 : e.step + 1;
@@ -258,7 +259,7 @@ export function useMultiStepQueue() {
           status: "waiting",
           callCount: 0,
           callTimestamp: null,
-          pendingLab: true,
+          pendingLab: false,
           labResultsReady: false,
         };
       }
