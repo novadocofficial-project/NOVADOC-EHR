@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Plus, Edit2, Trash2, GitBranch, Clock, Globe, Search, AlertCircle, Check,
-  FlaskConical, Stethoscope, ChevronDown, ChevronRight, ScanLine, Package, Pill,
+  FlaskConical, Stethoscope, ChevronDown, ChevronRight, ScanLine, Package, Pill, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import type { ProcedurePartner, ProcedureSection } from "@/pages/ProcedureCatalo
 import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
 import type { ConsumableProvider } from "@/pages/ConsumablesModule";
 import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
+import { SEED_VISIT_TYPES, type VisitType } from "@/pages/QueueModule";
 
 type Branch = {
   id: string;
@@ -875,9 +876,77 @@ function PharmacyPartnersTab({ branches, pharmacyPartners, onNavigate }: {
   );
 }
 
+// ─── Queue Visit Types Tab ─────────────────────────────────────────────────────
+
+function QueueVisitTypesTab({ branches, visitTypes }: { branches: Branch[]; visitTypes: VisitType[] }) {
+  const defaultVt = visitTypes[0]?.id ?? "";
+  const [selected, setSelected] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    branches.forEach(b => { init[b.id] = defaultVt; });
+    return init;
+  });
+
+  if (visitTypes.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-2">
+        <Layers className="h-10 w-10 opacity-20" />
+        <p className="text-sm font-medium">No visit types configured</p>
+        <p className="text-xs">Add visit types in Queue Management first.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {branches.map(branch => {
+        const activeVtId = selected[branch.id] ?? defaultVt;
+        return (
+          <div key={branch.id} className="rounded-xl border border-slate-200 bg-white shadow-sm px-5 py-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                <GitBranch className="h-4 w-4 text-slate-500" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-800">{branch.name}</p>
+                <span className="font-mono text-[10px] font-bold text-[#4982CF] bg-[#4982CF]/8 px-1.5 py-0.5 rounded">{branch.code}</span>
+              </div>
+              {branch.status === "inactive" && (
+                <span className="ml-auto text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">Inactive</span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {visitTypes.map(vt => {
+                const isSelected = activeVtId === vt.id;
+                return (
+                  <button
+                    key={vt.id}
+                    onClick={() => setSelected(prev => ({ ...prev, [branch.id]: vt.id }))}
+                    className={`flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-left transition-all focus:outline-none ${
+                      isSelected
+                        ? "border-[#4982CF] bg-[#4982CF]/5 shadow-sm ring-1 ring-[#4982CF]/30"
+                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: vt.color }} />
+                    <div>
+                      <p className={`text-xs font-bold ${isSelected ? "text-[#4982CF]" : "text-slate-700"}`}>{vt.name}</p>
+                      <p className="text-[10px] text-slate-400 font-mono">{vt.code} · {vt.tokenPrefix}###</p>
+                    </div>
+                    {isSelected && <Check className="h-3.5 w-3.5 text-[#4982CF] ml-1 flex-shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── BranchModule ─────────────────────────────────────────────────────────────
 
-type TabKey = "branches" | "lab-assignment" | "proc-partners" | "imaging-partners" | "consumable-providers" | "pharmacy-partners";
+type TabKey = "branches" | "lab-assignment" | "proc-partners" | "imaging-partners" | "consumable-providers" | "pharmacy-partners" | "queue-visit-types";
 
 interface BranchModuleProps {
   labProviders?: LabProvider[];
@@ -943,6 +1012,7 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
 
   const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     { key: "branches",              label: "Branches",              icon: <GitBranch className="h-3.5 w-3.5" /> },
+    { key: "queue-visit-types",     label: "Queue Visit Types",     icon: <Layers className="h-3.5 w-3.5" /> },
     { key: "lab-assignment",        label: "Lab Assignment",        icon: <FlaskConical className="h-3.5 w-3.5" /> },
     { key: "proc-partners",         label: "Procedure Partners",    icon: <Stethoscope className="h-3.5 w-3.5" /> },
     { key: "imaging-partners",      label: "Imaging Partners",      icon: <ScanLine className="h-3.5 w-3.5" /> },
@@ -1028,6 +1098,11 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
             )}
           </div>
         </>
+      )}
+
+      {/* ── Queue Visit Types tab ── */}
+      {activeTab === "queue-visit-types" && (
+        <QueueVisitTypesTab branches={branches} visitTypes={SEED_VISIT_TYPES} />
       )}
 
       {/* ── Lab Assignment tab ── */}

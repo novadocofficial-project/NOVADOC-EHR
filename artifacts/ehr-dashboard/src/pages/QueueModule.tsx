@@ -19,7 +19,7 @@ export type QueueSection =
   | "token-settings" | "queue-behavior" | "locking-settings"
   | "display-settings" | "doctor-partitions";
 
-type VisitType = {
+export type VisitType = {
   id: string; name: string; code: string; tokenPrefix: string;
   color: string; queueMode: "single" | "partitioned" | "multi-step"; partitionBy: "none" | "doctor";
   status: "active" | "inactive";
@@ -74,7 +74,7 @@ type ScreenConfig = {
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 
-const SEED_VISIT_TYPES: VisitType[] = [
+export const SEED_VISIT_TYPES: VisitType[] = [
   { id: "vt-1", name: "Normal Consultation", code: "NORM", tokenPrefix: "C", color: "#4982CF", queueMode: "multi-step", partitionBy: "none", status: "active" },
   { id: "vt-2", name: "Urgent / Emergency", code: "EMER", tokenPrefix: "U", color: "#ef4444", queueMode: "single", partitionBy: "none", status: "active" },
   { id: "vt-3", name: "Follow-up Visit", code: "FLUP", tokenPrefix: "F", color: "#10b981", queueMode: "single", partitionBy: "none", status: "inactive" },
