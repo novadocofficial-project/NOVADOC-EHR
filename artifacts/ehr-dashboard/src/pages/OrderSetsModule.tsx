@@ -128,11 +128,10 @@ const SEED_ORDER_SETS: OrderSet[] = [
   },
   {
     id: "os5", name: "Pre-Op Imaging", category: "Pre-operative", setType: "imaging",
-    description: "Chest and abdominal imaging for pre-operative clearance.",
+    description: "Imaging component of pre-operative clearance — chest X-ray.",
     active: true, createdAt: "2024-03-05",
     items: [
-      { id: "oi21", type: "imaging", itemId: "xray-chest",      name: "X-Ray Chest (PA)" },
-      { id: "oi22", type: "imaging", itemId: "us-abdomen",      name: "Ultrasound Abdomen" },
+      { id: "oi21", type: "imaging", itemId: "xray-chest", name: "X-Ray Chest (PA)" },
     ],
   },
 ];
