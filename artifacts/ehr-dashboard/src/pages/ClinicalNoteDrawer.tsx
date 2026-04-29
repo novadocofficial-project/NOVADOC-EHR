@@ -6,7 +6,7 @@ import {
   Download, PenLine, FlaskConical, Scan, HeartPulse,
   Users, BookOpen, Stethoscope, ClipboardList, CalendarDays,
   CheckCircle2, AlertCircle, Printer, Trash2, Tag,
-  GripVertical, Check, Search, Plus,
+  GripVertical, Check, Search, Plus, Send,
   ArrowRight, ClipboardCheck, ChevronLeft, Pill, ScanLine,
   BookmarkPlus, RotateCcw, AlertTriangle,
 } from "lucide-react";
@@ -617,10 +617,16 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
   const [diagnosisOpen,     setDiagnosisOpen]     = useState(false);
   const [labDone,           setLabDone]           = useState(() => (initialNote?.labOrders?.length ?? 0) > 0 || (initialNote?.labOrderDone ?? false));
   const [labOrders,         setLabOrders]         = useState<LabOrder[]>(() => {
-    if (initialNote?.labOrders?.length) return initialNote.labOrders;
-    // backward-compat: old drafts stored a single labOrder field
-    const legacy = (initialNote as (NoteState & { labOrder?: LabOrder | null }) | undefined)?.labOrder;
-    return legacy ? [legacy] : [];
+    let orders: LabOrder[];
+    if (initialNote?.labOrders?.length) {
+      orders = initialNote.labOrders;
+    } else {
+      // backward-compat: old drafts stored a single labOrder field
+      const legacy = (initialNote as (NoteState & { labOrder?: LabOrder | null }) | undefined)?.labOrder;
+      orders = legacy ? [legacy] : [];
+    }
+    // Migrate: assign a stable id to any order that predates the multi-order redesign
+    return orders.map(o => o.id ? o : { ...o, id: crypto.randomUUID() });
   });
   // sentAt of the order currently being processed at the lab (null when not awaiting)
   const activeLabSentAt: string | null = awaitingLab && entryId
@@ -632,9 +638,11 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     ? labOrders.some(o => o.sentAt === activeLabSentAt && o.voided)
     : false;
 
-  const [voidPending,       setVoidPending]       = useState<{ idx: number } | null>(null);
+  const [voidPending,       setVoidPending]       = useState<{ id: string } | null>(null);
   const [voidReasonInput,   setVoidReasonInput]   = useState("");
-  const [labOpen,           setLabOpen]           = useState(false);
+  // labDrawerMode: null = closed; "add" = new order; "edit" = editing existing order
+  const [labDrawerMode,     setLabDrawerMode]     = useState<"add" | "edit" | null>(null);
+  const [editingOrderId,    setEditingOrderId]    = useState<string | null>(null);
   const [pocOpen,           setPocOpen]           = useState(false);
   const [formularyOpen,     setFormularyOpen]     = useState(false);
   const [imagingOpen,       setImagingOpen]       = useState(false);
@@ -726,46 +734,49 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
   }
 
   function handleLabSave(order: LabOrder) {
-    // Save / update the most recent order draft (does not append in second-order mode).
-    const nextOrders = labResultsReady
-      ? [...labOrders, order]                                     // second-order: append
-      : labOrders.length === 0 ? [order] : [...labOrders.slice(0, -1), order]; // first-order: upsert last
+    let nextOrders: LabOrder[];
+    if (labDrawerMode === "edit" && editingOrderId) {
+      // Replace the existing order in-place — same id, updated content
+      nextOrders = labOrders.map(o =>
+        o.id === editingOrderId ? { ...o, ...order, id: editingOrderId } : o
+      );
+    } else {
+      // Add a new order with a fresh id (covers add mode and second-order mode)
+      const newOrder: LabOrder = { ...order, id: crypto.randomUUID() };
+      nextOrders = [...labOrders, newOrder];
+    }
     setLabOrders(nextOrders);
     setLabDone(true);
-    setLabOpen(false);
+    setLabDrawerMode(null);
+    setEditingOrderId(null);
     setNote(prev => ({ ...prev, labOrders: nextOrders, labOrderDone: true }));
   }
 
-  function handleSendToLab(order: LabOrder) {
-    // In second-order mode (results ready), append the new order so both are preserved.
-    // In first-order mode, upsert the last element (commit the draft in place).
+  function handleSendToLab(orderId: string) {
+    const order = labOrders.find(o => o.id === orderId);
+    if (!order) return;
     const stamped = { ...order, sentAt: new Date().toISOString() };
-    const nextOrders = labResultsReady
-      ? [...labOrders, stamped]   // second order: append
-      : labOrders.length === 0 ? [stamped] : [...labOrders.slice(0, -1), stamped]; // first order: upsert last
+    const nextOrders = labOrders.map(o => o.id === orderId ? stamped : o);
     setLabOrders(nextOrders);
     setLabDone(true);
-    setLabOpen(false);
     setNote(prev => ({ ...prev, labOrders: nextOrders, labOrderDone: true }));
     if (entryId) saveActiveLabOrder(entryId, stamped);
     onSendToLab?.();
   }
 
-  function handleVoidOrder(idx: number, reason?: string) {
-    const isCurrentlyVoided = labOrders[idx]?.voided;
-    if (!isCurrentlyVoided && !reason) return;
-    const nextOrders = labOrders.map((o, i) =>
-      i === idx
-        ? { ...o, voided: !o.voided, voidedAt: !o.voided ? new Date().toISOString() : undefined, voidReason: !o.voided ? reason : undefined }
+  function handleVoidOrder(orderId: string, reason: string) {
+    const nextOrders = labOrders.map(o =>
+      o.id === orderId
+        ? { ...o, voided: true, voidedAt: new Date().toISOString(), voidReason: reason }
         : o
     );
     setLabOrders(nextOrders);
     setNote(prev => ({ ...prev, labOrders: nextOrders }));
 
-    // Propagate void/restore to the Lab Panel localStorage so lab staff see the updated state
+    // Propagate void to the Lab Panel localStorage so lab staff see the updated state
     if (entryId) {
       const stored = readActiveLabOrder(entryId);
-      const updated = nextOrders[idx];
+      const updated = nextOrders.find(o => o.id === orderId);
       // Match by sentAt — only update if this is the order currently dispatched to the lab
       if (stored && updated?.sentAt && stored.sentAt === updated.sentAt) {
         saveActiveLabOrder(entryId, updated);
@@ -773,8 +784,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     }
   }
 
-  function openVoidModal(idx: number) {
-    setVoidPending({ idx });
+  function openVoidModal(orderId: string) {
+    setVoidPending({ id: orderId });
     setVoidReasonInput("");
   }
 
@@ -782,13 +793,13 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     if (!voidPending) return;
     const reason = voidReasonInput.trim();
     if (!reason) return;
-    handleVoidOrder(voidPending.idx, reason);
+    handleVoidOrder(voidPending.id, reason);
     setVoidPending(null);
     setVoidReasonInput("");
   }
 
-  function handleRemoveOrder(idx: number) {
-    const nextOrders = labOrders.filter((_, i) => i !== idx);
+  function handleRemoveOrder(orderId: string) {
+    const nextOrders = labOrders.filter(o => o.id !== orderId);
     setLabOrders(nextOrders);
     setNote(prev => ({ ...prev, labOrders: nextOrders, labOrderDone: nextOrders.length > 0 }));
     if (nextOrders.length === 0) setLabDone(false);
@@ -1124,178 +1135,114 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                 )}
               </p>
 
-              {/* Show each order in history */}
-              {labOrders.length > 1 && (
-                <div className="space-y-3 mb-3">
-                  {labOrders.slice(0, -1).map((order, idx) => {
-                    const isSentToLab = !!(activeLabSentAt && order.sentAt === activeLabSentAt && !order.voided);
-                    return (
-                      <div key={idx} className={`rounded-xl border px-3 py-2.5 ${order.voided ? "border-rose-100 bg-rose-50/40 opacity-70" : "border-slate-100 bg-slate-50/60"}`}>
-                        <div className="flex items-center justify-between mb-1.5 gap-1 flex-wrap">
-                          <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${order.voided ? "text-rose-400 line-through" : "text-slate-400"}`}>
-                            Order {idx + 1}{idx === 0 ? " · Original" : " · Follow-up"}
-                            {order.sentAt && (
-                              <span className="normal-case font-medium tracking-normal no-underline" style={{ textDecoration: "none" }}>
-                                · {new Date(order.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                              </span>
-                            )}
-                            {order.voided && (
-                              <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500 no-underline" style={{ textDecoration: "none" }}>· VOIDED</span>
-                            )}
-                          </p>
-                          <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
-                            {isSentToLab && (
-                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600 border border-sky-200">
-                                Sent to Lab
-                              </span>
-                            )}
-                            {order.voided && order.voidReason && (
-                              <p className="text-[9px] text-rose-400 italic">Reason: {order.voidReason}</p>
-                            )}
-                            {!order.voided && order.sentAt && (
-                              <button
-                                onClick={() => openVoidModal(idx)}
-                                title="Void order"
-                                className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-rose-500 hover:text-rose-700 hover:bg-rose-100"
-                              >
-                                <Trash2 className="h-2.5 w-2.5" />
-                                Void
-                              </button>
-                            )}
-                            {!order.sentAt && (
-                              <button
-                                onClick={() => handleRemoveOrder(idx)}
-                                title="Remove this order"
-                                className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-slate-400 hover:text-red-500 hover:bg-red-50"
-                              >
-                                <Trash2 className="h-2.5 w-2.5" />
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        <div className={order.voided ? "opacity-50 pointer-events-none" : ""}>
-                          <LabChipsPanel order={order} onOpen={() => setLabOpen(true)} readOnly />
-                        </div>
-                      </div>
-                    );
-                  })}
+              {labOrders.length === 0 ? (
+                /* Empty state — "Order Lab Tests" trigger */
+                <button
+                  onClick={() => { setLabDrawerMode("add"); setEditingOrderId(null); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl bg-amber-50/60 border-2 border-dashed border-amber-200 text-amber-600 font-bold text-xs hover:border-amber-400 hover:bg-amber-50 transition-all">
+                  <Plus className="h-4 w-4 flex-shrink-0" />
+                  Order Lab Tests…
+                </button>
+              ) : (
+                <div className="space-y-3">
                   {(() => {
-                    const latest = labOrders[labOrders.length - 1];
-                    const latestIdx = labOrders.length - 1;
-                    const isSentToLab = !!(activeLabSentAt && latest.sentAt === activeLabSentAt && !latest.voided);
-                    return (
-                      <div className={`rounded-xl border px-3 py-2.5 ${latest.voided ? "border-rose-100 bg-rose-50/40 opacity-70" : "border-amber-200 bg-amber-50/40"}`}>
-                        <div className="flex items-center justify-between mb-1.5 gap-1 flex-wrap">
-                          <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${latest.voided ? "text-rose-400 line-through" : "text-amber-700"}`}>
-                            Order {labOrders.length} · Latest
-                            {latest.sentAt && (
-                              <span className="normal-case font-medium tracking-normal" style={{ textDecoration: "none" }}>
-                                · {new Date(latest.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                              </span>
-                            )}
-                            {latest.voided && (
-                              <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500" style={{ textDecoration: "none" }}>· VOIDED</span>
-                            )}
-                          </p>
-                          <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
-                            {isSentToLab && (
-                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600 border border-sky-200">
-                                Sent to Lab
-                              </span>
-                            )}
-                            {latest.voided && latest.voidReason && (
-                              <p className="text-[9px] text-rose-400 italic">Reason: {latest.voidReason}</p>
-                            )}
-                            {!latest.voided && latest.sentAt && (
-                              <button
-                                onClick={() => openVoidModal(latestIdx)}
-                                title="Void order"
-                                className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-rose-500 hover:text-rose-700 hover:bg-rose-100"
-                              >
-                                <Trash2 className="h-2.5 w-2.5" />
-                                Void
-                              </button>
-                            )}
-                            {!latest.sentAt && (
-                              <button
-                                onClick={() => handleRemoveOrder(latestIdx)}
-                                title="Remove this order"
-                                className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-slate-400 hover:text-red-500 hover:bg-red-50"
-                              >
-                                <Trash2 className="h-2.5 w-2.5" />
-                                Remove
-                              </button>
-                            )}
+                    // true while exactly one sent+un-voided order exists
+                    const hasActiveSent = labOrders.some(o => !!o.sentAt && !o.voided);
+                    return labOrders.map((order, idx) => {
+                      const isSent   = !!order.sentAt && !order.voided;
+                      const isVoided = !!order.voided;
+                      const isUnsent = !order.sentAt && !isVoided;
+                      return (
+                        <div
+                          key={order.id ?? idx}
+                          className={[
+                            "rounded-xl border px-3 py-2.5",
+                            isVoided ? "border-rose-100 bg-rose-50/40 opacity-70"
+                              : isSent ? "border-sky-200 bg-sky-50/40"
+                              : "border-slate-200 bg-white",
+                          ].join(" ")}>
+
+                          {/* Order header row */}
+                          <div className="flex items-center justify-between mb-1.5 gap-1 flex-wrap">
+                            <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isVoided ? "text-rose-400 line-through" : isSent ? "text-sky-600" : "text-slate-400"}`}>
+                              Order {idx + 1}{idx === 0 ? " · Original" : " · Follow-up"}
+                              {order.sentAt && (
+                                <span className="normal-case font-medium tracking-normal" style={{ textDecoration: "none" }}>
+                                  · {new Date(order.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                                </span>
+                              )}
+                              {isVoided && (
+                                <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500" style={{ textDecoration: "none" }}>· VOIDED</span>
+                              )}
+                            </p>
+
+                            <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+                              {/* Sent to Lab chip */}
+                              {isSent && (
+                                <span className="flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600 border border-sky-200">
+                                  <Send className="h-2.5 w-2.5" /> Sent to Lab
+                                </span>
+                              )}
+                              {/* Void reason text */}
+                              {isVoided && order.voidReason && (
+                                <p className="text-[9px] text-rose-400 italic">Reason: {order.voidReason}</p>
+                              )}
+                              {/* Void button — only for sent, un-voided orders */}
+                              {isSent && (
+                                <button
+                                  onClick={() => openVoidModal(order.id!)}
+                                  title="Void this order"
+                                  className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-rose-500 hover:text-rose-700 hover:bg-rose-100">
+                                  <Trash2 className="h-2.5 w-2.5" /> Void
+                                </button>
+                              )}
+                              {/* Send to Lab — only for unsent orders when no active sent order exists */}
+                              {isUnsent && !hasActiveSent && (
+                                <button
+                                  onClick={() => handleSendToLab(order.id!)}
+                                  title="Send this order to the lab"
+                                  className="flex items-center gap-1 text-[9px] font-semibold px-2 py-1 rounded-md transition-colors bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100">
+                                  <Send className="h-2.5 w-2.5" /> Send to Lab
+                                </button>
+                              )}
+                              {/* Edit — only for unsent orders */}
+                              {isUnsent && (
+                                <button
+                                  onClick={() => { setEditingOrderId(order.id!); setLabDrawerMode("edit"); }}
+                                  title="Edit this order"
+                                  className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-amber-600 hover:text-amber-800 hover:bg-amber-50">
+                                  <PenLine className="h-2.5 w-2.5" /> Edit
+                                </button>
+                              )}
+                              {/* Remove — only for unsent orders */}
+                              {isUnsent && (
+                                <button
+                                  onClick={() => handleRemoveOrder(order.id!)}
+                                  title="Remove this order"
+                                  className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-slate-400 hover:text-red-500 hover:bg-red-50">
+                                  <Trash2 className="h-2.5 w-2.5" /> Remove
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Chips panel — read-only, action buttons are handled above */}
+                          <div className={isVoided ? "opacity-50 pointer-events-none" : ""}>
+                            <LabChipsPanel order={order} onOpen={() => {}} readOnly />
                           </div>
                         </div>
-                        {/* opacity-only on voided latest — no pointer-events-none so Edit button stays clickable */}
-                        <div className={latest.voided ? "opacity-50" : ""}>
-                          <LabChipsPanel order={latest} onOpen={() => setLabOpen(true)} />
-                        </div>
-                      </div>
-                    );
+                      );
+                    });
                   })()}
+
+                  {/* Add Lab Order button — always shown once at least one order exists */}
+                  <button
+                    onClick={() => { setLabDrawerMode("add"); setEditingOrderId(null); }}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border-2 border-dashed border-amber-200 text-amber-600 text-xs font-bold hover:border-amber-400 hover:bg-amber-50/40 transition-all">
+                    <Plus className="h-3.5 w-3.5" /> Add Lab Order
+                  </button>
                 </div>
               )}
-
-              {/* Single order or empty state */}
-              {labOrders.length <= 1 && (() => {
-                const singleOrder = labOrders[0] ?? null;
-                if (!singleOrder) return <LabChipsPanel order={null} onOpen={() => setLabOpen(true)} />;
-                const isSentToLab = !!(activeLabSentAt && singleOrder.sentAt === activeLabSentAt && !singleOrder.voided);
-                return (
-                  <div className={`rounded-xl border px-3 py-2.5 ${singleOrder.voided ? "border-rose-100 bg-rose-50/40 opacity-70" : "border-transparent bg-transparent p-0"}`}>
-                    <div className="flex items-center justify-between mb-1.5 gap-1 flex-wrap">
-                      <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${singleOrder.voided ? "text-rose-400 line-through" : "text-slate-400"}`}>
-                        Order 1 · Original
-                        {singleOrder.sentAt && (
-                          <span className="normal-case font-medium tracking-normal" style={{ textDecoration: "none" }}>
-                            · {new Date(singleOrder.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                          </span>
-                        )}
-                        {singleOrder.voided && (
-                          <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500" style={{ textDecoration: "none" }}>· VOIDED</span>
-                        )}
-                      </p>
-                      <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
-                        {isSentToLab && (
-                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600 border border-sky-200">
-                            Sent to Lab
-                          </span>
-                        )}
-                        {singleOrder.voided && singleOrder.voidReason && (
-                          <p className="text-[9px] text-rose-400 italic">Reason: {singleOrder.voidReason}</p>
-                        )}
-                        {!singleOrder.voided && singleOrder.sentAt && (
-                          <button
-                            onClick={() => openVoidModal(0)}
-                            title="Void order"
-                            className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-rose-500 hover:text-rose-700 hover:bg-rose-100"
-                          >
-                            <Trash2 className="h-2.5 w-2.5" />
-                            Void
-                          </button>
-                        )}
-                        {!singleOrder.sentAt && (
-                          <button
-                            onClick={() => handleRemoveOrder(0)}
-                            title="Remove this order"
-                            className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-slate-400 hover:text-red-500 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-2.5 w-2.5" />
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    {/* opacity-only on voided single order — no pointer-events-none so Edit button stays clickable */}
-                    <div className={singleOrder.voided ? "opacity-50" : ""}>
-                      <LabChipsPanel order={singleOrder} onOpen={() => setLabOpen(true)} />
-                    </div>
-                  </div>
-                );
-              })()}
             </div>
 
             {/* 7c. Formulary / Prescriptions */}
@@ -1569,15 +1516,18 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
         )}
 
         {/* ── Lab Order Drawer ── */}
-        {labOpen && (
+        {labDrawerMode && (
           <LabDrawer
-            isDone={labDone}
-            savedData={labOrders[labOrders.length - 1] ?? null}
+            mode={labDrawerMode}
+            savedData={
+              labDrawerMode === "edit"
+                ? (labOrders.find(o => o.id === editingOrderId) ?? null)
+                : null
+            }
             awaitingLab={awaitingLab && !activeOrderIsVoided}
             labResultsReady={labResultsReady && !activeOrderIsVoided}
             onSave={handleLabSave}
-            onSendToLab={handleSendToLab}
-            onClose={() => setLabOpen(false)}
+            onClose={() => { setLabDrawerMode(null); setEditingOrderId(null); }}
           />
         )}
 

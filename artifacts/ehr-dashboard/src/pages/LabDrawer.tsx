@@ -1,13 +1,12 @@
 import { useState } from "react";
 import {
   ChevronLeft, X, Search, CheckCircle2, ClipboardCheck,
-  FlaskConical, Plus, Send, Layers, ListChecks, AlertCircle, Clock,
+  FlaskConical, Plus, Layers, ListChecks, AlertCircle, Clock,
 } from "lucide-react";
 
 // ─── Accent ───────────────────────────────────────────────────────────────────
 
 const ACCENT_LAB = "#f59e0b";
-const ACCENT_SEND = "#0ea5e9";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +19,7 @@ export interface LabTestEntry {
 }
 
 export interface LabOrder {
+  id?:              string;  // assigned by ClinicalNoteDrawer; undefined until first save
   tests:            LabTestEntry[];
   patientCondition: string;
   instructions:     string;
@@ -336,29 +336,37 @@ export function LabChipsPanel({ order, onOpen, readOnly = false }: { order: LabO
 // ─── Lab Drawer ───────────────────────────────────────────────────────────────
 
 interface LabDrawerProps {
-  isDone:           boolean;
-  savedData:        LabOrder | null;
-  awaitingLab?:     boolean;
-  labResultsReady?: boolean;
+  mode:             "add" | "edit";   // "add" = new order; "edit" = update existing
+  savedData:        LabOrder | null;  // pre-populated in edit mode; null in add mode
+  awaitingLab?:     boolean;          // show "awaiting lab" informational footer
+  labResultsReady?: boolean;          // second-order mode: previous tests shown as Completed
   onSave:           (order: LabOrder) => void;
-  onSendToLab:      (order: LabOrder) => void;
   onClose:          () => void;
 }
 
-export function LabDrawer({ isDone, savedData, awaitingLab = false, labResultsReady = false, onSave, onSendToLab, onClose }: LabDrawerProps) {
+export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsReady = false, onSave, onClose }: LabDrawerProps) {
   const [tab,               setTab]               = useState<"sets" | "browse">("sets");
   const [search,            setSearch]            = useState("");
   const [selectedCategory,  setSelectedCategory]  = useState(LAB_CATEGORIES[0]);
 
-  // In second-order mode (labResultsReady), start with empty selection
+  // edit mode pre-populates from savedData; add mode always starts empty
+  // second-order mode (labResultsReady) also starts empty even if savedData is present
   const [selectedTestIds,   setSelectedTestIds]   = useState<string[]>(
-    labResultsReady ? [] : (savedData?.tests.map(t => t.id) ?? [])
+    labResultsReady ? [] :
+    mode === "edit"  ? (savedData?.tests.map(t => t.id) ?? []) :
+    []
   );
-  const [patientCondition,  setPatientCondition]  = useState(savedData?.patientCondition ?? "Random");
-  const [instructions,      setInstructions]      = useState(savedData?.instructions ?? "");
-  const [orderSetName,      setOrderSetName]      = useState<string | null>(savedData?.orderSetName ?? null);
+  const [patientCondition,  setPatientCondition]  = useState(
+    mode === "edit" ? (savedData?.patientCondition ?? "Random") : "Random"
+  );
+  const [instructions,      setInstructions]      = useState(
+    mode === "edit" ? (savedData?.instructions ?? "") : ""
+  );
+  const [orderSetName,      setOrderSetName]      = useState<string | null>(
+    mode === "edit" ? (savedData?.orderSetName ?? null) : null
+  );
 
-  // Previously ordered test IDs (shown as Completed badges in second-order mode)
+  // Previously ordered test IDs (shown as Completed badges in second-order mode only)
   const previousTestIds: string[] = labResultsReady ? (savedData?.tests.map(t => t.id) ?? []) : [];
 
   // Custom order set creation
@@ -366,18 +374,8 @@ export function LabDrawer({ isDone, savedData, awaitingLab = false, labResultsRe
   const [customSetName,     setCustomSetName]     = useState("");
   const [sessionSets,       setSessionSets]       = useState<OrderSet[]>([]);
 
-  const allOrderSets = [...ORDER_SETS, ...sessionSets];
+  const allOrderSets  = [...ORDER_SETS, ...sessionSets];
   const selectedTests = LAB_TESTS.filter(t => selectedTestIds.includes(t.id));
-
-  // In second-order mode the baseline is always empty — the doctor starts fresh.
-  // This prevents isDirty from firing on open (empty selection vs old saved tests)
-  // and prevents any "Update" save action from overwriting the previous order context.
-  const savedIds = labResultsReady ? [] : (savedData?.tests.map(t => t.id) ?? []);
-  const isDirty  = !labResultsReady && isDone && (
-    JSON.stringify(selectedTestIds.sort()) !== JSON.stringify(savedIds.sort()) ||
-    patientCondition !== (savedData?.patientCondition ?? "Random") ||
-    instructions     !== (savedData?.instructions ?? "")
-  );
 
   function buildOrder(): LabOrder {
     return { tests: selectedTests, patientCondition, instructions, orderSetName };
@@ -442,57 +440,21 @@ export function LabDrawer({ isDone, savedData, awaitingLab = false, labResultsRe
           <p className="text-sm font-black text-slate-800">Lab Orders</p>
         </div>
 
-        {/* Done badge / Update / Save Order / Second-order badge
-            Save Order is always accessible so doctors can record tests
-            for a requisition (outside facility / next visit) separately
-            from the "Send to Lab" same-day queue action.               */}
-        {labResultsReady ? (
-          // Second-order mode: show badge + save button side-by-side
-          <>
-            <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 flex-shrink-0">
-              <FlaskConical className="h-3 w-3" /> Additional Order
-            </span>
-            <button
-              onClick={() => onSave(buildOrder())}
-              title="Save as requisition — patient can get this done before next visit"
-              className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white flex-shrink-0"
-              style={{ backgroundColor: ACCENT_LAB }}>
-              <ClipboardCheck className="h-3.5 w-3.5" /> Save Order
-            </button>
-          </>
-        ) : isDirty ? (
-          // Unsaved changes — show Update (works in all states incl. awaitingLab)
-          <button
-            onClick={() => onSave(buildOrder())}
-            className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white flex-shrink-0"
-            style={{ backgroundColor: "#f59e0b" }}>
-            <ClipboardCheck className="h-3.5 w-3.5" /> Update
-          </button>
-        ) : awaitingLab ? (
-          // Patient is at lab, order is clean — keep Save Order available so
-          // doctor can add tests for future use / outside facility requisition
-          <button
-            onClick={() => onSave(buildOrder())}
-            title="Save as requisition — patient can get this done before next visit"
-            className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white flex-shrink-0"
-            style={{ backgroundColor: "#f59e0b" }}>
-            <ClipboardCheck className="h-3.5 w-3.5" /> Save Order
-          </button>
-        ) : isDone ? (
-          // Normal done state (not awaiting lab)
-          <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
-            <CheckCircle2 className="h-3 w-3" /> Done
+        {/* Badge for second-order mode */}
+        {labResultsReady && (
+          <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 flex-shrink-0">
+            <FlaskConical className="h-3 w-3" /> Additional Order
           </span>
-        ) : (
-          // Fresh first order not yet saved
-          <button
-            onClick={() => onSave(buildOrder())}
-            title="Save as requisition — patient can get this done before next visit"
-            className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white flex-shrink-0"
-            style={{ backgroundColor: ACCENT_LAB }}>
-            <ClipboardCheck className="h-3.5 w-3.5" /> Save Order
-          </button>
         )}
+        {/* Save Order / Update Order — disabled until at least one test is selected */}
+        <button
+          onClick={() => { if (selectedTests.length > 0) onSave(buildOrder()); }}
+          disabled={selectedTests.length === 0}
+          className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white flex-shrink-0 disabled:opacity-40 transition-opacity"
+          style={{ backgroundColor: mode === "edit" ? "#f59e0b" : ACCENT_LAB }}>
+          <ClipboardCheck className="h-3.5 w-3.5" />
+          {mode === "edit" ? "Update Order" : "Save Order"}
+        </button>
 
         <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
           <X className="h-4 w-4" />
@@ -770,8 +732,8 @@ export function LabDrawer({ isDone, savedData, awaitingLab = false, labResultsRe
         </div>
       </div>
 
-      {/* ── Footer: Awaiting Lab / Send Order to Lab ── */}
-      {awaitingLab ? (
+      {/* ── Footer: Awaiting Lab notice (informational only) ── */}
+      {awaitingLab && (
         <div className="flex-shrink-0 border-t-2 border-amber-200 px-4 py-3 bg-amber-50 flex items-center gap-3">
           <Clock className="h-4 w-4 text-amber-500 flex-shrink-0" />
           <div className="flex-1">
@@ -780,28 +742,6 @@ export function LabDrawer({ isDone, savedData, awaitingLab = false, labResultsRe
               Awaiting results — you will be notified when the patient returns.
             </p>
           </div>
-        </div>
-      ) : (
-        <div className="flex-shrink-0 border-t-2 border-sky-100 px-4 py-3 bg-sky-50/60 flex items-center gap-3">
-          <div className="flex-1">
-            <p className="text-[10px] font-black text-sky-700 uppercase tracking-wide">Send for Same-Day Results</p>
-            <p className="text-[9px] text-sky-500 mt-0.5">
-              {labResultsReady
-                ? "Select additional tests to send now. Previously completed tests cannot be re-ordered."
-                : "Patient moves to the lab queue — results delivered same visit."}
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              if (selectedTests.length === 0) return;
-              onSendToLab(buildOrder());
-            }}
-            disabled={selectedTests.length === 0}
-            className="flex items-center gap-2 text-xs font-black px-4 py-2.5 rounded-xl text-white shadow-sm disabled:opacity-40 transition-all flex-shrink-0"
-            style={{ backgroundColor: ACCENT_SEND }}>
-            <Send className="h-4 w-4" />
-            Send to Lab
-          </button>
         </div>
       )}
     </div>
