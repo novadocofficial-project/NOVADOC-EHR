@@ -34,6 +34,7 @@ export interface OrderSet {
   items: OrderSetItem[];
   active: boolean;
   createdAt: string;
+  setType: "lab" | "imaging";
 }
 
 // ─── Static imaging tests catalogue (mirrors ImagingCatalogModule seed) ───────
@@ -69,8 +70,9 @@ const ORDER_SET_CATEGORIES = [
 // ─── Seed data ────────────────────────────────────────────────────────────────
 
 const SEED_ORDER_SETS: OrderSet[] = [
+  // ── Lab Order Sets ──────────────────────────────────────────────────────────
   {
-    id: "os1", name: "General Wellness Panel", category: "Routine Workup",
+    id: "os1", name: "General Wellness Panel", category: "Routine Workup", setType: "lab",
     description: "Standard annual workup for healthy adults. Covers blood count, metabolic panel, and hormone screen.",
     active: true, createdAt: "2024-01-10",
     items: [
@@ -83,30 +85,18 @@ const SEED_ORDER_SETS: OrderSet[] = [
     ],
   },
   {
-    id: "os2", name: "Cardiac Screen", category: "Cardiac Panel",
-    description: "Comprehensive cardiac evaluation. Includes lipid panel plus chest imaging and echo.",
-    active: true, createdAt: "2024-02-14",
-    items: [
-      { id: "oi7", type: "lab",     itemId: "t8",     name: "Lipid Profile" },
-      { id: "oi8", type: "lab",     itemId: "t1",     name: "Complete Blood Count (CBC)" },
-      { id: "oi9", type: "imaging", itemId: "echo-2d",     name: "2D Echocardiography" },
-      { id: "oi10",type: "imaging", itemId: "xray-chest",  name: "X-Ray Chest (PA)" },
-    ],
-  },
-  {
-    id: "os3", name: "Pre-Operative Workup", category: "Pre-operative",
-    description: "Standard pre-op assessment for elective surgery. Blood work, coagulation, and chest imaging.",
+    id: "os3", name: "Pre-Operative Workup", category: "Pre-operative", setType: "lab",
+    description: "Standard pre-op assessment for elective surgery. Blood work and coagulation screen.",
     active: true, createdAt: "2024-03-05",
     items: [
-      { id: "oi11", type: "lab",     itemId: "t1",          name: "Complete Blood Count (CBC)" },
-      { id: "oi12", type: "lab",     itemId: "t5",          name: "Coagulation Profile (PT/APTT)" },
-      { id: "oi13", type: "lab",     itemId: "t9",          name: "Liver Function Tests" },
-      { id: "oi14", type: "lab",     itemId: "t10",         name: "Kidney Function Tests" },
-      { id: "oi15", type: "imaging", itemId: "xray-chest",  name: "X-Ray Chest (PA)" },
+      { id: "oi11", type: "lab", itemId: "t1",  name: "Complete Blood Count (CBC)" },
+      { id: "oi12", type: "lab", itemId: "t5",  name: "Coagulation Profile (PT/APTT)" },
+      { id: "oi13", type: "lab", itemId: "t9",  name: "Liver Function Tests" },
+      { id: "oi14", type: "lab", itemId: "t10", name: "Kidney Function Tests" },
     ],
   },
   {
-    id: "os4", name: "Diabetes Follow-up", category: "Diabetes Screen",
+    id: "os4", name: "Diabetes Follow-up", category: "Diabetes Screen", setType: "lab",
     description: "Quarterly diabetes monitoring panel. HbA1c, renal function, urine protein, and lipids.",
     active: true, createdAt: "2024-04-01",
     items: [
@@ -115,6 +105,25 @@ const SEED_ORDER_SETS: OrderSet[] = [
       { id: "oi18", type: "lab", itemId: "t10", name: "Kidney Function Tests" },
       { id: "oi19", type: "lab", itemId: "t17", name: "24-hr Urine Protein" },
       { id: "oi20", type: "lab", itemId: "t8",  name: "Lipid Profile" },
+    ],
+  },
+  // ── Imaging Order Sets ──────────────────────────────────────────────────────
+  {
+    id: "os2", name: "Cardiac Imaging Panel", category: "Cardiac Panel", setType: "imaging",
+    description: "Cardiac imaging evaluation including echocardiography and chest X-ray.",
+    active: true, createdAt: "2024-02-14",
+    items: [
+      { id: "oi9",  type: "imaging", itemId: "echo-2d",    name: "2D Echocardiography" },
+      { id: "oi10", type: "imaging", itemId: "xray-chest", name: "X-Ray Chest (PA)" },
+    ],
+  },
+  {
+    id: "os5", name: "Pre-Op Imaging", category: "Pre-operative", setType: "imaging",
+    description: "Chest and abdominal imaging for pre-operative clearance.",
+    active: true, createdAt: "2024-03-05",
+    items: [
+      { id: "oi21", type: "imaging", itemId: "xray-chest",      name: "X-Ray Chest (PA)" },
+      { id: "oi22", type: "imaging", itemId: "us-abdomen",      name: "Ultrasound Abdomen" },
     ],
   },
 ];
@@ -153,11 +162,15 @@ const TYPE_LABEL: Record<OrderItemType, string> = {
 export function OrderSetsModule({
   labSections,
   procSections,
+  setType,
 }: {
   labSections: LabSection[];
   procSections: ProcedureSection[];
+  setType: "lab" | "imaging";
 }) {
-  const [orderSets, setOrderSets] = useState<OrderSet[]>(SEED_ORDER_SETS);
+  const [orderSets, setOrderSets] = useState<OrderSet[]>(() =>
+    SEED_ORDER_SETS.filter(s => s.setType === setType)
+  );
   const [search, setSearch]       = useState("");
   const [catFilter, setCatFilter] = useState<string>("All");
   const [showForm, setShowForm]   = useState(false);
@@ -170,12 +183,10 @@ export function OrderSetsModule({
   const [formDesc, setFormDesc]     = useState("");
   const [formCustomCat, setFormCustomCat] = useState("");
   const [formItems, setFormItems]   = useState<OrderSetItem[]>([]);
-  const [itemTab, setItemTab]       = useState<OrderItemType>("lab");
   const [itemSearch, setItemSearch] = useState("");
 
   // Flat lists for lookup
-  const allLabTests  = useMemo(() => labSections.flatMap(s => s.tests.map(t => ({ ...t, section: s.name }))), [labSections]);
-  const allProcItems = useMemo(() => procSections.flatMap(s => (s.procedures ?? []).map(i => ({ ...i, section: s.name }))), [procSections]);
+  const allLabTests = useMemo(() => labSections.flatMap(s => s.tests.map(t => ({ ...t, section: s.name }))), [labSections]);
 
   // ── Filtered order sets ─────────────────────────────────────────────────────
   const visible = orderSets.filter(os =>
@@ -188,12 +199,12 @@ export function OrderSetsModule({
   // ── Open form ───────────────────────────────────────────────────────────────
   function openNew() {
     setFormName(""); setFormCat(ORDER_SET_CATEGORIES[0]); setFormDesc(""); setFormCustomCat("");
-    setFormItems([]); setItemTab("lab"); setItemSearch(""); setEditingId(null); setShowForm(true);
+    setFormItems([]); setItemSearch(""); setEditingId(null); setShowForm(true);
   }
 
   function openEdit(os: OrderSet) {
     setFormName(os.name); setFormCat(os.category); setFormDesc(os.description); setFormCustomCat("");
-    setFormItems([...os.items]); setItemTab("lab"); setItemSearch(""); setEditingId(os.id); setShowForm(true);
+    setFormItems([...os.items]); setItemSearch(""); setEditingId(os.id); setShowForm(true);
   }
 
   function duplicate(os: OrderSet) {
@@ -215,6 +226,7 @@ export function OrderSetsModule({
       setOrderSets(prev => [...prev, {
         id: uid(), name, category, description: formDesc.trim(),
         items: formItems, active: true, createdAt: new Date().toISOString().slice(0, 10),
+        setType,
       }]);
     }
     setShowForm(false);
@@ -247,21 +259,17 @@ export function OrderSetsModule({
     const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    a.download = "order-sets.csv";
+    a.download = setType === "lab" ? "lab-order-sets.csv" : "imaging-order-sets.csv";
     a.click();
   }
 
   // ── Item catalogue rows ─────────────────────────────────────────────────────
-  const labRows = allLabTests.filter(t => !itemSearch || t.name.toLowerCase().includes(itemSearch.toLowerCase()));
-  const imagingRows = IMAGING_CATALOG.filter(t => !itemSearch || t.name.toLowerCase().includes(itemSearch.toLowerCase()));
-  const procRows = allProcItems.filter((t: { name: string }) => !itemSearch || t.name.toLowerCase().includes(itemSearch.toLowerCase()));
+  const currentCatRows: { id: string; name: string }[] =
+    setType === "lab"
+      ? allLabTests.filter(t => !itemSearch || t.name.toLowerCase().includes(itemSearch.toLowerCase()))
+      : IMAGING_CATALOG.filter(t => !itemSearch || t.name.toLowerCase().includes(itemSearch.toLowerCase()));
 
-  const currentCatRows: { id: string; name: string; section?: string; category?: string }[] =
-    itemTab === "lab" ? labRows : itemTab === "imaging" ? imagingRows : procRows;
-
-  const labCount     = formItems.filter(i => i.type === "lab").length;
-  const imagingCount = formItems.filter(i => i.type === "imaging").length;
-  const procCount    = formItems.filter(i => i.type === "procedure").length;
+  const addedCount = formItems.length;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -270,8 +278,14 @@ export function OrderSetsModule({
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Order Sets</h1>
-            <p className="mt-0.5 text-sm text-slate-500">Design reusable bundles of lab, imaging, and procedure orders for the doctor panel.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              {setType === "lab" ? "Lab Order Sets" : "Imaging Order Sets"}
+            </h1>
+            <p className="mt-0.5 text-sm text-slate-500">
+              {setType === "lab"
+                ? "Design reusable bundles of lab test orders for the doctor panel."
+                : "Design reusable bundles of imaging orders for the doctor panel."}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={exportCSV} className="h-8 text-xs gap-1.5 text-slate-600">
@@ -303,7 +317,9 @@ export function OrderSetsModule({
         {/* Order Set Cards */}
         {visible.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center">
-            <Layers className="h-12 w-12 text-slate-200 mb-3" />
+            {setType === "lab"
+              ? <FlaskConical className="h-12 w-12 text-slate-200 mb-3" />
+              : <ScanLine className="h-12 w-12 text-slate-200 mb-3" />}
             <p className="font-semibold text-slate-500">No order sets found</p>
             <p className="text-sm text-slate-400 mt-1">{search ? "Try a different search" : "Click 'New Order Set' to create your first one"}</p>
           </div>
@@ -402,30 +418,26 @@ export function OrderSetsModule({
 
             {/* Right: catalogue browser */}
             <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Type tabs */}
-              <div className="flex-none border-b border-slate-100 flex bg-white">
-                {(["lab", "imaging", "procedure"] as OrderItemType[]).map(type => (
-                  <button key={type} onClick={() => { setItemTab(type); setItemSearch(""); }}
-                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${itemTab === type ? "border-[#4982CF] text-[#4982CF]" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
-                    {TYPE_ICON[type]} {TYPE_LABEL[type]}
-                    {type === "lab" && labCount > 0 && <span className="ml-1 rounded-full bg-[#4982CF] text-white text-[9px] px-1.5 py-0.5">{labCount}</span>}
-                    {type === "imaging" && imagingCount > 0 && <span className="ml-1 rounded-full bg-[#4982CF] text-white text-[9px] px-1.5 py-0.5">{imagingCount}</span>}
-                    {type === "procedure" && procCount > 0 && <span className="ml-1 rounded-full bg-[#4982CF] text-white text-[9px] px-1.5 py-0.5">{procCount}</span>}
-                  </button>
-                ))}
+              {/* Tab header — single type, no switcher needed */}
+              <div className="flex-none border-b border-slate-100 flex items-center gap-2 px-4 py-2.5 bg-white">
+                <span className="text-[#4982CF]">{TYPE_ICON[setType]}</span>
+                <span className="text-xs font-semibold text-[#4982CF]">{TYPE_LABEL[setType]} Catalogue</span>
+                {addedCount > 0 && (
+                  <span className="ml-1 rounded-full bg-[#4982CF] text-white text-[9px] px-1.5 py-0.5">{addedCount}</span>
+                )}
               </div>
 
               {/* Search */}
               <div className="flex-none px-4 py-2 border-b border-slate-100 bg-slate-50/50">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
-                  <Input value={itemSearch} onChange={e => setItemSearch(e.target.value)} placeholder={`Search ${TYPE_LABEL[itemTab].toLowerCase()} tests…`} className="h-7 pl-8 text-xs" />
+                  <Input value={itemSearch} onChange={e => setItemSearch(e.target.value)} placeholder={`Search ${TYPE_LABEL[setType].toLowerCase()} tests…`} className="h-7 pl-8 text-xs" />
                 </div>
               </div>
 
               {/* Catalogue list */}
               <div className="flex-1 overflow-y-auto">
-                {itemTab === "lab" && (
+                {setType === "lab" && (
                   labSections.map(sec => {
                     const tests = sec.tests.filter(t => !itemSearch || t.name.toLowerCase().includes(itemSearch.toLowerCase()));
                     if (!tests.length) return null;
@@ -458,7 +470,7 @@ export function OrderSetsModule({
                   })
                 )}
 
-                {itemTab === "imaging" && (() => {
+                {setType === "imaging" && (() => {
                   const byCat = IMAGING_CATALOG.reduce((acc, t) => {
                     if (itemSearch && !t.name.toLowerCase().includes(itemSearch.toLowerCase())) return acc;
                     if (!acc[t.category]) acc[t.category] = [];
@@ -484,39 +496,6 @@ export function OrderSetsModule({
                       })}
                     </div>
                   ));
-                })()}
-
-                {itemTab === "procedure" && (() => {
-                  if (procSections.length === 0) {
-                    return (
-                      <div className="text-center py-12 text-xs text-slate-300">
-                        No procedures configured in the Procedure Catalog
-                      </div>
-                    );
-                  }
-                  return procSections.map(sec => {
-                    const filtered = (sec.procedures ?? []).filter(i => !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase()));
-                    if (!filtered.length) return null;
-                    return (
-                      <div key={sec.id}>
-                        <div className="sticky top-0 bg-slate-50/95 px-4 py-1.5 border-b border-slate-100">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{sec.name}</span>
-                        </div>
-                        {filtered.map(i => {
-                          const added = isItemAdded("procedure", i.id);
-                          return (
-                            <label key={i.id} className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-slate-50 border-b border-slate-50 last:border-0 transition-colors ${added ? "bg-[#4982CF]/5" : ""}`}>
-                              <div className={`h-4 w-4 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${added ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300"}`}
-                                onClick={() => toggleItem("procedure", i.id, i.name)}>
-                                {added && <CheckCircle2 className="h-3 w-3 text-white" />}
-                              </div>
-                              <p className="text-xs font-medium text-slate-700 flex-1 cursor-pointer" onClick={() => toggleItem("procedure", i.id, i.name)}>{i.name}</p>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    );
-                  });
                 })()}
 
                 {currentCatRows.length === 0 && itemSearch && (
