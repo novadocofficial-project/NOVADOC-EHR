@@ -413,11 +413,12 @@ function SparkFlag({ value, min, max }: { value: number; min?: number; max?: num
 
 // ─── Sample-collected localStorage helpers ────────────────────────────────────
 
-const SAMPLE_COLLECTED_KEY = "ehr-sample-collected-v1";
+// Key is scoped per patient entry so collections from one patient never bleed into another
+function sampleCollectedKey(entryId: string) { return `ehr-sample-collected-v1-${entryId}`; }
 
-function readSampleCollectedIds(): Set<string> {
+function readSampleCollectedIds(entryId: string): Set<string> {
   try {
-    const raw = localStorage.getItem(SAMPLE_COLLECTED_KEY);
+    const raw = localStorage.getItem(sampleCollectedKey(entryId));
     if (!raw) return new Set();
     const parsed = JSON.parse(raw);
     if (typeof parsed === "object" && parsed !== null) return new Set(Object.keys(parsed));
@@ -425,22 +426,24 @@ function readSampleCollectedIds(): Set<string> {
   return new Set();
 }
 
-function writeSampleCollectedId(testId: string) {
+function writeSampleCollectedId(entryId: string, testId: string) {
   try {
-    const raw = localStorage.getItem(SAMPLE_COLLECTED_KEY);
+    const key = sampleCollectedKey(entryId);
+    const raw = localStorage.getItem(key);
     const parsed = (raw ? JSON.parse(raw) : {}) as Record<string, boolean>;
     parsed[testId] = true;
-    localStorage.setItem(SAMPLE_COLLECTED_KEY, JSON.stringify(parsed));
+    localStorage.setItem(key, JSON.stringify(parsed));
   } catch { /* ignore */ }
 }
 
-function removeSampleCollectedIds(testIds: string[]) {
+function removeSampleCollectedIds(entryId: string, testIds: string[]) {
   try {
-    const raw = localStorage.getItem(SAMPLE_COLLECTED_KEY);
+    const key = sampleCollectedKey(entryId);
+    const raw = localStorage.getItem(key);
     if (!raw) return;
     const parsed = JSON.parse(raw) as Record<string, boolean>;
     testIds.forEach(id => { delete parsed[id]; });
-    localStorage.setItem(SAMPLE_COLLECTED_KEY, JSON.stringify(parsed));
+    localStorage.setItem(key, JSON.stringify(parsed));
   } catch { /* ignore */ }
 }
 
@@ -486,7 +489,7 @@ function LabPanel({ entry, onClose, onComplete, onAllSamplesCollected, doctorCan
   // tests from both the actively dispatched order and any pending orders.
   // Apply any persisted sampleCollected flags on mount via lazy initializer.
   const [localTests, setLocalTests] = useState<LabTest[]>(() => {
-    const collected = readSampleCollectedIds();
+    const collected = readSampleCollectedIds(entry.id);
     return [...activeOrderTests, ...pendingOrdersTests].map(t =>
       collected.has(t.id) ? { ...t, sampleCollected: true } : t
     );
@@ -509,7 +512,7 @@ function LabPanel({ entry, onClose, onComplete, onAllSamplesCollected, doctorCan
   useEffect(() => {
     if (activeOrder?.voided) {
       if (selectedIsFromActiveOrder) setSelectedTestId(null);
-      removeSampleCollectedIds(activeOrderTests.map(t => t.id));
+      removeSampleCollectedIds(entry.id, activeOrderTests.map(t => t.id));
       setLocalTests(ts => ts.map(t =>
         activeOrderTests.some(at => at.id === t.id) ? { ...t, sampleCollected: false } : t
       ));
@@ -550,7 +553,7 @@ function LabPanel({ entry, onClose, onComplete, onAllSamplesCollected, doctorCan
   function handleSampleCollected() {
     checkedTestIds.forEach(id => {
       const t = localTests.find(lt => lt.id === id);
-      if (t && !t.sampleCollected) writeSampleCollectedId(id);
+      if (t && !t.sampleCollected) writeSampleCollectedId(entry.id, id);
     });
     const nextTests = localTests.map(t =>
       checkedTestIds.has(t.id) && !t.sampleCollected ? { ...t, sampleCollected: true } : t
@@ -1268,7 +1271,7 @@ function LabPanel({ entry, onClose, onComplete, onAllSamplesCollected, doctorCan
               )}
               <div className="flex gap-2 mt-2">
                 <Button onClick={() => setShowConfirm(false)} variant="outline" className="flex-1 h-9 text-sm">Cancel</Button>
-                <Button onClick={() => { removeSampleCollectedIds(localTests.map(t => t.id)); onComplete(); setShowConfirm(false); }} className="flex-1 h-9 text-sm text-white" style={{ background: LAB_ACCENT }}>
+                <Button onClick={() => { removeSampleCollectedIds(entry.id, localTests.map(t => t.id)); onComplete(); setShowConfirm(false); }} className="flex-1 h-9 text-sm text-white" style={{ background: LAB_ACCENT }}>
                   Confirm
                 </Button>
               </div>
