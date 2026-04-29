@@ -483,6 +483,10 @@ const NEXT_APPT_OPTIONS = ["1 Day", "3 Days", "1 Week", "1 Month", "Custom date"
 interface PatientFaceSheetProps {
   entry: MultiEntry;
   soapNoteCreated: boolean;
+  /** True when the patient is in the lab journey (pendingLab OR labResultsReady),
+   *  has an unsigned draft, and has not yet been signed by the doctor.
+   *  Drives the amber "SOAP Note · In Progress" badge and disables Complete Consultation. */
+  soapNoteInProgress?: boolean;
   onBack: () => void;
   onSoapNoteClick: (id: string) => void;
   onCompleteConsultation: (id: string) => void;
@@ -496,7 +500,7 @@ interface PatientFaceSheetProps {
 }
 
 export function PatientFaceSheet({
-  entry, soapNoteCreated, onBack,
+  entry, soapNoteCreated, soapNoteInProgress = false, onBack,
   onSoapNoteClick, onCompleteConsultation, onCompleteWithoutSoap, onSendToLab, onDiscardLab, onSaveAndClose,
   doctorSigned = false, onDoctorSign, signedRecords = [],
 }: PatientFaceSheetProps) {
@@ -539,6 +543,8 @@ export function PatientFaceSheet({
     (noSoapNextAppt !== "" && (noSoapNextAppt !== "Custom date" || noSoapCustomDate !== ""));
 
   function handleCompleteClick() {
+    // Safety guard — button is visually disabled, but guard defensively too.
+    if (soapNoteInProgress) return;
     if (soapNoteCreated) {
       onCompleteConsultation(entry.id);
     } else {
@@ -589,8 +595,18 @@ export function PatientFaceSheet({
           <div className="w-px h-4 bg-slate-200" />
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Consultation Face Sheet</span>
           <div className="flex-1" />
-          {/* SOAP Note Button */}
-          {soapNoteCreated ? (
+          {/* SOAP Note Button — 4 states in priority order:
+               1. soapNoteInProgress (lab journey + unsigned draft) → amber
+               2. soapNoteCreated + doctorSigned                   → emerald Signed
+               3. soapNoteCreated + !doctorSigned (non-lab draft)  → blue Created
+               4. not created                                       → blue Start */}
+          {soapNoteInProgress ? (
+            <button
+              className="flex items-center gap-2 h-9 px-4 rounded-md bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold hover:bg-amber-100 transition-colors"
+              onClick={() => setShowSoapPage(true)}>
+              <Clock className="h-4 w-4" /> SOAP Note · In Progress
+            </button>
+          ) : soapNoteCreated ? (
             doctorSigned ? (
               <button
                 className="flex items-center gap-2 h-9 px-4 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold hover:bg-emerald-100 transition-colors"
@@ -599,9 +615,9 @@ export function PatientFaceSheet({
               </button>
             ) : (
               <button
-                className="flex items-center gap-2 h-9 px-4 rounded-md bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold hover:bg-amber-100 transition-colors"
+                className="flex items-center gap-2 h-9 px-4 rounded-md bg-blue-50 border border-blue-200 text-blue-700 text-sm font-bold hover:bg-blue-100 transition-colors"
                 onClick={() => setShowSoapPage(true)}>
-                <Clock className="h-4 w-4" /> SOAP Note · In Progress
+                <FileText className="h-4 w-4" /> SOAP Note · Created
               </button>
             )
           ) : (
@@ -613,16 +629,13 @@ export function PatientFaceSheet({
             </Button>
           )}
           {(() => {
-            // Block complete when patient is in the lab journey (sent to lab OR
-            // returned with results) AND the SOAP note is not yet signed.
-            // Normal (non-lab) patients with an unsigned draft are NOT blocked —
-            // they can still choose "complete without SOAP note".
-            const labJourney = entry.pendingLab || entry.labResultsReady;
-            const soapInProgress = soapNoteCreated && !doctorSigned && labJourney;
-            const isBlocked = entry.pendingLab || soapInProgress;
+            // isBlocked uses the dedicated soapNoteInProgress prop (lab-journey
+            // patients with unsigned draft) plus the raw pendingLab flag.
+            // Normal (non-lab) patients with an unsigned draft are NOT blocked.
+            const isBlocked = entry.pendingLab || soapNoteInProgress;
             const blockTitle = entry.pendingLab
               ? "Patient is in the lab — complete consultation after results are reviewed."
-              : soapInProgress
+              : soapNoteInProgress
               ? "Sign the SOAP note before completing the consultation."
               : undefined;
             return (

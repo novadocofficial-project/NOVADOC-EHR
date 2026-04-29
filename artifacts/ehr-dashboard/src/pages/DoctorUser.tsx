@@ -286,11 +286,17 @@ export function DoctorUser() {
 
   // ── Face Sheet full-page view ─────────────────────────────────────────────
   if (faceSheetEntry) {
-    const liveEntry = queue.find(e => e.id === faceSheetEntry.id) ?? faceSheetEntry;
+    const liveEntry   = queue.find(e => e.id === faceSheetEntry.id) ?? faceSheetEntry;
+    const isSigned    = (signedRecordsMap.get(liveEntry.id)?.length ?? 0) > 0;
+    const labJourney  = liveEntry.pendingLab || liveEntry.labResultsReady;
+    // soapNoteInProgress: patient is in the lab pipeline, has an unsigned draft,
+    // and the doctor has not yet signed — drives the amber badge and blocks Complete.
+    const soapNoteInProgress = labJourney && !isSigned && hasSoapDraft(liveEntry.id);
     return (
       <PatientFaceSheet
         entry={liveEntry}
         soapNoteCreated={soapNoteDone.has(liveEntry.id)}
+        soapNoteInProgress={soapNoteInProgress}
         onBack={() => setFaceSheetEntry(null)}
         onSoapNoteClick={handleSoapNoteClick}
         onCompleteConsultation={handleFaceSheetComplete}
@@ -298,7 +304,7 @@ export function DoctorUser() {
         onSendToLab={handleSendToLab}
         onDiscardLab={handleCancelLab}
         onSaveAndClose={() => setFaceSheetEntry(null)}
-        doctorSigned={(signedRecordsMap.get(liveEntry.id)?.length ?? 0) > 0}
+        doctorSigned={isSigned}
         signedRecords={signedRecordsMap.get(liveEntry.id) ?? []}
         onDoctorSign={() => handleDoctorSign(liveEntry.id)}
       />
