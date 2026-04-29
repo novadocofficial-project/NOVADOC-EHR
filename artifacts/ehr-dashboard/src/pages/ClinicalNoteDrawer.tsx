@@ -1698,8 +1698,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                   <AlertTriangle className="h-5 w-5 text-amber-500" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-800">What would you like to reset?</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Choose an action — this cannot be undone.</p>
+                  <p className="text-sm font-bold text-slate-800">What would you like to discard?</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Select an option below — this cannot be undone.</p>
                 </div>
               </div>
 
@@ -1716,7 +1716,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                   <div>
                     <p className="text-sm font-bold text-amber-800">Erase SOAP Note</p>
                     <p className="text-[11px] text-amber-600 mt-0.5 leading-relaxed">
-                      Clear HPI, PE, and diagnoses only — lab orders remain untouched.
+                      Clears HPI, PE, and diagnoses — lab orders are not affected.
                     </p>
                   </div>
                 </button>
@@ -1733,7 +1733,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                     <div>
                       <p className="text-sm font-bold text-sky-700">Cancel the Lab Queue</p>
                       <p className="text-[11px] text-sky-500 mt-0.5 leading-relaxed">
-                        Remove the patient from the lab queue only — SOAP note content is kept.
+                        Removes the patient from the lab queue — SOAP note content is preserved.
                       </p>
                     </div>
                   </button>
