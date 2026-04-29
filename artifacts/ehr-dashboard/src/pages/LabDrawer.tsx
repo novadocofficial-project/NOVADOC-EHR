@@ -28,6 +28,7 @@ export interface LabOrder {
   voided?:          boolean;
   voidedAt?:        string;
   voidReason?:      string;
+  returnedFromLab?: boolean; // set when Cancel Lab Queue is used; marks the order that triggered the lab visit
 }
 
 // ─── Lab Categories ───────────────────────────────────────────────────────────

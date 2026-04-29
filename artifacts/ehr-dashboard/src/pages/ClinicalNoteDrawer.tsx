@@ -697,8 +697,41 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
   function handleCancelLabQueue() {
     if (labDone || awaitingLab) onDiscardLab?.();
     setLabDone(false);
-    setLabOrders([]);
     setDiscardConfirm(false);
+
+    // Find the most recent dispatched order (has sentAt). Auto-void it if not already
+    // voided, and tag it returnedFromLab so the full order history is preserved.
+    const lastSentIdx = [...labOrders].reverse().findIndex(o => !!o.sentAt);
+    if (lastSentIdx !== -1) {
+      const realIdx = labOrders.length - 1 - lastSentIdx;
+      const target = labOrders[realIdx];
+      const nextOrders = labOrders.map((o, i) => {
+        if (i !== realIdx) return o;
+        if (!o.voided) {
+          // Auto-void: order was still in an active "Sent to Lab" state when cancelled
+          return {
+            ...o,
+            voided: true,
+            voidedAt: new Date().toISOString(),
+            voidReason: "Ordered with error",
+            returnedFromLab: true,
+          };
+        }
+        // Already manually voided by doctor — only add the tag
+        return { ...o, returnedFromLab: true };
+      });
+      setLabOrders(nextOrders);
+      setNote(prev => ({ ...prev, labOrders: nextOrders }));
+
+      // Propagate to Lab Panel localStorage so lab staff see the VOIDED state
+      if (entryId && !target.voided) {
+        const stored = readActiveLabOrder(entryId);
+        const updated = nextOrders[realIdx];
+        if (stored && updated?.sentAt && stored.sentAt === updated.sentAt) {
+          saveActiveLabOrder(entryId, updated);
+        }
+      }
+    }
   }
 
   function handleHpiSave(complaint: string, state: CoughState) {
@@ -1184,9 +1217,15 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                               {/* Results Complete badge — shown when this specific order's round is done.
                                   Uses isCurrentlyInLab to avoid clearing the badge on prior-round orders
                                   when a second order is dispatched (labResultsReady would be false then). */}
-                              {isSent && (!isCurrentlyInLab || labResultsReady) && (
+                              {isSent && (!isCurrentlyInLab || labResultsReady) && !order.returnedFromLab && (
                                 <span className="flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300">
                                   <CheckCircle2 className="h-2.5 w-2.5" /> Results Complete
+                                </span>
+                              )}
+                              {/* Returned from Lab badge — shown when Cancel Lab Queue was used */}
+                              {order.returnedFromLab && (
+                                <span className="flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-300">
+                                  <RotateCcw className="h-2.5 w-2.5" /> Returned from Lab
                                 </span>
                               )}
                               {/* Void reason text */}
