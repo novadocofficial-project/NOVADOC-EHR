@@ -126,7 +126,15 @@ export function DoctorUser() {
   const labDone      = queue.filter(e => e.step > 4 || (e.step === 4 && e.status === "completed")).length;
   const atCounterEntry = docQueue.find(e => e.status === "called") ?? null;
   const activeCallEntry = docQueue.find(e => e.callTimestamp !== null && getSecsLeft(e.callTimestamp) > 0) ?? null;
-  const waitingTokens  = docQueue.filter(e => e.status === "waiting" && !e.callTimestamp);
+
+  // Priority sort: lab-return patients first (FIFO by labReturnedAt), then regular patients.
+  // docQueue is already sorted by createdAt, so regular patients preserve their arrival order.
+  const rawWaiting      = docQueue.filter(e => e.status === "waiting" && !e.callTimestamp);
+  const labReturnWaiting = rawWaiting
+    .filter(e => e.labResultsReady)
+    .sort((a, b) => (a.labReturnedAt ?? 0) - (b.labReturnedAt ?? 0));
+  const regularWaiting  = rawWaiting.filter(e => !e.labResultsReady);
+  const waitingTokens   = [...labReturnWaiting, ...regularWaiting];
 
   const secsLeft = getSecsLeft(activeCallEntry?.callTimestamp ?? null);
   const timerPct = (secsLeft / CALL_WINDOW_SECS) * 100;
@@ -569,7 +577,7 @@ export function DoctorUser() {
                         )}
                       </div>
                       <span className="text-xs text-slate-400 flex-shrink-0">{timeAgo(entry.createdAt)}</span>
-                      {(isFirst || entry.labResultsReady) ? (
+                      {isFirst ? (
                         isCalled ? (
                           <Button
                             size="sm"

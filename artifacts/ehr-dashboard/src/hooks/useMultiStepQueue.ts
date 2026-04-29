@@ -13,6 +13,7 @@ export type MultiEntry = QueueEntry & {
   callTimestamp: number | null;
   pendingLab: boolean;
   labResultsReady: boolean;
+  labReturnedAt?: number; // epoch ms — set when lab marks patient done and returns them to the doctor
 };
 
 export const INITIAL_QUEUE: MultiEntry[] = [];
@@ -336,6 +337,7 @@ export function useMultiStepQueue() {
           callTimestamp: null,
           pendingLab: false,
           labResultsReady: true,
+          labReturnedAt: Date.now(), // for FIFO ordering among concurrent lab-return patients
         };
       }
       // Not dispatched by doctor — advance to next step in sequence
