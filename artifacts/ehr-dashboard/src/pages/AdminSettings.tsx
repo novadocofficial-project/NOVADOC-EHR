@@ -192,9 +192,9 @@ export function AdminSettings() {
   const queueSections: ActiveModule[] = ["visit-types","workflow-config","counter-types","counters","token-settings","queue-behavior","locking-settings","display-settings","doctor-partitions","routing-rules"];
   const [activeModule, setActiveModule] = useState<ActiveModule>(initSection ?? "departments");
   const [navExpanded, setNavExpanded] = useState({
-    departments: !initSection || !queueSections.includes(initSection as ActiveModule),
-    doctors: !initSection || !queueSections.includes(initSection as ActiveModule),
-    billing: !initSection || !queueSections.includes(initSection as ActiveModule),
+    departments: false,
+    doctors: false,
+    billing: false,
     branches: false,
     queue: !!initSection && queueSections.includes(initSection as ActiveModule),
     soapConfig: false,
