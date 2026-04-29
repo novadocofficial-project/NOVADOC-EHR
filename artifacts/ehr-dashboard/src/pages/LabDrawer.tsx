@@ -237,21 +237,12 @@ const ORDER_SETS: OrderSet[] = [
 
 // ─── Lab Chips Panel ──────────────────────────────────────────────────────────
 
-export function LabChipsPanel({ order, onOpen, readOnly = false }: { order: LabOrder | null; onOpen: () => void; readOnly?: boolean }) {
+export function LabChipsPanel({ order }: { order: LabOrder | null }) {
   if (!order || order.tests.length === 0) {
-    if (readOnly) return null;
-    return (
-      <button
-        onClick={onOpen}
-        className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl bg-amber-50/60 border-2 border-dashed border-amber-200 text-amber-600 font-bold text-xs hover:border-amber-400 hover:bg-amber-50 transition-all">
-        <Plus className="h-4 w-4 flex-shrink-0" />
-        Order lab tests…
-      </button>
-    );
+    return null;
   }
 
-  const fastingTests    = order.tests.filter(t => t.fastingRequired);
-  const nonFastingTests = order.tests.filter(t => !t.fastingRequired);
+  const fastingTests = order.tests.filter(t => t.fastingRequired);
 
   return (
     <div className="space-y-2">
@@ -321,14 +312,6 @@ export function LabChipsPanel({ order, onOpen, readOnly = false }: { order: LabO
         </div>
       )}
 
-      {/* Edit button — hidden in read-only mode (previous orders) */}
-      {!readOnly && (
-        <button
-          onClick={onOpen}
-          className="flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-xl border border-amber-200 text-amber-600 text-xs font-bold hover:bg-amber-50 transition-colors">
-          <Plus className="h-3.5 w-3.5" /> Edit lab order ({order.tests.length} test{order.tests.length !== 1 ? "s" : ""})
-        </button>
-      )}
     </div>
   );
 }

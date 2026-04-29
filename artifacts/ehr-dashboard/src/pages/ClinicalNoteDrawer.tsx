@@ -1229,7 +1229,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
 
                           {/* Chips panel — read-only, action buttons are handled above */}
                           <div className={isVoided ? "opacity-50 pointer-events-none" : ""}>
-                            <LabChipsPanel order={order} onOpen={() => {}} readOnly />
+                            <LabChipsPanel order={order} />
                           </div>
                         </div>
                       );
