@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import { Home } from "@/pages/Home";
 import { Dashboard } from "@/pages/Dashboard";
 import { AdminSettings } from "@/pages/AdminSettings";
 import { QueueTokenSingle } from "@/pages/QueueTokenSingle";
@@ -18,7 +19,8 @@ const queryClient = new QueryClient();
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
+      <Route path="/" component={Home} />
+      <Route path="/reports" component={Dashboard} />
       <Route path="/admin" component={AdminSettings} />
       <Route path="/queue/token/single" component={QueueTokenSingle} />
       <Route path="/queue/token/partitioned" component={QueueTokenPartitioned} />

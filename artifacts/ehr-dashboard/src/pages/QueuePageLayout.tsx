@@ -1,7 +1,7 @@
 import { useLocation, Link } from "wouter";
 import {
   Bell, Search, Ticket, ChevronDown, Zap, Users, Workflow, BarChart2, Receipt,
-  X, Printer, ArrowRight, Heart, Stethoscope, FlaskConical,
+  X, Printer, ArrowRight, Heart, Stethoscope, FlaskConical, LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -376,7 +376,7 @@ export function QueueNavDropdown() {
 
 export function ReportsNavDropdown() {
   const [location, setLocation] = useLocation();
-  const isActive = location === "/" || location.startsWith("/reports");
+  const isActive = location.startsWith("/reports");
 
   return (
     <DropdownMenu>
@@ -399,8 +399,8 @@ export function ReportsNavDropdown() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={() => setLocation("/")}
-          className={`gap-3 cursor-pointer py-2 ${location === "/" ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
+          onClick={() => setLocation("/reports")}
+          className={`gap-3 cursor-pointer py-2 ${location === "/reports" ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
         >
           <span className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
             <Receipt className="h-3.5 w-3.5 text-[#4982CF]" />
@@ -418,7 +418,7 @@ export function ReportsNavDropdown() {
 // ─── Full App Header for Queue pages ─────────────────────────────────────────
 
 export function QueueAppHeader() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   return (
     <header className="z-20 flex h-14 flex-none items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm">
@@ -427,6 +427,18 @@ export function QueueAppHeader() {
           <img src="/novadoc-logo.png" alt="NovaDoc" className="h-8 w-auto" />
         </div>
         <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
+          <Button
+            variant="ghost"
+            onClick={() => setLocation("/")}
+            className={`h-9 px-3 gap-1.5 text-sm font-medium ${
+              location === "/"
+                ? "bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Home
+          </Button>
           <QueueNavDropdown />
           <ReportsNavDropdown />
         </nav>
