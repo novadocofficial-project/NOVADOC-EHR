@@ -127,6 +127,7 @@ export function DoctorUser() {
   const labDone      = queue.filter(e => e.step > 4 || (e.step === 4 && e.status === "completed")).length;
   const atCounterEntry = docQueue.find(e => e.status === "called") ?? null;
   const activeCallEntry = docQueue.find(e => e.callTimestamp !== null && getSecsLeft(e.callTimestamp) > 0) ?? null;
+  const baseCanCall     = !atCounterEntry && !activeCallEntry;
 
   // Priority sort: lab-return patients first (FIFO by labReturnedAt), then regular patients.
   // docQueue is already sorted by createdAt, so regular patients preserve their arrival order.
@@ -530,9 +531,7 @@ export function DoctorUser() {
               )}
               <div className="space-y-2">
                 {waitingTokens.map((entry, idx) => {
-                  const canCall = fifoLock
-                    ? idx === 0 && !atCounterEntry && !activeCallEntry
-                    : !atCounterEntry && !activeCallEntry;
+                  const canCall = fifoLock ? idx === 0 && baseCanCall : baseCanCall;
                   const isCalled = entry.callTimestamp !== null && getSecsLeft(entry.callTimestamp) > 0;
                   return (
                     <div

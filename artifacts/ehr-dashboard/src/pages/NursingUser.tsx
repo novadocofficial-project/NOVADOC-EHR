@@ -681,6 +681,7 @@ export function NursingUser() {
   const atCounterEntry = nurseQueue.find(e => e.status === "called") ?? null;
   const activeCallEntry = nurseQueue.find(e => e.callTimestamp !== null && getSecsLeft(e.callTimestamp) > 0) ?? null;
   const [fifoLock] = useState<boolean>(() => { try { const v = localStorage.getItem("ehr-fifo-lock"); return v === null ? true : (JSON.parse(v) as boolean); } catch { return true; } });
+  const baseCanCall    = !atCounterEntry && !activeCallEntry;
   const waitingTokens  = nurseQueue.filter(e => e.status === "waiting" && !e.callTimestamp && e.id !== atCounterEntry?.id);
 
   const secsLeft  = getSecsLeft(activeCallEntry?.callTimestamp ?? null);
@@ -832,9 +833,7 @@ export function NursingUser() {
               )}
               <div className="space-y-2">
                 {waitingTokens.map((entry, idx) => {
-                  const canCall = fifoLock
-                    ? idx === 0 && !atCounterEntry && !activeCallEntry
-                    : !atCounterEntry && !activeCallEntry;
+                  const canCall = fifoLock ? idx === 0 && baseCanCall : baseCanCall;
                   return (
                     <div key={entry.id} className={`flex items-center gap-4 rounded-xl border px-4 py-3 bg-white transition-all ${canCall ? "border-slate-300 shadow-sm" : "border-slate-100 opacity-70"}`}>
                       <div className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-sm font-black bg-slate-100 text-slate-500">{idx + 1}</div>
