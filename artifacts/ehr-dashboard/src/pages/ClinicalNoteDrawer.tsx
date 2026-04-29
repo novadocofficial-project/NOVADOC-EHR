@@ -1698,8 +1698,14 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                   <AlertTriangle className="h-5 w-5 text-amber-500" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-800">What would you like to discard?</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Select an option below — this cannot be undone.</p>
+                  <p className="text-sm font-bold text-slate-800">
+                    {awaitingLab && !labResultsReady ? "What would you like to discard?" : "Discard this SOAP note?"}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {awaitingLab && !labResultsReady
+                      ? "Select an option below — this cannot be undone."
+                      : "This will clear HPI, PE, and diagnoses — this cannot be undone."}
+                  </p>
                 </div>
               </div>
 
