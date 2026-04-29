@@ -411,6 +411,29 @@ function SparkFlag({ value, min, max }: { value: number; min?: number; max?: num
   return <span className="inline-block px-1 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-700">N</span>;
 }
 
+// ─── Sample-collected localStorage helpers ────────────────────────────────────
+
+const SAMPLE_COLLECTED_KEY = "ehr-sample-collected-v1";
+
+function readSampleCollectedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SAMPLE_COLLECTED_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "object" && parsed !== null) return new Set(Object.keys(parsed));
+  } catch { /* ignore */ }
+  return new Set();
+}
+
+function writeSampleCollectedId(testId: string) {
+  try {
+    const raw = localStorage.getItem(SAMPLE_COLLECTED_KEY);
+    const parsed = (raw ? JSON.parse(raw) : {}) as Record<string, boolean>;
+    parsed[testId] = true;
+    localStorage.setItem(SAMPLE_COLLECTED_KEY, JSON.stringify(parsed));
+  } catch { /* ignore */ }
+}
+
 // ─── Lab Panel (fullscreen slide-over) ───────────────────────────────────────
 
 function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
@@ -451,7 +474,13 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
 
   // Local test state so Save Result updates the pill reactively — includes
   // tests from both the actively dispatched order and any pending orders.
-  const [localTests, setLocalTests] = useState<LabTest[]>([...activeOrderTests, ...pendingOrdersTests]);
+  // Apply any persisted sampleCollected flags on mount via lazy initializer.
+  const [localTests, setLocalTests] = useState<LabTest[]>(() => {
+    const collected = readSampleCollectedIds();
+    return [...activeOrderTests, ...pendingOrdersTests].map(t =>
+      collected.has(t.id) ? { ...t, sampleCollected: true } : t
+    );
+  });
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState<"form" | "preview" | "trends">("form");
   const [resultValues, setResultValues] = useState<Record<string, Record<string, string>>>({});
@@ -502,6 +531,10 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
   }
 
   function handleSampleCollected() {
+    checkedTestIds.forEach(id => {
+      const t = localTests.find(lt => lt.id === id);
+      if (t && !t.sampleCollected) writeSampleCollectedId(id);
+    });
     setLocalTests(ts => ts.map(t =>
       checkedTestIds.has(t.id) && !t.sampleCollected ? { ...t, sampleCollected: true } : t
     ));
