@@ -151,6 +151,46 @@ export function clearActiveLabOrder(entryId: string): void {
   }
 }
 
+// ─── Pending lab orders persistence ───────────────────────────────────────────
+// Stores ALL unsent lab orders written by the doctor before Complete Consultation
+// was clicked. Allows the Lab Panel to display every order even when there is no
+// single "active" dispatched order (i.e. the patient was routed via the
+// hasUnsentLabOrders path rather than the Send-to-Lab button path).
+
+const PENDING_LAB_PREFIX = "ehr_pending_lab_orders_";
+
+function pendingLabKey(entryId: string) {
+  return `${PENDING_LAB_PREFIX}${entryId}`;
+}
+
+/** Persist all unsent lab orders for this entry so the Lab Panel can read them. */
+export function savePendingLabOrders(entryId: string, orders: DrawerLabOrder[]): void {
+  try {
+    localStorage.setItem(pendingLabKey(entryId), JSON.stringify(orders));
+  } catch {
+    // storage quota — silently ignore
+  }
+}
+
+/** Read the persisted unsent lab orders for this entry. Returns [] if none. */
+export function readPendingLabOrders(entryId: string): DrawerLabOrder[] {
+  try {
+    const raw = localStorage.getItem(pendingLabKey(entryId));
+    return raw ? (JSON.parse(raw) as DrawerLabOrder[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Remove pending lab orders (call when lab marks the patient complete). */
+export function clearPendingLabOrders(entryId: string): void {
+  try {
+    localStorage.removeItem(pendingLabKey(entryId));
+  } catch {
+    // ignore
+  }
+}
+
 export function useSoapNoteDraft(entryId: string) {
   const key = useMemo(() => draftKey(entryId), [entryId]);
 

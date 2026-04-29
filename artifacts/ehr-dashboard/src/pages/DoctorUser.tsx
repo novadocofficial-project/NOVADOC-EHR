@@ -11,6 +11,7 @@ import {
   clearSoapDraft, hasSoapDraft, readSoapDraft,
   readRoutingSnapshot, clearRoutingSnapshot,
   readSignedRecords, saveSignedRecords, clearSignedRecords,
+  savePendingLabOrders, clearPendingLabOrders,
 } from "@/hooks/useSoapNoteDraft";
 import { useToast } from "@/hooks/use-toast";
 import type { SignedRecord } from "@/pages/SoapNotePage";
@@ -198,6 +199,14 @@ export function DoctorUser() {
     const hasPrescription = snapshot?.hasPrescription
       ?? (draft?.formulary?.medicines?.length ?? 0) > 0;
 
+    // When routing through the unsent-lab-orders path, capture the orders NOW
+    // (before the SOAP draft is cleared) so the Lab Panel can display them.
+    if (hasUnsentLabOrders) {
+      const currentDraft = readSoapDraft(id);
+      const unsentOrders = (currentDraft?.labOrders ?? []).filter(o => !o.sentAt && !o.voided);
+      if (unsentOrders.length > 0) savePendingLabOrders(id, unsentOrders);
+    }
+
     clearRoutingSnapshot(id);
     docCompleteConsultation(id, { hasPrescription, hasUnsentLabOrders });
     clearSoapDraft(id);
@@ -265,6 +274,7 @@ export function DoctorUser() {
 
   function handleCancelLab(id: string) {
     docCancelLab(id);
+    clearPendingLabOrders(id); // patient returned to doctor — lab panel no longer needs these
   }
 
   function handleDoctorSign(id: string) {

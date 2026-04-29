@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
-import { readActiveLabOrder } from "@/hooks/useSoapNoteDraft";
+import { readActiveLabOrder, readPendingLabOrders } from "@/hooks/useSoapNoteDraft";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -421,6 +421,9 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
 
   // Read the doctor's dispatched lab order from localStorage (raw LabOrder | null)
   const activeOrder = readActiveLabOrder(entry.id);
+  // Read all unsent orders saved when doctor clicked Complete Consultation
+  const pendingOrders = readPendingLabOrders(entry.id);
+
   const activeOrderTests: LabTest[] = activeOrder
     ? activeOrder.tests.map((t, i) => ({
         id: t.id,
@@ -432,8 +435,22 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
       }))
     : [];
 
-  // Local test state so Save Result updates the pill reactively
-  const [localTests, setLocalTests] = useState<LabTest[]>(activeOrderTests);
+  // Flatten all tests from all pending orders into one list for localTests state.
+  // Test IDs are UUIDs so they remain unique across orders.
+  const pendingOrdersTests: LabTest[] = pendingOrders.flatMap(order =>
+    order.tests.map((t, i) => ({
+      id: t.id,
+      serial: i + 1,
+      name: t.name,
+      lab: t.category,
+      status: "pending" as const,
+      updatedAt: "",
+    }))
+  );
+
+  // Local test state so Save Result updates the pill reactively — includes
+  // tests from both the actively dispatched order and any pending orders.
+  const [localTests, setLocalTests] = useState<LabTest[]>([...activeOrderTests, ...pendingOrdersTests]);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState<"form" | "preview" | "trends">("form");
   const [resultValues, setResultValues] = useState<Record<string, Record<string, string>>>({});
@@ -578,7 +595,7 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
               </Collapsible>
 
               {/* Required Actions */}
-              <Collapsible title="Required Actions" badge={currentOrder && !activeOrder?.voided ? 1 : 0} accent defaultOpen>
+              <Collapsible title="Required Actions" badge={(currentOrder && !activeOrder?.voided ? 1 : 0) + pendingOrders.length} accent defaultOpen>
                 {activeOrder?.voided ? (
                   /* ── Voided order banner ── */
                   <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 mb-2">
@@ -663,12 +680,64 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 mb-2 text-center">
-                    <FlaskConical className="h-5 w-5 text-slate-300 mx-auto mb-1.5" />
-                    <p className="text-xs text-slate-400 font-medium">No lab order details available</p>
-                    <p className="text-[10px] text-slate-300 mt-0.5">The doctor's order will appear here once dispatched</p>
-                  </div>
+                  !pendingOrders.length ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 mb-2 text-center">
+                      <FlaskConical className="h-5 w-5 text-slate-300 mx-auto mb-1.5" />
+                      <p className="text-xs text-slate-400 font-medium">No lab order details available</p>
+                      <p className="text-[10px] text-slate-300 mt-0.5">The doctor's order will appear here once dispatched</p>
+                    </div>
+                  ) : null
                 )}
+                {/* Pending lab orders — from Complete Consultation path (multiple unsent orders) */}
+                {pendingOrders.map((order, orderIdx) => {
+                  const orderTests = localTests.filter(lt => order.tests.some(t => t.id === lt.id));
+                  const orderDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+                  return (
+                    <div key={order.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 mb-2">
+                      <div className="flex items-center justify-between mb-2.5">
+                        <p className="text-xs font-bold text-slate-700">
+                          {order.orderSetName ? order.orderSetName : `Order ${orderIdx + 1}`} · {orderDate}
+                        </p>
+                        <p className="text-[10px] text-slate-400">Doctor</p>
+                      </div>
+                      {order.patientCondition && order.patientCondition !== "Random" && (
+                        <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-300 px-3 py-2 mb-2.5">
+                          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs font-bold text-amber-800">{order.patientCondition} required before collection.</p>
+                        </div>
+                      )}
+                      {order.instructions && (
+                        <div className="flex items-start gap-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 mb-2.5">
+                          <FileText className="h-4 w-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-slate-700">{order.instructions}</p>
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        {orderTests.map(test => (
+                          <button
+                            key={test.id}
+                            onClick={() => { setSelectedTestId(test.id); setRightTab("form"); }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${selectedTestId === test.id ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50 border border-transparent"}`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-slate-800 leading-tight">{test.name}</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">{test.lab}</p>
+                            </div>
+                            {test.status === "completed" ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700 flex-shrink-0">
+                                <CheckCircle2 className="h-3 w-3" /> Done
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700 flex-shrink-0">
+                                <Clock className="h-3 w-3" /> Pending
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </Collapsible>
 
               {/* All Records */}

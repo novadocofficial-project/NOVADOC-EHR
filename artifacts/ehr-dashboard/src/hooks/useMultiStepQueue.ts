@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { QueueEntry, Patient, SEED_VISIT_TYPES } from "@/pages/QueuePageLayout";
-import { clearActiveLabOrder } from "@/hooks/useSoapNoteDraft";
+import { clearActiveLabOrder, clearPendingLabOrders } from "@/hooks/useSoapNoteDraft";
 
 // ─── Extended Entry Type ───────────────────────────────────────────────────────
 
@@ -325,6 +325,7 @@ export function useMultiStepQueue() {
 
   function labComplete(id: string) {
     clearActiveLabOrder(id);
+    clearPendingLabOrders(id); // also clear unsent-orders stored for the lab panel
     setQueue(prev => prev.map(e => {
       if (e.id !== id) return e;
       const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
