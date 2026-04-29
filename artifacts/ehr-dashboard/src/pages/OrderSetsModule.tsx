@@ -96,6 +96,15 @@ const SEED_ORDER_SETS: OrderSet[] = [
     ],
   },
   {
+    id: "os6", name: "Cardiac Lab Panel", category: "Cardiac Panel", setType: "lab",
+    description: "Lab component of the cardiac evaluation. Lipid profile and full blood count.",
+    active: true, createdAt: "2024-02-14",
+    items: [
+      { id: "oi7", type: "lab", itemId: "t8", name: "Lipid Profile" },
+      { id: "oi8", type: "lab", itemId: "t1", name: "Complete Blood Count (CBC)" },
+    ],
+  },
+  {
     id: "os4", name: "Diabetes Follow-up", category: "Diabetes Screen", setType: "lab",
     description: "Quarterly diabetes monitoring panel. HbA1c, renal function, urine protein, and lipids.",
     active: true, createdAt: "2024-04-01",
