@@ -1328,11 +1328,6 @@ export function LabUser() {
                         <Clock className="h-3 w-3 text-slate-300" />
                         <span className="text-xs text-slate-400">{timeAgo(atCounterEntry.createdAt)}</span>
                       </div>
-                      {atCounterEntry.labRoundCount >= 2 && (
-                        <span className="inline-flex items-center gap-1 mt-1.5 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">
-                          ↩ Return Visit · Round {atCounterEntry.labRoundCount}
-                        </span>
-                      )}
                     </div>
                     <div className="flex flex-col gap-2 flex-shrink-0">
                       <Button
@@ -1376,11 +1371,6 @@ export function LabUser() {
                         <p className="text-base font-black text-slate-500">Walk-in Patient</p>
                       )}
                       <p className="text-sm font-semibold text-amber-600 mt-1">Window expires in {secsLeft}s</p>
-                      {activeCallEntry.labRoundCount >= 2 && (
-                        <span className="inline-flex items-center gap-1 mt-1.5 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">
-                          ↩ Return Visit · Round {activeCallEntry.labRoundCount}
-                        </span>
-                      )}
                     </div>
                     <div className="flex flex-col gap-2 flex-shrink-0">
                       <Button
@@ -1427,11 +1417,6 @@ export function LabUser() {
                           : <p className="text-sm font-bold text-slate-500">Walk-in Patient</p>}
                         {entry.callCount > 0 && (
                           <p className="text-[10px] text-amber-600 font-semibold">Called {entry.callCount}× — {MAX_CALLS - entry.callCount} attempt{MAX_CALLS - entry.callCount !== 1 ? "s" : ""} left</p>
-                        )}
-                        {entry.labRoundCount >= 2 && (
-                          <span className="inline-flex items-center gap-1 mt-0.5 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">
-                            ↩ Return Visit · Round {entry.labRoundCount}
-                          </span>
                         )}
                       </div>
                       <span className="text-xs text-slate-400 flex-shrink-0">{timeAgo(entry.createdAt)}</span>
@@ -1497,11 +1482,6 @@ export function LabUser() {
                         <div className="flex-1 min-w-0">
                           {entry.patient ? <p className="text-sm font-semibold text-slate-800">{entry.patient.name}</p> : <p className="text-sm font-semibold text-slate-500">Walk-in</p>}
                           <p className="text-[10px] text-slate-400">{timeAgo(entry.createdAt)}</p>
-                          {entry.labRoundCount >= 2 && (
-                            <span className="inline-flex items-center gap-1 mt-0.5 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">
-                              ↩ Return Visit · Round {entry.labRoundCount}
-                            </span>
-                          )}
                         </div>
                         <span className="text-xs font-bold text-red-500 flex-shrink-0">{entry.callCount}/{MAX_CALLS} calls</span>
                         <Button variant="outline" size="sm" className="h-7 px-3 text-xs border-red-300 text-red-600 hover:bg-red-100 flex-shrink-0" onClick={() => handleRecall(entry.id, entry.tokenNumber)}>
