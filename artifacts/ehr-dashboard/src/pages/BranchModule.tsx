@@ -879,12 +879,21 @@ function PharmacyPartnersTab({ branches, pharmacyPartners, onNavigate }: {
 // ─── Queue Visit Types Tab ─────────────────────────────────────────────────────
 
 function QueueVisitTypesTab({ branches, visitTypes }: { branches: Branch[]; visitTypes: VisitType[] }) {
-  const defaultVt = visitTypes[0]?.id ?? "";
-  const [selected, setSelected] = useState<Record<string, string>>(() => {
-    const init: Record<string, string> = {};
-    branches.forEach(b => { init[b.id] = defaultVt; });
+  const [selected, setSelected] = useState<Record<string, string[]>>(() => {
+    const init: Record<string, string[]> = {};
+    branches.forEach(b => { init[b.id] = []; });
     return init;
   });
+
+  function toggle(branchId: string, vtId: string) {
+    setSelected(prev => {
+      const current = prev[branchId] ?? [];
+      const next = current.includes(vtId)
+        ? current.filter(id => id !== vtId)
+        : [...current, vtId];
+      return { ...prev, [branchId]: next };
+    });
+  }
 
   if (visitTypes.length === 0) {
     return (
@@ -899,7 +908,7 @@ function QueueVisitTypesTab({ branches, visitTypes }: { branches: Branch[]; visi
   return (
     <div className="space-y-3">
       {branches.map(branch => {
-        const activeVtId = selected[branch.id] ?? defaultVt;
+        const branchSelected = selected[branch.id] ?? [];
         return (
           <div key={branch.id} className="rounded-xl border border-slate-200 bg-white shadow-sm px-5 py-4">
             <div className="flex items-center gap-3 mb-4">
@@ -910,17 +919,25 @@ function QueueVisitTypesTab({ branches, visitTypes }: { branches: Branch[]; visi
                 <p className="text-sm font-bold text-slate-800">{branch.name}</p>
                 <span className="font-mono text-[10px] font-bold text-[#4982CF] bg-[#4982CF]/8 px-1.5 py-0.5 rounded">{branch.code}</span>
               </div>
-              {branch.status === "inactive" && (
-                <span className="ml-auto text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">Inactive</span>
-              )}
+              <div className="ml-auto flex items-center gap-2">
+                {branchSelected.length > 0 && (
+                  <span className="text-[10px] font-bold text-[#4982CF] bg-[#4982CF]/8 px-2 py-0.5 rounded-full">
+                    {branchSelected.length} selected
+                  </span>
+                )}
+                {branch.status === "inactive" && (
+                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">Inactive</span>
+                )}
+              </div>
             </div>
             <div className="flex flex-wrap gap-3">
               {visitTypes.map(vt => {
-                const isSelected = activeVtId === vt.id;
+                const isSelected = branchSelected.includes(vt.id);
                 return (
                   <button
                     key={vt.id}
-                    onClick={() => setSelected(prev => ({ ...prev, [branch.id]: vt.id }))}
+                    type="button"
+                    onClick={() => toggle(branch.id, vt.id)}
                     className={`flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-left transition-all focus:outline-none ${
                       isSelected
                         ? "border-[#4982CF] bg-[#4982CF]/5 shadow-sm ring-1 ring-[#4982CF]/30"
