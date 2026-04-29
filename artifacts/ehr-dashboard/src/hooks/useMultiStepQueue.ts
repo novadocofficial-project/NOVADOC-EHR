@@ -12,6 +12,7 @@ export type MultiEntry = QueueEntry & {
   billingCompleted: boolean;
   callTimestamp: number | null;
   pendingLab: boolean;
+  pendingPharmacy: boolean; // true only when hasUnsentLabOrders path needs pharmacy after lab (hasPrescription=true)
   labResultsReady: boolean;
   labReturnedAt?: number; // epoch ms — set when lab marks patient done and returns them to the doctor
   labRoundCount: number; // incremented each time docSendToLab() is called; 0 = never sent to lab, 1 = first dispatch, 2+ = returning visit
@@ -25,7 +26,7 @@ const CHANNEL_NAME = "ehr-multistep-queue-v2";
 const LS_QUEUE_KEY = "ehr-queue-v2";
 const LS_NUMS_KEY  = "ehr-queue-nums-v2";
 const LS_VER_KEY   = "ehr-queue-ver";
-const QUEUE_VER    = "10"; // bump when seed schema changes
+const QUEUE_VER    = "11"; // bump when seed schema changes
 
 function loadQueue(): MultiEntry[] {
   try {
@@ -38,7 +39,7 @@ function loadQueue(): MultiEntry[] {
     }
     const raw = localStorage.getItem(LS_QUEUE_KEY);
     if (!raw) return INITIAL_QUEUE;
-    return (JSON.parse(raw) as any[]).map(e => ({ labRoundCount: 0, ...e, createdAt: new Date(e.createdAt) }));
+    return (JSON.parse(raw) as any[]).map(e => ({ labRoundCount: 0, pendingPharmacy: false, ...e, createdAt: new Date(e.createdAt) }));
   } catch { return INITIAL_QUEUE; }
 }
 
@@ -248,9 +249,11 @@ export function useMultiStepQueue() {
       const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
 
       // Priority 1: unsent lab orders → route to lab and continue forward.
-      // pendingLab=false so labComplete() advances to the next step (pharmacy /
-      // complete) instead of returning to the doctor. Only the explicit
-      // "Send to Lab" button sets pendingLab=true (doctor wants results back).
+      // pendingLab=false so labComplete() advances to the next step instead of
+      // returning to the doctor. Only the explicit "Send to Lab" button sets
+      // pendingLab=true (doctor wants results back).
+      // pendingPharmacy carries hasPrescription so labComplete() knows whether
+      // to land in pharmacy or skip straight to completed.
       if (hasUnsentLabOrders) {
         const labStepIdx = vt.steps.findIndex(s => s.toLowerCase().includes("lab"));
         const labStep = labStepIdx >= 0 ? labStepIdx + 1 : e.step + 1;
@@ -262,6 +265,7 @@ export function useMultiStepQueue() {
           callCount: 0,
           callTimestamp: null,
           pendingLab: false,
+          pendingPharmacy: hasPrescription, // only land in pharmacy if a prescription exists
           labResultsReady: false,
         };
       }
@@ -341,10 +345,20 @@ export function useMultiStepQueue() {
           labReturnedAt: Date.now(), // for FIFO ordering among concurrent lab-return patients
         };
       }
-      // Not dispatched by doctor — advance to next step in sequence
-      const nextStep = e.step + 1;
-      if (nextStep > e.totalSteps) return { ...e, status: "completed" };
-      return { ...e, step: nextStep, stepLabel: vt.steps[nextStep - 1], status: "waiting", callCount: 0, callTimestamp: null };
+      // Not dispatched by doctor (pendingLab=false) — advance through the workflow.
+      // If the next step is pharmacy and pendingPharmacy=false (no prescription),
+      // skip pharmacy entirely. This prevents patients without a prescription from
+      // landing in the pharmacy queue just because they had unsent lab orders.
+      let nextStep = e.step + 1;
+      if (
+        nextStep <= e.totalSteps &&
+        vt.steps[nextStep - 1]?.toLowerCase().includes("pharm") &&
+        !e.pendingPharmacy
+      ) {
+        nextStep++; // skip pharmacy — no prescription required
+      }
+      if (nextStep > e.totalSteps) return { ...e, status: "completed", pendingPharmacy: false };
+      return { ...e, step: nextStep, stepLabel: vt.steps[nextStep - 1], status: "waiting", callCount: 0, callTimestamp: null, pendingPharmacy: false };
     }));
   }
 
