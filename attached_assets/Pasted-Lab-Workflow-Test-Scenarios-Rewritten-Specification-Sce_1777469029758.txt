@@ -1,0 +1,59 @@
+Lab Workflow – Test Scenarios (Rewritten Specification)
+Scenario 1 — Revisit with Unsent Orders
+Flow
+Doctor sends lab order → Patient moves to Lab Queue
+Lab staff opens patient → Marks lab Complete
+Patient returns to Doctor Queue
+Doctor adds a new lab order (NOT sent to lab)
+Doctor marks Consultation Complete
+Patient again appears in Lab Queue
+Lab staff opens lab panel
+Expected Behavior
+Lab panel should show ONLY unsent lab orders
+Previously completed lab results should NOT interfere
+Patient correctly re-enters lab flow based on new pending orders
+Scenario 2 — Manual Void Before Re-Entry
+Flow
+Doctor sends lab order → Patient goes to Lab Queue
+Doctor voids the lab test
+Doctor calls patient back from Lab Queue
+Doctor creates a new order set
+Doctor marks consultation complete
+Patient goes to Lab Queue again
+Lab staff processes the patient
+Expected Behavior
+Lab staff should see ONLY unsent (new) orders
+❌ Voided orders must NOT appear
+Patient progresses normally after completion
+Scenario 3 — Void + Auto Cleanup + New Orders
+Flow
+Doctor sends lab order → Patient goes to Lab Queue
+Doctor voids the test
+System automatically removes patient from lab workflow
+Doctor enters new test order
+Doctor completes consultation
+Patient returns to Lab Queue
+Lab staff processes patient
+Expected Behavior
+System should auto-void previous sent order (if applicable)
+Lab panel must show ONLY new unsent orders
+❌ Voided orders must not appear anywhere
+Patient continues normal lab flow
+Scenario 4 — Mixed State (Void + Sent + Unsent + Completed)
+Flow
+Doctor sends lab order → Patient goes to Lab Queue
+Doctor voids previous test
+Doctor creates new lab order
+Doctor sends new order to lab
+Lab staff sees latest sent-to-lab order only
+Lab completes results → Patient returns to Doctor Queue
+Doctor adds unsent additional orders
+Doctor marks consultation complete
+Patient goes back to Lab Queue again
+Expected Behavior
+Lab staff should see:
+✅ Latest Sent to Lab orders
+❌ Not voided orders
+❌ Not already completed orders
+Only active lab orders should appear in lab panel
+System must always respect latest valid state only
