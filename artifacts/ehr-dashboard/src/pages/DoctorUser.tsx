@@ -383,48 +383,6 @@ export function DoctorUser() {
               </div>
             </div>
 
-            {/* Lab Queue live counts */}
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Lab Queue · Step 4</p>
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <FlaskConical className="h-4 w-4 text-emerald-600" />
-                  <p className="text-sm font-bold text-emerald-700">Lab / Sample</p>
-                  <span className="ml-auto h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Waiting</span>
-                  <span className={`text-base font-black ${labWaiting > 0 ? "text-amber-600" : "text-slate-400"}`}>
-                    {labWaiting}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">At Counter</span>
-                  <span className={`text-base font-black ${labAtCounter > 0 ? "text-blue-600" : "text-slate-400"}`}>
-                    {labAtCounter}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Done Today</span>
-                  <span className={`text-base font-black ${labDone > 0 ? "text-emerald-600" : "text-slate-400"}`}>
-                    {labDone}
-                  </span>
-                </div>
-                {labWaiting === 0 && labAtCounter === 0 ? (
-                  <div className="flex items-center gap-1 pt-1 border-t border-emerald-200">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                    <span className="text-[10px] font-semibold text-emerald-600">Lab queue clear</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 pt-1 border-t border-emerald-200">
-                    <Clock className="h-3 w-3 text-amber-500" />
-                    <span className="text-[10px] font-semibold text-amber-600">
-                      {labWaiting + labAtCounter} sample{labWaiting + labAtCounter !== 1 ? "s" : ""} in progress
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </div>
 
