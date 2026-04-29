@@ -130,7 +130,7 @@ export function Home() {
   });
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
+    <div className="flex flex-col h-screen overflow-hidden bg-slate-50">
       <QueueAppHeader />
 
       {/* Hero banner */}
@@ -173,7 +173,7 @@ export function Home() {
       </div>
 
       {/* Module grid */}
-      <main className="flex-1 px-8 py-8">
+      <main className="flex-1 overflow-y-auto px-8 py-8">
         <div className="flex items-baseline gap-3 mb-5">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Available Modules</p>
           <span className="text-[10px] text-slate-300">—</span>

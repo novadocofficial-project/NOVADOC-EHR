@@ -244,6 +244,26 @@ export function uid() {
   return `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+// ─── Home Nav Button (shared across all headers) ──────────────────────────────
+
+export function HomeNavButton() {
+  const [location, setLocation] = useLocation();
+  return (
+    <Button
+      variant="ghost"
+      onClick={() => setLocation("/")}
+      className={`h-9 px-3 gap-1.5 text-sm font-medium ${
+        location === "/"
+          ? "bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15"
+          : "text-slate-600 hover:bg-slate-100"
+      }`}
+    >
+      <LayoutDashboard className="h-4 w-4" />
+      Home
+    </Button>
+  );
+}
+
 // ─── Queue Nav Dropdown (shared across all headers) ───────────────────────────
 
 export function QueueNavDropdown() {
@@ -427,18 +447,7 @@ export function QueueAppHeader() {
           <img src="/novadoc-logo.png" alt="NovaDoc" className="h-8 w-auto" />
         </div>
         <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
-          <Button
-            variant="ghost"
-            onClick={() => setLocation("/")}
-            className={`h-9 px-3 gap-1.5 text-sm font-medium ${
-              location === "/"
-                ? "bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            Home
-          </Button>
+          <HomeNavButton />
           <QueueNavDropdown />
           <ReportsNavDropdown />
         </nav>

@@ -77,7 +77,7 @@ import { OrderSetsModule } from "@/pages/OrderSetsModule";
 import { UsersManagementModule } from "@/pages/UsersManagementModule";
 import { RoutingRulesModule } from "@/pages/RoutingRulesModule";
 import { INITIAL_SERVICE_TYPES, INITIAL_SERVICES } from "@/pages/BillingTypes";
-import { QueueNavDropdown, ReportsNavDropdown } from "@/pages/QueuePageLayout";
+import { HomeNavButton, QueueNavDropdown, ReportsNavDropdown } from "@/pages/QueuePageLayout";
 import type { ServiceType, Service } from "@/pages/BillingTypes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -408,6 +408,7 @@ export function AdminSettings() {
             <img src="/novadoc-logo.png" alt="NovaDoc" className="h-8 w-auto" />
           </div>
           <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
+            <HomeNavButton />
             <QueueNavDropdown />
             <ReportsNavDropdown />
           </nav>
