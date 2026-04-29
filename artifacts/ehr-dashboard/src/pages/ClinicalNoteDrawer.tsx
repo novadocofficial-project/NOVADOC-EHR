@@ -1184,6 +1184,12 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                                   <Send className="h-2.5 w-2.5" /> Sent to Lab
                                 </span>
                               )}
+                              {/* Results Complete badge — shown when lab results have been returned */}
+                              {isSent && labResultsReady && (
+                                <span className="flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300">
+                                  <CheckCircle2 className="h-2.5 w-2.5" /> Results Complete
+                                </span>
+                              )}
                               {/* Void reason text */}
                               {isVoided && order.voidReason && (
                                 <p className="text-[9px] text-rose-400 italic">Reason: {order.voidReason}</p>
