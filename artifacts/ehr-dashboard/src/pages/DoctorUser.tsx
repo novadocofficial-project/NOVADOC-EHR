@@ -132,7 +132,9 @@ export function DoctorUser() {
   const rawWaiting      = docQueue.filter(e => e.status === "waiting" && !e.callTimestamp);
   const labReturnWaiting = rawWaiting
     .filter(e => e.labResultsReady)
-    .sort((a, b) => (a.labReturnedAt ?? 0) - (b.labReturnedAt ?? 0));
+    .sort((a, b) =>
+      (a.labReturnedAt ?? a.createdAt.getTime()) - (b.labReturnedAt ?? b.createdAt.getTime())
+    );
   const regularWaiting  = rawWaiting.filter(e => !e.labResultsReady);
   const waitingTokens   = [...labReturnWaiting, ...regularWaiting];
 
