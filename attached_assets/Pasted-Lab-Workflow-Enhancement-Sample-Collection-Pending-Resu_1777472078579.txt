@@ -1,0 +1,81 @@
+Lab Workflow Enhancement – Sample Collection → Pending Results Flow
+Objective
+
+Introduce a new workflow where:
+
+Once all lab test samples are collected, the patient is removed from the active lab queue
+The patient is moved to a new section called “Pending Lab Results”
+Result entry can happen progressively (not all at once)
+1. Sample Collection Completion Behavior
+Condition
+When ALL assigned lab tests are marked as “Sample Collected”
+System Action
+✅ Patient is removed from Active Lab Queue
+✅ Patient is moved to “Pending Lab Results” section
+❌ Patient is NOT marked as complete yet
+2. Lab Panel Behavior
+The Lab Panel remains open after sample collection
+User can manually close it at any time
+Closing the panel does NOT:
+Complete the lab process
+Move the patient forward automatically
+3. “Mark Complete” Button (No Change)
+Mark Complete remains the ONLY action that:
+Moves patient to the next queue step
+Existing routing logic for this button will remain unchanged
+4. New Section: Pending Lab Results
+Placement
+On the Lab Queue Page
+At the bottom of the page
+Similar to how “Skipped Patients” section is displayed
+Behavior
+Add a new section:
+Pending Lab Results
+Existing Skipped Patients section remains unchanged
+Patient Card in Pending Lab Results
+
+Each patient should show:
+
+Patient details
+“Upload Results” button
+5. Upload Results Flow
+
+When user clicks “Upload Results”:
+
+Lab drawer/panel opens
+User can:
+Enter lab results for tests
+Save results
+Click Mark Complete when all results are done
+6. Partial Result Entry (Important)
+Scenario
+Example: 5 lab tests assigned
+User enters results for only 2 tests
+Closes the panel
+Expected Behavior
+✅ Entered results should be saved in localStorage
+✅ Data should persist even after:
+Page refresh
+Navigation
+✅ User can return later and continue entering remaining results
+7. Data Persistence Logic
+Each test should maintain:
+Sample status → sampleCollected: true/false
+Result status → resultEntered: true/false
+Result data → stored locally until final submission
+8. Summary of Workflow
+Step Flow
+Tests assigned
+Samples collected (all tests)
+→ Patient moves to Pending Lab Results
+User enters results (partial or full)
+Data saved progressively (localStorage)
+Final step: Mark Complete
+→ Patient moves to next queue stage
+Key Rules
+✅ Sample Collection = moves patient to Pending Results
+❌ Does NOT complete lab process
+✅ Mark Complete = final transition trigger
+✅ Partial result entry allowed
+✅ Data persistence required (localStorage)
+✅ No impact on existing “Skipped Patients”

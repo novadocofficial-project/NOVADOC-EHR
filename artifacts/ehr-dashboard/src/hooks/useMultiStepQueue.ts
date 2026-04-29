@@ -16,6 +16,7 @@ export type MultiEntry = QueueEntry & {
   labResultsReady: boolean;
   labReturnedAt?: number; // epoch ms — set when lab marks patient done and returns them to the doctor
   labRoundCount: number; // incremented each time docSendToLab() is called; 0 = never sent to lab, 1 = first dispatch, 2+ = returning visit
+  labSamplesCollected?: boolean; // true when all samples have been collected — patient leaves active queue, enters Pending Lab Results
 };
 
 export const INITIAL_QUEUE: MultiEntry[] = [];
@@ -26,7 +27,7 @@ const CHANNEL_NAME = "ehr-multistep-queue-v2";
 const LS_QUEUE_KEY = "ehr-queue-v2";
 const LS_NUMS_KEY  = "ehr-queue-nums-v2";
 const LS_VER_KEY   = "ehr-queue-ver";
-const QUEUE_VER    = "11"; // bump when seed schema changes
+const QUEUE_VER    = "12"; // bump when seed schema changes
 
 function loadQueue(): MultiEntry[] {
   try {
@@ -39,7 +40,7 @@ function loadQueue(): MultiEntry[] {
     }
     const raw = localStorage.getItem(LS_QUEUE_KEY);
     if (!raw) return INITIAL_QUEUE;
-    return (JSON.parse(raw) as any[]).map(e => ({ labRoundCount: 0, pendingPharmacy: false, ...e, createdAt: new Date(e.createdAt) }));
+    return (JSON.parse(raw) as any[]).map(e => ({ labRoundCount: 0, pendingPharmacy: false, labSamplesCollected: false, ...e, createdAt: new Date(e.createdAt) }));
   } catch { return INITIAL_QUEUE; }
 }
 
@@ -343,6 +344,7 @@ export function useMultiStepQueue() {
           callTimestamp: null,
           pendingLab: false,
           labResultsReady: true,
+          labSamplesCollected: false,
           labReturnedAt: Date.now(), // for FIFO ordering among concurrent lab-return patients
         };
       }
@@ -358,9 +360,15 @@ export function useMultiStepQueue() {
       ) {
         nextStep++; // skip pharmacy — no prescription required
       }
-      if (nextStep > e.totalSteps) return { ...e, status: "completed", pendingPharmacy: false };
-      return { ...e, step: nextStep, stepLabel: vt.steps[nextStep - 1], status: "waiting", callCount: 0, callTimestamp: null, pendingPharmacy: false };
+      if (nextStep > e.totalSteps) return { ...e, status: "completed", pendingPharmacy: false, labSamplesCollected: false };
+      return { ...e, step: nextStep, stepLabel: vt.steps[nextStep - 1], status: "waiting", callCount: 0, callTimestamp: null, pendingPharmacy: false, labSamplesCollected: false };
     }));
+  }
+
+  function labSetSamplesCollected(id: string) {
+    setQueue(prev => prev.map(e =>
+      e.id !== id ? e : { ...e, labSamplesCollected: true }
+    ));
   }
 
   function labSkip(id: string) {
@@ -435,7 +443,7 @@ export function useMultiStepQueue() {
     // doctor
     docCall, docTimerExpire, docAtCounter, docCompleteConsultation, docMarkComplete, docSkip, docRecall, docSendToLab, docCancelLab,
     // lab
-    labCall, labTimerExpire, labAtCounter, labComplete, labSkip, labRecall,
+    labCall, labTimerExpire, labAtCounter, labComplete, labSetSamplesCollected, labSkip, labRecall,
     addEntry,
   };
 }

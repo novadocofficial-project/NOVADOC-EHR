@@ -446,8 +446,8 @@ function removeSampleCollectedIds(testIds: string[]) {
 
 // ─── Lab Panel (fullscreen slide-over) ───────────────────────────────────────
 
-function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
-  entry: MultiEntry; onClose: () => void; onComplete: () => void; doctorCancelled?: boolean;
+function LabPanel({ entry, onClose, onComplete, onAllSamplesCollected, doctorCancelled = false }: {
+  entry: MultiEntry; onClose: () => void; onComplete: () => void; onAllSamplesCollected?: () => void; doctorCancelled?: boolean;
 }) {
   const p = entry.patient;
   const [fullscreen, setFullscreen] = useState(false);
@@ -552,10 +552,16 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
       const t = localTests.find(lt => lt.id === id);
       if (t && !t.sampleCollected) writeSampleCollectedId(id);
     });
-    setLocalTests(ts => ts.map(t =>
+    const nextTests = localTests.map(t =>
       checkedTestIds.has(t.id) && !t.sampleCollected ? { ...t, sampleCollected: true } : t
-    ));
+    );
+    setLocalTests(nextTests);
     setCheckedTestIds(new Set());
+    // When every test has been collected, notify the parent so the patient
+    // moves out of the active queue and into "Pending Lab Results".
+    if (nextTests.length > 0 && nextTests.every(t => t.sampleCollected)) {
+      onAllSamplesCollected?.();
+    }
   }
 
   // Rebuild current order with live local test statuses
@@ -1276,14 +1282,14 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
 
 // ─── Lab Drawer (patient summary) ─────────────────────────────────────────────
 
-function LabDrawer({ entry, onClose, onComplete, doctorCancelled = false }: {
-  entry: MultiEntry; onClose: () => void; onComplete: () => void; doctorCancelled?: boolean;
+function LabDrawer({ entry, onClose, onComplete, onAllSamplesCollected, doctorCancelled = false }: {
+  entry: MultiEntry; onClose: () => void; onComplete: () => void; onAllSamplesCollected?: () => void; doctorCancelled?: boolean;
 }) {
   const [showPanel, setShowPanel] = useState(false);
   const p = entry.patient;
 
   if (showPanel) {
-    return <LabPanel entry={entry} onClose={onClose} onComplete={onComplete} doctorCancelled={doctorCancelled} />;
+    return <LabPanel entry={entry} onClose={onClose} onComplete={onComplete} onAllSamplesCollected={onAllSamplesCollected} doctorCancelled={doctorCancelled} />;
   }
 
   return (
@@ -1403,7 +1409,7 @@ function LabDrawer({ entry, onClose, onComplete, doctorCancelled = false }: {
 export function LabUser() {
   const {
     queue,
-    labCall, labTimerExpire, labAtCounter, labComplete, labSkip, labRecall,
+    labCall, labTimerExpire, labAtCounter, labComplete, labSetSamplesCollected, labSkip, labRecall,
   } = useMultiStepQueue();
 
   const [tick, setTick]                         = useState(0);
@@ -1431,7 +1437,11 @@ export function LabUser() {
 
   // ── Derived state (mirrors Doctor/Nursing pattern exactly) ─────────────────
   const labQueue       = queue
-    .filter(e => e.step === 4 && !e.skipped && e.status !== "completed")
+    .filter(e => e.step === 4 && !e.skipped && e.status !== "completed" && !e.labSamplesCollected)
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  // Patients whose samples are all collected — removed from active queue, awaiting result entry
+  const pendingLabResults = queue
+    .filter(e => e.step === 4 && !e.skipped && e.status !== "completed" && e.labSamplesCollected)
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   const skippedQueue   = queue.filter(e => e.step === 4 && e.skipped);
   const completedQueue = queue.filter(e => e.step === 4 && e.status === "completed");
@@ -1459,6 +1469,14 @@ export function LabUser() {
     labComplete(id);
     setDrawerEntry(null);
     setDrawerEntryHadPendingLab(false);
+  }
+  function handleAllSamplesCollected(id: string) {
+    labSetSamplesCollected(id);
+    showToastMsg("All samples collected — patient moved to Pending Lab Results");
+  }
+  // Open lab panel for a patient already in Pending Lab Results (no queue state change)
+  function handleUploadResults(entry: MultiEntry) {
+    setDrawerEntry(entry);
   }
   function handleSkip(id: string) { labSkip(id); showToastMsg("Token skipped"); }
   function handleRecall(id: string, tokenNum: string) { labRecall(id); showToastMsg(`Token ${tokenNum} recalled to queue`); }
@@ -1491,9 +1509,10 @@ export function LabUser() {
           <div className="p-4 border-b border-slate-100">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Queue Stats</p>
             {[
-              { label: "At Counter", value: atCounterEntry ? 1 : 0,  style: { color: LAB_ACCENT }, bg: "bg-blue-50 border-blue-200" },
-              { label: "Waiting",    value: waitingTokens.length,     style: { color: "#b45309" },  bg: "bg-amber-50 border-amber-200"  },
-              { label: "Skipped",    value: skippedQueue.length,      style: { color: "#dc2626" },  bg: "bg-red-50 border-red-200"      },
+              { label: "At Counter",      value: atCounterEntry ? 1 : 0,    style: { color: LAB_ACCENT }, bg: "bg-blue-50 border-blue-200"   },
+              { label: "Waiting",         value: waitingTokens.length,       style: { color: "#b45309" },  bg: "bg-amber-50 border-amber-200" },
+              { label: "Pending Results", value: pendingLabResults.length,   style: { color: "#0d9488" },  bg: "bg-teal-50 border-teal-200"   },
+              { label: "Skipped",         value: skippedQueue.length,        style: { color: "#dc2626" },  bg: "bg-red-50 border-red-200"     },
             ].map(s => (
               <div key={s.label} className={`flex items-center justify-between rounded-xl border px-4 py-2.5 mb-2 ${s.bg}`}>
                 <span className="text-xs font-semibold text-slate-500">{s.label}</span>
@@ -1654,6 +1673,45 @@ export function LabUser() {
               </div>
             </div>
 
+            {/* PENDING LAB RESULTS */}
+            {pendingLabResults.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <TestTube2 className="h-3.5 w-3.5 text-teal-600" />
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-teal-600">Pending Lab Results · {pendingLabResults.length}</p>
+                </div>
+                <div className="space-y-2">
+                  {pendingLabResults.map(entry => (
+                    <div key={entry.id} className="flex items-center gap-4 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3">
+                      <div className="flex-shrink-0">
+                        <div className="rounded-xl border border-teal-300 bg-teal-100 px-3 py-1.5 text-center">
+                          <p className="font-mono font-black text-sm text-teal-700">{entry.tokenNumber}</p>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {entry.patient
+                          ? <p className="text-sm font-bold text-slate-800 truncate">{entry.patient.name}<span className="ml-2 text-xs font-normal text-slate-400">{entry.patient.mrn}</span></p>
+                          : <p className="text-sm font-bold text-slate-500">Walk-in Patient</p>}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <CheckCircle2 className="h-3 w-3 text-teal-500" />
+                          <span className="text-[10px] font-semibold text-teal-600">All samples collected · Awaiting result entry</span>
+                        </div>
+                      </div>
+                      <span className="text-xs text-slate-400 flex-shrink-0">{timeAgo(entry.createdAt)}</span>
+                      <Button
+                        size="sm"
+                        className="h-8 px-4 text-xs font-bold flex-shrink-0 gap-1.5 text-white"
+                        style={{ backgroundColor: "#0d9488" }}
+                        onClick={() => handleUploadResults(entry)}
+                      >
+                        <FlaskConical className="h-3.5 w-3.5" /> Upload Results
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* COMPLETED TODAY (compact) */}
             {completedQueue.length > 0 && (
               <div>
@@ -1724,6 +1782,7 @@ export function LabUser() {
           entry={drawerEntry}
           onClose={() => { setDrawerEntry(null); setDrawerEntryHadPendingLab(false); }}
           onComplete={() => handleComplete(drawerEntry.id)}
+          onAllSamplesCollected={drawerEntry.labSamplesCollected ? undefined : () => handleAllSamplesCollected(drawerEntry.id)}
           doctorCancelled={doctorCancelledActive}
         />
       )}
