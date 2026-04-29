@@ -14,6 +14,7 @@ export type MultiEntry = QueueEntry & {
   pendingLab: boolean;
   labResultsReady: boolean;
   labReturnedAt?: number; // epoch ms — set when lab marks patient done and returns them to the doctor
+  labRoundCount: number; // incremented each time docSendToLab() is called; 0 = never sent to lab, 1 = first dispatch, 2+ = returning visit
 };
 
 export const INITIAL_QUEUE: MultiEntry[] = [];
@@ -24,7 +25,7 @@ const CHANNEL_NAME = "ehr-multistep-queue-v2";
 const LS_QUEUE_KEY = "ehr-queue-v2";
 const LS_NUMS_KEY  = "ehr-queue-nums-v2";
 const LS_VER_KEY   = "ehr-queue-ver";
-const QUEUE_VER    = "9"; // bump when seed schema changes
+const QUEUE_VER    = "10"; // bump when seed schema changes
 
 function loadQueue(): MultiEntry[] {
   try {
@@ -37,7 +38,7 @@ function loadQueue(): MultiEntry[] {
     }
     const raw = localStorage.getItem(LS_QUEUE_KEY);
     if (!raw) return INITIAL_QUEUE;
-    return (JSON.parse(raw) as any[]).map(e => ({ ...e, createdAt: new Date(e.createdAt) }));
+    return (JSON.parse(raw) as any[]).map(e => ({ labRoundCount: 0, ...e, createdAt: new Date(e.createdAt) }));
   } catch { return INITIAL_QUEUE; }
 }
 
@@ -364,6 +365,7 @@ export function useMultiStepQueue() {
       if (e.id !== id) return e;
       const vt = SEED_VISIT_TYPES.find(v => v.id === e.visitTypeId) ?? SEED_VISIT_TYPES[0];
       const labStepIdx = vt.steps.findIndex(s => s.toLowerCase().includes("lab"));
+      const nextRound = (e.labRoundCount ?? 0) + 1;
       if (labStepIdx >= 0) {
         return {
           ...e,
@@ -374,9 +376,10 @@ export function useMultiStepQueue() {
           callTimestamp: null,
           pendingLab: true,
           labResultsReady: false, // clear previous results flag when dispatching to lab again
+          labRoundCount: nextRound,
         };
       }
-      return { ...e, pendingLab: true, status: "waiting", callTimestamp: null, labResultsReady: false };
+      return { ...e, pendingLab: true, status: "waiting", callTimestamp: null, labResultsReady: false, labRoundCount: nextRound };
     }));
   }
 

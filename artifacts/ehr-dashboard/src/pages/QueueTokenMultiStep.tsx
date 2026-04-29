@@ -78,7 +78,7 @@ export function QueueTokenMultiStep() {
         status: "waiting", step: 1, totalSteps: snapVT.steps.length,
         stepLabel: snapVT.steps[0], patient: snapPat,
         visitTypeId: snapVT.id, createdAt: snapAt,
-        callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false, labResultsReady: false,
+        callCount: 0, skipped: false, billingCompleted: false, callTimestamp: null, pendingLab: false, labResultsReady: false, labRoundCount: 0,
       };
       addEntry(entry);
       setNextNums(prev => ({ ...prev, [snapVT.id]: (prev[snapVT.id] ?? 1) + 1 }));
