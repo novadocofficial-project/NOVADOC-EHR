@@ -1188,8 +1188,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                               {isVoided && order.voidReason && (
                                 <p className="text-[9px] text-rose-400 italic">Reason: {order.voidReason}</p>
                               )}
-                              {/* Void button — only for sent, un-voided orders */}
-                              {isSent && (
+                              {/* Void button — only for sent, un-voided orders that are not yet result-complete */}
+                              {isSent && !labResultsReady && (
                                 <button
                                   onClick={() => openVoidModal(order.id)}
                                   title="Void this order"
@@ -1739,8 +1739,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                   </div>
                 </button>
 
-                {/* Option 3: Cancel Lab Queue — only shown when lab is active */}
-                {(labDone || awaitingLab) && (
+                {/* Option 3: Cancel Lab Queue — only shown when patient is in lab queue AND results are not yet complete */}
+                {awaitingLab && !labResultsReady && (
                   <button
                     onClick={handleCancelLabQueue}
                     className="w-full text-left flex items-start gap-3.5 px-4 py-3.5 rounded-xl border border-sky-100 bg-sky-50/60 hover:bg-sky-100/70 transition-colors group"
