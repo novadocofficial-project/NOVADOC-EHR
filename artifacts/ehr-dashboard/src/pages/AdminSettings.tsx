@@ -510,8 +510,6 @@ export function AdminSettings() {
                 {subNavItem("corporate-pricing", <CreditCard className="h-3.5 w-3.5" />, "Corporate Pricing")}
                 {subNavItem("insurance-pricing", <Shield className="h-3.5 w-3.5" />, "Insurance Pricing")}
                 {subNavItem("packages", <Package className="h-3.5 w-3.5" />, "Packages / Bundles")}
-                {subNavItem("lab-order-sets",     <FlaskConical className="h-3.5 w-3.5" />, "Lab Order Sets")}
-                {subNavItem("imaging-order-sets", <ScanLine className="h-3.5 w-3.5" />,     "Imaging Order Sets")}
               </div>
             )}
 
@@ -604,6 +602,7 @@ export function AdminSettings() {
                 {subNavItem("lab-master",           <FileText className="h-3.5 w-3.5" />,     "Lab Test Master List")}
                 {subNavItem("lab-providers",        <FlaskConical className="h-3.5 w-3.5" />, "Lab Providers")}
                 {subNavItem("lab-result-templates", <FileText className="h-3.5 w-3.5" />,     "Result Templates")}
+                {subNavItem("lab-order-sets",       <Layers className="h-3.5 w-3.5" />,       "Lab Order Sets")}
               </div>
             )}
 
@@ -654,9 +653,10 @@ export function AdminSettings() {
             </button>
             {navExpanded.imagingCatalog && (
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("imaging-tests",    <ScanLine className="h-3.5 w-3.5" />, "Imaging Test List")}
-                {subNavItem("imaging-reasons",  <FileText className="h-3.5 w-3.5" />, "Reason Templates")}
+                {subNavItem("imaging-tests",    <ScanLine className="h-3.5 w-3.5" />,  "Imaging Test List")}
+                {subNavItem("imaging-reasons",  <FileText className="h-3.5 w-3.5" />,  "Reason Templates")}
                 {subNavItem("imaging-partners", <Building2 className="h-3.5 w-3.5" />, "Imaging Partners")}
+                {subNavItem("imaging-order-sets", <Layers className="h-3.5 w-3.5" />,  "Imaging Order Sets")}
               </div>
             )}
 
