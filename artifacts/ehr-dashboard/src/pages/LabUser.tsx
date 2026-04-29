@@ -457,12 +457,21 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
   const [savedSnapshots, setSavedSnapshots] = useState<Record<string, Record<string, string>>>({});
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
 
-  // Hard void guard: clear selected test whenever the active order becomes voided
+  // True only when the currently selected test belongs to the (possibly voided) sent order.
+  // Pending-order tests are independent of activeOrder.voided status.
+  const selectedIsFromActiveOrder = activeOrderTests.some(t => t.id === selectedTestId);
+
+  // Hard void guard: only clear the selected test when it belongs to the active order that just got voided.
+  // Tests from pending orders must remain selectable even when the sent order is voided.
   useEffect(() => {
-    if (activeOrder?.voided) setSelectedTestId(null);
-  }, [activeOrder?.voided]);
+    if (activeOrder?.voided && selectedIsFromActiveOrder) setSelectedTestId(null);
+  }, [activeOrder?.voided]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pendingCount = localTests.filter(t => t.status === "pending").length;
+
+  // Badge = total actionable (pending) tests — excluding tests from a voided active order.
+  const badgeCount =
+    pendingCount - (activeOrder?.voided ? localTests.filter(lt => activeOrderTests.some(at => at.id === lt.id) && lt.status === "pending").length : 0);
   const selectedTest = localTests.find(t => t.id === selectedTestId) ?? null;
   const selectedFields = selectedTestId ? (RESULT_FIELDS[selectedTestId] ?? GENERIC_RESULT_FIELDS) : [];
   const selectedValues = selectedTestId ? (resultValues[selectedTestId] ?? {}) : {};
@@ -493,7 +502,7 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
 
   function saveResult() {
     if (!selectedTestId) return;
-    if (activeOrder?.voided) return;
+    if (activeOrder?.voided && selectedIsFromActiveOrder) return;
     const now = new Date();
     const formatted =
       now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) + ", " +
@@ -595,7 +604,7 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
               </Collapsible>
 
               {/* Required Actions */}
-              <Collapsible title="Required Actions" badge={(currentOrder && !activeOrder?.voided ? 1 : 0) + pendingOrders.length} accent defaultOpen>
+              <Collapsible title="Required Actions" badge={badgeCount} accent defaultOpen>
                 {activeOrder?.voided ? (
                   /* ── Voided order banner ── */
                   <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 mb-2">
@@ -900,14 +909,14 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
                     })}
                   </div>
                 </div>
-              ) : activeOrder?.voided ? (
-                /* ── Voided order — right panel locked ── */
+              ) : activeOrder?.voided && (!selectedTestId || selectedIsFromActiveOrder) ? (
+                /* ── Voided active order — right panel locked (only when no pending-order test is selected) ── */
                 <div className="flex flex-col items-center justify-center h-full text-center pb-16">
                   <div className="h-14 w-14 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center mb-4">
                     <Ban className="h-7 w-7 text-rose-400" />
                   </div>
                   <p className="text-sm font-semibold text-rose-700">Order Voided</p>
-                  <p className="text-xs text-rose-400 mt-1 max-w-xs">This order has been cancelled by the doctor. Result entry is not available.</p>
+                  <p className="text-xs text-rose-400 mt-1 max-w-xs">This order has been cancelled by the doctor. Select a test from another order to enter results.</p>
                 </div>
               ) : !selectedTest ? (
                 <div className="flex flex-col items-center justify-center h-full text-center pb-16">
@@ -1056,8 +1065,9 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
               )}
             </div>
 
-            {/* Fixed footer — Save Result button, only on form tab with a test selected and order not voided */}
-            {selectedTest && rightTab === "form" && !activeOrder?.voided && (
+            {/* Fixed footer — Save Result button, only on form tab with a test selected
+                and the test is not from a voided active order */}
+            {selectedTest && rightTab === "form" && !(activeOrder?.voided && selectedIsFromActiveOrder) && (
               <div className="flex-shrink-0 border-t border-slate-200 bg-white px-6 py-4 flex items-center gap-3">
                 <Button
                   onClick={saveResult}

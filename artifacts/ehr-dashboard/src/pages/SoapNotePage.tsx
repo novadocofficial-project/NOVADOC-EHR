@@ -11,7 +11,7 @@ import {
   Printer, FilePenLine, GitBranch,
 } from "lucide-react";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
-import { useSoapNoteDraft, saveRoutingSnapshot } from "@/hooks/useSoapNoteDraft";
+import { useSoapNoteDraft, saveRoutingSnapshot, savePendingLabOrders } from "@/hooks/useSoapNoteDraft";
 import { Button } from "@/components/ui/button";
 import { View360Drawer } from "@/pages/View360Drawer";
 import { LabsDrawer } from "@/pages/LabsDrawer";
@@ -1046,10 +1046,14 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
           onNoteChange={saveDraft}
           onDoctorSign={() => {
             // Capture routing flags before wiping the draft — handleFaceSheetComplete reads these
+            const unsentOrders = (draft?.labOrders ?? []).filter(o => !o.sentAt && !o.voided);
             saveRoutingSnapshot(entry.id, {
-              hasUnsentLabOrders: (draft?.labOrders ?? []).some(o => !o.sentAt && !o.voided),
+              hasUnsentLabOrders: unsentOrders.length > 0,
               hasPrescription: (draft?.formulary?.medicines?.length ?? 0) > 0,
             });
+            // Persist unsent lab orders BEFORE clearDraft() erases them — the Lab Panel
+            // reads from ehr_pending_lab_orders_{id} since the draft is gone by then.
+            if (unsentOrders.length > 0) savePendingLabOrders(entry.id, unsentOrders);
             clearDraft();
             onDoctorSign?.();
             setShowNoteDrawer(false);
