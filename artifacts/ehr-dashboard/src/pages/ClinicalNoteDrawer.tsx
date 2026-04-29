@@ -1139,9 +1139,10 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
               ) : (
                 <div className="space-y-3">
                   {(() => {
-                    // An order is blocked from sending only while the patient is actively in the lab.
-                    // awaitingLab=true means exactly one order is in-flight right now.
-                    const hasActiveSent = awaitingLab;
+                    // An order is blocked from sending only while the patient is actively in the lab
+                    // AND the active order has not been voided. Voiding the in-flight order
+                    // (activeOrderIsVoided=true) re-enables sending a new order immediately.
+                    const hasActiveSent = awaitingLab && !activeOrderIsVoided;
                     return labOrders.map((order, idx) => {
                       const isSent   = !!order.sentAt && !order.voided;
                       const isVoided = !!order.voided;
