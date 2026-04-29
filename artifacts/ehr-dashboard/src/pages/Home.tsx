@@ -4,18 +4,17 @@ import {
   AlertOctagon,
   ArrowUpRight,
   BarChart2,
-  BookOpen,
   Brain,
   Calendar,
   CheckCircle2,
   ClipboardList,
   Dna,
   FileSearch,
-  FlaskConical,
   Globe,
   GraduationCap,
   Headphones,
   Home as HomeIcon,
+  LayoutDashboard,
   MapPin,
   MonitorPlay,
   ShieldCheck,
@@ -24,7 +23,6 @@ import {
   UserCheck,
   Users,
   Video,
-  LayoutDashboard,
 } from "lucide-react";
 import { QueueAppHeader } from "@/pages/QueuePageLayout";
 
