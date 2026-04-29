@@ -47,6 +47,7 @@ type TokenSettings = {
 type QueueBehavior = {
   autoMoveNext: boolean; requireManualCompletion: boolean; allowSkip: boolean;
   allowRecall: boolean; maxRecallAttempts: number; tokenExpiryMinutes: number;
+  enableFifoLock: boolean;
 };
 
 type LockingSettings = { lockTimeoutSeconds: number; autoReleaseLock: boolean; allowForceTakeover: boolean; };
@@ -121,6 +122,7 @@ const SEED_TOKEN_SETTINGS: TokenSettings = {
 const SEED_QUEUE_BEHAVIOR: QueueBehavior = {
   autoMoveNext: true, requireManualCompletion: false, allowSkip: true,
   allowRecall: true, maxRecallAttempts: 3, tokenExpiryMinutes: 120,
+  enableFifoLock: true,
 };
 
 const SEED_LOCKING: LockingSettings = { lockTimeoutSeconds: 30, autoReleaseLock: true, allowForceTakeover: false };
@@ -231,6 +233,7 @@ function QueueBehaviorPanel({ queueBehavior, setQueueBehavior, counters, counter
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader title="Queue Behavior Settings" desc="Control how patients move through the queue workflow." />
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100 px-5">
+        <ToggleRow label="Enable FIFO Lock Mechanism" desc="When on, only the first patient in line can be called. When off, any patient can be called as long as no one is currently active." value={queueBehavior.enableFifoLock} onChange={v => { setQueueBehavior(p => ({ ...p, enableFifoLock: v })); localStorage.setItem("ehr-fifo-lock", JSON.stringify(v)); }} />
         <ToggleRow label="Auto Move to Next Step" desc="Automatically advance token to the next step upon completion." value={queueBehavior.autoMoveNext} onChange={v => setQueueBehavior(p => ({ ...p, autoMoveNext: v }))} />
         <ToggleRow label="Require Manual Completion" desc="Staff must explicitly mark each step as complete." value={queueBehavior.requireManualCompletion} onChange={v => setQueueBehavior(p => ({ ...p, requireManualCompletion: v }))} />
         <ToggleRow label="Allow Step Skip" desc="Staff can skip optional workflow steps for a token." value={queueBehavior.allowSkip} onChange={v => setQueueBehavior(p => ({ ...p, allowSkip: v }))} />
@@ -330,7 +333,13 @@ export function QueueModule({ section }: { section: QueueSection }) {
   const [workflow, setWorkflow] = useState<WorkflowStep[]>(SEED_WORKFLOW);
   const [doctorPartitions, setDoctorPartitions] = useState<DoctorPartition[]>(SEED_DOCTOR_PARTITIONS);
   const [tokenSettings, setTokenSettings] = useState<TokenSettings>(SEED_TOKEN_SETTINGS);
-  const [queueBehavior, setQueueBehavior] = useState<QueueBehavior>(SEED_QUEUE_BEHAVIOR);
+  const [queueBehavior, setQueueBehavior] = useState<QueueBehavior>(() => {
+    try {
+      const stored = localStorage.getItem("ehr-fifo-lock");
+      const enableFifoLock = stored === null ? true : (JSON.parse(stored) as boolean);
+      return { ...SEED_QUEUE_BEHAVIOR, enableFifoLock };
+    } catch { return SEED_QUEUE_BEHAVIOR; }
+  });
   const [lockingSettings, setLockingSettings] = useState<LockingSettings>(SEED_LOCKING);
   const [screens, setScreens] = useState<ScreenConfig[]>(SEED_SCREENS);
   const [selectedScreenId, setSelectedScreenId] = useState<string>(SEED_SCREENS[0].id);

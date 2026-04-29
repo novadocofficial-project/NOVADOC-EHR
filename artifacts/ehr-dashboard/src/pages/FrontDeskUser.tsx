@@ -929,6 +929,7 @@ export function FrontDeskUser() {
   const skippedQueue    = queue.filter(e => e.step === 1 && e.skipped);
   const atCounterEntry  = fdQueue.find(e => e.status === "called") ?? null;
   const activeCallEntry = fdQueue.find(e => e.callTimestamp !== null && getSecsLeft(e.callTimestamp) > 0) ?? null;
+  const [fifoLock] = useState<boolean>(() => { try { const v = localStorage.getItem("ehr-fifo-lock"); return v === null ? true : (JSON.parse(v) as boolean); } catch { return true; } });
   const waitingTokens   = fdQueue.filter(e => e.status === "waiting" && !e.callTimestamp && e.id !== atCounterEntry?.id);
   const activeDrawerEntry = queue.find(e => e.id === activeEntryId) ?? atCounterEntry ?? null;
 
@@ -1158,9 +1159,11 @@ export function FrontDeskUser() {
               )}
               <div className="space-y-2">
                 {waitingTokens.map((entry, idx) => {
-                  const isFirst = idx === 0 && !atCounterEntry && !activeCallEntry;
+                  const canCall = fifoLock
+                    ? idx === 0 && !atCounterEntry && !activeCallEntry
+                    : !atCounterEntry && !activeCallEntry;
                   return (
-                    <div key={entry.id} className={`flex items-center gap-4 rounded-xl border px-4 py-3 bg-white transition-all ${isFirst ? "border-slate-300 shadow-sm" : "border-slate-100 opacity-70"}`}>
+                    <div key={entry.id} className={`flex items-center gap-4 rounded-xl border px-4 py-3 bg-white transition-all ${canCall ? "border-slate-300 shadow-sm" : "border-slate-100 opacity-70"}`}>
                       <div className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-sm font-black bg-slate-100 text-slate-500">{idx + 1}</div>
                       <div className="font-mono font-black text-sm text-slate-700 flex-shrink-0">{entry.tokenNumber}</div>
                       <div className="flex-1 min-w-0">
@@ -1168,12 +1171,12 @@ export function FrontDeskUser() {
                           : <p className="text-sm font-bold text-slate-500">Walk-in Patient</p>}
                       </div>
                       <span className="text-xs text-slate-400 flex-shrink-0">{timeAgo(entry.createdAt)}</span>
-                      {isFirst ? (
+                      {canCall ? (
                         <Button size="sm" className="h-8 px-4 text-xs font-bold flex-shrink-0 gap-1.5" style={{ backgroundColor: "#4982CF" }} onClick={() => handleCall(entry.id)}>
                           <PhoneCall className="h-3.5 w-3.5" /> Call
                         </Button>
                       ) : (
-                        <div className="h-8 px-4 flex items-center text-[10px] font-semibold text-slate-400 flex-shrink-0">Locked</div>
+                        <div className="h-8 px-4 flex items-center text-[10px] font-semibold text-slate-400 flex-shrink-0">{fifoLock ? "Locked" : "Busy"}</div>
                       )}
                     </div>
                   );

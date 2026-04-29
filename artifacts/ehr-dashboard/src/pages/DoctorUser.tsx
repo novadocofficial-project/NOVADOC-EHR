@@ -137,6 +137,7 @@ export function DoctorUser() {
       (a.labReturnedAt ?? a.createdAt.getTime()) - (b.labReturnedAt ?? b.createdAt.getTime())
     );
   const regularWaiting  = rawWaiting.filter(e => !e.labResultsReady);
+  const [fifoLock] = useState<boolean>(() => { try { const v = localStorage.getItem("ehr-fifo-lock"); return v === null ? true : (JSON.parse(v) as boolean); } catch { return true; } });
   const waitingTokens   = [...labReturnWaiting, ...regularWaiting];
 
   const secsLeft = getSecsLeft(activeCallEntry?.callTimestamp ?? null);
@@ -529,12 +530,14 @@ export function DoctorUser() {
               )}
               <div className="space-y-2">
                 {waitingTokens.map((entry, idx) => {
-                  const isFirst = idx === 0 && !atCounterEntry && !activeCallEntry;
+                  const canCall = fifoLock
+                    ? idx === 0 && !atCounterEntry && !activeCallEntry
+                    : !atCounterEntry && !activeCallEntry;
                   const isCalled = entry.callTimestamp !== null && getSecsLeft(entry.callTimestamp) > 0;
                   return (
                     <div
                       key={entry.id}
-                      className={`flex items-center gap-4 rounded-xl border px-4 py-3 bg-white transition-all ${entry.labResultsReady ? "border-emerald-400 bg-emerald-50/40 shadow-sm" : isFirst ? "border-slate-300 shadow-sm" : "border-slate-100 opacity-70"}`}>
+                      className={`flex items-center gap-4 rounded-xl border px-4 py-3 bg-white transition-all ${entry.labResultsReady ? "border-emerald-400 bg-emerald-50/40 shadow-sm" : canCall ? "border-slate-300 shadow-sm" : "border-slate-100 opacity-70"}`}>
                       <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-sm font-black ${entry.labResultsReady ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                         {idx + 1}
                       </div>
@@ -551,7 +554,7 @@ export function DoctorUser() {
                         )}
                       </div>
                       <span className="text-xs text-slate-400 flex-shrink-0">{timeAgo(entry.createdAt)}</span>
-                      {isFirst ? (
+                      {canCall ? (
                         isCalled ? (
                           <Button
                             size="sm"
@@ -570,7 +573,7 @@ export function DoctorUser() {
                           </Button>
                         )
                       ) : (
-                        <div className="h-8 px-4 flex items-center text-[10px] font-semibold text-slate-400 flex-shrink-0">Locked</div>
+                        <div className="h-8 px-4 flex items-center text-[10px] font-semibold text-slate-400 flex-shrink-0">{fifoLock ? "Locked" : "Busy"}</div>
                       )}
                     </div>
                   );
