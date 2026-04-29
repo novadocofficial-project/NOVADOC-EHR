@@ -288,10 +288,10 @@ export function DoctorUser() {
   if (faceSheetEntry) {
     const liveEntry   = queue.find(e => e.id === faceSheetEntry.id) ?? faceSheetEntry;
     const isSigned    = (signedRecordsMap.get(liveEntry.id)?.length ?? 0) > 0;
-    const labJourney  = liveEntry.pendingLab || liveEntry.labResultsReady;
-    // soapNoteInProgress: patient is in the lab pipeline, has an unsigned draft,
-    // and the doctor has not yet signed — drives the amber badge and blocks Complete.
-    const soapNoteInProgress = labJourney && !isSigned && hasSoapDraft(liveEntry.id);
+    // soapNoteInProgress: any patient whose SOAP note has been opened or saved
+    // but not yet signed. Uses soapNoteDone (includes the in-session bridge) so
+    // the amber badge fires immediately on SOAP note click, before draft auto-save.
+    const soapNoteInProgress = soapNoteDone.has(liveEntry.id) && !isSigned;
     return (
       <PatientFaceSheet
         entry={liveEntry}

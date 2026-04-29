@@ -595,11 +595,10 @@ export function PatientFaceSheet({
           <div className="w-px h-4 bg-slate-200" />
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Consultation Face Sheet</span>
           <div className="flex-1" />
-          {/* SOAP Note Button — 4 states in priority order:
-               1. soapNoteInProgress (lab journey + unsigned draft) → amber
-               2. soapNoteCreated + doctorSigned                   → emerald Signed
-               3. soapNoteCreated + !doctorSigned (non-lab draft)  → blue Created
-               4. not created                                       → blue Start */}
+          {/* SOAP Note Button — 3 states in priority order:
+               1. soapNoteInProgress (opened/saved, not yet signed) → amber
+               2. soapNoteCreated + doctorSigned                    → emerald Signed
+               3. not yet opened                                    → blue Start */}
           {soapNoteInProgress ? (
             <button
               className="flex items-center gap-2 h-9 px-4 rounded-md bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold hover:bg-amber-100 transition-colors"
@@ -607,19 +606,11 @@ export function PatientFaceSheet({
               <Clock className="h-4 w-4" /> SOAP Note · In Progress
             </button>
           ) : soapNoteCreated ? (
-            doctorSigned ? (
-              <button
-                className="flex items-center gap-2 h-9 px-4 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold hover:bg-emerald-100 transition-colors"
-                onClick={() => setShowSoapPage(true)}>
-                <CheckCircle2 className="h-4 w-4" /> SOAP Note · Signed
-              </button>
-            ) : (
-              <button
-                className="flex items-center gap-2 h-9 px-4 rounded-md bg-blue-50 border border-blue-200 text-blue-700 text-sm font-bold hover:bg-blue-100 transition-colors"
-                onClick={() => setShowSoapPage(true)}>
-                <FileText className="h-4 w-4" /> SOAP Note · Created
-              </button>
-            )
+            <button
+              className="flex items-center gap-2 h-9 px-4 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold hover:bg-emerald-100 transition-colors"
+              onClick={() => setShowSoapPage(true)}>
+              <CheckCircle2 className="h-4 w-4" /> SOAP Note · Signed
+            </button>
           ) : (
             <Button
               variant="outline"
@@ -629,9 +620,8 @@ export function PatientFaceSheet({
             </Button>
           )}
           {(() => {
-            // isBlocked uses the dedicated soapNoteInProgress prop (lab-journey
-            // patients with unsigned draft) plus the raw pendingLab flag.
-            // Normal (non-lab) patients with an unsigned draft are NOT blocked.
+            // isBlocked: any patient with an in-progress note must sign before
+            // completing. pendingLab is a separate hard block (patient in lab).
             const isBlocked = entry.pendingLab || soapNoteInProgress;
             const blockTitle = entry.pendingLab
               ? "Patient is in the lab — complete consultation after results are reviewed."
