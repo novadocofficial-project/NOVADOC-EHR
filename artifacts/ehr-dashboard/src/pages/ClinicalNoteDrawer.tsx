@@ -1139,8 +1139,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
               ) : (
                 <div className="space-y-3">
                   {(() => {
-                    // true while exactly one sent+un-voided order exists
-                    const hasActiveSent = labOrders.some(o => !!o.sentAt && !o.voided);
+                    // true while a sent+un-voided order is still in-flight (clears once results are ready)
+                    const hasActiveSent = !labResultsReady && labOrders.some(o => !!o.sentAt && !o.voided);
                     return labOrders.map((order, idx) => {
                       const isSent   = !!order.sentAt && !order.voided;
                       const isVoided = !!order.voided;

@@ -373,9 +373,10 @@ export function useMultiStepQueue() {
           callCount: 0,
           callTimestamp: null,
           pendingLab: true,
+          labResultsReady: false, // clear previous results flag when dispatching to lab again
         };
       }
-      return { ...e, pendingLab: true, status: "waiting", callTimestamp: null };
+      return { ...e, pendingLab: true, status: "waiting", callTimestamp: null, labResultsReady: false };
     }));
   }
 
