@@ -35,6 +35,7 @@ interface LabTest {
   lab: string;
   status: "pending" | "completed";
   updatedAt: string;
+  sampleCollected?: boolean;
 }
 
 interface LabOrder {
@@ -456,6 +457,8 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
   const [resultValues, setResultValues] = useState<Record<string, Record<string, string>>>({});
   const [savedSnapshots, setSavedSnapshots] = useState<Record<string, Record<string, string>>>({});
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
+  // Multi-select state for the Sample Collected action
+  const [checkedTestIds, setCheckedTestIds] = useState<Set<string>>(new Set());
 
   // True only when the currently selected test belongs to the (possibly voided) sent order.
   // Pending-order tests are independent of activeOrder.voided status.
@@ -483,6 +486,27 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
     savedSnapshots[selectedTestId] &&
     JSON.stringify(selectedValues) !== JSON.stringify(savedSnapshots[selectedTestId])
   );
+
+  // Sample collection helpers
+  const canCollect = [...checkedTestIds].some(id => {
+    const t = localTests.find(lt => lt.id === id);
+    return t && !t.sampleCollected;
+  });
+
+  function toggleCheck(testId: string) {
+    setCheckedTestIds(prev => {
+      const next = new Set(prev);
+      if (next.has(testId)) next.delete(testId); else next.add(testId);
+      return next;
+    });
+  }
+
+  function handleSampleCollected() {
+    setLocalTests(ts => ts.map(t =>
+      checkedTestIds.has(t.id) && !t.sampleCollected ? { ...t, sampleCollected: true } : t
+    ));
+    setCheckedTestIds(new Set());
+  }
 
   // Rebuild current order with live local test statuses
   const orderDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -659,25 +683,50 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
                     )}
                     <div className="space-y-1">
                       {currentOrder.tests.map(test => (
-                        <button
+                        <div
                           key={test.id}
-                          onClick={() => { setSelectedTestId(test.id); setRightTab("form"); }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${selectedTestId === test.id ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50 border border-transparent"}`}
+                          className={`w-full flex items-center gap-2 pl-2 pr-3 py-2 rounded-lg transition-colors ${selectedTestId === test.id ? "bg-blue-50 border border-blue-200" : "border border-transparent hover:bg-slate-50"}`}
                         >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-slate-800 leading-tight">{test.name}</p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">{test.lab}</p>
+                          {/* Checkbox */}
+                          <div
+                            role="checkbox"
+                            aria-checked={checkedTestIds.has(test.id)}
+                            onClick={() => toggleCheck(test.id)}
+                            className={`flex-shrink-0 h-4 w-4 rounded border-2 flex items-center justify-center cursor-pointer transition-colors ${checkedTestIds.has(test.id) ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300 hover:border-[#4982CF]"}`}
+                          >
+                            {checkedTestIds.has(test.id) && (
+                              <svg viewBox="0 0 10 8" className="w-2.5 h-2 fill-none stroke-white stroke-[2.5]">
+                                <path d="M1 4l3 3 5-6" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
                           </div>
-                          {test.status === "completed" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700 flex-shrink-0">
-                              <CheckCircle2 className="h-3 w-3" /> Done
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700 flex-shrink-0">
-                              <Clock className="h-3 w-3" /> Pending
-                            </span>
-                          )}
-                        </button>
+                          {/* Row body — click opens Result Entry */}
+                          <button
+                            onClick={() => { setSelectedTestId(test.id); setRightTab("form"); }}
+                            className="flex-1 min-w-0 flex items-center gap-2 text-left"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-slate-800 leading-tight">{test.name}</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">{test.lab}</p>
+                            </div>
+                            <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                              {test.sampleCollected && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 px-2 py-0.5 text-[10px] font-bold text-teal-700">
+                                  <TestTube2 className="h-3 w-3" /> Collected
+                                </span>
+                              )}
+                              {test.status === "completed" ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                  <CheckCircle2 className="h-3 w-3" /> Done
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                                  <Clock className="h-3 w-3" /> Pending
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        </div>
                       ))}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mt-2.5 pt-2.5 border-t border-slate-100 text-[11px] text-slate-500">
@@ -723,30 +772,73 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
                       )}
                       <div className="space-y-1">
                         {orderTests.map(test => (
-                          <button
+                          <div
                             key={test.id}
-                            onClick={() => { setSelectedTestId(test.id); setRightTab("form"); }}
-                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${selectedTestId === test.id ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50 border border-transparent"}`}
+                            className={`w-full flex items-center gap-2 pl-2 pr-3 py-2 rounded-lg transition-colors ${selectedTestId === test.id ? "bg-blue-50 border border-blue-200" : "border border-transparent hover:bg-slate-50"}`}
                           >
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-slate-800 leading-tight">{test.name}</p>
-                              <p className="text-[10px] text-slate-400 mt-0.5">{test.lab}</p>
+                            {/* Checkbox */}
+                            <div
+                              role="checkbox"
+                              aria-checked={checkedTestIds.has(test.id)}
+                              onClick={() => toggleCheck(test.id)}
+                              className={`flex-shrink-0 h-4 w-4 rounded border-2 flex items-center justify-center cursor-pointer transition-colors ${checkedTestIds.has(test.id) ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300 hover:border-[#4982CF]"}`}
+                            >
+                              {checkedTestIds.has(test.id) && (
+                                <svg viewBox="0 0 10 8" className="w-2.5 h-2 fill-none stroke-white stroke-[2.5]">
+                                  <path d="M1 4l3 3 5-6" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
                             </div>
-                            {test.status === "completed" ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700 flex-shrink-0">
-                                <CheckCircle2 className="h-3 w-3" /> Done
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700 flex-shrink-0">
-                                <Clock className="h-3 w-3" /> Pending
-                              </span>
-                            )}
-                          </button>
+                            {/* Row body — click opens Result Entry */}
+                            <button
+                              onClick={() => { setSelectedTestId(test.id); setRightTab("form"); }}
+                              className="flex-1 min-w-0 flex items-center gap-2 text-left"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-slate-800 leading-tight">{test.name}</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">{test.lab}</p>
+                              </div>
+                              <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                {test.sampleCollected && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 px-2 py-0.5 text-[10px] font-bold text-teal-700">
+                                    <TestTube2 className="h-3 w-3" /> Collected
+                                  </span>
+                                )}
+                                {test.status === "completed" ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                    <CheckCircle2 className="h-3 w-3" /> Done
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                                    <Clock className="h-3 w-3" /> Pending
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          </div>
                         ))}
                       </div>
                     </div>
                   );
                 })}
+                {/* Sample Collected action bar — shown when any tests are checked */}
+                {checkedTestIds.size > 0 && (
+                  <div className="mt-2 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2.5 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-semibold text-teal-700">
+                      {checkedTestIds.size} test{checkedTestIds.size !== 1 ? "s" : ""} selected
+                    </span>
+                    <Button
+                      onClick={handleSampleCollected}
+                      disabled={!canCollect}
+                      size="sm"
+                      className="h-7 px-3 text-[11px] font-bold text-white gap-1 flex-shrink-0 disabled:opacity-40"
+                      style={{ backgroundColor: canCollect ? "#0d9488" : "#94a3b8" }}
+                    >
+                      <TestTube2 className="h-3 w-3" />
+                      Sample Collected
+                    </Button>
+                  </div>
+                )}
               </Collapsible>
 
               {/* All Records */}
