@@ -625,8 +625,9 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
       const legacy = (initialNote as (NoteState & { labOrder?: LabOrder | null }) | undefined)?.labOrder;
       orders = legacy ? [legacy] : [];
     }
-    // Migrate: assign a stable id to any order that predates the multi-order redesign
-    return orders.map(o => o.id ? o : { ...o, id: crypto.randomUUID() });
+    // Migrate: assign a stable id to any order that predates the multi-order redesign.
+    // Use ?? so this is also safe against undefined at runtime (old localStorage data).
+    return orders.map(o => ({ ...o, id: o.id ?? crypto.randomUUID() }));
   });
   // sentAt of the order currently being processed at the lab (null when not awaiting)
   const activeLabSentAt: string | null = awaitingLab && entryId
@@ -733,10 +734,10 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
     setNote(prev => ({ ...prev, diagnoses: entries, diagnosisDone: true }));
   }
 
-  function handleLabSave(order: LabOrder) {
+  function handleLabSave(order: Omit<LabOrder, "id">) {
     let nextOrders: LabOrder[];
     if (labDrawerMode === "edit" && editingOrderId) {
-      // Replace the existing order in-place — same id, updated content
+      // Replace the existing order in-place — preserve id and any sent/void metadata
       nextOrders = labOrders.map(o =>
         o.id === editingOrderId ? { ...o, ...order, id: editingOrderId } : o
       );
@@ -1190,7 +1191,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                               {/* Void button — only for sent, un-voided orders */}
                               {isSent && (
                                 <button
-                                  onClick={() => openVoidModal(order.id!)}
+                                  onClick={() => openVoidModal(order.id)}
                                   title="Void this order"
                                   className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-rose-500 hover:text-rose-700 hover:bg-rose-100">
                                   <Trash2 className="h-2.5 w-2.5" /> Void
@@ -1199,7 +1200,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                               {/* Send to Lab — only for unsent orders when no active sent order exists */}
                               {isUnsent && !hasActiveSent && (
                                 <button
-                                  onClick={() => handleSendToLab(order.id!)}
+                                  onClick={() => handleSendToLab(order.id)}
                                   title="Send this order to the lab"
                                   className="flex items-center gap-1 text-[9px] font-semibold px-2 py-1 rounded-md transition-colors bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100">
                                   <Send className="h-2.5 w-2.5" /> Send to Lab
@@ -1208,7 +1209,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                               {/* Edit — only for unsent orders */}
                               {isUnsent && (
                                 <button
-                                  onClick={() => { setEditingOrderId(order.id!); setLabDrawerMode("edit"); }}
+                                  onClick={() => { setEditingOrderId(order.id); setLabDrawerMode("edit"); }}
                                   title="Edit this order"
                                   className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-amber-600 hover:text-amber-800 hover:bg-amber-50">
                                   <PenLine className="h-2.5 w-2.5" /> Edit
@@ -1217,7 +1218,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
                               {/* Remove — only for unsent orders */}
                               {isUnsent && (
                                 <button
-                                  onClick={() => handleRemoveOrder(order.id!)}
+                                  onClick={() => handleRemoveOrder(order.id)}
                                   title="Remove this order"
                                   className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-slate-400 hover:text-red-500 hover:bg-red-50">
                                   <Trash2 className="h-2.5 w-2.5" /> Remove
@@ -1521,8 +1522,11 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
             mode={labDrawerMode}
             savedData={
               labDrawerMode === "edit"
+                // edit mode: pre-populate the drawer with the order being edited
                 ? (labOrders.find(o => o.id === editingOrderId) ?? null)
-                : null
+                // add/second-order mode: pass the last sent order so LabDrawer can
+                // compute previousTestIds and show completed-badge locks
+                : (labOrders.find(o => !!o.sentAt && !o.voided) ?? null)
             }
             awaitingLab={awaitingLab && !activeOrderIsVoided}
             labResultsReady={labResultsReady && !activeOrderIsVoided}

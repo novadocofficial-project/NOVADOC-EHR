@@ -19,7 +19,7 @@ export interface LabTestEntry {
 }
 
 export interface LabOrder {
-  id?:              string;  // assigned by ClinicalNoteDrawer; undefined until first save
+  id:               string;  // always present; assigned by ClinicalNoteDrawer on first save
   tests:            LabTestEntry[];
   patientCondition: string;
   instructions:     string;
@@ -337,10 +337,10 @@ export function LabChipsPanel({ order, onOpen, readOnly = false }: { order: LabO
 
 interface LabDrawerProps {
   mode:             "add" | "edit";   // "add" = new order; "edit" = update existing
-  savedData:        LabOrder | null;  // pre-populated in edit mode; null in add mode
+  savedData:        LabOrder | null;  // pre-populated in edit/labResultsReady mode; null otherwise
   awaitingLab?:     boolean;          // show "awaiting lab" informational footer
   labResultsReady?: boolean;          // second-order mode: previous tests shown as Completed
-  onSave:           (order: LabOrder) => void;
+  onSave:           (order: Omit<LabOrder, "id">) => void; // id assigned by parent
   onClose:          () => void;
 }
 
@@ -377,7 +377,7 @@ export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsRead
   const allOrderSets  = [...ORDER_SETS, ...sessionSets];
   const selectedTests = LAB_TESTS.filter(t => selectedTestIds.includes(t.id));
 
-  function buildOrder(): LabOrder {
+  function buildOrder(): Omit<LabOrder, "id"> {
     return { tests: selectedTests, patientCondition, instructions, orderSetName };
   }
 
