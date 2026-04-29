@@ -712,7 +712,7 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
                             <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                               {test.sampleCollected && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 px-2 py-0.5 text-[10px] font-bold text-teal-700">
-                                  <TestTube2 className="h-3 w-3" /> Collected
+                                  <TestTube2 className="h-3 w-3" /> Sample Collected
                                 </span>
                               )}
                               {test.status === "completed" ? (
@@ -801,7 +801,7 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
                               <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                                 {test.sampleCollected && (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 px-2 py-0.5 text-[10px] font-bold text-teal-700">
-                                    <TestTube2 className="h-3 w-3" /> Collected
+                                    <TestTube2 className="h-3 w-3" /> Sample Collected
                                   </span>
                                 )}
                                 {test.status === "completed" ? (
@@ -823,7 +823,7 @@ function LabPanel({ entry, onClose, onComplete, doctorCancelled = false }: {
                 })}
                 {/* Sample Collected action bar — shown when any tests are checked */}
                 {checkedTestIds.size > 0 && (
-                  <div className="mt-2 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2.5 flex items-center justify-between gap-2">
+                  <div className="sticky bottom-2 mt-2 rounded-xl border border-teal-200 bg-teal-50 shadow-sm px-3 py-2.5 flex items-center justify-between gap-2 z-10">
                     <span className="text-[11px] font-semibold text-teal-700">
                       {checkedTestIds.size} test{checkedTestIds.size !== 1 ? "s" : ""} selected
                     </span>
