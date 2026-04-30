@@ -1034,22 +1034,23 @@ export function PatientFaceSheet({
       {/* ── Back-to-Queue Confirmation Modal ─────────────────────────────── */}
       {showBackPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[340px] max-w-[92vw]">
-            <div className="flex items-start gap-3 mb-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[380px] max-w-[92vw]">
+            <div className="flex items-start gap-3 mb-5">
               <div className="h-10 w-10 rounded-full flex-shrink-0 flex items-center justify-center"
                 style={{ backgroundColor: `${ACCENT}15` }}>
                 <CheckCircle2 className="h-5 w-5" style={{ color: ACCENT }} />
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-slate-900">Mark consultation as complete?</p>
                 <p className="text-xs text-slate-400 mt-0.5">The SOAP note has been signed by the doctor.</p>
+                <p className="text-xs text-slate-500 mt-3 leading-relaxed">
+                  Would you like to complete this consultation and move the patient out of the queue?
+                  Selecting <strong className="text-slate-700 font-semibold">No</strong> keeps the patient
+                  in the queue with the facesheet accessible.
+                </p>
               </div>
             </div>
-            <p className="text-xs text-slate-500 mb-5 leading-relaxed">
-              Would you like to complete this consultation and move the patient out of the queue?
-              Selecting <strong>No</strong> keeps the patient in the queue with the facesheet accessible.
-            </p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 pl-[52px]">
               <Button
                 variant="outline"
                 className="flex-1 h-9 text-sm"
