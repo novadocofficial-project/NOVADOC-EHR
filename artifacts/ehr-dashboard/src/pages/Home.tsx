@@ -47,7 +47,7 @@ type Mod = {
 const MODULES: Mod[] = [
   { id: "appointments",     label: "Appointments",                   icon: Calendar,     iconColor: "#6366f1", iconBg: "#ede9fe", active: false },
   { id: "patient-queue",    label: "Patient Queue",                  icon: Ticket,       iconColor: "#4982CF", iconBg: "#dbeafe", active: true,  href: "/queue/token/single", desc: "Token management & live queue" },
-  { id: "primary-hc",       label: "Primary Healthcare",             icon: Stethoscope,  iconColor: "#059669", iconBg: "#d1fae5", active: false },
+  { id: "primary-hc",       label: "Primary Healthcare",             icon: Stethoscope,  iconColor: "#059669", iconBg: "#d1fae5", active: true,  href: "/queue/token/multistep", desc: "OPD multi-step visit workflow" },
   { id: "ncd-clinic",       label: "NCD Clinic",                     icon: Activity,     iconColor: "#d97706", iconBg: "#fef3c7", active: false },
   { id: "specialist-care",  label: "Specialist Care Modules",        icon: ClipboardList,iconColor: "#7c3aed", iconBg: "#ede9fe", active: false },
   { id: "care-manager",     label: "Care Manager",                   icon: UserCheck,    iconColor: "#0891b2", iconBg: "#cffafe", active: false },
@@ -178,7 +178,7 @@ export function Home() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Available Modules</p>
           <span className="text-[10px] text-slate-300">—</span>
           <p className="text-[10px] text-slate-400">
-            <span className="font-semibold text-emerald-600">2 active</span> · 19 coming soon
+            <span className="font-semibold text-emerald-600">3 active</span> · 18 coming soon
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-3">
