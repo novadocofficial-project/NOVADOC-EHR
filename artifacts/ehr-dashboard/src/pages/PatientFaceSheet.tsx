@@ -1034,7 +1034,7 @@ export function PatientFaceSheet({
       {/* ── Back-to-Queue Confirmation Modal ─────────────────────────────── */}
       {showBackPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[380px] max-w-[92vw]">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[340px] max-w-[92vw]">
             <div className="flex items-start gap-3 mb-5">
               <div className="h-10 w-10 rounded-full flex-shrink-0 flex items-center justify-center"
                 style={{ backgroundColor: `${ACCENT}15` }}>
@@ -1050,7 +1050,7 @@ export function PatientFaceSheet({
                 </p>
               </div>
             </div>
-            <div className="flex gap-2 pl-[52px]">
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 className="flex-1 h-9 text-sm"
