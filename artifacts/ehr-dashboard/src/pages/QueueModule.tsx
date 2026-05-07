@@ -32,7 +32,7 @@ type WorkflowStep = {
 
 type CounterType = { id: string; name: string; description: string; maxParallel: number };
 
-type Counter = {
+export type Counter = {
   id: string; name: string; counterTypeId: string; branchId: string;
   allowMultiUser: boolean; status: "active" | "inactive";
 };
@@ -88,7 +88,7 @@ const SEED_COUNTER_TYPES: CounterType[] = [
   { id: "ct-4", name: "Pharmacy Counter", description: "Medicine dispensing and billing.", maxParallel: 3 },
 ];
 
-const SEED_COUNTERS: Counter[] = [
+export const SEED_COUNTERS: Counter[] = [
   { id: "ctr-1", name: "Registration Desk 1", counterTypeId: "ct-1", branchId: "br-1", allowMultiUser: false, status: "active" },
   { id: "ctr-2", name: "Registration Desk 2", counterTypeId: "ct-1", branchId: "br-1", allowMultiUser: false, status: "active" },
   { id: "ctr-3", name: "Dr. Room A", counterTypeId: "ct-2", branchId: "br-1", allowMultiUser: false, status: "active" },

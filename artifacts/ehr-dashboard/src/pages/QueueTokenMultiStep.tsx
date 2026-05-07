@@ -11,6 +11,7 @@ import {
 } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useRegConfig } from "@/hooks/useRegConfig";
+import { SEED_COUNTERS } from "@/pages/QueueModule";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ export function QueueTokenMultiStep() {
   const [vtView, setVtView] = useState<"list" | "cards">("list");
   const [walkIn, setWalkIn] = useState(false);
   const { config: regConfig } = useRegConfig();
+  const [quickCounterId, setQuickCounterId] = useState("ctr-1");
   const [tokenSlip, setTokenSlip] = useState<TokenSlipData | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const [tick, setTick] = useState(0);
@@ -549,19 +551,36 @@ export function QueueTokenMultiStep() {
       {showAddPatient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5 text-[#4982CF]" />
-                <h2 className="text-base font-bold text-slate-900">Register New Patient</h2>
+            <div className="px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5 text-[#4982CF]" />
+                  <h2 className="text-base font-bold text-slate-900">Register New Patient</h2>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={() => setShowAddPatient(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={() => setShowAddPatient(false)}>
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex-shrink-0">Counter</label>
+                <Select value={quickCounterId} onValueChange={setQuickCounterId}>
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEED_COUNTERS.filter(c => c.status === "active").map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                        {regConfig.counterProfileMap[c.id] ? ` · ${regConfig.quickProfiles.find(p => p.id === regConfig.counterProfileMap[c.id])?.name ?? ""}` : " · default profile"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             {(() => {
-              // Counter-aware profile resolution: check counterProfileMap for an assigned profile,
-              // fall back to quickProfiles[0], then fall back to Name+Phone defaults.
-              const assignedProfileId = Object.values(regConfig.counterProfileMap)[0];
+              // Counter-aware profile resolution: resolve by selected counter → counterProfileMap → quickProfiles[0] → Name+Phone fallback
+              const assignedProfileId = regConfig.counterProfileMap[quickCounterId];
               const assignedProfile = assignedProfileId
                 ? regConfig.quickProfiles.find(p => p.id === assignedProfileId)
                 : null;

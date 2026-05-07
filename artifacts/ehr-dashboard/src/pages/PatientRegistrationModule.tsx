@@ -16,6 +16,7 @@ import {
   type RegField, type RegSection, type FieldType,
   type WelfareFormTemplate, type QuickRegProfile, type ConditionalRule,
 } from "@/hooks/useRegConfig";
+import { SEED_COUNTERS } from "@/pages/QueueModule";
 
 // ─── Section Prop Type ────────────────────────────────────────────────────────
 
@@ -1097,14 +1098,17 @@ function QuickRegistrationTab() {
               Assign this quick registration profile to specific counters. The front desk will automatically use the assigned profile for that counter.
             </p>
             <div className="space-y-2">
-              {["ctr-1", "ctr-2"].map(counterId => {
-                const currentProfileId = config.counterProfileMap[counterId];
+              {SEED_COUNTERS.filter(c => c.status === "active").map(counter => {
+                const currentProfileId = config.counterProfileMap[counter.id];
                 const isAssigned = currentProfileId === profile.id;
+                const alreadyAssignedProfile = !isAssigned && currentProfileId
+                  ? config.quickProfiles.find(p => p.id === currentProfileId)?.name
+                  : null;
                 return (
-                  <div key={counterId} className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div key={counter.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 border border-slate-100">
                     <div>
-                      <p className="text-xs font-semibold text-slate-700">Registration Desk {counterId.replace("ctr-", "")}</p>
-                      <p className="text-[10px] text-slate-400">{counterId}</p>
+                      <p className="text-xs font-semibold text-slate-700">{counter.name}</p>
+                      <p className="text-[10px] text-slate-400">{counter.id}{alreadyAssignedProfile ? ` · using "${alreadyAssignedProfile}"` : !isAssigned ? " · no profile assigned" : ""}</p>
                     </div>
                     <Switch
                       checked={isAssigned}
@@ -1112,8 +1116,8 @@ function QuickRegistrationTab() {
                         updateConfig(prev => ({
                           ...prev,
                           counterProfileMap: v
-                            ? { ...prev.counterProfileMap, [counterId]: profile.id }
-                            : Object.fromEntries(Object.entries(prev.counterProfileMap).filter(([k]) => k !== counterId)),
+                            ? { ...prev.counterProfileMap, [counter.id]: profile.id }
+                            : Object.fromEntries(Object.entries(prev.counterProfileMap).filter(([k]) => k !== counter.id)),
                         }));
                       }}
                       className="data-[state=checked]:bg-[#4982CF]"

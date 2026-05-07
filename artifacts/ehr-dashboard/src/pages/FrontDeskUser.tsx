@@ -153,10 +153,61 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
   const conditionalFieldIds = basicSection?.conditionalRules.flatMap(r => r.showFieldIds) ?? [];
 
   const canSubmit = (() => {
-    if (!basicSection) return true;
-    return basicSection.fields
-      .filter(f => f.enabled && f.required && !conditionalFieldIds.includes(f.id))
-      .every(f => !!(values[f.id]));
+    // Collect all visible required field IDs across the entire dynamic form
+    const required: string[] = [];
+
+    // basic-info: non-conditional required fields
+    if (basicSection) {
+      basicSection.fields
+        .filter(f => f.enabled && f.required && !conditionalFieldIds.includes(f.id))
+        .forEach(f => required.push(f.id));
+
+      // Conditional blocks: only those whose trigger condition is currently met
+      basicSection.conditionalRules.forEach(rule => {
+        const triggerVal = values[rule.triggerFieldId] ?? "";
+        if (rule.triggerValues.includes(triggerVal)) {
+          basicSection.fields
+            .filter(f => rule.showFieldIds.includes(f.id) && f.enabled && f.required)
+            .forEach(f => required.push(f.id));
+        }
+      });
+    }
+
+    // Patient type extra fields
+    const currentActiveType = config.patientTypes.find(t => t.id === patientType && t.enabled);
+    (currentActiveType?.extraFields ?? [])
+      .filter(f => f.enabled && f.required)
+      .forEach(f => required.push(f.id));
+
+    // Welfare form fields
+    const currentWelfareForm = currentActiveType?.welfareFormId
+      ? config.welfareForms.find(wf => wf.id === currentActiveType.welfareFormId)
+      : null;
+    if (patientType === "welfare" && currentWelfareForm) {
+      currentWelfareForm.fields
+        .filter(f => f.enabled && f.required && f.type !== "signature" && f.type !== "file")
+        .forEach(f => required.push(f.id));
+    }
+
+    // Custom sections: evaluate conditional rules
+    config.sections
+      .filter(s => s.sectionType === "custom" && s.enabled)
+      .forEach(sec => {
+        const condFieldIds = sec.conditionalRules.flatMap(r => r.showFieldIds);
+        const visCondIds = sec.conditionalRules.flatMap(rule => {
+          const triggerVal = values[rule.triggerFieldId] ?? "";
+          return rule.triggerValues.includes(triggerVal) ? rule.showFieldIds : [];
+        });
+        sec.fields
+          .filter(f =>
+            f.enabled && f.required &&
+            f.type !== "signature" && f.type !== "file" &&
+            (!condFieldIds.includes(f.id) || visCondIds.includes(f.id))
+          )
+          .forEach(f => required.push(f.id));
+      });
+
+    return required.every(id => !!(values[id]));
   })();
 
   function setVal(id: string, v: string) { setValues(p => ({ ...p, [id]: v })); }
