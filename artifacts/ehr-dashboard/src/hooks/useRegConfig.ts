@@ -50,6 +50,7 @@ export interface WelfareFormTemplate {
   id: string;
   name: string;
   fields: RegField[];
+  conditionalRules: ConditionalRule[];
 }
 
 export interface QuickRegField {
@@ -184,6 +185,7 @@ export const DEFAULT_REG_CONFIG: RegConfig = {
     {
       id: "wf-1",
       name: "Standard Welfare Form",
+      conditionalRules: [],
       fields: [
         { id: "wf_income",    label: "Monthly Income",       type: "number",    required: true,  enabled: true, options: [], placeholder: "PKR amount" },
         { id: "wf_household", label: "Household Members",    type: "number",    required: true,  enabled: true, options: [], placeholder: "Count" },
@@ -226,7 +228,12 @@ function normalizeConfig(stored: Partial<RegConfig>): RegConfig {
   return {
     sections,
     patientTypes,
-    welfareForms: Array.isArray(stored.welfareForms) ? stored.welfareForms : DEFAULT_REG_CONFIG.welfareForms,
+    welfareForms: Array.isArray(stored.welfareForms)
+      ? stored.welfareForms.map(wf => ({
+          ...wf,
+          conditionalRules: Array.isArray(wf.conditionalRules) ? wf.conditionalRules : [],
+        }))
+      : DEFAULT_REG_CONFIG.welfareForms,
     quickProfiles: Array.isArray(stored.quickProfiles) && stored.quickProfiles.length > 0
       ? stored.quickProfiles
       : DEFAULT_REG_CONFIG.quickProfiles,

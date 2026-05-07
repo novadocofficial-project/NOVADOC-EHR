@@ -491,7 +491,7 @@ function WelfareFormsTab() {
     const id = `wf-${Date.now()}`;
     updateConfig(prev => ({
       ...prev,
-      welfareForms: [...prev.welfareForms, { id, name: newName.trim(), fields: [] }],
+      welfareForms: [...prev.welfareForms, { id, name: newName.trim(), fields: [], conditionalRules: [] }],
     }));
     setExpanded(id);
     setNewName("");
@@ -517,6 +517,43 @@ function WelfareFormsTab() {
     updateConfig(prev => ({
       ...prev,
       welfareForms: prev.welfareForms.map(f => f.id === formId ? { ...f, name } : f),
+    }));
+  }
+
+  function addWelfareConditionalRule(formId: string) {
+    const rule: ConditionalRule = {
+      id: `wf-rule-${Date.now()}`,
+      triggerFieldId: "",
+      triggerValues: [],
+      showFieldIds: [],
+    };
+    updateConfig(prev => ({
+      ...prev,
+      welfareForms: prev.welfareForms.map(f =>
+        f.id === formId ? { ...f, conditionalRules: [...(f.conditionalRules ?? []), rule] } : f
+      ),
+    }));
+  }
+
+  function removeWelfareConditionalRule(formId: string, ruleId: string) {
+    updateConfig(prev => ({
+      ...prev,
+      welfareForms: prev.welfareForms.map(f =>
+        f.id === formId
+          ? { ...f, conditionalRules: (f.conditionalRules ?? []).filter(r => r.id !== ruleId) }
+          : f
+      ),
+    }));
+  }
+
+  function updateWelfareConditionalRule(formId: string, ruleId: string, patch: Partial<ConditionalRule>) {
+    updateConfig(prev => ({
+      ...prev,
+      welfareForms: prev.welfareForms.map(f =>
+        f.id === formId
+          ? { ...f, conditionalRules: (f.conditionalRules ?? []).map(r => r.id === ruleId ? { ...r, ...patch } : r) }
+          : f
+      ),
     }));
   }
 
@@ -575,6 +612,74 @@ function WelfareFormsTab() {
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 block">Fields</label>
                     <FieldListEditor fields={form.fields} onChange={fields => updateFormFields(form.id, fields)} />
+                  </div>
+                  <div className="border-t border-slate-100 pt-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Conditional Rules</label>
+                      <button onClick={() => addWelfareConditionalRule(form.id)} className="text-xs text-[#4982CF] font-semibold hover:opacity-70 flex items-center gap-1">
+                        <Plus className="h-3 w-3" /> Add Rule
+                      </button>
+                    </div>
+                    {(form.conditionalRules ?? []).length === 0 && (
+                      <p className="text-xs text-slate-400 text-center py-3 border border-dashed border-slate-200 rounded-lg">
+                        No rules — all fields shown unconditionally.
+                      </p>
+                    )}
+                    {(form.conditionalRules ?? []).map(rule => (
+                      <div key={rule.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-600">When field value matches…</span>
+                          <button onClick={() => removeWelfareConditionalRule(form.id, rule.id)} className="text-slate-300 hover:text-rose-400">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 block">Trigger Field</label>
+                            <Select value={rule.triggerFieldId || ""} onValueChange={v => updateWelfareConditionalRule(form.id, rule.id, { triggerFieldId: v })}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select field…" /></SelectTrigger>
+                              <SelectContent>
+                                {form.fields.map(f => <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 block">Trigger Value(s)</label>
+                            <Input
+                              className="h-8 text-xs"
+                              placeholder="val1, val2…"
+                              value={rule.triggerValues.join(", ")}
+                              onChange={e => updateWelfareConditionalRule(form.id, rule.id, {
+                                triggerValues: e.target.value.split(",").map(v => v.trim()).filter(Boolean),
+                              })}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-2 block">Then show these fields</label>
+                          {form.fields.filter(f => f.id !== rule.triggerFieldId).length === 0 ? (
+                            <p className="text-xs text-slate-400">Add other fields first.</p>
+                          ) : (
+                            <div className="flex flex-wrap gap-1.5">
+                              {form.fields.filter(f => f.id !== rule.triggerFieldId).map(f => {
+                                const selected = rule.showFieldIds.includes(f.id);
+                                return (
+                                  <button key={f.id}
+                                    onClick={() => updateWelfareConditionalRule(form.id, rule.id, {
+                                      showFieldIds: selected
+                                        ? rule.showFieldIds.filter(id => id !== f.id)
+                                        : [...rule.showFieldIds, f.id],
+                                    })}
+                                    className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${selected ? "bg-[#4982CF] text-white border-[#4982CF]" : "border-slate-200 text-slate-600 hover:border-[#4982CF]"}`}>
+                                    {f.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
