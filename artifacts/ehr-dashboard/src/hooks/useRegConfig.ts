@@ -70,7 +70,7 @@ export interface RegConfig {
   patientTypes: PatientTypeConfig[];
   welfareForms: WelfareFormTemplate[];
   quickProfiles: QuickRegProfile[];
-  counterProfileMap: Record<string, string>;
+  queueProfileMap: Record<string, string>;
 }
 
 // ─── Default Config ───────────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ export const DEFAULT_REG_CONFIG: RegConfig = {
   quickProfiles: [
     { id: "qp-default", name: "Default Profile", fields: DEFAULT_QUICK_FIELDS },
   ],
-  counterProfileMap: {},
+  queueProfileMap: {},
 };
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
@@ -226,8 +226,8 @@ function normalizeConfig(stored: Partial<RegConfig>): RegConfig {
     quickProfiles: Array.isArray(stored.quickProfiles) && stored.quickProfiles.length > 0
       ? stored.quickProfiles
       : DEFAULT_REG_CONFIG.quickProfiles,
-    counterProfileMap: (stored.counterProfileMap && typeof stored.counterProfileMap === "object")
-      ? stored.counterProfileMap
+    queueProfileMap: (stored.queueProfileMap && typeof stored.queueProfileMap === "object")
+      ? stored.queueProfileMap
       : {},
   };
 }

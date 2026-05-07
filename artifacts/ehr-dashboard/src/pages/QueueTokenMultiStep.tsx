@@ -12,7 +12,6 @@ import {
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useRegConfig } from "@/hooks/useRegConfig";
 import { usePatients } from "@/hooks/usePatients";
-import { SEED_COUNTERS } from "@/pages/QueueModule";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -34,7 +33,6 @@ export function QueueTokenMultiStep() {
   const [walkIn, setWalkIn] = useState(false);
   const { config: regConfig } = useRegConfig();
   const { patients, addPatient } = usePatients();
-  const [quickCounterId, setQuickCounterId] = useState("ctr-1");
   const [quickFormValues, setQuickFormValues] = useState<Record<string, string>>({});
   const [quickGender, setQuickGender] = useState<"M" | "F">("M");
   const [tokenSlip, setTokenSlip] = useState<TokenSlipData | null>(null);
@@ -556,7 +554,7 @@ export function QueueTokenMultiStep() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <UserPlus className="h-5 w-5 text-[#4982CF]" />
                   <h2 className="text-base font-bold text-slate-900">Register New Patient</h2>
@@ -565,26 +563,27 @@ export function QueueTokenMultiStep() {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex-shrink-0">Counter</label>
-                <Select value={quickCounterId} onValueChange={setQuickCounterId}>
-                  <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SEED_COUNTERS.filter(c => c.status === "active").map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                        {regConfig.counterProfileMap[c.id] ? ` · ${regConfig.quickProfiles.find(p => p.id === regConfig.counterProfileMap[c.id])?.name ?? ""}` : " · default profile"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {(() => {
+                const qKey = `multi-step:${selectedVT.id}`;
+                const resolvedProfileId = regConfig.queueProfileMap[qKey];
+                const resolvedProfile = resolvedProfileId
+                  ? regConfig.quickProfiles.find(p => p.id === resolvedProfileId)
+                  : regConfig.quickProfiles[0];
+                const profileName = resolvedProfile?.name ?? "Default Profile";
+                return (
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: selectedVT.color }} />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{selectedVT.name}</span>
+                    <span className="text-[10px] text-slate-300">·</span>
+                    <span className="text-[10px] font-semibold text-[#4982CF]">Profile: {profileName}</span>
+                  </div>
+                );
+              })()}
             </div>
             {(() => {
-              // Counter-aware profile resolution: resolve by selected counter → counterProfileMap → quickProfiles[0] → Name+Phone fallback
-              const assignedProfileId = regConfig.counterProfileMap[quickCounterId];
+              // Queue-aware profile resolution: multi-step:<vtId> → quickProfiles[0] → Name+Phone fallback
+              const qKey = `multi-step:${selectedVT.id}`;
+              const assignedProfileId = regConfig.queueProfileMap[qKey];
               const assignedProfile = assignedProfileId
                 ? regConfig.quickProfiles.find(p => p.id === assignedProfileId)
                 : null;
@@ -652,7 +651,8 @@ export function QueueTokenMultiStep() {
             <div className="flex gap-3 px-6 pb-6">
               <Button variant="outline" className="flex-1" onClick={() => { setShowAddPatient(false); setQuickFormValues({}); setQuickGender("M"); }}>Cancel</Button>
               <Button className="flex-1 bg-[#4982CF] hover:bg-[#3D73BC] text-white" onClick={() => {
-                const assignedProfileId = regConfig.counterProfileMap[quickCounterId];
+                const qKey2 = `multi-step:${selectedVT.id}`;
+                const assignedProfileId = regConfig.queueProfileMap[qKey2];
                 const assignedProfile = assignedProfileId ? regConfig.quickProfiles.find(p => p.id === assignedProfileId) : null;
                 const profile = assignedProfile ?? regConfig.quickProfiles[0] ?? null;
                 const DEFAULT_QUICK_FALLBACK = [

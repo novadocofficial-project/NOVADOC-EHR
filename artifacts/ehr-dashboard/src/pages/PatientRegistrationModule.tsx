@@ -16,7 +16,7 @@ import {
   type RegField, type RegSection, type FieldType,
   type WelfareFormTemplate, type QuickRegProfile, type ConditionalRule,
 } from "@/hooks/useRegConfig";
-import { SEED_COUNTERS } from "@/pages/QueueModule";
+import { SEED_VISIT_TYPES } from "@/pages/QueueModule";
 
 // ─── Section Prop Type ────────────────────────────────────────────────────────
 
@@ -1093,31 +1093,79 @@ function QuickRegistrationTab() {
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-4">
-            <p className="text-sm font-bold text-slate-900 mb-3">Counter Assignment</p>
-            <p className="text-xs text-slate-400 mb-3">
-              Assign this quick registration profile to specific counters. The front desk will automatically use the assigned profile for that counter.
+            <p className="text-sm font-bold text-slate-900 mb-1">Queue Assignment</p>
+            <p className="text-xs text-slate-400 mb-4">
+              Assign this profile to a queue or visit type. When staff add a new patient in that queue, this profile's fields are automatically shown.
             </p>
-            <div className="space-y-2">
-              {SEED_COUNTERS.filter(c => c.status === "active").map(counter => {
-                const currentProfileId = config.counterProfileMap[counter.id];
+
+            {/* Single & Partitioned queues */}
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">General Queues</p>
+            <div className="space-y-2 mb-4">
+              {[
+                { key: "single",      label: "Single Queue",      sub: "Walk-in, auto-increment tokens" },
+                { key: "partitioned", label: "Partitioned Queue",  sub: "Per-doctor, multi-partition" },
+              ].map(q => {
+                const currentProfileId = config.queueProfileMap[q.key];
                 const isAssigned = currentProfileId === profile.id;
                 const alreadyAssignedProfile = !isAssigned && currentProfileId
                   ? config.quickProfiles.find(p => p.id === currentProfileId)?.name
                   : null;
                 return (
-                  <div key={counter.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div key={q.key} className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 border border-slate-100">
                     <div>
-                      <p className="text-xs font-semibold text-slate-700">{counter.name}</p>
-                      <p className="text-[10px] text-slate-400">{counter.id}{alreadyAssignedProfile ? ` · using "${alreadyAssignedProfile}"` : !isAssigned ? " · no profile assigned" : ""}</p>
+                      <p className="text-xs font-semibold text-slate-700">{q.label}</p>
+                      <p className="text-[10px] text-slate-400">
+                        {q.sub}
+                        {alreadyAssignedProfile ? ` · using "${alreadyAssignedProfile}"` : !isAssigned ? " · no profile assigned" : ""}
+                      </p>
                     </div>
                     <Switch
                       checked={isAssigned}
                       onCheckedChange={v => {
                         updateConfig(prev => ({
                           ...prev,
-                          counterProfileMap: v
-                            ? { ...prev.counterProfileMap, [counter.id]: profile.id }
-                            : Object.fromEntries(Object.entries(prev.counterProfileMap).filter(([k]) => k !== counter.id)),
+                          queueProfileMap: v
+                            ? { ...prev.queueProfileMap, [q.key]: profile.id }
+                            : Object.fromEntries(Object.entries(prev.queueProfileMap).filter(([k]) => k !== q.key)),
+                        }));
+                      }}
+                      className="data-[state=checked]:bg-[#4982CF]"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Multi-step visit types */}
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Multi-Step Visit Types</p>
+            <div className="space-y-2">
+              {SEED_VISIT_TYPES.map(vt => {
+                const qKey = `multi-step:${vt.id}`;
+                const currentProfileId = config.queueProfileMap[qKey];
+                const isAssigned = currentProfileId === profile.id;
+                const alreadyAssignedProfile = !isAssigned && currentProfileId
+                  ? config.quickProfiles.find(p => p.id === currentProfileId)?.name
+                  : null;
+                return (
+                  <div key={qKey} className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: vt.color }} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-700 truncate">{vt.name}</p>
+                        <p className="text-[10px] text-slate-400">
+                          {vt.code} · {vt.queueMode}
+                          {alreadyAssignedProfile ? ` · using "${alreadyAssignedProfile}"` : !isAssigned ? " · no profile assigned" : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={isAssigned}
+                      onCheckedChange={v => {
+                        updateConfig(prev => ({
+                          ...prev,
+                          queueProfileMap: v
+                            ? { ...prev.queueProfileMap, [qKey]: profile.id }
+                            : Object.fromEntries(Object.entries(prev.queueProfileMap).filter(([k]) => k !== qKey)),
                         }));
                       }}
                       className="data-[state=checked]:bg-[#4982CF]"
