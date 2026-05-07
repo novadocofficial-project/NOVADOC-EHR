@@ -559,8 +559,20 @@ export function QueueTokenMultiStep() {
               </Button>
             </div>
             {(() => {
-              const profile = regConfig.quickProfiles[0];
-              const visFields = profile ? profile.fields.filter(f => f.visible) : [];
+              // Counter-aware profile resolution: check counterProfileMap for an assigned profile,
+              // fall back to quickProfiles[0], then fall back to Name+Phone defaults.
+              const assignedProfileId = Object.values(regConfig.counterProfileMap)[0];
+              const assignedProfile = assignedProfileId
+                ? regConfig.quickProfiles.find(p => p.id === assignedProfileId)
+                : null;
+              const profile = assignedProfile ?? regConfig.quickProfiles[0] ?? null;
+              const DEFAULT_QUICK_FALLBACK = [
+                { fieldId: "name" as const, label: "Name", visible: true, required: true },
+                { fieldId: "phone" as const, label: "Phone", visible: true, required: true },
+              ];
+              const visFields = profile
+                ? profile.fields.filter(f => f.visible)
+                : DEFAULT_QUICK_FALLBACK;
               const INPUT_TYPE: Record<string, string> = { dob: "date", phone: "tel" };
               const PLACEHOLDER: Record<string, string> = { phone: "+92 …", name: "Full name", cnic: "00000-0000000-0" };
               const rows: React.ReactNode[] = [];

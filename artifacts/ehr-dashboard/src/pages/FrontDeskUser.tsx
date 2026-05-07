@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   PhoneCall, UserCheck, CreditCard, SkipForward, RotateCcw,
   ChevronUp, ChevronLeft, Clock, User, AlertCircle, CheckCircle2, X,
@@ -143,10 +143,6 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
   const sigRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
 
   const basicSection = config.sections.find(s => s.sectionType === "basic-info");
-  const demSection   = config.sections.find(s => s.sectionType === "demographics");
-  const customSects  = config.sections
-    .filter(s => s.sectionType === "custom" && s.enabled)
-    .sort((a, b) => a.workflowOrder - b.workflowOrder);
 
   const patientType = values["_patient_type"] ?? (config.patientTypes.find(t => t.enabled)?.id ?? "cash");
   const activeType  = config.patientTypes.find(t => t.id === patientType && t.enabled);
@@ -155,7 +151,6 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
     : null;
 
   const conditionalFieldIds = basicSection?.conditionalRules.flatMap(r => r.showFieldIds) ?? [];
-  const normalBasicFields   = (basicSection?.fields ?? []).filter(f => f.enabled && !conditionalFieldIds.includes(f.id));
 
   const canSubmit = (() => {
     if (!basicSection) return true;
@@ -233,6 +228,52 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
         </div>
       );
     }
+    if (field.type === "checkbox") {
+      const checked = (val || "").split(",").filter(Boolean);
+      return (
+        <div key={field.id}>
+          {lbl}
+          <div className="space-y-1.5">
+            {(field.options ?? []).map(opt => (
+              <label key={opt} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={checked.includes(opt)}
+                  onChange={e => {
+                    const next = e.target.checked ? [...checked, opt] : checked.filter(x => x !== opt);
+                    setVal(field.id, next.join(","));
+                  }}
+                  className="h-4 w-4 rounded border-slate-300 accent-[#4982CF]"
+                />
+                {opt}
+              </label>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    if (field.type === "radio") {
+      return (
+        <div key={field.id}>
+          {lbl}
+          <div className="space-y-1.5">
+            {(field.options ?? []).map(opt => (
+              <label key={opt} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                <input
+                  type="radio"
+                  name={field.id}
+                  value={opt}
+                  checked={val === opt}
+                  onChange={() => setVal(field.id, opt)}
+                  className="h-4 w-4 border-slate-300 accent-[#4982CF]"
+                />
+                {opt}
+              </label>
+            ))}
+          </div>
+        </div>
+      );
+    }
     if (field.type === "file") {
       return <div key={field.id}>{lbl}<input type="file" className="w-full text-sm cursor-pointer file:h-9 file:px-3 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:font-semibold" /></div>;
     }
@@ -241,29 +282,22 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
 
   const SHORT_TYPES = new Set<string>(["text", "number", "date", "dropdown"]);
 
-  function renderFieldsInGrid(fields: RegField[]): React.ReactNode[] {
+  function renderFieldsInGrid(fields: RegField[], keyPrefix = ""): React.ReactNode[] {
     const rows: React.ReactNode[] = [];
     let i = 0;
     while (i < fields.length) {
       const f = fields[i];
       const next = fields[i + 1];
       if (SHORT_TYPES.has(f.type) && next && SHORT_TYPES.has(next.type)) {
-        rows.push(<div key={`g-${i}`} className="grid grid-cols-2 gap-3">{renderField(f)}{renderField(next)}</div>);
+        rows.push(<div key={`${keyPrefix}g-${i}`} className="grid grid-cols-2 gap-3">{renderField(f)}{renderField(next)}</div>);
         i += 2;
       } else {
-        rows.push(<div key={`s-${i}`}>{renderField(f)}</div>);
+        rows.push(<div key={`${keyPrefix}s-${i}`}>{renderField(f)}</div>);
         i++;
       }
     }
     return rows;
   }
-
-  const conditionalBlocks = (basicSection?.conditionalRules ?? []).flatMap(rule => {
-    const triggerVal = values[rule.triggerFieldId] ?? "";
-    if (!rule.triggerValues.includes(triggerVal)) return [];
-    const condFields = (basicSection!.fields ?? []).filter(f => rule.showFieldIds.includes(f.id) && f.enabled);
-    return condFields.length > 0 ? [{ label: triggerVal, condFields }] : [];
-  });
 
   const PT_ICONS: Record<string, React.ReactNode> = {
     cash: <Banknote className="h-4 w-4" />,
@@ -273,6 +307,131 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
   };
 
   const enabledTypes = config.patientTypes.filter(t => t.enabled);
+
+  // ─── Ordered section blocks (respects workflowOrder) ───────────────────────
+  const orderedSections = [...config.sections]
+    .filter(s => s.enabled)
+    .sort((a, b) => a.workflowOrder - b.workflowOrder);
+
+  const sectionBlocks: React.ReactNode[] = [];
+  let patientTypeInserted = false;
+
+  for (const sec of orderedSections) {
+    if (sec.sectionType === "basic-info") {
+      const condFieldIds = sec.conditionalRules.flatMap(r => r.showFieldIds);
+      const normalFields = sec.fields.filter(f => f.enabled && !condFieldIds.includes(f.id));
+      sectionBlocks.push(
+        <React.Fragment key={sec.id}>
+          {renderFieldsInGrid(normalFields, sec.id)}
+          {sec.conditionalRules.map(rule => {
+            const triggerVal = values[rule.triggerFieldId] ?? "";
+            if (!rule.triggerValues.includes(triggerVal)) return null;
+            const condFields = sec.fields.filter(f => rule.showFieldIds.includes(f.id) && f.enabled);
+            if (condFields.length === 0) return null;
+            return (
+              <div key={rule.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{triggerVal} Details</p>
+                <div className="grid grid-cols-2 gap-3">{condFields.map(f => renderField(f))}</div>
+              </div>
+            );
+          })}
+        </React.Fragment>
+      );
+      // Insert patient type selector after basic-info
+      if (enabledTypes.length > 0) {
+        sectionBlocks.push(
+          <div key="__pt__">
+            <label className="text-xs font-semibold text-slate-600 mb-2 block">Type of Patient</label>
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enabledTypes.length}, 1fr)` }}>
+              {enabledTypes.map(t => (
+                <button key={t.id} onClick={() => setVal("_patient_type", t.id)}
+                  className={`flex flex-col items-center gap-1.5 rounded-xl border py-3 text-xs font-bold transition-all ${patientType === t.id ? "text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}
+                  style={patientType === t.id ? { borderColor: t.color, backgroundColor: t.color } : undefined}>
+                  {PT_ICONS[t.id] ?? <User className="h-4 w-4" />}
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+        patientTypeInserted = true;
+      }
+    } else if (sec.sectionType === "demographics") {
+      const enabledFields = sec.fields.filter(f => f.enabled);
+      if (enabledFields.length > 0) {
+        sectionBlocks.push(
+          <div key={sec.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{sec.name}</p>
+            {renderFieldsInGrid(enabledFields, sec.id)}
+          </div>
+        );
+      }
+    } else if (sec.sectionType === "custom") {
+      // Evaluate custom section conditional rules
+      const condFieldIds = sec.conditionalRules.flatMap(r => r.showFieldIds);
+      const visibleCondIds = sec.conditionalRules.flatMap(rule => {
+        const triggerVal = values[rule.triggerFieldId] ?? "";
+        return rule.triggerValues.includes(triggerVal) ? rule.showFieldIds : [];
+      });
+      const visibleFields = sec.fields.filter(f =>
+        f.enabled && (!condFieldIds.includes(f.id) || visibleCondIds.includes(f.id))
+      );
+      if (visibleFields.length > 0 || sec.signatureRequired) {
+        sectionBlocks.push(
+          <div key={sec.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+            <div>
+              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{sec.name}</p>
+              {sec.description && <p className="text-xs text-slate-400 mt-0.5">{sec.description}</p>}
+            </div>
+            {renderFieldsInGrid(visibleFields, sec.id)}
+            {sec.signatureRequired && renderField({ id: `${sec.id}_sig`, label: "Section Signature", type: "signature", required: true, enabled: true, options: [], placeholder: "" })}
+          </div>
+        );
+      }
+    }
+  }
+
+  // If no basic-info section existed, still insert patient type selector
+  if (enabledTypes.length > 0 && !patientTypeInserted) {
+    sectionBlocks.push(
+      <div key="__pt__">
+        <label className="text-xs font-semibold text-slate-600 mb-2 block">Type of Patient</label>
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enabledTypes.length}, 1fr)` }}>
+          {enabledTypes.map(t => (
+            <button key={t.id} onClick={() => setVal("_patient_type", t.id)}
+              className={`flex flex-col items-center gap-1.5 rounded-xl border py-3 text-xs font-bold transition-all ${patientType === t.id ? "text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}
+              style={patientType === t.id ? { borderColor: t.color, backgroundColor: t.color } : undefined}>
+              {PT_ICONS[t.id] ?? <User className="h-4 w-4" />}
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Type-specific extra fields
+  if (activeType && activeType.extraFields.filter(f => f.enabled).length > 0) {
+    sectionBlocks.push(
+      <div key="__type_extra__" className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+        <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{activeType.label} Details</p>
+        {renderFieldsInGrid(activeType.extraFields.filter(f => f.enabled), "te-")}
+      </div>
+    );
+  }
+
+  // Welfare form
+  if (patientType === "welfare" && welfareForm) {
+    sectionBlocks.push(
+      <div key="__welfare__" className="rounded-xl border border-red-100 bg-red-50 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <FileSignature className="h-4 w-4 text-red-500" />
+          <p className="text-sm font-bold text-red-700">Welfare Form — {welfareForm.name}</p>
+        </div>
+        {welfareForm.fields.filter(f => f.enabled).map(f => renderField(f))}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -285,68 +444,7 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
               <p className="text-sm font-mono font-bold text-slate-700">MR-{Math.floor(45100 + Math.random() * 900)} (auto-generated)</p>
             </div>
           </div>
-
-          {renderFieldsInGrid(normalBasicFields)}
-
-          {conditionalBlocks.map((block, bi) => (
-            <div key={bi} className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{block.label} Details</p>
-              <div className="grid grid-cols-2 gap-3">
-                {block.condFields.map(f => renderField(f))}
-              </div>
-            </div>
-          ))}
-
-          {enabledTypes.length > 0 && (
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-2 block">Type of Patient</label>
-              <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enabledTypes.length}, 1fr)` }}>
-                {enabledTypes.map(t => (
-                  <button key={t.id} onClick={() => setVal("_patient_type", t.id)}
-                    className={`flex flex-col items-center gap-1.5 rounded-xl border py-3 text-xs font-bold transition-all ${patientType === t.id ? "text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}
-                    style={patientType === t.id ? { borderColor: t.color, backgroundColor: t.color } : undefined}>
-                    {PT_ICONS[t.id] ?? <User className="h-4 w-4" />}
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeType && activeType.extraFields.filter(f => f.enabled).length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{activeType.label} Details</p>
-              {renderFieldsInGrid(activeType.extraFields.filter(f => f.enabled))}
-            </div>
-          )}
-
-          {patientType === "welfare" && welfareForm && (
-            <div className="rounded-xl border border-red-100 bg-red-50 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <FileSignature className="h-4 w-4 text-red-500" />
-                <p className="text-sm font-bold text-red-700">Welfare Form — {welfareForm.name}</p>
-              </div>
-              {welfareForm.fields.filter(f => f.enabled).map(f => renderField(f))}
-            </div>
-          )}
-
-          {demSection?.enabled && demSection.fields.filter(f => f.enabled).length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
-              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Demographics</p>
-              {renderFieldsInGrid(demSection.fields.filter(f => f.enabled))}
-            </div>
-          )}
-
-          {customSects.map(sec => (
-            <div key={sec.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
-              <div>
-                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{sec.name}</p>
-                {sec.description && <p className="text-xs text-slate-400 mt-0.5">{sec.description}</p>}
-              </div>
-              {renderFieldsInGrid(sec.fields.filter(f => f.enabled))}
-              {sec.signatureRequired && renderField({ id: `${sec.id}_sig`, label: "Section Signature", type: "signature", required: true, enabled: true, options: [], placeholder: "" })}
-            </div>
-          ))}
+          {sectionBlocks}
         </div>
       </div>
       <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
