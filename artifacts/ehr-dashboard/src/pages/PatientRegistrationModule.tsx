@@ -1025,6 +1025,10 @@ function QuickRegistrationTab() {
 
   function addCustomQuickField(profileId: string) {
     if (!newFieldLabel.trim()) return;
+    const parsedOptions = newFieldType === "dropdown"
+      ? newFieldOptions.split("\n").map(o => o.trim()).filter(Boolean)
+      : [];
+    if (newFieldType === "dropdown" && parsedOptions.length === 0) return;
     const newField: QuickRegField = {
       fieldId: `qf-${Date.now()}`,
       label: newFieldLabel.trim(),
@@ -1032,9 +1036,7 @@ function QuickRegistrationTab() {
       required: newFieldRequired,
       isBuiltIn: false,
       fieldType: newFieldType,
-      options: newFieldType === "dropdown"
-        ? newFieldOptions.split("\n").map(o => o.trim()).filter(Boolean)
-        : [],
+      options: parsedOptions,
       placeholder: newFieldPlaceholder.trim() || undefined,
     };
     updateConfig(prev => ({
@@ -1199,7 +1201,9 @@ function QuickRegistrationTab() {
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setShowAddField(false); setNewFieldLabel(""); setNewFieldType("text"); setNewFieldOptions(""); setNewFieldPlaceholder(""); setNewFieldRequired(false); }}>
                       Cancel
                     </Button>
-                    <Button size="sm" className="h-7 text-xs bg-[#4982CF] text-white hover:bg-[#3D73BC]" disabled={!newFieldLabel.trim()} onClick={() => addCustomQuickField(profile.id)}>
+                    <Button size="sm" className="h-7 text-xs bg-[#4982CF] text-white hover:bg-[#3D73BC]"
+                      disabled={!newFieldLabel.trim() || (newFieldType === "dropdown" && !newFieldOptions.trim())}
+                      onClick={() => addCustomQuickField(profile.id)}>
                       <Check className="h-3 w-3 mr-1" /> Add Field
                     </Button>
                   </div>
