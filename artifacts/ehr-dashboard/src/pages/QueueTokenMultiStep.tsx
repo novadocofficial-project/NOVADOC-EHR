@@ -6,11 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   QueueAppHeader, Patient, VisitType,
-  SEED_BRANCHES, SEED_PATIENTS, SEED_VISIT_TYPES,
+  SEED_BRANCHES, SEED_VISIT_TYPES,
   padToken, timeAgo, uid, TokenSlipModal, TokenSlipData,
 } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useRegConfig } from "@/hooks/useRegConfig";
+import { usePatients } from "@/hooks/usePatients";
 import { SEED_COUNTERS } from "@/pages/QueueModule";
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -32,7 +33,10 @@ export function QueueTokenMultiStep() {
   const [vtView, setVtView] = useState<"list" | "cards">("list");
   const [walkIn, setWalkIn] = useState(false);
   const { config: regConfig } = useRegConfig();
+  const { patients, addPatient } = usePatients();
   const [quickCounterId, setQuickCounterId] = useState("ctr-1");
+  const [quickFormValues, setQuickFormValues] = useState<Record<string, string>>({});
+  const [quickGender, setQuickGender] = useState<"M" | "F">("M");
   const [tokenSlip, setTokenSlip] = useState<TokenSlipData | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const [tick, setTick] = useState(0);
@@ -52,7 +56,7 @@ export function QueueTokenMultiStep() {
     return () => document.removeEventListener("mousedown", handle);
   }, []);
 
-  const filteredPatients = SEED_PATIENTS.filter(p =>
+  const filteredPatients = patients.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.mrn.toLowerCase().includes(search.toLowerCase()) ||
     p.phone.includes(search)
@@ -557,7 +561,7 @@ export function QueueTokenMultiStep() {
                   <UserPlus className="h-5 w-5 text-[#4982CF]" />
                   <h2 className="text-base font-bold text-slate-900">Register New Patient</h2>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={() => setShowAddPatient(false)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={() => { setShowAddPatient(false); setQuickFormValues({}); setQuickGender("M"); }}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
@@ -604,11 +608,15 @@ export function QueueTokenMultiStep() {
                     <div key={`gr-${i}`} className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{f.label}{f.required && " *"}</label>
-                        <Input className="h-9 text-sm" type={INPUT_TYPE[f.fieldId] ?? "text"} placeholder={PLACEHOLDER[f.fieldId] ?? f.label} />
+                        <Input className="h-9 text-sm" type={INPUT_TYPE[f.fieldId] ?? "text"} placeholder={PLACEHOLDER[f.fieldId] ?? f.label}
+                          value={quickFormValues[f.fieldId] ?? ""}
+                          onChange={e => setQuickFormValues(prev => ({ ...prev, [f.fieldId]: e.target.value }))} />
                       </div>
                       <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{next.label}{next.required && " *"}</label>
-                        <Input className="h-9 text-sm" type={INPUT_TYPE[next.fieldId] ?? "text"} placeholder={PLACEHOLDER[next.fieldId] ?? next.label} />
+                        <Input className="h-9 text-sm" type={INPUT_TYPE[next.fieldId] ?? "text"} placeholder={PLACEHOLDER[next.fieldId] ?? next.label}
+                          value={quickFormValues[next.fieldId] ?? ""}
+                          onChange={e => setQuickFormValues(prev => ({ ...prev, [next.fieldId]: e.target.value }))} />
                       </div>
                     </div>
                   );
@@ -617,7 +625,9 @@ export function QueueTokenMultiStep() {
                   rows.push(
                     <div key={`sr-${i}`}>
                       <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{f.label}{f.required && " *"}</label>
-                      <Input className="h-9 text-sm" type={INPUT_TYPE[f.fieldId] ?? "text"} placeholder={PLACEHOLDER[f.fieldId] ?? f.label} />
+                      <Input className="h-9 text-sm" type={INPUT_TYPE[f.fieldId] ?? "text"} placeholder={PLACEHOLDER[f.fieldId] ?? f.label}
+                        value={quickFormValues[f.fieldId] ?? ""}
+                        onChange={e => setQuickFormValues(prev => ({ ...prev, [f.fieldId]: e.target.value }))} />
                     </div>
                   );
                   i++;
@@ -628,7 +638,7 @@ export function QueueTokenMultiStep() {
                   {rows}
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Gender</label>
-                    <Select defaultValue="M">
+                    <Select value={quickGender} onValueChange={v => setQuickGender(v as "M" | "F")}>
                       <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="M">Male</SelectItem>
@@ -640,10 +650,34 @@ export function QueueTokenMultiStep() {
               );
             })()}
             <div className="flex gap-3 px-6 pb-6">
-              <Button variant="outline" className="flex-1" onClick={() => setShowAddPatient(false)}>Cancel</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setShowAddPatient(false); setQuickFormValues({}); setQuickGender("M"); }}>Cancel</Button>
               <Button className="flex-1 bg-[#4982CF] hover:bg-[#3D73BC] text-white" onClick={() => {
-                showToast("Patient registered. Select them from search to continue.");
+                const assignedProfileId = regConfig.counterProfileMap[quickCounterId];
+                const assignedProfile = assignedProfileId ? regConfig.quickProfiles.find(p => p.id === assignedProfileId) : null;
+                const profile = assignedProfile ?? regConfig.quickProfiles[0] ?? null;
+                const DEFAULT_QUICK_FALLBACK = [
+                  { fieldId: "name" as const, label: "Name", visible: true, required: true },
+                  { fieldId: "phone" as const, label: "Phone", visible: true, required: true },
+                ];
+                const visFields = profile ? profile.fields.filter(f => f.visible) : DEFAULT_QUICK_FALLBACK;
+                const requiredFieldIds = visFields.filter(f => f.required).map(f => f.fieldId);
+                const canSubmitQuick = requiredFieldIds.every(id => !!(quickFormValues[id]?.trim()));
+                if (!canSubmitQuick) return;
+                const name  = quickFormValues["name"]  ?? "";
+                const phone = quickFormValues["phone"] ?? "";
+                const dob   = quickFormValues["dob"]   ?? "";
+                const newPatient: Patient = {
+                  id: uid(),
+                  mrn: "MR-" + Math.floor(45000 + Math.random() * 5000),
+                  name: name.trim() || "Patient",
+                  phone, dob, gender: quickGender,
+                };
+                addPatient(newPatient);
+                setSelectedPat(newPatient);
+                setQuickFormValues({});
+                setQuickGender("M");
                 setShowAddPatient(false);
+                showToast(`Patient registered — ${newPatient.name}`);
               }}>
                 Register & Continue
               </Button>

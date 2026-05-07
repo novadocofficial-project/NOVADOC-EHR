@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { QueueAppHeader, SEED_PATIENTS, timeAgo, Patient, uid } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useRegConfig, type RegField } from "@/hooks/useRegConfig";
+import { usePatients } from "@/hooks/usePatients";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -132,6 +133,7 @@ type RegMode = "search" | "new";
 interface RegistrationContentProps {
   onRegister: (patient: Patient) => void;
   isReassign?: boolean;
+  patients: Patient[];
 }
 
 // ─── Dynamic New Registration Form ───────────────────────────────────────────
@@ -507,12 +509,12 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
   );
 }
 
-function RegistrationContent({ onRegister, isReassign = false }: RegistrationContentProps) {
+function RegistrationContent({ onRegister, isReassign = false, patients }: RegistrationContentProps) {
   const [mode, setMode] = useState<RegMode>("search");
   const [searchQ, setSearchQ] = useState("");
   const [found, setFound] = useState<Patient | null>(null);
 
-  const filtered = SEED_PATIENTS.filter(p =>
+  const filtered = patients.filter(p =>
     p.name.toLowerCase().includes(searchQ.toLowerCase()) ||
     p.mrn.toLowerCase().includes(searchQ.toLowerCase()) ||
     p.phone.includes(searchQ) ||
@@ -1091,6 +1093,7 @@ export function FrontDeskUser() {
     fdCall, fdTimerExpire, fdRegisterStart, fdRegisterComplete,
     fdBilling, fdCompleteBilling, fdSkip, fdRecall,
   } = useMultiStepQueue();
+  const { patients, addPatient } = usePatients();
 
   const [tick, setTick]               = useState(0);
   const [showSkipped, setShowSkipped] = useState(false);
@@ -1139,6 +1142,7 @@ export function FrontDeskUser() {
   function handleOpenBillingDrawer(entry: MultiEntry) { setActiveEntryId(entry.id); setDrawerType("billing"); }
   function handleRegComplete(patient: Patient) {
     if (!activeEntryId) return;
+    addPatient(patient);
     fdRegisterComplete(activeEntryId, patient);
     closeDrawer();
     showToastMsg(`Patient ${drawerType === "reassign" ? "reassigned" : "registered"} — ${patient.name}`);
@@ -1421,12 +1425,12 @@ export function FrontDeskUser() {
       {/* RIGHT DRAWERS */}
       {drawerType === "registration" && activeEntryId && (
         <RightDrawer title="Patient Registration" subtitle="Link a patient record to this token" onClose={closeDrawer}>
-          <RegistrationContent onRegister={handleRegComplete} />
+          <RegistrationContent onRegister={handleRegComplete} patients={patients} />
         </RightDrawer>
       )}
       {drawerType === "reassign" && activeEntryId && (
         <RightDrawer title="Reassign Patient" subtitle={`Correct the patient for ${activeDrawerEntry?.tokenNumber ?? "this token"}`} onClose={closeDrawer}>
-          <RegistrationContent onRegister={handleRegComplete} isReassign />
+          <RegistrationContent onRegister={handleRegComplete} isReassign patients={patients} />
         </RightDrawer>
       )}
       {drawerType === "billing" && activeDrawerEntry && (
