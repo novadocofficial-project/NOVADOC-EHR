@@ -5,7 +5,7 @@ import {
   Fingerprint, CreditCard as CardIcon, Search,
   Building2, Shield, Heart, FileSignature, Phone, MapPin,
   CalendarDays, Hash, UserPlus, Banknote, RefreshCw,
-  Maximize2, Minimize2, Pencil, Check,
+  Maximize2, Minimize2, Pencil, Check, Eye,
   Stethoscope, TestTube2, Scan, Pill, Package,
   Plus, Minus, Trash2, Receipt, Printer, ArrowRight, Percent, ShoppingCart,
 } from "lucide-react";
@@ -151,6 +151,7 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
   const [values, setValues] = useState<Record<string, string>>({});
   const [drawing, setDrawing] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [showReview, setShowReview] = useState(false);
   const sigRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
 
   const basicSection = config.sections.find(s => s.sectionType === "basic-info");
@@ -513,6 +514,96 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
     return null;
   }
 
+  // ─── Review summary (read-only, all filled fields grouped by section) ────────
+  function renderReviewSummary(): React.ReactNode {
+    type SummarySection = { title: string; items: { label: string; value: string }[] };
+    const sections: SummarySection[] = [];
+
+    // Basic Info
+    if (basicInfoSec) {
+      const items: { label: string; value: string }[] = [];
+      const condIds = basicInfoSec.conditionalRules.flatMap(r => r.showFieldIds);
+      const normalFlds = basicInfoSec.fields.filter(f => f.enabled && !condIds.includes(f.id) && f.type !== "signature" && f.type !== "file");
+      for (const f of normalFlds) { const v = values[f.id]; if (v) items.push({ label: f.label, value: v }); }
+      for (const rule of basicInfoSec.conditionalRules) {
+        const tv = values[rule.triggerFieldId] ?? "";
+        if (rule.triggerValues.includes(tv)) {
+          const condFlds = basicInfoSec.fields.filter(f => rule.showFieldIds.includes(f.id) && f.enabled && f.type !== "signature" && f.type !== "file");
+          for (const f of condFlds) { const v = values[f.id]; if (v) items.push({ label: f.label, value: v }); }
+        }
+      }
+      const pt = config.patientTypes.find(t => t.id === patientType);
+      if (pt) items.push({ label: "Patient Type", value: pt.label });
+      if (activeType) {
+        for (const f of activeType.extraFields.filter(ef => ef.enabled && ef.type !== "signature" && ef.type !== "file")) {
+          const v = values[f.id]; if (v) items.push({ label: f.label, value: v });
+        }
+      }
+      if (items.length > 0) sections.push({ title: "Basic Info", items });
+    }
+
+    // Welfare form
+    if (patientType === "welfare" && welfareForm) {
+      const items: { label: string; value: string }[] = [];
+      for (const f of welfareForm.fields.filter(f => f.enabled && f.type !== "signature" && f.type !== "file")) {
+        const v = values[f.id]; if (v) items.push({ label: f.label, value: v });
+      }
+      if (items.length > 0) sections.push({ title: welfareForm.name, items });
+    }
+
+    // Demographics sections
+    for (const sec of orderedSections.filter(s => s.sectionType === "demographics")) {
+      const items: { label: string; value: string }[] = [];
+      for (const f of sec.fields.filter(f => f.enabled && f.type !== "signature" && f.type !== "file")) {
+        const v = values[f.id]; if (v) items.push({ label: f.label, value: v });
+      }
+      if (items.length > 0) sections.push({ title: sec.name, items });
+    }
+
+    // Custom sections
+    for (const sec of orderedSections.filter(s => s.sectionType === "custom")) {
+      const condIds = sec.conditionalRules.flatMap(r => r.showFieldIds);
+      const visIds  = sec.conditionalRules.flatMap(rule =>
+        rule.triggerValues.includes(values[rule.triggerFieldId] ?? "") ? rule.showFieldIds : []
+      );
+      const items: { label: string; value: string }[] = [];
+      for (const f of sec.fields.filter(f => f.enabled && f.type !== "signature" && f.type !== "file" && (!condIds.includes(f.id) || visIds.includes(f.id)))) {
+        const v = values[f.id]; if (v) items.push({ label: f.label, value: v });
+      }
+      if (items.length > 0) sections.push({ title: sec.name, items });
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-[#4982CF]/30 bg-blue-50/70 px-4 py-3 flex items-start gap-2.5">
+          <CheckCircle2 className="h-4 w-4 text-[#4982CF] flex-shrink-0 mt-0.5" />
+          <p className="text-xs font-semibold text-[#4982CF] leading-snug">Review all information below before registering. Tap <span className="font-bold">Back to Edit</span> to make changes.</p>
+        </div>
+        {sections.length === 0 ? (
+          <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-8 text-center">
+            <p className="text-sm text-slate-400">No information filled in yet.</p>
+          </div>
+        ) : (
+          sections.map((sec, si) => (
+            <div key={si} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{sec.title}</p>
+              </div>
+              <div className="divide-y divide-slate-50">
+                {sec.items.map((item, ii) => (
+                  <div key={ii} className="flex items-start gap-3 px-4 py-2.5">
+                    <span className="text-[11px] text-slate-400 w-28 flex-shrink-0 pt-px">{item.label}</span>
+                    <span className="text-[11px] font-semibold text-slate-700 flex-1">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    );
+  }
+
   const multiStep = steps.length > 1;
 
   return (
@@ -550,41 +641,64 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
           )}
 
           {/* MR number banner */}
-          <div className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
-            <Hash className="h-4 w-4 text-slate-400 flex-shrink-0" />
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient ID / MR No</p>
-              <p className="text-sm font-mono font-bold text-slate-700">MR-{Math.floor(45100 + Math.random() * 900)} (auto-generated)</p>
+          {!showReview && (
+            <div className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
+              <Hash className="h-4 w-4 text-slate-400 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient ID / MR No</p>
+                <p className="text-sm font-mono font-bold text-slate-700">MR-{Math.floor(45100 + Math.random() * 900)} (auto-generated)</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Active step fields */}
-          {renderStepContent()}
+          {/* Active step fields — hidden when review panel is open */}
+          {showReview ? renderReviewSummary() : renderStepContent()}
         </div>
       </div>
 
       {/* Footer navigation */}
       <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
         {multiStep ? (
-          <div className="flex gap-3">
-            <Button variant="outline" className="h-11 px-5 text-sm font-bold"
-              onClick={() => setCurrentStep(s => Math.max(0, s - 1))}
-              disabled={safeStep === 0}>
-              <ChevronLeft className="h-4 w-4 mr-1" /> Back
-            </Button>
-            {isLastStep ? (
+          showReview ? (
+            /* Review mode footer: Back to Edit + Register */
+            <div className="flex gap-3">
+              <Button variant="outline" className="h-11 px-5 text-sm font-bold"
+                onClick={() => setShowReview(false)}>
+                <Pencil className="h-4 w-4 mr-1.5" /> Back to Edit
+              </Button>
               <Button className="flex-1 h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
                 disabled={!canSubmit} onClick={handleSubmit}>
                 <UserPlus className="h-4 w-4" />{isReassign ? "Register & Reassign" : "Register Patient"}
               </Button>
-            ) : (
-              <Button className="flex-1 h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
-                disabled={!canAdvance(safeStep)}
-                onClick={() => setCurrentStep(s => Math.min(steps.length - 1, s + 1))}>
-                Next <ArrowRight className="h-4 w-4" />
+            </div>
+          ) : (
+            /* Normal multi-step footer */
+            <div className="flex gap-3">
+              <Button variant="outline" className="h-11 px-5 text-sm font-bold"
+                onClick={() => setCurrentStep(s => Math.max(0, s - 1))}
+                disabled={safeStep === 0}>
+                <ChevronLeft className="h-4 w-4 mr-1" /> Back
               </Button>
-            )}
-          </div>
+              {isLastStep ? (
+                <>
+                  <Button variant="outline" className="h-11 px-4 text-sm font-bold text-[#4982CF] border-[#4982CF]/40 hover:bg-blue-50"
+                    onClick={() => setShowReview(true)}>
+                    <Eye className="h-4 w-4 mr-1.5" /> Review
+                  </Button>
+                  <Button className="flex-1 h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
+                    disabled={!canSubmit} onClick={handleSubmit}>
+                    <UserPlus className="h-4 w-4" />{isReassign ? "Register & Reassign" : "Register Patient"}
+                  </Button>
+                </>
+              ) : (
+                <Button className="flex-1 h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
+                  disabled={!canAdvance(safeStep)}
+                  onClick={() => setCurrentStep(s => Math.min(steps.length - 1, s + 1))}>
+                  Next <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )
         ) : (
           <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
             disabled={!canSubmit} onClick={handleSubmit}>
