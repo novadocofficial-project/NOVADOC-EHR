@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   useRegConfig,
   type RegField, type RegSection, type FieldType,
-  type WelfareFormTemplate, type QuickRegProfile, type ConditionalRule,
+  type WelfareFormTemplate, type QuickRegProfile, type QuickRegField, type ConditionalRule,
 } from "@/hooks/useRegConfig";
 import { SEED_VISIT_TYPES } from "@/pages/QueueModule";
 
@@ -957,12 +957,23 @@ function WorkflowBuilderTab() {
 
 // ─── Tab: Quick Registration ──────────────────────────────────────────────────
 
+// Field types allowed in quick registration (no file/signature — not suitable for fast intake)
+const QUICK_FIELD_TYPES: FieldType[] = ["text", "number", "date", "dropdown", "textarea"];
+
 function QuickRegistrationTab() {
   const { config, updateConfig, savedAt } = useRegConfig();
   const [selectedProfile, setSelectedProfile] = useState(config.quickProfiles[0]?.id ?? "");
   const [addingProfile, setAddingProfile] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  // Custom field add form state
+  const [showAddField, setShowAddField] = useState(false);
+  const [newFieldLabel, setNewFieldLabel] = useState("");
+  const [newFieldType, setNewFieldType] = useState<FieldType>("text");
+  const [newFieldOptions, setNewFieldOptions] = useState("");
+  const [newFieldPlaceholder, setNewFieldPlaceholder] = useState("");
+  const [newFieldRequired, setNewFieldRequired] = useState(false);
 
   const profile = config.quickProfiles.find(p => p.id === selectedProfile);
 
@@ -973,10 +984,10 @@ function QuickRegistrationTab() {
       id,
       name: newProfileName.trim(),
       fields: [
-        { fieldId: "name",  label: "Name",         visible: true,  required: true  },
-        { fieldId: "phone", label: "Phone",         visible: true,  required: true  },
-        { fieldId: "cnic",  label: "CNIC",          visible: false, required: false },
-        { fieldId: "dob",   label: "Date of Birth", visible: false, required: false },
+        { fieldId: "name",  label: "Name",          visible: true,  required: true,  isBuiltIn: true, fieldType: "text", placeholder: "Full name" },
+        { fieldId: "phone", label: "Phone",          visible: true,  required: true,  isBuiltIn: true, fieldType: "text", placeholder: "+92 …" },
+        { fieldId: "cnic",  label: "CNIC",           visible: false, required: false, isBuiltIn: true, fieldType: "text", placeholder: "00000-0000000-0" },
+        { fieldId: "dob",   label: "Date of Birth",  visible: false, required: false, isBuiltIn: true, fieldType: "date" },
       ],
     };
     updateConfig(prev => ({ ...prev, quickProfiles: [...prev.quickProfiles, newProfile] }));
@@ -1009,6 +1020,43 @@ function QuickRegistrationTab() {
     updateConfig(prev => ({
       ...prev,
       quickProfiles: prev.quickProfiles.map(p => p.id === profileId ? { ...p, name } : p),
+    }));
+  }
+
+  function addCustomQuickField(profileId: string) {
+    if (!newFieldLabel.trim()) return;
+    const newField: QuickRegField = {
+      fieldId: `qf-${Date.now()}`,
+      label: newFieldLabel.trim(),
+      visible: true,
+      required: newFieldRequired,
+      isBuiltIn: false,
+      fieldType: newFieldType,
+      options: newFieldType === "dropdown"
+        ? newFieldOptions.split("\n").map(o => o.trim()).filter(Boolean)
+        : [],
+      placeholder: newFieldPlaceholder.trim() || undefined,
+    };
+    updateConfig(prev => ({
+      ...prev,
+      quickProfiles: prev.quickProfiles.map(p =>
+        p.id === profileId ? { ...p, fields: [...p.fields, newField] } : p
+      ),
+    }));
+    setShowAddField(false);
+    setNewFieldLabel("");
+    setNewFieldType("text");
+    setNewFieldOptions("");
+    setNewFieldPlaceholder("");
+    setNewFieldRequired(false);
+  }
+
+  function deleteCustomQuickField(profileId: string, fieldId: string) {
+    updateConfig(prev => ({
+      ...prev,
+      quickProfiles: prev.quickProfiles.map(p =>
+        p.id === profileId ? { ...p, fields: p.fields.filter(f => f.fieldId !== fieldId) } : p
+      ),
     }));
   }
 
@@ -1067,29 +1115,104 @@ function QuickRegistrationTab() {
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div className="grid grid-cols-[1fr_80px_80px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-              <span>Field</span><span className="text-center">Visible</span><span className="text-center">Required</span>
+            {/* Header */}
+            <div className="grid grid-cols-[1fr_72px_72px_32px] text-[9px] font-black uppercase tracking-widest text-slate-400 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+              <span>Field</span><span className="text-center">Visible</span><span className="text-center">Required</span><span />
             </div>
-            {profile.fields.map(f => (
-              <div key={f.fieldId} className="grid grid-cols-[1fr_80px_80px] items-center px-4 py-3 border-b border-slate-50 last:border-0">
-                <p className="text-sm font-semibold text-slate-700">{f.label}</p>
-                <div className="flex justify-center">
-                  <Switch
-                    checked={f.visible}
-                    onCheckedChange={v => updateProfileField(profile.id, f.fieldId, { visible: v, required: v ? f.required : false })}
-                    className="data-[state=checked]:bg-[#4982CF]"
-                  />
+
+            {/* Built-in fields */}
+            {profile.fields.filter(f => f.isBuiltIn !== false).map(f => (
+              <div key={f.fieldId} className="grid grid-cols-[1fr_72px_72px_32px] items-center px-4 py-3 border-b border-slate-50">
+                <div className="flex items-center gap-2 min-w-0">
+                  <p className="text-sm font-semibold text-slate-700">{f.label}</p>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 uppercase tracking-wide flex-shrink-0">built-in</span>
                 </div>
                 <div className="flex justify-center">
-                  <Switch
-                    checked={f.required && f.visible}
-                    disabled={!f.visible}
-                    onCheckedChange={v => updateProfileField(profile.id, f.fieldId, { required: v })}
-                    className="data-[state=checked]:bg-rose-500 disabled:opacity-30"
-                  />
+                  <Switch checked={f.visible} onCheckedChange={v => updateProfileField(profile.id, f.fieldId, { visible: v, required: v ? f.required : false })} className="data-[state=checked]:bg-[#4982CF]" />
+                </div>
+                <div className="flex justify-center">
+                  <Switch checked={f.required && f.visible} disabled={!f.visible} onCheckedChange={v => updateProfileField(profile.id, f.fieldId, { required: v })} className="data-[state=checked]:bg-rose-500 disabled:opacity-30" />
+                </div>
+                <div />
+              </div>
+            ))}
+
+            {/* Custom fields */}
+            {profile.fields.filter(f => f.isBuiltIn === false).map(f => (
+              <div key={f.fieldId} className="grid grid-cols-[1fr_72px_72px_32px] items-center px-4 py-3 border-b border-slate-50">
+                <div className="flex items-center gap-2 min-w-0">
+                  <p className="text-sm font-semibold text-slate-700 truncate">{f.label}</p>
+                  <FieldTypeBadge type={f.fieldType ?? "text"} />
+                </div>
+                <div className="flex justify-center">
+                  <Switch checked={f.visible} onCheckedChange={v => updateProfileField(profile.id, f.fieldId, { visible: v, required: v ? f.required : false })} className="data-[state=checked]:bg-[#4982CF]" />
+                </div>
+                <div className="flex justify-center">
+                  <Switch checked={f.required && f.visible} disabled={!f.visible} onCheckedChange={v => updateProfileField(profile.id, f.fieldId, { required: v })} className="data-[state=checked]:bg-rose-500 disabled:opacity-30" />
+                </div>
+                <div className="flex justify-center">
+                  <button onClick={() => deleteCustomQuickField(profile.id, f.fieldId)} className="text-slate-300 hover:text-rose-500 transition-colors">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
             ))}
+
+            {/* Add custom field */}
+            {showAddField ? (
+              <div className="p-4 border-t border-slate-100 space-y-3 bg-slate-50/70">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Label *</label>
+                    <Input value={newFieldLabel} onChange={e => setNewFieldLabel(e.target.value)} placeholder="e.g. Guardian Name"
+                      className="h-8 text-sm" autoFocus
+                      onKeyDown={e => { if (e.key === "Enter") addCustomQuickField(profile.id); if (e.key === "Escape") setShowAddField(false); }} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Type</label>
+                    <Select value={newFieldType} onValueChange={v => setNewFieldType(v as FieldType)}>
+                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {QUICK_FIELD_TYPES.map(t => <SelectItem key={t} value={t}>{FIELD_TYPE_LABELS[t]}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Placeholder</label>
+                  <Input value={newFieldPlaceholder} onChange={e => setNewFieldPlaceholder(e.target.value)} placeholder="Hint text shown inside the field..." className="h-8 text-sm" />
+                </div>
+                {newFieldType === "dropdown" && (
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Options (one per line)</label>
+                    <textarea
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-20"
+                      value={newFieldOptions} onChange={e => setNewFieldOptions(e.target.value)} placeholder={"Option A\nOption B\nOption C"} />
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={newFieldRequired} onCheckedChange={setNewFieldRequired} className="data-[state=checked]:bg-rose-500" />
+                    <span className="text-xs text-slate-600">Required</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setShowAddField(false); setNewFieldLabel(""); setNewFieldType("text"); setNewFieldOptions(""); setNewFieldPlaceholder(""); setNewFieldRequired(false); }}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" className="h-7 text-xs bg-[#4982CF] text-white hover:bg-[#3D73BC]" disabled={!newFieldLabel.trim()} onClick={() => addCustomQuickField(profile.id)}>
+                      <Check className="h-3 w-3 mr-1" /> Add Field
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowAddField(true)}
+                className="flex w-full items-center justify-center gap-1.5 py-3 text-xs font-bold text-[#4982CF] hover:bg-[#4982CF]/5 transition-colors border-t border-dashed border-[#4982CF]/30"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Custom Field
+              </button>
+            )}
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-4">

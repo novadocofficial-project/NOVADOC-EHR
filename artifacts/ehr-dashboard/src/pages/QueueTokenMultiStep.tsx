@@ -593,14 +593,46 @@ export function QueueTokenMultiStep() {
                 : null;
               const profile = assignedProfile ?? regConfig.quickProfiles[0] ?? null;
               const DEFAULT_QUICK_FALLBACK = [
-                { fieldId: "name" as const, label: "Name", visible: true, required: true },
-                { fieldId: "phone" as const, label: "Phone", visible: true, required: true },
+                { fieldId: "name",  label: "Name",  visible: true, required: true,  isBuiltIn: true as const, fieldType: "text" as const, placeholder: "Full name", options: [] as string[] },
+                { fieldId: "phone", label: "Phone", visible: true, required: true,  isBuiltIn: true as const, fieldType: "text" as const, placeholder: "+92 …",     options: [] as string[] },
               ];
               const visFields = profile
                 ? profile.fields.filter(f => f.visible)
                 : DEFAULT_QUICK_FALLBACK;
-              const INPUT_TYPE: Record<string, string> = { dob: "date", phone: "tel" };
-              const PLACEHOLDER: Record<string, string> = { phone: "+92 …", name: "Full name", cnic: "00000-0000000-0" };
+
+              // Render the appropriate input control for each field type
+              const renderControl = (f: typeof visFields[0]) => {
+                const ft = f.fieldType ?? "text";
+                const ph = f.placeholder ?? f.label;
+                const val = quickFormValues[f.fieldId] ?? "";
+                const onChange = (v: string) => setQuickFormValues(prev => ({ ...prev, [f.fieldId]: v }));
+
+                if (ft === "dropdown" && f.options?.length) {
+                  return (
+                    <Select value={val} onValueChange={onChange}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={ph} /></SelectTrigger>
+                      <SelectContent>
+                        {f.options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  );
+                }
+                if (ft === "textarea") {
+                  return (
+                    <textarea
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-16"
+                      placeholder={ph} value={val}
+                      onChange={e => onChange(e.target.value)}
+                    />
+                  );
+                }
+                const inputType = f.fieldId === "phone" ? "tel" : ft === "date" ? "date" : ft === "number" ? "number" : "text";
+                return (
+                  <Input className="h-9 text-sm" type={inputType} placeholder={ph}
+                    value={val} onChange={e => onChange(e.target.value)} />
+                );
+              };
+
               const rows: React.ReactNode[] = [];
               let i = 0;
               while (i < visFields.length) {
@@ -611,15 +643,11 @@ export function QueueTokenMultiStep() {
                     <div key={`gr-${i}`} className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{f.label}{f.required && " *"}</label>
-                        <Input className="h-9 text-sm" type={INPUT_TYPE[f.fieldId] ?? "text"} placeholder={PLACEHOLDER[f.fieldId] ?? f.label}
-                          value={quickFormValues[f.fieldId] ?? ""}
-                          onChange={e => setQuickFormValues(prev => ({ ...prev, [f.fieldId]: e.target.value }))} />
+                        {renderControl(f)}
                       </div>
                       <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{next.label}{next.required && " *"}</label>
-                        <Input className="h-9 text-sm" type={INPUT_TYPE[next.fieldId] ?? "text"} placeholder={PLACEHOLDER[next.fieldId] ?? next.label}
-                          value={quickFormValues[next.fieldId] ?? ""}
-                          onChange={e => setQuickFormValues(prev => ({ ...prev, [next.fieldId]: e.target.value }))} />
+                        {renderControl(next)}
                       </div>
                     </div>
                   );
@@ -628,9 +656,7 @@ export function QueueTokenMultiStep() {
                   rows.push(
                     <div key={`sr-${i}`}>
                       <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{f.label}{f.required && " *"}</label>
-                      <Input className="h-9 text-sm" type={INPUT_TYPE[f.fieldId] ?? "text"} placeholder={PLACEHOLDER[f.fieldId] ?? f.label}
-                        value={quickFormValues[f.fieldId] ?? ""}
-                        onChange={e => setQuickFormValues(prev => ({ ...prev, [f.fieldId]: e.target.value }))} />
+                      {renderControl(f)}
                     </div>
                   );
                   i++;

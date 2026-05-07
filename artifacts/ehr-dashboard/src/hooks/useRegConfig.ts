@@ -53,10 +53,14 @@ export interface WelfareFormTemplate {
 }
 
 export interface QuickRegField {
-  fieldId: "name" | "phone" | "cnic" | "dob";
+  fieldId: string;          // "name"|"phone"|"cnic"|"dob" for built-ins, uid for custom
   label: string;
   visible: boolean;
   required: boolean;
+  isBuiltIn?: boolean;
+  fieldType?: FieldType;    // defaults to "text" when omitted
+  options?: string[];       // for dropdown/radio/checkbox types
+  placeholder?: string;
 }
 
 export interface QuickRegProfile {
@@ -76,10 +80,10 @@ export interface RegConfig {
 // ─── Default Config ───────────────────────────────────────────────────────────
 
 const DEFAULT_QUICK_FIELDS: QuickRegField[] = [
-  { fieldId: "name",  label: "Name",          visible: true,  required: true  },
-  { fieldId: "phone", label: "Phone",          visible: true,  required: true  },
-  { fieldId: "cnic",  label: "CNIC",           visible: false, required: false },
-  { fieldId: "dob",   label: "Date of Birth",  visible: false, required: false },
+  { fieldId: "name",  label: "Name",          visible: true,  required: true,  isBuiltIn: true, fieldType: "text", placeholder: "Full name" },
+  { fieldId: "phone", label: "Phone",          visible: true,  required: true,  isBuiltIn: true, fieldType: "text", placeholder: "+92 …" },
+  { fieldId: "cnic",  label: "CNIC",           visible: false, required: false, isBuiltIn: true, fieldType: "text", placeholder: "00000-0000000-0" },
+  { fieldId: "dob",   label: "Date of Birth",  visible: false, required: false, isBuiltIn: true, fieldType: "date" },
 ];
 
 export const DEFAULT_REG_CONFIG: RegConfig = {
