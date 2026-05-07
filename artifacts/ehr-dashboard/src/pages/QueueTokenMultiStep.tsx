@@ -565,7 +565,9 @@ export function QueueTokenMultiStep() {
               </div>
               {(() => {
                 const qKey = `multi-step:${selectedVT.id}`;
-                const resolvedProfileId = regConfig.queueProfileMap[qKey];
+                const resolvedProfileId =
+                  regConfig.queueProfileMap[qKey] ??
+                  regConfig.queueProfileMap["multi-step"];
                 const resolvedProfile = resolvedProfileId
                   ? regConfig.quickProfiles.find(p => p.id === resolvedProfileId)
                   : regConfig.quickProfiles[0];
@@ -581,9 +583,11 @@ export function QueueTokenMultiStep() {
               })()}
             </div>
             {(() => {
-              // Queue-aware profile resolution: multi-step:<vtId> → quickProfiles[0] → Name+Phone fallback
+              // Queue-aware profile resolution: multi-step:<vtId> → multi-step → quickProfiles[0] → Name+Phone fallback
               const qKey = `multi-step:${selectedVT.id}`;
-              const assignedProfileId = regConfig.queueProfileMap[qKey];
+              const assignedProfileId =
+                regConfig.queueProfileMap[qKey] ??
+                regConfig.queueProfileMap["multi-step"];
               const assignedProfile = assignedProfileId
                 ? regConfig.quickProfiles.find(p => p.id === assignedProfileId)
                 : null;
@@ -652,7 +656,9 @@ export function QueueTokenMultiStep() {
               <Button variant="outline" className="flex-1" onClick={() => { setShowAddPatient(false); setQuickFormValues({}); setQuickGender("M"); }}>Cancel</Button>
               <Button className="flex-1 bg-[#4982CF] hover:bg-[#3D73BC] text-white" onClick={() => {
                 const qKey2 = `multi-step:${selectedVT.id}`;
-                const assignedProfileId = regConfig.queueProfileMap[qKey2];
+                const assignedProfileId =
+                  regConfig.queueProfileMap[qKey2] ??
+                  regConfig.queueProfileMap["multi-step"];
                 const assignedProfile = assignedProfileId ? regConfig.quickProfiles.find(p => p.id === assignedProfileId) : null;
                 const profile = assignedProfile ?? regConfig.quickProfiles[0] ?? null;
                 const DEFAULT_QUICK_FALLBACK = [

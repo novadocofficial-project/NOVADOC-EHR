@@ -1139,7 +1139,7 @@ function QuickRegistrationTab() {
             {/* Multi-step visit types */}
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Multi-Step Visit Types</p>
             <div className="space-y-2">
-              {SEED_VISIT_TYPES.map(vt => {
+              {SEED_VISIT_TYPES.filter(vt => vt.queueMode === "multi-step").map(vt => {
                 const qKey = `multi-step:${vt.id}`;
                 const currentProfileId = config.queueProfileMap[qKey];
                 const isAssigned = currentProfileId === profile.id;
