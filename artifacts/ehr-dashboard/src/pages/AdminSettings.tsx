@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import {
   Activity,
+  AlertCircle,
   Banknote,
   Bell,
   FileText,
@@ -74,6 +75,8 @@ import { LabResultTemplatesModule } from "@/pages/LabResultTemplatesModule";
 import { ProcedureCatalogModule, INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS, type ProcedureSection, type ProcedurePartner } from "@/pages/ProcedureCatalogModule";
 import { QueueModule } from "@/pages/QueueModule";
 import type { QueueSection } from "@/pages/QueueModule";
+import { NursingConfigModule } from "@/pages/NursingConfigModule";
+import type { NursingSectionId } from "@/pages/NursingConfigModule";
 import { PatientRegistrationModule } from "@/pages/PatientRegistrationModule";
 import type { PatRegSection } from "@/pages/PatientRegistrationModule";
 import { OrderSetsModule } from "@/pages/OrderSetsModule";
@@ -176,6 +179,8 @@ type ActiveModule =
   | "visit-types" | "workflow-config" | "counter-types" | "counters"
   | "token-settings" | "queue-behavior" | "locking-settings" | "display-settings" | "doctor-partitions" | "routing-rules"
   | "soap-note-structure" | "soap-vitals-config" | "hpi-templates" | "pe-builder" | "template-manager"
+  | "nursing-triage" | "nursing-history" | "nursing-vitals" | "nursing-care-plan"
+  | "nursing-procedures" | "nursing-lab" | "nursing-imaging" | "nursing-goals"
   | "clinical-complaints" | "clinical-icd10" | "clinical-poc" | "clinical-ros"
   | "clinical-allergies" | "clinical-med-surgical" | "clinical-family" | "clinical-social"
   | "care-plan-library" | "goals-library" | "referral-destinations" | "comorbidities"
@@ -205,6 +210,7 @@ export function AdminSettings() {
     patientReg: !!initSection && regSections.includes(initSection as ActiveModule),
     queue: !!initSection && queueSections.includes(initSection as ActiveModule),
     soapConfig: false,
+    nursing: false,
     clinicalLibraries: false,
     labCatalog: false,
     procedureCatalog: false,
@@ -598,7 +604,6 @@ export function AdminSettings() {
             {navExpanded.soapConfig && (
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
                 {subNavItem("soap-note-structure",   <FileText className="h-3.5 w-3.5" />,      "Note Structure")}
-                {subNavItem("soap-vitals-config",    <Sliders className="h-3.5 w-3.5" />,       "Vitals Config")}
                 {subNavItem("clinical-complaints",   <Activity className="h-3.5 w-3.5" />,      "Chief Complaints")}
                 {subNavItem("hpi-templates",         <ClipboardList className="h-3.5 w-3.5" />, "HPI Templates")}
                 {subNavItem("clinical-allergies",    <Bell className="h-3.5 w-3.5" />,          "Allergies")}
@@ -614,6 +619,29 @@ export function AdminSettings() {
                 {subNavItem("goals-library",         <Target className="h-3.5 w-3.5" />,        "Patient Goals")}
                 {subNavItem("referral-destinations", <MapPin className="h-3.5 w-3.5" />,        "Referral Destinations")}
                 {subNavItem("template-manager",      <FileText className="h-3.5 w-3.5" />,      "Template Manager")}
+              </div>
+            )}
+
+            {/* ── Nursing Group ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("nursing")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Heart className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Nursing</span>
+              {navExpanded.nursing ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.nursing && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("nursing-triage",     <AlertCircle className="h-3.5 w-3.5" />,  "Triage")}
+                {subNavItem("nursing-history",    <ClipboardList className="h-3.5 w-3.5" />, "History")}
+                {subNavItem("nursing-vitals",     <Sliders className="h-3.5 w-3.5" />,       "Vital Signs")}
+                {subNavItem("nursing-care-plan",  <Heart className="h-3.5 w-3.5" />,         "Care Plan")}
+                {subNavItem("nursing-procedures", <Stethoscope className="h-3.5 w-3.5" />,   "Nursing Procedures")}
+                {subNavItem("nursing-lab",        <FlaskConical className="h-3.5 w-3.5" />,  "Lab")}
+                {subNavItem("nursing-imaging",    <ScanLine className="h-3.5 w-3.5" />,      "Imaging")}
+                {subNavItem("nursing-goals",      <Target className="h-3.5 w-3.5" />,        "Goals")}
               </div>
             )}
 
@@ -809,6 +837,10 @@ export function AdminSettings() {
               activeSubModule={activeModule === "soap-note-structure" ? "note-structure" : "vitals-config"}
               departments={departments}
             />
+          )}
+
+          {(["nursing-triage","nursing-history","nursing-vitals","nursing-care-plan","nursing-procedures","nursing-lab","nursing-imaging","nursing-goals"] as const).map(s =>
+            activeModule === s ? <NursingConfigModule key={s} section={s as NursingSectionId} /> : null
           )}
 
           {activeModule === "hpi-templates" && <HpiTemplatesModule />}

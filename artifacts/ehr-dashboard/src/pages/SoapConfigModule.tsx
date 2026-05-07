@@ -318,7 +318,7 @@ function NoteStructurePanel({ departments }: NoteStructurePanelProps) {
 
 // ─── Vitals Configuration Panel ───────────────────────────────────────────────
 
-function VitalsConfigPanel() {
+export function VitalsConfigPanel() {
   const [vitals, setVitals] = useState<VitalConfig[]>(DEFAULT_VITALS);
   const [saved, setSaved]   = useState(false);
 
