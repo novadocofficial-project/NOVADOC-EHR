@@ -340,7 +340,7 @@ function BasicInfoTab() {
         <FieldListEditor
           fields={regularFields}
           onChange={newRegular => updateSectionFields([...newRegular, ...conditionalFields])}
-          allowAdd={false}
+          allowAdd={true}
         />
       </div>
 
