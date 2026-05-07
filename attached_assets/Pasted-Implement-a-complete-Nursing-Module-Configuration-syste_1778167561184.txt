@@ -1,0 +1,295 @@
+Implement a complete Nursing Module Configuration system in the Admin Panel.
+
+Overview
+
+Create a new top-level Admin module called:
+
+Nursing
+
+The Nursing module will allow admins to configure nursing workflows, nursing forms, and nursing assessment structures that will later be used inside the Nursing User Panel within the multi-step queue workflow.
+
+The Nursing module should contain the following built-in sections:
+
+Triage
+History
+Vital Signs
+Care Plan
+Nursing Procedures
+Lab
+Imaging
+Goals
+
+Admins must be able to:
+
+Enable/disable sections
+Modify section configurations
+Reorder sections in future-ready architecture
+
+For now, only:
+
+Triage
+History
+Vital Signs
+
+will have active functionality.
+
+The remaining sections:
+
+Care Plan
+Nursing Procedures
+Lab
+Imaging
+Goals
+
+can remain blank placeholder pages for now.
+
+1. TRIAGE SECTION
+
+Create a Nursing > Triage configuration page.
+
+Purpose:
+This section will later support multiple triage algorithms.
+
+For now:
+
+Keep the page empty as a placeholder
+Add simple placeholder text:
+“Triage algorithm configuration will be implemented later.”
+
+Future-ready requirements:
+
+Architecture should support multiple triage algorithms
+Admin should eventually be able to create and manage triage logic
+
+No backend logic needed yet.
+
+2. VITAL SIGNS SECTION
+
+Move Vital Signs configuration completely out of SOAP Configuration.
+
+Changes required:
+
+Remove Vital Signs from SOAP Configuration
+Create Nursing > Vital Signs configuration page
+Existing Vital Signs functionality and fields should remain unchanged
+All Vital Signs configuration should now belong only to Nursing
+
+Important:
+SOAP Configuration should no longer manage Vital Signs.
+
+3. HISTORY SECTION (MAJOR FEATURE)
+
+The Nursing History section should NOT create duplicate patient history fields.
+
+Important architectural issue:
+Many history components already exist globally in the system and are already used in SOAP.
+
+Examples:
+
+Chief Complaint
+Allergies
+Past History
+Surgical History
+Family History
+Social History
+Demographics
+Current Medicines
+
+If we recreate these independently inside Nursing, it will create:
+
+Data duplication
+Inconsistent records
+Multiple sources of truth
+
+Instead, Nursing History should work as a configurable:
+
+“History Template Builder”
+
+The Nursing module should dynamically assemble nursing history forms using:
+
+Existing shared system components
+Custom nursing-specific components
+HISTORY TEMPLATE BUILDER
+
+Admins should be able to create multiple reusable templates.
+
+Example templates:
+
+General Nursing Assessment
+Emergency Intake
+Pediatrics Intake
+Surgical Assessment
+
+Each template should contain configurable sections/components.
+
+A. EXISTING SYSTEM COMPONENTS
+
+Admins should be able to select existing centralized system components.
+
+Available Existing System Components:
+
+Chief Complaint
+Allergies
+Past History
+Surgical History
+Family History
+Social History
+Demographics
+Current Medicines
+
+These must use the SAME centralized/shared patient data models already used in SOAP.
+
+Important behavior:
+
+No duplicated storage
+Single source of truth
+Updates should reflect across all modules
+
+Example:
+If Nursing updates Allergies, Doctor SOAP should see the same updated allergies.
+
+Demographics should fetch data from Patient Registration.
+
+B. CUSTOM COMPONENTS
+
+Admins should also be able to create nursing-specific custom sections.
+
+Custom Components should support:
+
+Basic field types:
+
+Text
+Textarea
+Dropdown
+Multi-select
+Checkbox
+Date
+Number
+Toggle
+
+Advanced field type:
+
+Repeater / Multiple Entry Group
+REPEATABLE CUSTOM COMPONENTS (IMPORTANT)
+
+Custom Components must support both:
+
+Single-entry sections
+Multiple-entry/repeatable sections
+
+Admins should be able to create repeatable nursing sections where users can dynamically add multiple records.
+
+Example:
+
+Section Name:
+Hospitalizations
+
+Section Type:
+Repeater / Multiple Entry Group
+
+Fields:
+
+Reason for Visit
+Date
+Treatment
+Outcome
+
+Nursing users should be able to:
+
+Add multiple hospitalization entries
+Edit entries
+Delete entries
+
+Another example:
+
+Emergency Room Visits
+
+Fields:
+
+Reason for Visit
+Date
+Treatment
+Outcome
+REPEATER CONFIGURATION REQUIREMENTS
+
+For Repeater-type custom components, admins must be able to:
+
+Define group title
+Add multiple sub-fields
+Configure sub-field types
+Set required/optional rules
+Allow unlimited entries OR configurable limits
+
+Repeatable data should be stored as structured arrays/records.
+
+CONDITIONAL RULES
+
+History Templates must support conditional logic.
+
+Examples:
+
+Show Pregnancy History only if Gender = Female
+Show Diabetes fields only if Past History contains Diabetes
+
+Conditional rules should work for:
+
+Existing System Components
+Custom Components
+Repeater Sections
+NURSING PANEL BEHAVIOR
+
+When Nursing users open a patient in the multi-step queue:
+
+Selected History Template should render dynamically
+Existing System Components should fetch shared centralized patient data
+Custom Components should use nursing-specific storage
+Repeater sections should support dynamic add/remove entry behavior
+Draft state and workflow progress should continue using local storage
+IMPORTANT ARCHITECTURE RULE
+
+The Nursing History section is:
+
+A template builder
+A configuration layer
+A dynamic assessment engine
+
+It is NOT:
+
+A duplicate patient history database
+
+Shared medical history must remain centralized system-wide.
+
+UI/UX REQUIREMENTS
+
+Admin UI should support:
+
+Creating templates
+Editing templates
+Enabling/disabling components
+Drag-and-drop ordering of sections (future-ready)
+Configuring repeater fields
+Conditional rule builder structure
+
+For now, simple implementations are acceptable as long as architecture is scalable.
+
+STORAGE & STATE MANAGEMENT
+
+Requirements:
+
+Shared components use centralized patient records
+Nursing custom components use nursing-specific storage
+Repeater components store structured arrays
+Multi-step queue progress uses local storage
+Draft progress persists during navigation
+PLACEHOLDER SECTIONS
+
+The following Nursing sections can remain blank pages for now:
+
+Care Plan
+Nursing Procedures
+Lab
+Imaging
+Goals
+
+Add simple placeholder text:
+“Configuration will be implemented later.”
