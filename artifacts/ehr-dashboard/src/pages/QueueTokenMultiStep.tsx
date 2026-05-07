@@ -10,6 +10,7 @@ import {
   padToken, timeAgo, uid, TokenSlipModal, TokenSlipData,
 } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
+import { useRegConfig } from "@/hooks/useRegConfig";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ export function QueueTokenMultiStep() {
   const [showAddPatient, setShowAddPatient] = useState(false);
   const [vtView, setVtView] = useState<"list" | "cards">("list");
   const [walkIn, setWalkIn] = useState(false);
+  const { config: regConfig } = useRegConfig();
   const [tokenSlip, setTokenSlip] = useState<TokenSlipData | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const [tick, setTick] = useState(0);
@@ -556,38 +558,56 @@ export function QueueTokenMultiStep() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">First Name *</label>
-                  <Input className="h-9 text-sm" placeholder="First name" />
+            {(() => {
+              const profile = regConfig.quickProfiles[0];
+              const visFields = profile ? profile.fields.filter(f => f.visible) : [];
+              const INPUT_TYPE: Record<string, string> = { dob: "date", phone: "tel" };
+              const PLACEHOLDER: Record<string, string> = { phone: "+92 …", name: "Full name", cnic: "00000-0000000-0" };
+              const rows: React.ReactNode[] = [];
+              let i = 0;
+              while (i < visFields.length) {
+                const f = visFields[i];
+                const next = visFields[i + 1];
+                if (next) {
+                  rows.push(
+                    <div key={`gr-${i}`} className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{f.label}{f.required && " *"}</label>
+                        <Input className="h-9 text-sm" type={INPUT_TYPE[f.fieldId] ?? "text"} placeholder={PLACEHOLDER[f.fieldId] ?? f.label} />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{next.label}{next.required && " *"}</label>
+                        <Input className="h-9 text-sm" type={INPUT_TYPE[next.fieldId] ?? "text"} placeholder={PLACEHOLDER[next.fieldId] ?? next.label} />
+                      </div>
+                    </div>
+                  );
+                  i += 2;
+                } else {
+                  rows.push(
+                    <div key={`sr-${i}`}>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{f.label}{f.required && " *"}</label>
+                      <Input className="h-9 text-sm" type={INPUT_TYPE[f.fieldId] ?? "text"} placeholder={PLACEHOLDER[f.fieldId] ?? f.label} />
+                    </div>
+                  );
+                  i++;
+                }
+              }
+              return (
+                <div className="p-6 space-y-4">
+                  {rows}
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Gender</label>
+                    <Select defaultValue="M">
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="M">Male</SelectItem>
+                        <SelectItem value="F">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Last Name *</label>
-                  <Input className="h-9 text-sm" placeholder="Last name" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Phone *</label>
-                  <Input className="h-9 text-sm" placeholder="+92 …" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Date of Birth</label>
-                  <Input className="h-9 text-sm" type="date" />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Gender</label>
-                <Select defaultValue="M">
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="M">Male</SelectItem>
-                    <SelectItem value="F">Female</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+              );
+            })()}
             <div className="flex gap-3 px-6 pb-6">
               <Button variant="outline" className="flex-1" onClick={() => setShowAddPatient(false)}>Cancel</Button>
               <Button className="flex-1 bg-[#4982CF] hover:bg-[#3D73BC] text-white" onClick={() => {

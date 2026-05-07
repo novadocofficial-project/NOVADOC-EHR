@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { QueueAppHeader, SEED_PATIENTS, timeAgo, Patient, uid } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
+import { useRegConfig, type RegField } from "@/hooks/useRegConfig";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -133,30 +134,234 @@ interface RegistrationContentProps {
   isReassign?: boolean;
 }
 
-function RegistrationContent({ onRegister, isReassign = false }: RegistrationContentProps) {
-  const [mode, setMode]       = useState<RegMode>("search");
-  const [searchQ, setSearchQ] = useState("");
-  const [found, setFound]     = useState<Patient | null>(null);
-  const [firstName, setFirstName]   = useState("");
-  const [lastName, setLastName]     = useState("");
-  const [dob, setDob]               = useState("");
-  const [phone, setPhone]           = useState("");
-  const [address, setAddress]       = useState("");
-  const [cnic, setCnic]             = useState("");
-  const [referredBy, setReferredBy] = useState("");
-  const [relation, setRelation]     = useState("self");
-  const [relName, setRelName]       = useState("");
-  const [relContact, setRelContact] = useState("");
-  const [relCnic, setRelCnic]       = useState("");
-  const [relDob, setRelDob]         = useState("");
-  const [patientType, setPatientType] = useState("cash");
-  const [insCompany, setInsCompany]   = useState("");
-  const [insNumber, setInsNumber]     = useState("");
-  const [emergencyContact, setEmergencyContact] = useState("");
-  const [notes, setNotes]           = useState("");
-  const [showWelfare, setShowWelfare] = useState(false);
-  const sigCanvasRef = useRef<HTMLCanvasElement>(null);
+// ─── Dynamic New Registration Form ───────────────────────────────────────────
+
+function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient) => void; isReassign: boolean }) {
+  const { config } = useRegConfig();
+  const [values, setValues] = useState<Record<string, string>>({});
   const [drawing, setDrawing] = useState(false);
+  const sigRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
+
+  const basicSection = config.sections.find(s => s.sectionType === "basic-info");
+  const demSection   = config.sections.find(s => s.sectionType === "demographics");
+  const customSects  = config.sections
+    .filter(s => s.sectionType === "custom" && s.enabled)
+    .sort((a, b) => a.workflowOrder - b.workflowOrder);
+
+  const patientType = values["_patient_type"] ?? (config.patientTypes.find(t => t.enabled)?.id ?? "cash");
+  const activeType  = config.patientTypes.find(t => t.id === patientType && t.enabled);
+  const welfareForm = activeType?.welfareFormId
+    ? config.welfareForms.find(f => f.id === activeType.welfareFormId)
+    : null;
+
+  const conditionalFieldIds = basicSection?.conditionalRules.flatMap(r => r.showFieldIds) ?? [];
+  const normalBasicFields   = (basicSection?.fields ?? []).filter(f => f.enabled && !conditionalFieldIds.includes(f.id));
+
+  const canSubmit = (() => {
+    if (!basicSection) return true;
+    return basicSection.fields
+      .filter(f => f.enabled && f.required && !conditionalFieldIds.includes(f.id))
+      .every(f => !!(values[f.id]));
+  })();
+
+  function setVal(id: string, v: string) { setValues(p => ({ ...p, [id]: v })); }
+
+  function handleSubmit() {
+    const firstName = values["first_name"] ?? "";
+    const lastName  = values["last_name"]  ?? "";
+    const phone     = values["phone"]      ?? "";
+    const dob       = values["dob"]        ?? "";
+    onRegister({
+      id: uid(),
+      mrn: "MR-" + Math.floor(45000 + Math.random() * 5000),
+      name: `${firstName} ${lastName}`.trim() || "Patient",
+      phone, dob, gender: "M",
+    });
+  }
+
+  function renderField(field: RegField): React.ReactNode {
+    const val = values[field.id] ?? "";
+    const lbl = (
+      <label className="text-xs font-semibold text-slate-600 mb-1 block">
+        {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+    );
+    if (field.type === "text" || field.type === "number") {
+      return <div key={field.id}>{lbl}<Input type={field.type === "number" ? "number" : "text"} placeholder={field.placeholder} value={val} onChange={e => setVal(field.id, e.target.value)} /></div>;
+    }
+    if (field.type === "date") {
+      return <div key={field.id}>{lbl}<div className="relative"><CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" /><Input className="pl-8" type="date" value={val} onChange={e => setVal(field.id, e.target.value)} /></div></div>;
+    }
+    if (field.type === "textarea") {
+      return <div key={field.id}>{lbl}<textarea className="w-full px-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-16" placeholder={field.placeholder} value={val} onChange={e => setVal(field.id, e.target.value)} /></div>;
+    }
+    if (field.type === "dropdown") {
+      return <div key={field.id}>{lbl}<Select value={val || ""} onValueChange={v => setVal(field.id, v)}><SelectTrigger><SelectValue placeholder={field.placeholder || "Select..."} /></SelectTrigger><SelectContent>{(field.options ?? []).map(opt => <SelectItem key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</SelectItem>)}</SelectContent></Select></div>;
+    }
+    if (field.type === "signature") {
+      return (
+        <div key={field.id}>
+          {lbl}
+          <div className="rounded-xl border-2 border-dashed border-red-200 bg-white overflow-hidden">
+            <canvas
+              ref={el => { sigRefs.current[field.id] = el; }}
+              width={560} height={100}
+              className="w-full touch-none cursor-crosshair"
+              onMouseDown={e => {
+                const cv = sigRefs.current[field.id]; if (!cv) return;
+                setDrawing(true);
+                const r = cv.getBoundingClientRect();
+                const ctx = cv.getContext("2d")!;
+                ctx.beginPath(); ctx.moveTo(e.clientX - r.left, e.clientY - r.top);
+              }}
+              onMouseMove={e => {
+                if (!drawing) return;
+                const cv = sigRefs.current[field.id]; if (!cv) return;
+                const r = cv.getBoundingClientRect();
+                const ctx = cv.getContext("2d")!;
+                ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 2; ctx.lineCap = "round";
+                ctx.lineTo(e.clientX - r.left, e.clientY - r.top); ctx.stroke();
+              }}
+              onMouseUp={() => setDrawing(false)}
+              onMouseLeave={() => setDrawing(false)}
+            />
+          </div>
+          <button onClick={() => { const cv = sigRefs.current[field.id]; if (cv) cv.getContext("2d")!.clearRect(0, 0, cv.width, cv.height); }}
+            className="text-xs font-semibold text-slate-400 hover:text-slate-600 flex items-center gap-1 mt-1">
+            <RefreshCw className="h-3 w-3" /> Clear
+          </button>
+        </div>
+      );
+    }
+    if (field.type === "file") {
+      return <div key={field.id}>{lbl}<input type="file" className="w-full text-sm cursor-pointer file:h-9 file:px-3 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:font-semibold" /></div>;
+    }
+    return null;
+  }
+
+  const SHORT_TYPES = new Set<string>(["text", "number", "date", "dropdown"]);
+
+  function renderFieldsInGrid(fields: RegField[]): React.ReactNode[] {
+    const rows: React.ReactNode[] = [];
+    let i = 0;
+    while (i < fields.length) {
+      const f = fields[i];
+      const next = fields[i + 1];
+      if (SHORT_TYPES.has(f.type) && next && SHORT_TYPES.has(next.type)) {
+        rows.push(<div key={`g-${i}`} className="grid grid-cols-2 gap-3">{renderField(f)}{renderField(next)}</div>);
+        i += 2;
+      } else {
+        rows.push(<div key={`s-${i}`}>{renderField(f)}</div>);
+        i++;
+      }
+    }
+    return rows;
+  }
+
+  const conditionalBlocks = (basicSection?.conditionalRules ?? []).flatMap(rule => {
+    const triggerVal = values[rule.triggerFieldId] ?? "";
+    if (!rule.triggerValues.includes(triggerVal)) return [];
+    const condFields = (basicSection!.fields ?? []).filter(f => rule.showFieldIds.includes(f.id) && f.enabled);
+    return condFields.length > 0 ? [{ label: triggerVal, condFields }] : [];
+  });
+
+  const PT_ICONS: Record<string, React.ReactNode> = {
+    cash: <Banknote className="h-4 w-4" />,
+    insurance: <Shield className="h-4 w-4" />,
+    corporate: <Building2 className="h-4 w-4" />,
+    welfare: <Heart className="h-4 w-4" />,
+  };
+
+  const enabledTypes = config.patientTypes.filter(t => t.enabled);
+
+  return (
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-5 space-y-5">
+          <div className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
+            <Hash className="h-4 w-4 text-slate-400 flex-shrink-0" />
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient ID / MR No</p>
+              <p className="text-sm font-mono font-bold text-slate-700">MR-{Math.floor(45100 + Math.random() * 900)} (auto-generated)</p>
+            </div>
+          </div>
+
+          {renderFieldsInGrid(normalBasicFields)}
+
+          {conditionalBlocks.map((block, bi) => (
+            <div key={bi} className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{block.label} Details</p>
+              <div className="grid grid-cols-2 gap-3">
+                {block.condFields.map(f => renderField(f))}
+              </div>
+            </div>
+          ))}
+
+          {enabledTypes.length > 0 && (
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-2 block">Type of Patient</label>
+              <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enabledTypes.length}, 1fr)` }}>
+                {enabledTypes.map(t => (
+                  <button key={t.id} onClick={() => setVal("_patient_type", t.id)}
+                    className={`flex flex-col items-center gap-1.5 rounded-xl border py-3 text-xs font-bold transition-all ${patientType === t.id ? "text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}
+                    style={patientType === t.id ? { borderColor: t.color, backgroundColor: t.color } : undefined}>
+                    {PT_ICONS[t.id] ?? <User className="h-4 w-4" />}
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeType && activeType.extraFields.filter(f => f.enabled).length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{activeType.label} Details</p>
+              {renderFieldsInGrid(activeType.extraFields.filter(f => f.enabled))}
+            </div>
+          )}
+
+          {patientType === "welfare" && welfareForm && (
+            <div className="rounded-xl border border-red-100 bg-red-50 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <FileSignature className="h-4 w-4 text-red-500" />
+                <p className="text-sm font-bold text-red-700">Welfare Form — {welfareForm.name}</p>
+              </div>
+              {welfareForm.fields.filter(f => f.enabled).map(f => renderField(f))}
+            </div>
+          )}
+
+          {demSection?.enabled && demSection.fields.filter(f => f.enabled).length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Demographics</p>
+              {renderFieldsInGrid(demSection.fields.filter(f => f.enabled))}
+            </div>
+          )}
+
+          {customSects.map(sec => (
+            <div key={sec.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+              <div>
+                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{sec.name}</p>
+                {sec.description && <p className="text-xs text-slate-400 mt-0.5">{sec.description}</p>}
+              </div>
+              {renderFieldsInGrid(sec.fields.filter(f => f.enabled))}
+              {sec.signatureRequired && renderField({ id: `${sec.id}_sig`, label: "Section Signature", type: "signature", required: true, enabled: true, options: [], placeholder: "" })}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
+        <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }} disabled={!canSubmit} onClick={handleSubmit}>
+          <UserPlus className="h-4 w-4" />{isReassign ? "Register & Reassign Patient" : "Register Patient & Continue"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function RegistrationContent({ onRegister, isReassign = false }: RegistrationContentProps) {
+  const [mode, setMode] = useState<RegMode>("search");
+  const [searchQ, setSearchQ] = useState("");
+  const [found, setFound] = useState<Patient | null>(null);
 
   const filtered = SEED_PATIENTS.filter(p =>
     p.name.toLowerCase().includes(searchQ.toLowerCase()) ||
@@ -164,37 +369,6 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
     p.phone.includes(searchQ) ||
     (searchQ.length > 3 && p.dob.includes(searchQ))
   );
-
-  function startDraw(e: React.MouseEvent<HTMLCanvasElement>) {
-    const cv = sigCanvasRef.current; if (!cv) return;
-    setDrawing(true);
-    const r = cv.getBoundingClientRect();
-    const ctx = cv.getContext("2d")!;
-    ctx.beginPath(); ctx.moveTo(e.clientX - r.left, e.clientY - r.top);
-  }
-  function drawLine(e: React.MouseEvent<HTMLCanvasElement>) {
-    if (!drawing) return;
-    const cv = sigCanvasRef.current; if (!cv) return;
-    const r = cv.getBoundingClientRect();
-    const ctx = cv.getContext("2d")!;
-    ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 2; ctx.lineCap = "round";
-    ctx.lineTo(e.clientX - r.left, e.clientY - r.top); ctx.stroke();
-  }
-  function endDraw() { setDrawing(false); }
-  function clearSig() {
-    const cv = sigCanvasRef.current; if (!cv) return;
-    cv.getContext("2d")!.clearRect(0, 0, cv.width, cv.height);
-  }
-
-  function handleRegisterNew() {
-    if (!firstName || !dob || !phone || !cnic) return;
-    onRegister({ id: uid(), mrn: "MR-" + Math.floor(45000 + Math.random() * 5000), name: `${firstName} ${lastName}`.trim(), phone, dob, gender: "M" });
-  }
-
-  const needsRelDetails = relation !== "self";
-  const needsInsDetails = patientType === "insurance" || patientType === "corporate";
-  const isWelfare       = patientType === "welfare";
-  const canSubmitNew    = !!(firstName && dob && phone && cnic);
 
   return (
     <div className="flex flex-col h-full">
@@ -206,181 +380,56 @@ function RegistrationContent({ onRegister, isReassign = false }: RegistrationCon
           </button>
         ))}
       </div>
-      <div className="flex-1 overflow-y-auto">
-        {mode === "search" && (
-          <div className="p-5 space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input className="pl-9" placeholder="Search by name, MRN, phone, or CNIC..." value={searchQ} onChange={e => setSearchQ(e.target.value)} autoFocus />
-            </div>
-            <div className="flex gap-2">
-              <button className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-500 hover:border-[#4982CF] hover:text-[#4982CF] transition-colors flex-1 justify-center">
-                <CardIcon className="h-4 w-4" /> Scan Card
-              </button>
-              <button className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-500 hover:border-[#4982CF] hover:text-[#4982CF] transition-colors flex-1 justify-center">
-                <Fingerprint className="h-4 w-4" /> Scan Thumb
-              </button>
-            </div>
-            {searchQ.length > 0 && (
-              <div className="space-y-2">
-                {filtered.length === 0 && <p className="text-center text-sm text-slate-400 py-6">No patients found</p>}
-                {filtered.map(p => (
-                  <button key={p.id} onClick={() => setFound(p === found ? null : p)}
-                    className={`w-full flex items-center gap-4 rounded-xl border px-4 py-3 text-left transition-all ${found?.id === p.id ? "border-[#4982CF] bg-blue-50" : "border-slate-200 hover:border-slate-300 bg-white"}`}>
-                    <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0"><User className="h-4 w-4 text-slate-400" /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-900 leading-tight">{p.name}</p>
-                      <p className="text-xs text-slate-400">{p.mrn} · {p.phone}</p>
-                    </div>
-                    {found?.id === p.id && <CheckCircle2 className="h-5 w-5 text-[#4982CF] flex-shrink-0" />}
-                  </button>
-                ))}
+      {mode === "search" && (
+        <>
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-5 space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input className="pl-9" placeholder="Search by name, MRN, phone, or CNIC..." value={searchQ} onChange={e => setSearchQ(e.target.value)} autoFocus />
               </div>
-            )}
-          </div>
-        )}
-        {mode === "new" && (
-          <div className="p-5 space-y-5">
-            <div className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
-              <Hash className="h-4 w-4 text-slate-400 flex-shrink-0" />
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient ID / MR No</p>
-                <p className="text-sm font-mono font-bold text-slate-700">MR-{Math.floor(45100 + Math.random() * 900)} (auto-generated)</p>
+              <div className="flex gap-2">
+                <button className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-500 hover:border-[#4982CF] hover:text-[#4982CF] transition-colors flex-1 justify-center">
+                  <CardIcon className="h-4 w-4" /> Scan Card
+                </button>
+                <button className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-500 hover:border-[#4982CF] hover:text-[#4982CF] transition-colors flex-1 justify-center">
+                  <Fingerprint className="h-4 w-4" /> Scan Thumb
+                </button>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">First Name <span className="text-red-500">*</span></label>
-                <Input placeholder="First name" value={firstName} onChange={e => setFirstName(e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">Last Name</label>
-                <Input placeholder="Last name" value={lastName} onChange={e => setLastName(e.target.value)} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">Date of Birth <span className="text-red-500">*</span></label>
-                <div className="relative"><CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" /><Input className="pl-8" type="date" value={dob} onChange={e => setDob(e.target.value)} /></div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">Phone <span className="text-red-500">*</span></label>
-                <div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" /><Input className="pl-8" placeholder="+92 300 000-0000" value={phone} onChange={e => setPhone(e.target.value)} /></div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">CNIC <span className="text-red-500">*</span></label>
-                <Input placeholder="00000-0000000-0" value={cnic} onChange={e => setCnic(e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">Referred By</label>
-                <Input placeholder="Referrer name" value={referredBy} onChange={e => setReferredBy(e.target.value)} />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">Complete Address</label>
-              <div className="relative"><MapPin className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-400" /><textarea className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-16" placeholder="Street, area, city..." value={address} onChange={e => setAddress(e.target.value)} /></div>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">Relationship</label>
-              <Select value={relation} onValueChange={setRelation}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="self">Self</SelectItem><SelectItem value="parent">Parent</SelectItem>
-                  <SelectItem value="spouse">Spouse</SelectItem><SelectItem value="guardian">Guardian</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {needsRelDetails && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{relation} Details</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-[10px] font-semibold text-slate-500 mb-1 block">Name</label><Input placeholder="Full name" value={relName} onChange={e => setRelName(e.target.value)} /></div>
-                  <div><label className="text-[10px] font-semibold text-slate-500 mb-1 block">Contact</label><Input placeholder="Phone" value={relContact} onChange={e => setRelContact(e.target.value)} /></div>
-                  <div><label className="text-[10px] font-semibold text-slate-500 mb-1 block">CNIC</label><Input placeholder="00000-0000000-0" value={relCnic} onChange={e => setRelCnic(e.target.value)} /></div>
-                  <div><label className="text-[10px] font-semibold text-slate-500 mb-1 block">Date of Birth</label><Input type="date" value={relDob} onChange={e => setRelDob(e.target.value)} /></div>
+              {searchQ.length > 0 && (
+                <div className="space-y-2">
+                  {filtered.length === 0 && <p className="text-center text-sm text-slate-400 py-6">No patients found</p>}
+                  {filtered.map(p => (
+                    <button key={p.id} onClick={() => setFound(p === found ? null : p)}
+                      className={`w-full flex items-center gap-4 rounded-xl border px-4 py-3 text-left transition-all ${found?.id === p.id ? "border-[#4982CF] bg-blue-50" : "border-slate-200 hover:border-slate-300 bg-white"}`}>
+                      <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0"><User className="h-4 w-4 text-slate-400" /></div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-900 leading-tight">{p.name}</p>
+                        <p className="text-xs text-slate-400">{p.mrn} · {p.phone}</p>
+                      </div>
+                      {found?.id === p.id && <CheckCircle2 className="h-5 w-5 text-[#4982CF] flex-shrink-0" />}
+                    </button>
+                  ))}
                 </div>
-              </div>
-            )}
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-2 block">Type of Patient</label>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { v: "cash", label: "Cash", icon: <Banknote className="h-4 w-4" />, color: "#10b981" },
-                  { v: "corporate", label: "Corporate", icon: <Building2 className="h-4 w-4" />, color: "#f59e0b" },
-                  { v: "insurance", label: "Insurance", icon: <Shield className="h-4 w-4" />, color: "#4982CF" },
-                  { v: "welfare", label: "Welfare", icon: <Heart className="h-4 w-4" />, color: "#ef4444" },
-                ].map(t => (
-                  <button key={t.v} onClick={() => setPatientType(t.v)}
-                    className={`flex flex-col items-center gap-1.5 rounded-xl border py-3 text-xs font-bold transition-all ${patientType === t.v ? "text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}
-                    style={patientType === t.v ? { borderColor: t.color, backgroundColor: t.color } : undefined}>
-                    {t.icon}{t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {needsInsDetails && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{patientType === "insurance" ? "Insurance Details" : "Corporate Details"}</p>
-                <Select value={insCompany} onValueChange={setInsCompany}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="jubilee">Jubilee Insurance</SelectItem><SelectItem value="efulife">EFU Life</SelectItem>
-                    <SelectItem value="adamjee">Adamjee Insurance</SelectItem><SelectItem value="igicorp">IGI Corporate</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-[10px] font-semibold text-slate-500 mb-1 block">{patientType === "insurance" ? "Insurance Number" : "Employee ID"}</label><Input placeholder="ID / Number" value={insNumber} onChange={e => setInsNumber(e.target.value)} /></div>
-                  <div><label className="text-[10px] font-semibold text-slate-500 mb-1 block">Emergency Contact</label><Input placeholder="Phone" value={emergencyContact} onChange={e => setEmergencyContact(e.target.value)} /></div>
-                </div>
-              </div>
-            )}
-            {isWelfare && (
-              <div className="rounded-xl border border-red-100 bg-red-50 p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2"><FileSignature className="h-4 w-4 text-red-500" /><p className="text-sm font-bold text-red-700">Welfare Form Required</p></div>
-                  <div className="flex gap-2">
-                    <button onClick={() => setShowWelfare(false)} className="text-xs font-semibold text-slate-500 hover:text-slate-700">Skip for later</button>
-                    <button onClick={() => setShowWelfare(v => !v)} className="h-7 px-3 rounded-full bg-red-500 text-white text-xs font-bold">{showWelfare ? "Hide" : "Open Form"}</button>
-                  </div>
-                </div>
-                {showWelfare && (
-                  <div className="mt-4 space-y-3">
-                    <p className="text-xs font-semibold text-red-700">Patient Signature</p>
-                    <div className="rounded-xl border-2 border-dashed border-red-200 bg-white overflow-hidden">
-                      <canvas ref={sigCanvasRef} width={560} height={120} className="w-full touch-none cursor-crosshair"
-                        onMouseDown={startDraw} onMouseMove={drawLine} onMouseUp={endDraw} onMouseLeave={endDraw} />
-                    </div>
-                    <button onClick={clearSig} className="text-xs font-semibold text-slate-400 hover:text-slate-600 flex items-center gap-1"><RefreshCw className="h-3 w-3" /> Clear Signature</button>
-                  </div>
-                )}
-              </div>
-            )}
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">Notes</label>
-              <textarea className="w-full px-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-16" placeholder="Any additional notes..." value={notes} onChange={e => setNotes(e.target.value)} />
+              )}
             </div>
           </div>
-        )}
-      </div>
-      <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
-        {mode === "search" ? (
-          found ? (
-            <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }} onClick={() => onRegister(found)}>
-              <UserCheck className="h-4 w-4" />{isReassign ? `Reassign to ${found.name}` : `Confirm — ${found.name}`}
-            </Button>
-          ) : (
-            <Button className="w-full h-11 text-sm font-bold gap-2 opacity-40 cursor-not-allowed" disabled style={{ backgroundColor: "#4982CF" }}>
-              <Search className="h-4 w-4" /> Search and select a patient above
-            </Button>
-          )
-        ) : (
-          <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }} disabled={!canSubmitNew} onClick={handleRegisterNew}>
-            <UserPlus className="h-4 w-4" />{isReassign ? "Register & Reassign Patient" : "Register Patient & Continue"}
-          </Button>
-        )}
-      </div>
+          <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
+            {found ? (
+              <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }} onClick={() => onRegister(found)}>
+                <UserCheck className="h-4 w-4" />{isReassign ? `Reassign to ${found.name}` : `Confirm — ${found.name}`}
+              </Button>
+            ) : (
+              <Button className="w-full h-11 text-sm font-bold gap-2 opacity-40 cursor-not-allowed" disabled style={{ backgroundColor: "#4982CF" }}>
+                <Search className="h-4 w-4" /> Search and select a patient above
+              </Button>
+            )}
+          </div>
+        </>
+      )}
+      {mode === "new" && (
+        <DynamicRegNewForm onRegister={onRegister} isReassign={isReassign} />
+      )}
     </div>
   );
 }

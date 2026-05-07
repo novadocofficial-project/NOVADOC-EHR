@@ -16,6 +16,7 @@ import {
   CreditCard,
   Edit2,
   GitBranch,
+  Globe,
   Heart,
   Layers,
   LayoutGrid,
@@ -73,6 +74,8 @@ import { LabResultTemplatesModule } from "@/pages/LabResultTemplatesModule";
 import { ProcedureCatalogModule, INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS, type ProcedureSection, type ProcedurePartner } from "@/pages/ProcedureCatalogModule";
 import { QueueModule } from "@/pages/QueueModule";
 import type { QueueSection } from "@/pages/QueueModule";
+import { PatientRegistrationModule } from "@/pages/PatientRegistrationModule";
+import type { PatRegSection } from "@/pages/PatientRegistrationModule";
 import { OrderSetsModule } from "@/pages/OrderSetsModule";
 import { UsersManagementModule } from "@/pages/UsersManagementModule";
 import { RoutingRulesModule } from "@/pages/RoutingRulesModule";
@@ -183,7 +186,9 @@ type ActiveModule =
   | "imaging-tests" | "imaging-reasons" | "imaging-partners"
   | "consumables-master" | "consumables-providers"
   | "lab-order-sets" | "imaging-order-sets"
-  | "users-counters";
+  | "users-counters"
+  | "reg-basic-info" | "reg-patient-types" | "reg-welfare-forms"
+  | "reg-demographics" | "reg-custom-sections" | "reg-workflow" | "reg-quick";
 
 export function AdminSettings() {
   const [, setLocation] = useLocation();
@@ -191,11 +196,13 @@ export function AdminSettings() {
   const initSection = searchParams.get("section") as ActiveModule | null;
   const queueSections: ActiveModule[] = ["visit-types","workflow-config","counter-types","counters","token-settings","queue-behavior","locking-settings","display-settings","doctor-partitions","routing-rules"];
   const [activeModule, setActiveModule] = useState<ActiveModule>(initSection ?? "departments");
+  const regSections: ActiveModule[] = ["reg-basic-info","reg-patient-types","reg-welfare-forms","reg-demographics","reg-custom-sections","reg-workflow","reg-quick"];
   const [navExpanded, setNavExpanded] = useState({
     departments: false,
     doctors: false,
     billing: false,
     branches: false,
+    patientReg: !!initSection && regSections.includes(initSection as ActiveModule),
     queue: !!initSection && queueSections.includes(initSection as ActiveModule),
     soapConfig: false,
     clinicalLibraries: false,
@@ -531,6 +538,28 @@ export function AdminSettings() {
               </div>
             )}
 
+            {/* ── Patient Registration Group ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("patientReg")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <ClipboardList className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Patient Registration</span>
+              {navExpanded.patientReg ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.patientReg && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("reg-basic-info",      <UserRound className="h-3.5 w-3.5" />,     "Basic Info")}
+                {subNavItem("reg-patient-types",   <Users className="h-3.5 w-3.5" />,         "Patient Types")}
+                {subNavItem("reg-welfare-forms",   <Heart className="h-3.5 w-3.5" />,         "Welfare Forms")}
+                {subNavItem("reg-demographics",    <Globe className="h-3.5 w-3.5" />,         "Demographics")}
+                {subNavItem("reg-custom-sections", <Layers className="h-3.5 w-3.5" />,        "Custom Sections")}
+                {subNavItem("reg-workflow",        <Workflow className="h-3.5 w-3.5" />,      "Workflow Builder")}
+                {subNavItem("reg-quick",           <Zap className="h-3.5 w-3.5" />,           "Quick Registration")}
+              </div>
+            )}
+
             {/* ── Queue Management Group ── */}
             <button
               type="button"
@@ -765,6 +794,10 @@ export function AdminSettings() {
 
           {(["visit-types","workflow-config","counter-types","counters","token-settings","queue-behavior","locking-settings","display-settings","doctor-partitions"] as const).map(s =>
             activeModule === s ? <QueueModule key={s} section={s as QueueSection} /> : null
+          )}
+
+          {(["reg-basic-info","reg-patient-types","reg-welfare-forms","reg-demographics","reg-custom-sections","reg-workflow","reg-quick"] as const).map(s =>
+            activeModule === s ? <PatientRegistrationModule key={s} section={s as PatRegSection} /> : null
           )}
 
           {activeModule === "routing-rules" && <RoutingRulesModule />}
