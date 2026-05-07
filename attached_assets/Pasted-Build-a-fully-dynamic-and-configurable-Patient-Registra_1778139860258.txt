@@ -1,0 +1,276 @@
+Build a fully dynamic and configurable Patient Registration Admin Module.
+
+OBJECTIVE
+
+The Patient Registration module should behave like a configurable workflow builder and dynamic form engine instead of a fixed registration screen.
+
+The module must support multiple healthcare organization types including:
+
+Small clinics
+Welfare organizations
+Corporate healthcare setups
+Insurance-based organizations
+NGOs
+Large hospitals
+
+The entire configuration should be managed from Admin without requiring development changes.
+
+IMPORTANT STORAGE REQUIREMENT
+
+All configuration data should initially be stored in local storage.
+
+Changes made in Admin must immediately affect the:
+
+Front Desk → Patient Registration Drawer → Register New Section
+
+The front desk registration drawer should dynamically render fields, sections, workflows, and conditional logic based on the saved local storage configuration.
+
+Create a Patient Registration Admin Settings section.
+
+This module should allow admins to:
+
+Enable or disable registration sections
+Create custom sections
+Configure fields dynamically
+Arrange registration workflow step-by-step
+Define conditional logic
+Configure patient-type-specific forms
+Configure required signatures
+Configure quick registration workflows
+BASIC INFORMATION SECTION
+
+Default fields:
+
+Patient ID (auto-generated)
+MR Number (auto-generated)
+First Name
+Last Name
+Date of Birth
+Phone Number
+Complete Address
+CNIC
+Referred By
+Relationship Type
+
+Relationship Type options:
+
+Self
+Parent
+Spouse
+Guardian
+
+Conditional Logic:
+
+If relationship type is:
+
+Parent
+Spouse
+Guardian
+
+Then dynamically show:
+
+Related Person Name
+Related Person Contact Number
+Related Person CNIC
+Related Person Date of Birth
+
+Support patient categories:
+
+Cash Patient
+Insurance Patient
+Corporate Patient
+Welfare Patient
+
+Conditional Logic:
+
+If Insurance or Corporate selected:
+
+Show:
+
+Employee ID
+Emergency Contact
+Notes
+
+If Welfare selected:
+
+Show dynamic Welfare Form.
+
+Create a fully dynamic Welfare Form Builder.
+
+Admin should be able to:
+
+Add/Edit/Delete welfare fields
+Configure field types
+Add dropdown options
+Mark fields required
+Configure signatures
+Create multiple welfare forms
+
+Supported field types:
+
+Text
+Number
+Dropdown
+Checkbox
+Radio
+Date
+Textarea
+File Upload
+Signature
+
+The form should appear automatically during registration when patient type = Welfare.
+
+Create optional Demographics section.
+
+Example fields:
+
+Language Spoken
+Ethnic Background
+Locality of Residence
+City of Residence
+Education
+Type of Dwelling
+Profession / Job
+Living Arrangement
+Household Members
+Water Provision
+Sanitation
+Bathroom Availability
+Mode of Transport
+Nutrition / Meals Per Day
+
+Admin should be able to:
+
+Enable/Disable section
+Add/Edit/Delete fields
+Reorder fields
+Configure required fields
+
+Admin should be able to create completely custom registration sections dynamically.
+
+Examples:
+
+Social Assessment
+Consent Forms
+Vaccination Details
+Research Enrollment
+NGO Intake Forms
+Custom Surveys
+
+Each custom section should support:
+
+Section Name
+Description
+Dynamic Fields
+Conditional Visibility
+Required Fields
+Signature Requirement
+
+Build a step-based registration workflow builder.
+
+Admin should be able to:
+
+Reorder sections
+Configure registration flow
+Define step sequence
+Enable/Disable sections
+Configure conditional navigation
+
+Example:
+
+Step 1 → Basic Info
+Step 2 → Patient Type
+Step 3 → Insurance/Corporate
+Step 4 → Welfare Form
+Step 5 → Demographics
+Step 6 → Custom Section
+Step 7 → Signature & Confirmation
+
+Workflow should be fully drag-and-drop configurable.
+
+Create a separate Quick Registration configuration for Queue-Based Token Issuance.
+
+Purpose:
+
+The token issuer may be a low-skilled operator or watchman.
+
+The workflow must be:
+
+Extremely simple
+Fast
+Minimal typing
+Mobile/tablet friendly
+
+When issuing token:
+
+Multi Step Visit Queue Screen → Add New
+
+A small quick registration form should open.
+
+Admin should dynamically configure which fields appear.
+
+Examples:
+
+Name only
+Name + Phone
+Name + CNIC
+Phone only
+
+Admin should configure:
+
+Visible fields
+Required fields
+Validation rules
+Duplicate checking
+Existing patient search
+
+Quick registration should support:
+
+Temporary patient creation
+Token-first workflow
+Full registration completion later
+
+Each queue/clinic should support:
+
+Assigned quick registration profile
+Whether full registration required
+Duplicate prevention rules
+Token generation rules
+
+The Front Desk → Register New drawer should dynamically render:
+
+Sections
+Fields
+Workflows
+Conditional visibility
+Signatures
+Welfare forms
+Demographics
+Custom sections
+
+based entirely on local storage configuration.
+
+No hardcoded registration UI.
+
+Create:
+
+Admin configuration screens
+Workflow builder
+Dynamic field renderer
+Signature component placeholder
+Local storage sync utilities
+
+Do not hardcode fields or sections.
+
+Everything must render dynamically from configuration stored in local storage.
+
+The same engine should power:
+
+Full Patient Registration
+Quick Registration
+Welfare Forms
+Demographics
+Custom Sections
+Future forms
+
+Make architecture scalable and reusable.
