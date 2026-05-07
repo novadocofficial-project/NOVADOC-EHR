@@ -218,6 +218,13 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
         .filter(f => f.enabled && f.required && f.type !== "signature" && f.type !== "file")
         .forEach(f => required.push(f.id));
     }
+    // Demographics sections
+    config.sections.filter(s => s.sectionType === "demographics" && s.enabled).forEach(sec => {
+      sec.fields
+        .filter(f => f.enabled && f.required && f.type !== "signature" && f.type !== "file")
+        .forEach(f => required.push(f.id));
+    });
+    // Custom sections
     config.sections.filter(s => s.sectionType === "custom" && s.enabled).forEach(sec => {
       const condIds = sec.conditionalRules.flatMap(r => r.showFieldIds);
       const visIds  = sec.conditionalRules.flatMap(rule =>
@@ -486,11 +493,20 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
         rule.triggerValues.includes(values[rule.triggerFieldId] ?? "") ? rule.showFieldIds : []
       );
       const visFields = sec.fields.filter(f => f.enabled && (!condIds.includes(f.id) || visIds.includes(f.id)));
+      const hasContent = visFields.length > 0 || sec.signatureRequired;
       return (
         <div className="space-y-4">
           {sec.description && <p className="text-xs text-slate-400 -mt-1">{sec.description}</p>}
-          {renderFieldsInGrid(visFields, sec.id)}
-          {sec.signatureRequired && renderField({ id: `${sec.id}_sig`, label: "Section Signature", type: "signature", required: true, enabled: true, options: [], placeholder: "" })}
+          {hasContent ? (
+            <>
+              {renderFieldsInGrid(visFields, sec.id)}
+              {sec.signatureRequired && renderField({ id: `${sec.id}_sig`, label: "Section Signature", type: "signature", required: true, enabled: true, options: [], placeholder: "" })}
+            </>
+          ) : (
+            <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-6 text-center">
+              <p className="text-sm text-slate-400">No fields to fill in for this section.</p>
+            </div>
+          )}
         </div>
       );
     }
@@ -572,7 +588,7 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
         ) : (
           <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
             disabled={!canSubmit} onClick={handleSubmit}>
-            <UserPlus className="h-4 w-4" />{isReassign ? "Register & Reassign Patient" : "Register Patient & Continue"}
+            <UserPlus className="h-4 w-4" />{isReassign ? "Register & Reassign" : "Register Patient"}
           </Button>
         )}
       </div>
