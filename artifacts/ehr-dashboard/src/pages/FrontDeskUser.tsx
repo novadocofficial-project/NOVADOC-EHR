@@ -146,13 +146,40 @@ interface RegStepDef {
   sectionId: string;
 }
 
+const REG_DRAFT_KEY = "ehr-reg-form-draft";
+
+function loadRegDraft(): { values: Record<string, string>; step: number } | null {
+  try {
+    const raw = sessionStorage.getItem(REG_DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as { values: Record<string, string>; step: number };
+  } catch { return null; }
+}
+
+function saveRegDraft(values: Record<string, string>, step: number) {
+  try { sessionStorage.setItem(REG_DRAFT_KEY, JSON.stringify({ values, step })); } catch { /* noop */ }
+}
+
+function clearRegDraft() {
+  try { sessionStorage.removeItem(REG_DRAFT_KEY); } catch { /* noop */ }
+}
+
 function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient) => void; isReassign: boolean }) {
   const { config } = useRegConfig();
-  const [values, setValues] = useState<Record<string, string>>({});
+  const draft = loadRegDraft();
+  const [values, setValues] = useState<Record<string, string>>(draft?.values ?? {});
   const [drawing, setDrawing] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(draft?.step ?? 0);
   const [showReview, setShowReview] = useState(false);
+  const [showRestoredBanner, setShowRestoredBanner] = useState(!!draft);
   const sigRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
+
+  useEffect(() => {
+    const hasData = Object.keys(values).some(k => values[k]);
+    if (hasData || currentStep > 0) {
+      saveRegDraft(values, currentStep);
+    }
+  }, [values, currentStep]);
 
   const basicSection = config.sections.find(s => s.sectionType === "basic-info");
   const patientType  = values["_patient_type"] ?? (config.patientTypes.find(t => t.enabled)?.id ?? "cash");
@@ -285,6 +312,7 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
   function handleSubmit() {
     const firstName = values["first_name"] ?? "";
     const lastName  = values["last_name"]  ?? "";
+    clearRegDraft();
     onRegister({
       id: uid(),
       mrn: "MR-" + Math.floor(45000 + Math.random() * 5000),
@@ -293,6 +321,14 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
       dob:   values["dob"]   ?? "",
       gender: "M",
     });
+  }
+
+  function handleStartOver() {
+    clearRegDraft();
+    setValues({});
+    setCurrentStep(0);
+    setShowReview(false);
+    setShowRestoredBanner(false);
   }
 
   // ─── Field renderer ────────────────────────────────────────────────────────
@@ -637,6 +673,17 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
                   </React.Fragment>
                 );
               })}
+            </div>
+          )}
+
+          {/* Draft restored banner */}
+          {showRestoredBanner && !showReview && (
+            <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
+              <RefreshCw className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+              <p className="text-xs font-semibold text-amber-700 flex-1 leading-snug">Draft restored — continue where you left off.</p>
+              <button onClick={handleStartOver} className="text-[11px] font-bold text-amber-600 hover:text-amber-800 underline underline-offset-2 flex-shrink-0">
+                Start Over
+              </button>
             </div>
           )}
 
