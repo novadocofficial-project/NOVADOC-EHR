@@ -1,0 +1,160 @@
+QUICK REGISTRATION LOGIC CHANGE — QUEUE-BASED INSTEAD OF COUNTER-BASED
+
+The previous counter-based quick registration logic should be changed.
+
+Previously, the idea was:
+
+Different physical counters have different quick registration profiles
+Staff selects a counter
+The system loads that counter’s assigned profile
+
+However, this does not reflect the real clinic workflow properly.
+
+In actual clinic operations, the patient usually first arrives at:
+
+Front Desk
+Reception
+Registration Counter
+
+After registration/token issuance, the patient then moves to:
+
+Doctor
+Emergency
+Lab
+Radiology
+Pharmacy
+Other departments
+
+Most patient registrations therefore happen centrally at the front desk.
+
+It is rare that a patient is directly registered inside:
+
+Doctor room
+Lab
+Emergency
+Other clinical areas
+
+although emergency walk-ins may occasionally require this.
+
+Because of this, quick registration should not primarily depend on physical counters.
+
+Quick Registration Profiles should be QUEUE-BASED instead of COUNTER-BASED.
+
+The registration fields should depend on:
+
+Which queue/service the patient is entering
+
+instead of:
+
+Which counter/staff member is currently using the system
+
+Normal Consultation Queue
+
+Quick registration may require:
+
+Patient Name
+Phone Number
+
+Emergency Queue
+
+Quick registration may require:
+
+Patient Name
+Age
+Gender
+Emergency Contact
+
+Pediatrics Queue
+
+Quick registration may require:
+
+Patient Name
+Date of Birth
+Guardian Name
+
+Laboratory Queue
+
+Quick registration may require:
+
+Patient Name
+Phone Number
+Referring Doctor
+
+Vaccination Queue
+
+Quick registration may require:
+
+Patient Name
+CNIC
+Vaccination Card Number
+
+Different queues should therefore support different quick registration configurations.
+
+In Admin → Quick Registration Settings:
+
+Admin should be able to create:
+
+Quick Registration Profiles
+
+Examples:
+
+Default Registration
+Emergency Registration
+Pediatrics Registration
+Lab Walk-In Registration
+Vaccination Registration
+
+Each profile defines:
+
+Visible fields
+Required fields
+Validation rules
+Conditional logic
+Duplicate checking rules
+
+Instead of assigning profiles to counters:
+
+Assign profiles to queues/services.
+
+For example Single Queue, Partitioned Queue and Multistep queue if multistep queue then show the queues we have in multistep so we can select one or multiple multistep queue in the same registration profile.
+
+Each queue can only have one active quick registration profile.
+
+Inside:
+
+Multi Step Visit Queue Screen → Add New
+
+The system should automatically determine:
+
+Which queue the patient is being added into
+
+and then automatically load:
+
+That queue’s assigned quick registration profile
+
+No counter selection dropdown should be required anymore.
+
+The UI should automatically adapt according to the selected queue.
+
+If:
+
+No profile assigned to queue
+Queue profile missing
+Profile deleted
+Configuration unavailable
+
+Then fallback sequence should be:
+
+Queue Profile
+Default Quick Registration Profile
+Hardcoded minimum fields:
+Patient Name
+Phone Number
+
+This ensures registration never breaks.
+
+The quick registration system should model real clinic operational workflows.
+
+The queue/service type should determine what information is collected during quick registration, not the physical counter being used.
+
+This architecture is more scalable, realistic, and easier for front desk operations.
