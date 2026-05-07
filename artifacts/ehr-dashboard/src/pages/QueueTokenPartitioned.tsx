@@ -1,12 +1,15 @@
-import { useState, useEffect } from "react";
-import { Users, CheckCircle2, Clock, RefreshCw, Printer, ChevronRight } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Users, CheckCircle2, Clock, RefreshCw, Printer, ChevronRight, UserPlus, UserX, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  QueueAppHeader, QueueEntry, Doctor, SEED_BRANCHES, SEED_DOCTORS,
+  QueueAppHeader, QueueEntry, Doctor, Patient, SEED_BRANCHES, SEED_DOCTORS,
   padToken, timeAgo, uid, TokenSlipModal, TokenSlipData,
 } from "@/pages/QueuePageLayout";
+import { useRegConfig } from "@/hooks/useRegConfig";
+import { usePatients } from "@/hooks/usePatients";
 
 // ─── Per-doctor seed queues ───────────────────────────────────────────────────
 
@@ -68,10 +71,38 @@ export function QueueTokenPartitioned() {
   const [tick, setTick]           = useState(0);
   const [tokenSlip, setTokenSlip] = useState<TokenSlipData | null>(null);
 
+  // Patient quick-add
+  const { config: regConfig } = useRegConfig();
+  const { patients, addPatient } = usePatients();
+  const [selectedPat, setSelectedPat]       = useState<Patient | null>(null);
+  const [walkIn, setWalkIn]                 = useState(false);
+  const [search, setSearch]                 = useState("");
+  const [showSearch, setShowSearch]         = useState(false);
+  const [showAddPatient, setShowAddPatient] = useState(false);
+  const [quickFormValues, setQuickFormValues] = useState<Record<string, string>>({});
+  const [quickGender, setQuickGender]       = useState<"M" | "F">("M");
+  const searchRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const t = setInterval(() => setTick(p => p + 1), 10000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSearch(false);
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  const filteredPatients = patients.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.mrn.toLowerCase().includes(search.toLowerCase()) ||
+    p.phone.includes(search)
+  );
 
   const selectedDQ  = doctorQueues.find(d => d.doctor.id === selectedDoc)!;
   const nextToken   = padToken(selectedDQ.nextNum, selectedDQ.doctor.prefix);
@@ -86,6 +117,7 @@ export function QueueTokenPartitioned() {
     setLoading(true);
     const snapToken   = nextToken;
     const snapDoctor  = selectedDQ.doctor;
+    const snapPat     = selectedPat;
     const snapBranch  = SEED_BRANCHES.find(b => b.id === branch)?.name ?? branch;
     const snapAt      = new Date();
     setTimeout(() => {
@@ -96,19 +128,26 @@ export function QueueTokenPartitioned() {
           displayNum: dq.nextNum, status: "waiting",
           doctorId: dq.doctor.id, doctorName: dq.doctor.name,
           step: 1, totalSteps: 1, createdAt: snapAt,
+          patient: snapPat ?? undefined,
         };
         return { ...dq, entries: [...dq.entries, entry], nextNum: dq.nextNum + 1 };
       }));
       setLoading(false);
-      showToast(`Token ${snapToken} generated for ${snapDoctor.name}`);
+      showToast(snapPat
+        ? `Token ${snapToken} generated for ${snapPat.name} · ${snapDoctor.name}`
+        : `Token ${snapToken} generated for ${snapDoctor.name}`);
       setTokenSlip({
         tokenNumber: snapToken,
         color: snapDoctor.color,
         queueLabel: snapDoctor.name,
         queueSub: `${snapDoctor.specialty} · ${snapDoctor.counter}`,
+        patientName: snapPat?.name,
+        patientMrn: snapPat?.mrn,
         branch: snapBranch,
         issuedAt: snapAt,
       });
+      setSelectedPat(null);
+      setSearch("");
     }, 600);
   }
 
@@ -129,6 +168,45 @@ export function QueueTokenPartitioned() {
     : doctorQueues.filter(d => d.doctor.id === filterDoc);
 
   const totalWaiting = doctorQueues.reduce((acc, dq) => acc + dq.entries.filter(e => e.status === "waiting").length, 0);
+
+  // Quick-add modal helpers
+  const queueKey = "partitioned";
+  const resolvedProfileId = regConfig.queueProfileMap[queueKey];
+  const resolvedProfile   = resolvedProfileId
+    ? regConfig.quickProfiles.find(p => p.id === resolvedProfileId)
+    : regConfig.quickProfiles[0];
+  const profileName = resolvedProfile?.name ?? "Default Profile";
+
+  const DEFAULT_QUICK_FALLBACK = [
+    { fieldId: "name" as const, label: "Name", visible: true, required: true },
+    { fieldId: "phone" as const, label: "Phone", visible: true, required: true },
+  ];
+  const visFields = resolvedProfile
+    ? resolvedProfile.fields.filter(f => f.visible)
+    : DEFAULT_QUICK_FALLBACK;
+  const INPUT_TYPE: Record<string, string>  = { dob: "date", phone: "tel" };
+  const PLACEHOLDER: Record<string, string> = { phone: "+92 …", name: "Full name", cnic: "00000-0000000-0" };
+  const requiredFieldIds = visFields.filter(f => f.required).map(f => f.fieldId);
+  const canSubmitQuick   = requiredFieldIds.every(id => !!(quickFormValues[id]?.trim()));
+
+  function submitQuickReg() {
+    if (!canSubmitQuick) return;
+    const name  = quickFormValues["name"]  ?? "";
+    const phone = quickFormValues["phone"] ?? "";
+    const dob   = quickFormValues["dob"]   ?? "";
+    const newPatient: Patient = {
+      id: uid(),
+      mrn: "MR-" + Math.floor(45000 + Math.random() * 5000),
+      name: name.trim() || "Patient",
+      phone, dob, gender: quickGender,
+    };
+    addPatient(newPatient);
+    setSelectedPat(newPatient);
+    setQuickFormValues({});
+    setQuickGender("M");
+    setShowAddPatient(false);
+    showToast(`Patient registered — ${newPatient.name}`);
+  }
 
   return (
     <div className="flex h-screen flex-col bg-slate-50 overflow-hidden">
@@ -185,6 +263,101 @@ export function QueueTokenPartitioned() {
                 <p className="text-xs text-slate-400 leading-tight">{selectedDQ.doctor.counter}</p>
               </div>
             </div>
+          </div>
+
+          {/* Patient section */}
+          <div className="flex-shrink-0 px-4 py-3 border-b border-slate-100 bg-white">
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 flex-1">Patient</p>
+              <button
+                onClick={() => { setWalkIn(w => !w); setSelectedPat(null); setSearch(""); }}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold transition-all ${
+                  walkIn
+                    ? "bg-amber-50 border-amber-300 text-amber-700"
+                    : "bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                }`}
+              >
+                <UserX className="h-3 w-3" />
+                Walk-in
+              </button>
+              {!walkIn && (
+                <Button variant="ghost" size="sm" className="h-5 gap-1 text-[10px] text-[#4982CF] hover:bg-[#4982CF]/10 px-2"
+                  onClick={() => setShowAddPatient(true)}>
+                  <UserPlus className="h-3 w-3" />Add New
+                </Button>
+              )}
+            </div>
+
+            {walkIn ? (
+              <div className="flex items-center gap-2.5 rounded-xl border-2 border-amber-200 bg-amber-50 px-3 py-2">
+                <div className="h-8 w-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center flex-shrink-0">
+                  <UserX className="h-4 w-4 text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-amber-800 leading-tight">Walk-in / Anonymous</p>
+                  <p className="text-[10px] text-amber-600 leading-tight">No patient info required</p>
+                </div>
+                <button onClick={() => setWalkIn(false)} className="text-amber-400 hover:text-amber-700 transition-colors flex-shrink-0">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : selectedPat ? (
+              <div className="flex items-center gap-2.5 rounded-xl border-2 border-[#4982CF] bg-[#4982CF]/5 px-3 py-2">
+                <div className="h-8 w-8 rounded-full bg-[#4982CF] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {selectedPat.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-900 leading-tight">{selectedPat.name}</p>
+                  <p className="text-xs text-slate-500 leading-tight">{selectedPat.mrn} · {selectedPat.phone}</p>
+                </div>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 flex-shrink-0"
+                  onClick={() => { setSelectedPat(null); setSearch(""); }}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <div ref={searchRef} className="relative">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search name, MRN, or phone…"
+                    className="h-9 pl-9 text-sm border-slate-200 focus-visible:ring-[#4982CF]"
+                    value={search}
+                    onChange={e => { setSearch(e.target.value); setShowSearch(true); }}
+                    onFocus={() => setShowSearch(true)}
+                  />
+                </div>
+                {showSearch && (
+                  <div className="absolute top-10 left-0 right-0 z-30 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+                    {filteredPatients.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-5 text-slate-400">
+                        <Search className="h-4 w-4 opacity-40" />
+                        <p className="text-xs font-medium">No patients found</p>
+                        <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setShowAddPatient(true)}>
+                          <UserPlus className="h-3.5 w-3.5" />Register New Patient
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="max-h-44 overflow-y-auto divide-y divide-slate-100">
+                        {filteredPatients.map(p => (
+                          <button key={p.id} className="w-full flex items-center gap-3 px-3 py-2 hover:bg-[#4982CF]/5 text-left transition-colors"
+                            onClick={() => { setSelectedPat(p); setSearch(""); setShowSearch(false); }}>
+                            <div className="h-7 w-7 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-xs font-bold flex-shrink-0">
+                              {p.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-slate-900 leading-tight">{p.name}</p>
+                              <p className="text-[10px] text-slate-400 leading-tight">{p.mrn} · {p.gender === "M" ? "Male" : "Female"}</p>
+                            </div>
+                            <ChevronRight className="h-3.5 w-3.5 text-slate-300 flex-shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* MIDDLE — Scrollable doctor selection */}
@@ -311,6 +484,7 @@ export function QueueTokenPartitioned() {
                         <span className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF]">
                           <span className="h-1.5 w-1.5 rounded-full bg-[#4982CF] animate-pulse" />
                           At Counter: {called[0].tokenNumber}
+                          {called[0].patient && <span className="text-slate-400 font-normal">· {called[0].patient.name.split(" ")[0]}</span>}
                         </span>
                       )}
                       <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
@@ -335,6 +509,7 @@ export function QueueTokenPartitioned() {
                             style={{ borderColor: dq.doctor.color, backgroundColor: dq.doctor.color + "0C" }}>
                             <span className="h-2 w-2 rounded-full bg-[#4982CF] animate-pulse" />
                             <span className="font-mono font-black text-sm" style={{ color: dq.doctor.color }}>{e.tokenNumber}</span>
+                            {e.patient && <span className="text-[10px] text-slate-500 font-semibold">{e.patient.name.split(" ")[0]}</span>}
                             <Badge className="text-[9px] bg-blue-100 text-[#4982CF] border-blue-200 px-1">At Counter</Badge>
                           </div>
                         ))}
@@ -342,6 +517,7 @@ export function QueueTokenPartitioned() {
                           <div key={e.id} className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
                             <span className="text-[10px] text-slate-400 font-bold w-3">{i + 1}</span>
                             <span className="font-mono font-black text-sm text-slate-700">{e.tokenNumber}</span>
+                            {e.patient && <span className="text-[10px] text-slate-500 font-semibold">{e.patient.name.split(" ")[0]}</span>}
                             <span className="text-[9px] text-slate-400">{timeAgo(e.createdAt)}</span>
                           </div>
                         ))}
@@ -360,6 +536,91 @@ export function QueueTokenPartitioned() {
           </div>
         </div>
       </div>
+
+      {/* Quick-add patient modal */}
+      {showAddPatient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5 text-[#4982CF]" />
+                  <h2 className="text-base font-bold text-slate-900">Register New Patient</h2>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400"
+                  onClick={() => { setShowAddPatient(false); setQuickFormValues({}); setQuickGender("M"); }}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: selectedDQ.doctor.color }} />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Partitioned Queue · {selectedDQ.doctor.name}</span>
+                <span className="text-[10px] text-slate-300">·</span>
+                <span className="text-[10px] font-semibold text-[#4982CF]">Profile: {profileName}</span>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              {(() => {
+                const rows: React.ReactNode[] = [];
+                let i = 0;
+                while (i < visFields.length) {
+                  const f    = visFields[i];
+                  const next = visFields[i + 1];
+                  if (next) {
+                    rows.push(
+                      <div key={`gr-${i}`} className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{f.label}{f.required && " *"}</label>
+                          <Input className="h-9 text-sm" type={INPUT_TYPE[f.fieldId] ?? "text"} placeholder={PLACEHOLDER[f.fieldId] ?? f.label}
+                            value={quickFormValues[f.fieldId] ?? ""}
+                            onChange={e => setQuickFormValues(prev => ({ ...prev, [f.fieldId]: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{next.label}{next.required && " *"}</label>
+                          <Input className="h-9 text-sm" type={INPUT_TYPE[next.fieldId] ?? "text"} placeholder={PLACEHOLDER[next.fieldId] ?? next.label}
+                            value={quickFormValues[next.fieldId] ?? ""}
+                            onChange={e => setQuickFormValues(prev => ({ ...prev, [next.fieldId]: e.target.value }))} />
+                        </div>
+                      </div>
+                    );
+                    i += 2;
+                  } else {
+                    rows.push(
+                      <div key={`sr-${i}`}>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{f.label}{f.required && " *"}</label>
+                        <Input className="h-9 text-sm" type={INPUT_TYPE[f.fieldId] ?? "text"} placeholder={PLACEHOLDER[f.fieldId] ?? f.label}
+                          value={quickFormValues[f.fieldId] ?? ""}
+                          onChange={e => setQuickFormValues(prev => ({ ...prev, [f.fieldId]: e.target.value }))} />
+                      </div>
+                    );
+                    i++;
+                  }
+                }
+                return rows;
+              })()}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Gender</label>
+                <Select value={quickGender} onValueChange={v => setQuickGender(v as "M" | "F")}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="M">Male</SelectItem>
+                    <SelectItem value="F">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex gap-3 px-6 pb-6">
+              <Button variant="outline" className="flex-1"
+                onClick={() => { setShowAddPatient(false); setQuickFormValues({}); setQuickGender("M"); }}>
+                Cancel
+              </Button>
+              <Button className="flex-1 bg-[#4982CF] hover:bg-[#3D73BC] text-white" disabled={!canSubmitQuick} onClick={submitQuickReg}>
+                Register & Continue
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

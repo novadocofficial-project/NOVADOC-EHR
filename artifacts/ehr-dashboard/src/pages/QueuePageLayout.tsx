@@ -21,6 +21,7 @@ export type QueueEntry = {
   displayNum: number;
   patientName?: string;
   patientMrn?: string;
+  patient?: Patient | null;
   status: QueueStatus;
   doctorId?: string;
   doctorName?: string;
