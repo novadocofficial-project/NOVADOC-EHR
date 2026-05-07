@@ -199,10 +199,43 @@ export const DEFAULT_REG_CONFIG: RegConfig = {
 
 const STORAGE_KEY = "ehr-reg-config-v1";
 
+// Merge stored blob with defaults to handle partial / legacy shapes safely.
+function normalizeConfig(stored: Partial<RegConfig>): RegConfig {
+  // Ensure top-level arrays exist
+  const sections = Array.isArray(stored.sections) && stored.sections.length > 0
+    ? stored.sections.map(s => ({
+        ...DEFAULT_REG_CONFIG.sections.find(d => d.id === s.id) ?? DEFAULT_REG_CONFIG.sections[0],
+        ...s,
+        fields: Array.isArray(s.fields) ? s.fields : [],
+        conditionalRules: Array.isArray(s.conditionalRules) ? s.conditionalRules : [],
+      }))
+    : DEFAULT_REG_CONFIG.sections;
+
+  const patientTypes = Array.isArray(stored.patientTypes) && stored.patientTypes.length > 0
+    ? stored.patientTypes.map(t => ({
+        ...DEFAULT_REG_CONFIG.patientTypes.find(d => d.id === t.id) ?? DEFAULT_REG_CONFIG.patientTypes[0],
+        ...t,
+        extraFields: Array.isArray(t.extraFields) ? t.extraFields : [],
+      }))
+    : DEFAULT_REG_CONFIG.patientTypes;
+
+  return {
+    sections,
+    patientTypes,
+    welfareForms: Array.isArray(stored.welfareForms) ? stored.welfareForms : DEFAULT_REG_CONFIG.welfareForms,
+    quickProfiles: Array.isArray(stored.quickProfiles) && stored.quickProfiles.length > 0
+      ? stored.quickProfiles
+      : DEFAULT_REG_CONFIG.quickProfiles,
+    counterProfileMap: (stored.counterProfileMap && typeof stored.counterProfileMap === "object")
+      ? stored.counterProfileMap
+      : {},
+  };
+}
+
 function loadConfig(): RegConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as RegConfig;
+    if (raw) return normalizeConfig(JSON.parse(raw) as Partial<RegConfig>);
   } catch { /**/ }
   return DEFAULT_REG_CONFIG;
 }
