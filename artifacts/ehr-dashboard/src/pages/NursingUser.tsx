@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import {
   PhoneCall, X, ChevronUp, ChevronDown, ChevronRight,
   Maximize2, Minimize2, Clock, User, AlertCircle, Heart,
-  SkipForward, RotateCcw, Activity, FlaskConical, ClipboardList,
-  Stethoscope, Camera, Target, TrendingUp, CheckCircle2, Plus,
+  SkipForward, RotateCcw, Activity, ClipboardList,
+  Stethoscope, Target, TrendingUp, CheckCircle2, Plus,
   Layers, Trash2, Pill, Receipt, ShieldCheck, DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -85,7 +85,7 @@ const MENTAL_QUESTIONS = [
 
 // ─── Category definitions ─────────────────────────────────────────────────────
 
-type NurseCategory = "triage" | "history" | "vitals" | "care-plan" | "procedures" | "lab" | "imaging" | "goals";
+type NurseCategory = "triage" | "history" | "vitals" | "care-plan" | "procedures" | "goals";
 
 const CATEGORIES: { id: NurseCategory; label: string; icon: React.ReactNode; color: string; bg: string }[] = [
   { id: "triage",     label: "Triage",             icon: <AlertCircle className="h-5 w-5" />, color: "text-red-600",    bg: "bg-red-50 border-red-200"     },
@@ -93,16 +93,13 @@ const CATEGORIES: { id: NurseCategory; label: string; icon: React.ReactNode; col
   { id: "vitals",     label: "Vital Signs",        icon: <Activity className="h-5 w-5" />,    color: "text-[#4982CF]", bg: "bg-blue-50 border-blue-200"   },
   { id: "care-plan",  label: "Care Plan",          icon: <Heart className="h-5 w-5" />,       color: "text-rose-600",  bg: "bg-rose-50 border-rose-200"   },
   { id: "procedures", label: "Nursing Procedures", icon: <Stethoscope className="h-5 w-5" />, color: "text-teal-700",  bg: "bg-teal-50 border-teal-200"   },
-  { id: "lab",        label: "Lab",                icon: <FlaskConical className="h-5 w-5" />,color: "text-purple-700",bg: "bg-purple-50 border-purple-200"},
-  { id: "imaging",    label: "Imaging",            icon: <Camera className="h-5 w-5" />,      color: "text-slate-700", bg: "bg-slate-50 border-slate-200" },
   { id: "goals",      label: "Goals",              icon: <Target className="h-5 w-5" />,      color: "text-green-700", bg: "bg-green-50 border-green-200" },
 ];
 
 const CATEGORY_NAV_LABELS: { id: NurseCategory; label: string }[] = [
   { id: "triage", label: "Triage" }, { id: "history", label: "History" },
   { id: "vitals", label: "Vital Signs" }, { id: "care-plan", label: "Care Plan" },
-  { id: "procedures", label: "Nursing Procedures" }, { id: "lab", label: "Lab" },
-  { id: "imaging", label: "Imaging" }, { id: "goals", label: "Goals" },
+  { id: "procedures", label: "Nursing Procedures" }, { id: "goals", label: "Goals" },
 ];
 
 // ─── Collapsible helper ───────────────────────────────────────────────────────

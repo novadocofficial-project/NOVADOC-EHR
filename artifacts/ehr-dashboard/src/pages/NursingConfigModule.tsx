@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Check, AlertCircle,
-  Edit2, X, CheckCircle2, Layers, Heart, Activity, FlaskConical,
-  Camera, Target, Stethoscope, Info, RotateCcw, Pill, Receipt, ShieldCheck,
+  Edit2, X, CheckCircle2, Layers, Heart, Activity,
+  Target, Stethoscope, Info, RotateCcw, Pill, Receipt, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,8 +51,7 @@ function useVisitTypes(): VisitType[] {
 
 export type NursingSectionId =
   | "nursing-triage" | "nursing-history" | "nursing-vitals"
-  | "nursing-care-plan" | "nursing-procedures" | "nursing-lab"
-  | "nursing-imaging" | "nursing-goals";
+  | "nursing-care-plan" | "nursing-procedures" | "nursing-goals";
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -1476,20 +1475,6 @@ export function NursingConfigModule({ section }: NursingConfigModuleProps) {
         />
       )}
       {section === "nursing-procedures" && <ProcedureTemplateBuilder />}
-      {section === "nursing-lab" && (
-        <PlaceholderSection
-          icon={<FlaskConical className="h-10 w-10" />}
-          title="Lab"
-          message="Configuration will be implemented later."
-        />
-      )}
-      {section === "nursing-imaging" && (
-        <PlaceholderSection
-          icon={<Camera className="h-10 w-10" />}
-          title="Imaging"
-          message="Configuration will be implemented later."
-        />
-      )}
       {section === "nursing-goals" && (
         <PlaceholderSection
           icon={<Target className="h-10 w-10" />}
