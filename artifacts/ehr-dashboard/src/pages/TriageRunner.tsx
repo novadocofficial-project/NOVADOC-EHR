@@ -378,7 +378,8 @@ function evalRouting(step: TriageStep, ans: StepAnswer | undefined): TriageOutco
   if (step.type !== "question-group" && step.type !== "flag-checklist") return null;
   const sel = ans?.selected ?? {};
   if (step.ifAnyYes && Object.values(sel).some(v => v === true)) return step.ifAnyYes;
-  if (step.ifAllNo && step.items.length > 0 && step.items.every(it => sel[it.id] === false)) return step.ifAllNo;
+  // Treat undefined (untouched) items as "No" so an all-unchecked checklist triggers ifAllNo
+  if (step.ifAllNo && step.items.length > 0 && step.items.every(it => sel[it.id] !== true)) return step.ifAllNo;
   return null;
 }
 
@@ -393,7 +394,7 @@ export function TriageRunner({ patient, onFinishTriage }: { patient: Patient | n
   const [answers, setAnswers] = useState<Record<string, StepAnswer>>({});
   const [routed, setRouted] = useState<{ outcome: TriageOutcome; by: string } | null>(null);
   const [done, setDone] = useState(false);
-  const [startedAt] = useState(() => Date.now());
+  const [startedAt, setStartedAt] = useState(() => Date.now());
 
   const algo = enabled.find(a => a.id === algoId) ?? null;
 
@@ -403,6 +404,7 @@ export function TriageRunner({ patient, onFinishTriage }: { patient: Patient | n
     setAnswers({});
     setRouted(null);
     setDone(false);
+    setStartedAt(Date.now());
   }
 
   function setAnswer(id: string, ans: StepAnswer) {
@@ -438,7 +440,7 @@ export function TriageRunner({ patient, onFinishTriage }: { patient: Patient | n
           {enabled.map(a => (
             <button
               key={a.id}
-              onClick={() => { setAlgoId(a.id); setStepIndex(0); setAnswers({}); setRouted(null); setDone(false); }}
+              onClick={() => { setAlgoId(a.id); setStepIndex(0); setAnswers({}); setRouted(null); setDone(false); setStartedAt(Date.now()); }}
               className="w-full rounded-xl border border-slate-200 bg-white hover:border-[#4982CF]/50 hover:shadow-sm p-4 text-left transition-all group flex items-center gap-4"
             >
               <div className="h-10 w-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
@@ -500,30 +502,11 @@ export function TriageRunner({ patient, onFinishTriage }: { patient: Patient | n
     const routing = evalRouting(step, currentAnswer);
     if (routing) { setRouted({ outcome: routing, by: step.title }); return; }
     if (stepIndex + 1 >= totalSteps) {
-      setDone(true);
+      // No routing fired — fall through with a default clinical-advice outcome
+      handleFinish({ type: "advice", adviceItems: [] });
     } else {
       setStepIndex(i => i + 1);
     }
-  }
-
-  // ── Done without explicit outcome ──────────────────────────────────────────
-
-  if (done && !routed) {
-    return (
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <RunnerHeader algo={algo} stepIndex={totalSteps - 1} totalSteps={totalSteps} progress={100} onRestart={restart} />
-        <div className="flex-1 overflow-y-auto p-5">
-          <div className="text-center py-10">
-            <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-3" />
-            <p className="text-lg font-bold text-slate-800">Triage Complete</p>
-            <p className="text-sm text-slate-500 mt-1">All steps completed successfully.</p>
-            <Button onClick={restart} variant="outline" className="mt-6 gap-2">
-              <RotateCcw className="h-4 w-4" /> Start New Triage
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
   }
 
   // ── Main step view ─────────────────────────────────────────────────────────
