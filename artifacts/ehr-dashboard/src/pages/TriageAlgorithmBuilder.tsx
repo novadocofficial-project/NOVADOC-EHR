@@ -365,6 +365,12 @@ function StepEditor({
     );
   }
 
+  // Both question-group and flag-checklist expose the same two routing pickers:
+  //   "If any = YES →"  (ifAnyYes)
+  //   "If all = NO  →"  (ifAllNo)
+  // This lets admins configure non-continue outcomes for either branch on
+  // both step types. Leaving a picker on "Continue to next step" (undefined)
+  // is always valid — that is the implicit default.
   if (step.type === "question-group" || step.type === "flag-checklist") {
     return (
       <div className="space-y-4">
@@ -547,12 +553,41 @@ function StepCard({
           </button>
         </div>
       </div>
+      {/* Routing summary shown in collapsed view for question-group and flag-checklist */}
+      {!expanded && (step.type === "question-group" || step.type === "flag-checklist") && (
+        <div className="px-4 pb-3 flex flex-wrap gap-2">
+          <span className="text-[9px] text-slate-400 self-center">Routes:</span>
+          <RoutingChip label="any YES" outcome={step.ifAnyYes} />
+          <RoutingChip label="all NO" outcome={step.ifAllNo} />
+        </div>
+      )}
       {expanded && (
         <div className="px-4 pb-4 pt-2 border-t border-slate-100">
           <StepEditor step={step} onUpdate={onUpdate} />
         </div>
       )}
     </div>
+  );
+}
+
+// ─── RoutingChip ──────────────────────────────────────────────────────────────
+// Small inline chip used in the collapsed StepCard to summarise routing for
+// question-group and flag-checklist steps.  Shows the configured outcome type
+// or a neutral "Continue" badge when no outcome is set (i.e. ifAllNo / ifAnyYes
+// is undefined — the implicit default).
+
+function RoutingChip({ label, outcome }: { label: string; outcome?: TriageOutcome }) {
+  if (!outcome) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[9px] font-semibold rounded-full border px-2 py-0.5 text-slate-400 bg-slate-50 border-slate-200">
+        <span className="opacity-60">{label} →</span> Continue
+      </span>
+    );
+  }
+  return (
+    <span className={`inline-flex items-center gap-1 text-[9px] font-semibold rounded-full border px-2 py-0.5 ${OUTCOME_CHIP[outcome.type]}`}>
+      <span className="opacity-70">{label} →</span> {OUTCOME_LABELS[outcome.type]}
+    </span>
   );
 }
 
