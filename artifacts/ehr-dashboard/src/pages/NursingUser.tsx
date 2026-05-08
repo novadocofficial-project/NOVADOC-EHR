@@ -721,34 +721,51 @@ function HistoryTabContent({ visitTypeId }: { visitTypeId?: string }) {
                   onChange={v => setSystemValues(prev => ({ ...prev, [comp.id]: v }))}
                 />
               ) : (
-                <div className="space-y-4 pb-2">
-                  {getEntries(comp.id).map((entryVals, idx) => (
-                    <div key={idx} className={comp.repeatable && getEntries(comp.id).length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
-                      {comp.repeatable && getEntries(comp.id).length > 1 && (
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entry {idx + 1}</span>
-                          <button onClick={() => removeEntry(comp.id, idx)} className="text-slate-300 hover:text-rose-500 transition-colors">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                <div className="pb-2">
+                  {(() => {
+                    const entries = getEntries(comp.id);
+                    const isHoriz = comp.repeatable && comp.entryLayout === "horizontal" && entries.length > 0;
+                    const cols = comp.columns ?? 2;
+                    const gridClass = isHoriz
+                      ? cols === 1 ? "grid grid-cols-1 gap-3"
+                      : cols === 2 ? "grid grid-cols-2 gap-3"
+                      : cols === 3 ? "grid grid-cols-3 gap-3"
+                      : "grid grid-cols-4 gap-3"
+                      : "space-y-4";
+                    return (
+                      <>
+                        <div className={gridClass}>
+                          {entries.map((entryVals, idx) => (
+                            <div key={idx} className={comp.repeatable && entries.length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
+                              {comp.repeatable && entries.length > 1 && (
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entry {idx + 1}</span>
+                                  <button onClick={() => removeEntry(comp.id, idx)} className="text-slate-300 hover:text-rose-500 transition-colors">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                              <CustomComponentForm
+                                component={comp}
+                                values={entryVals}
+                                onChange={v => setEntry(comp.id, idx, v)}
+                              />
+                            </div>
+                          ))}
                         </div>
-                      )}
-                      <CustomComponentForm
-                        component={comp}
-                        values={entryVals}
-                        onChange={v => setEntry(comp.id, idx, v)}
-                      />
-                    </div>
-                  ))}
-                  {comp.repeatable && (
-                    <button
-                      onClick={() => addEntry(comp.id, comp.repeatLimit)}
-                      disabled={comp.repeatLimit !== null && getEntries(comp.id).length >= comp.repeatLimit}
-                      className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      Add Entry{comp.repeatLimit !== null ? ` (${getEntries(comp.id).length}/${comp.repeatLimit})` : ""}
-                    </button>
-                  )}
+                        {comp.repeatable && (
+                          <button
+                            onClick={() => addEntry(comp.id, comp.repeatLimit)}
+                            disabled={comp.repeatLimit !== null && entries.length >= comp.repeatLimit}
+                            className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-3"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add Entry{comp.repeatLimit !== null ? ` (${entries.length}/${comp.repeatLimit})` : ""}
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </Collapsible>

@@ -49,6 +49,8 @@ export interface NursingComponent {
   fields: NursingField[];
   repeatable: boolean;
   repeatLimit: number | null;
+  entryLayout: "vertical" | "horizontal";
+  columns: 1 | 2 | 3 | 4;
   conditionalRules: ConditionalRule[];
 }
 
@@ -74,10 +76,10 @@ const DEFAULT_CONFIG: NursingConfig = {
       name: "General Nursing Assessment",
       enabled: true,
       components: [
-        { id: "nc-1", type: "system", systemKey: "chief-complaint",   name: "Chief Complaint",   fields: [], repeatable: false, repeatLimit: null, conditionalRules: [] },
-        { id: "nc-2", type: "system", systemKey: "allergies",         name: "Allergies",         fields: [], repeatable: false, repeatLimit: null, conditionalRules: [] },
-        { id: "nc-3", type: "system", systemKey: "past-history",      name: "Past History",      fields: [], repeatable: false, repeatLimit: null, conditionalRules: [] },
-        { id: "nc-4", type: "system", systemKey: "current-medicines", name: "Current Medicines", fields: [], repeatable: false, repeatLimit: null, conditionalRules: [] },
+        { id: "nc-1", type: "system", systemKey: "chief-complaint",   name: "Chief Complaint",   fields: [], repeatable: false, repeatLimit: null, entryLayout: "vertical", columns: 2, conditionalRules: [] },
+        { id: "nc-2", type: "system", systemKey: "allergies",         name: "Allergies",         fields: [], repeatable: false, repeatLimit: null, entryLayout: "vertical", columns: 2, conditionalRules: [] },
+        { id: "nc-3", type: "system", systemKey: "past-history",      name: "Past History",      fields: [], repeatable: false, repeatLimit: null, entryLayout: "vertical", columns: 2, conditionalRules: [] },
+        { id: "nc-4", type: "system", systemKey: "current-medicines", name: "Current Medicines", fields: [], repeatable: false, repeatLimit: null, entryLayout: "vertical", columns: 2, conditionalRules: [] },
       ],
     },
     {
@@ -85,15 +87,15 @@ const DEFAULT_CONFIG: NursingConfig = {
       name: "Emergency Intake",
       enabled: true,
       components: [
-        { id: "ne-1", type: "system", systemKey: "chief-complaint",  name: "Chief Complaint",  fields: [], repeatable: false, repeatLimit: null, conditionalRules: [] },
-        { id: "ne-2", type: "system", systemKey: "allergies",        name: "Allergies",        fields: [], repeatable: false, repeatLimit: null, conditionalRules: [] },
+        { id: "ne-1", type: "system", systemKey: "chief-complaint",  name: "Chief Complaint",  fields: [], repeatable: false, repeatLimit: null, entryLayout: "vertical", columns: 2, conditionalRules: [] },
+        { id: "ne-2", type: "system", systemKey: "allergies",        name: "Allergies",        fields: [], repeatable: false, repeatLimit: null, entryLayout: "vertical", columns: 2, conditionalRules: [] },
         { id: "ne-3", type: "custom", name: "Injury Details",
           fields: [
             { id: "inj-1", label: "Mechanism of Injury",  type: "dropdown",  required: true,  enabled: true, options: ["Fall","MVA","Assault","Burn","Other"], placeholder: "" },
             { id: "inj-2", label: "Time of Injury",       type: "text",      required: false, enabled: true, options: [], placeholder: "e.g. 2 hours ago" },
             { id: "inj-3", label: "Location of Injury",   type: "textarea",  required: false, enabled: true, options: [], placeholder: "Describe location..." },
           ],
-          repeatable: false, repeatLimit: null, conditionalRules: [],
+          repeatable: false, repeatLimit: null, entryLayout: "vertical", columns: 2, conditionalRules: [],
         },
       ],
     },
@@ -123,6 +125,8 @@ function normalizeConfig(stored: Partial<NursingConfig>): NursingConfig {
                 fields: Array.isArray(c.fields) ? c.fields : [],
                 repeatable: c.repeatable ?? false,
                 repeatLimit: c.repeatLimit ?? null,
+                entryLayout: c.entryLayout === "horizontal" ? "horizontal" : "vertical",
+                columns: ([1, 2, 3, 4] as const).includes(c.columns) ? c.columns : 2,
                 conditionalRules: Array.isArray(c.conditionalRules) ? c.conditionalRules : [],
               }))
             : [],

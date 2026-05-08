@@ -457,16 +457,60 @@ function CustomComponentEditor({
             />
           </div>
           {component.repeatable && (
-            <div className="flex items-center gap-3 -mt-2">
-              <label className="text-xs font-semibold text-slate-600">Repeat limit (blank = unlimited)</label>
-              <Input
-                type="number"
-                min={1}
-                className="h-8 w-24 text-sm"
-                value={component.repeatLimit ?? ""}
-                placeholder="Unlimited"
-                onChange={e => onUpdate({ repeatLimit: e.target.value ? parseInt(e.target.value) : null })}
-              />
+            <div className="space-y-3 rounded-xl bg-slate-50 border border-slate-200 px-3 py-3">
+              {/* Repeat limit */}
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-semibold text-slate-600 w-44 shrink-0">Repeat limit (blank = unlimited)</label>
+                <Input
+                  type="number"
+                  min={1}
+                  className="h-8 w-24 text-sm"
+                  value={component.repeatLimit ?? ""}
+                  placeholder="Unlimited"
+                  onChange={e => onUpdate({ repeatLimit: e.target.value ? parseInt(e.target.value) : null })}
+                />
+              </div>
+              {/* Entry layout */}
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-semibold text-slate-600 w-44 shrink-0">Entry layout</label>
+                <div className="flex gap-1.5">
+                  {(["vertical", "horizontal"] as const).map(opt => (
+                    <button
+                      key={opt}
+                      onClick={() => onUpdate({ entryLayout: opt })}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                        component.entryLayout === opt
+                          ? "bg-[#4982CF] text-white border-[#4982CF]"
+                          : "bg-white text-slate-600 border-slate-200 hover:border-[#4982CF]/50"
+                      }`}
+                    >
+                      {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Columns (only when horizontal) */}
+              {component.entryLayout === "horizontal" && (
+                <div className="flex items-center gap-3">
+                  <label className="text-xs font-semibold text-slate-600 w-44 shrink-0">Columns per row</label>
+                  <div className="flex gap-1.5">
+                    {([1, 2, 3, 4] as const).map(n => (
+                      <button
+                        key={n}
+                        onClick={() => onUpdate({ columns: n })}
+                        className={`h-7 w-7 rounded-lg text-xs font-bold border transition-colors ${
+                          component.columns === n
+                            ? "bg-[#4982CF] text-white border-[#4982CF]"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-[#4982CF]/50"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    <span className="text-[10px] text-slate-400 self-center ml-1">max 4</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -596,6 +640,8 @@ function TemplateEditor({
         fields: [],
         repeatable: false,
         repeatLimit: null,
+        entryLayout: "vertical",
+        columns: 2,
         conditionalRules: [],
       };
     });
@@ -611,6 +657,8 @@ function TemplateEditor({
       fields: [],
       repeatable: false,
       repeatLimit: null,
+      entryLayout: "vertical",
+      columns: 2,
       conditionalRules: [],
     };
     onUpdate({ components: [...template.components, newComp] });
