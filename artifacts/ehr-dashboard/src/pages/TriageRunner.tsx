@@ -460,7 +460,7 @@ export function TriageRunner({ patient, onFinishTriage }: { patient: Patient | n
   }
 
   const totalSteps = algo.steps.length;
-  const progress = routed || done ? 100 : Math.round((stepIndex / totalSteps) * 100);
+  const progress = routed || done ? 100 : Math.round(((stepIndex + 1) / totalSteps) * 100);
   const step = algo.steps[stepIndex] ?? null;
   const currentAnswer = step ? answers[step.id] : undefined;
 
