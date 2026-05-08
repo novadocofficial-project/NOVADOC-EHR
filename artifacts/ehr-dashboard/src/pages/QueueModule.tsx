@@ -72,6 +72,10 @@ type ScreenConfig = {
   active: boolean;
 };
 
+// ─── Storage keys ─────────────────────────────────────────────────────────────
+
+export const VISIT_TYPES_STORAGE_KEY = "ehr-visit-types";
+
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 
 export const SEED_VISIT_TYPES: VisitType[] = [
@@ -327,7 +331,13 @@ function DeleteDialog({ open, name, onClose, onConfirm }: { open: boolean; name:
 
 export function QueueModule({ section }: { section: QueueSection }) {
   // Shared state ─────────────────────────────────────────────────────────────
-  const [visitTypes, setVisitTypes] = useState<VisitType[]>(SEED_VISIT_TYPES);
+  const [visitTypes, setVisitTypes] = useState<VisitType[]>(() => {
+    try {
+      const stored = localStorage.getItem(VISIT_TYPES_STORAGE_KEY);
+      if (stored) return JSON.parse(stored) as VisitType[];
+    } catch { /* ignore */ }
+    return SEED_VISIT_TYPES;
+  });
   const [counterTypes, setCounterTypes] = useState<CounterType[]>(SEED_COUNTER_TYPES);
   const [counters, setCounters] = useState<Counter[]>(SEED_COUNTERS);
   const [workflow, setWorkflow] = useState<WorkflowStep[]>(SEED_WORKFLOW);
@@ -351,6 +361,10 @@ export function QueueModule({ section }: { section: QueueSection }) {
     const t = setInterval(() => setClockTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(VISIT_TYPES_STORAGE_KEY, JSON.stringify(visitTypes));
+  }, [visitTypes]);
 
   // ── Section: Visit Types ────────────────────────────────────────────────────
   const [vtForm, setVtForm] = useState<Omit<VisitType, "id">>({ name: "", code: "", tokenPrefix: "", color: "#4982CF", queueMode: "single", partitionBy: "none", status: "active" });

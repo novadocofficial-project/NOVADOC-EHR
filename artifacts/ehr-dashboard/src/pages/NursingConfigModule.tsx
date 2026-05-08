@@ -20,7 +20,29 @@ import {
   type ConditionalRule,
 } from "@/hooks/useNursingConfig";
 import { VitalsConfigPanel } from "@/pages/SoapConfigModule";
-import { SEED_VISIT_TYPES } from "@/pages/QueueModule";
+import { SEED_VISIT_TYPES, VISIT_TYPES_STORAGE_KEY, type VisitType } from "@/pages/QueueModule";
+
+function loadVisitTypes(): VisitType[] {
+  try {
+    const stored = localStorage.getItem(VISIT_TYPES_STORAGE_KEY);
+    if (stored) return JSON.parse(stored) as VisitType[];
+  } catch { /* ignore */ }
+  return SEED_VISIT_TYPES;
+}
+
+function useVisitTypes(): VisitType[] {
+  const [visitTypes, setVisitTypes] = useState<VisitType[]>(loadVisitTypes);
+
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key === VISIT_TYPES_STORAGE_KEY) setVisitTypes(loadVisitTypes());
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  return visitTypes;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -765,6 +787,7 @@ function TemplateEditor({
 
 function HistoryTemplateBuilder() {
   const { config, updateConfig, savedAt } = useNursingConfig();
+  const visitTypes = useVisitTypes();
   const [addingName, setAddingName] = useState(false);
   const [newName, setNewName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -849,7 +872,7 @@ function HistoryTemplateBuilder() {
             </div>
           </div>
           <div className="divide-y divide-slate-100">
-            {SEED_VISIT_TYPES.filter(vt => vt.status === "active").map(vt => {
+            {visitTypes.filter(vt => vt.status === "active").map(vt => {
               const currentMappedId = config.visitTypeMappings?.[vt.id] ?? "";
               const enabledTemplates = config.templates.filter(t => t.enabled);
               return (
@@ -899,7 +922,7 @@ function HistoryTemplateBuilder() {
               );
             })}
           </div>
-          {SEED_VISIT_TYPES.filter(vt => vt.status === "active").length === 0 && (
+          {visitTypes.filter(vt => vt.status === "active").length === 0 && (
             <p className="text-xs text-slate-400 italic text-center py-5">No active visit types defined in Queue Setup.</p>
           )}
         </div>
