@@ -29,6 +29,7 @@ import {
 import { loadVitalsConfig, type VitalConfig } from "@/pages/SoapConfigModule";
 import { useNursingCareTasks } from "@/hooks/useNursingCareTasks";
 import { CareTasksTab, PatientGoalsTab } from "@/pages/NursingCareTasksTab";
+import { TriageRunner } from "@/pages/TriageRunner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1544,7 +1545,7 @@ function ProcedureTabContent() {
 
 // ─── Vitals split panel (fullscreen drawer) ───────────────────────────────────
 
-function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: () => void; onSave: () => void }) {
+function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { entry: MultiEntry; onClose: () => void; onSave: () => void; initialCategory?: NurseCategory }) {
   const [showTrends, setShowTrends] = useState(false);
   const configuredVitals = useMemo(() => loadVitalsConfig(), []);
   const [vitalValues, setVitalValues] = useState<Record<string, string>>({
@@ -1555,7 +1556,7 @@ function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: (
   const [painScore, setPainScore]         = useState(5);
   const [mentalAnswers, setMentalAnswers] = useState([1, 1, 2, 1]);
   const [fullscreen, setFullscreen]       = useState(false);
-  const [activeCategory, setActiveCategory] = useState<NurseCategory>("vitals");
+  const [activeCategory, setActiveCategory] = useState<NurseCategory>(initialCategory);
   const [showConfirm, setShowConfirm]     = useState(false);
 
   const {
@@ -1700,6 +1701,8 @@ function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: (
               />
             </div>
           </div>
+        ) : activeCategory === "triage" ? (
+          <TriageRunner patient={entry.patient} />
         ) : (
           <div className="flex-1 flex items-center justify-center text-center p-10">
             <div>
@@ -1761,7 +1764,7 @@ function NursingDrawer({ entry, onClose, onSave }: { entry: MultiEntry; onClose:
   const [activeCategory, setActiveCategory] = useState<NurseCategory | null>(null);
   const p = entry.patient;
 
-  if (activeCategory) return <VitalsPanel entry={entry} onClose={onClose} onSave={onSave} />;
+  if (activeCategory) return <VitalsPanel entry={entry} onClose={onClose} onSave={onSave} initialCategory={activeCategory} />;
 
   return (
     <>
