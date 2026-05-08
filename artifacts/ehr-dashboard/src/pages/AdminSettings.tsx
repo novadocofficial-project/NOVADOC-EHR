@@ -179,8 +179,8 @@ type ActiveModule =
   | "visit-types" | "workflow-config" | "counter-types" | "counters"
   | "token-settings" | "queue-behavior" | "locking-settings" | "display-settings" | "doctor-partitions" | "routing-rules"
   | "soap-note-structure" | "soap-vitals-config" | "hpi-templates" | "pe-builder" | "template-manager"
-  | "nursing-triage" | "nursing-history" | "nursing-vitals" | "nursing-care-plan"
-  | "nursing-procedures" | "nursing-goals"
+  | "nursing-triage" | "nursing-history" | "nursing-vitals"
+  | "nursing-procedures"
   | "clinical-complaints" | "clinical-icd10" | "clinical-poc" | "clinical-ros"
   | "clinical-allergies" | "clinical-med-surgical" | "clinical-family" | "clinical-social"
   | "care-plan-library" | "goals-library" | "referral-destinations" | "comorbidities"
@@ -637,9 +637,7 @@ export function AdminSettings() {
                 {subNavItem("nursing-triage",     <AlertCircle className="h-3.5 w-3.5" />,  "Triage")}
                 {subNavItem("nursing-history",    <ClipboardList className="h-3.5 w-3.5" />, "History")}
                 {subNavItem("nursing-vitals",     <Sliders className="h-3.5 w-3.5" />,       "Vital Signs")}
-                {subNavItem("nursing-care-plan",  <Heart className="h-3.5 w-3.5" />,         "Care Plan")}
                 {subNavItem("nursing-procedures", <Stethoscope className="h-3.5 w-3.5" />,   "Nursing Procedures")}
-                {subNavItem("nursing-goals",      <Target className="h-3.5 w-3.5" />,        "Goals")}
               </div>
             )}
 
@@ -837,7 +835,7 @@ export function AdminSettings() {
             />
           )}
 
-          {(["nursing-triage","nursing-history","nursing-vitals","nursing-care-plan","nursing-procedures","nursing-goals"] as const).map(s =>
+          {(["nursing-triage","nursing-history","nursing-vitals","nursing-procedures"] as const).map(s =>
             activeModule === s ? <NursingConfigModule key={s} section={s as NursingSectionId} /> : null
           )}
 

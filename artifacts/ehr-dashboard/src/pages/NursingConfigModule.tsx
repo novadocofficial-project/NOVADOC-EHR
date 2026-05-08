@@ -51,7 +51,7 @@ function useVisitTypes(): VisitType[] {
 
 export type NursingSectionId =
   | "nursing-triage" | "nursing-history" | "nursing-vitals"
-  | "nursing-care-plan" | "nursing-procedures" | "nursing-goals";
+  | "nursing-procedures";
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -1467,21 +1467,7 @@ export function NursingConfigModule({ section }: NursingConfigModuleProps) {
           <VitalsConfigPanel />
         </div>
       )}
-      {section === "nursing-care-plan" && (
-        <PlaceholderSection
-          icon={<Heart className="h-10 w-10" />}
-          title="Care Plan"
-          message="Configuration will be implemented later."
-        />
-      )}
       {section === "nursing-procedures" && <ProcedureTemplateBuilder />}
-      {section === "nursing-goals" && (
-        <PlaceholderSection
-          icon={<Target className="h-10 w-10" />}
-          title="Goals"
-          message="Configuration will be implemented later."
-        />
-      )}
     </>
   );
 }
