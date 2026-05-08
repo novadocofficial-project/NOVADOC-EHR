@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   PhoneCall, X, ChevronUp, ChevronDown, ChevronRight,
   Maximize2, Minimize2, Clock, User, AlertCircle, Heart,
   SkipForward, RotateCcw, Activity, FlaskConical, ClipboardList,
   Stethoscope, Camera, Target, TrendingUp, CheckCircle2, Plus,
+  Layers, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,15 @@ import {
 } from "recharts";
 import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
+import {
+  useNursingConfig,
+  SYSTEM_COMPONENTS,
+  type NursingField,
+  type NursingComponent,
+  type NursingHistoryTemplate,
+  type ConditionalRule,
+} from "@/hooks/useNursingConfig";
+import { loadVitalsConfig, type VitalConfig } from "@/pages/SoapConfigModule";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -110,30 +120,27 @@ function Collapsible({ title, badge, defaultOpen = true, accent, children }:
 
 // ─── Left panel (vitals section) ─────────────────────────────────────────────
 
-function VitalsLeftPanel({ entry, form, painScore, mentalAnswers }:
-  { entry: MultiEntry; form: VitalsFormState; painScore: number; mentalAnswers: number[] }) {
+function VitalsLeftPanel({ entry, vitalValues, configuredVitals, painScore, mentalAnswers }:
+  { entry: MultiEntry; vitalValues: Record<string, string>; configuredVitals: VitalConfig[]; painScore: number; mentalAnswers: number[] }) {
   const p = entry.patient;
   const [recordExpanded, setRecordExpanded] = useState(false);
   const mockRecord = { date: "21 Feb 2025", status: "In progress", type: "Vitals Sign", doctor: "Dr. Asif Imam" };
 
   const mentalTotal = mentalAnswers.reduce((s, v) => s + v, 0);
 
-  const vitalsRows: [string, string][] = [
-    ["Date",              form.date],
-    ["Pulse HR",          form.pulseHR],
-    ["Temperature (°C)",  form.tempC],
-    ["BP Systolic",       form.bpSystolic],
-    ["BP Diastolic",      form.bpDiastolic],
-    ["BP Position",       form.bpPosition],
-    ["Orthostatic",       form.bpOrthostatic],
-    ["Respiratory",       form.respiratory],
-    ["Blood Sugar",       form.bloodSugar],
-    ["Weight (kg)",       form.weightKg],
-    ["Height (cm)",       form.heightCm],
-    ["BMI",               form.bmi],
-    ["O₂ Saturation",     form.o2Sat],
-    ["BSA",               form.bsa],
-  ].filter(([, v]) => v && v.trim() !== "") as [string, string][];
+  const vitalsRows: [string, string][] = configuredVitals
+    .filter(v => v.opd !== "skip")
+    .flatMap(v => {
+      if (v.id === "bp") {
+        const sys = vitalValues["bp_sys"] ?? "";
+        const dia = vitalValues["bp_dia"] ?? "";
+        if (!sys && !dia) return [];
+        return [[v.name, `${sys || "—"}/${dia || "—"} ${v.unit}`]] as [string, string][];
+      }
+      const val = vitalValues[v.id] ?? "";
+      if (!val.trim()) return [];
+      return [[`${v.name}${v.unit ? ` (${v.unit})` : ""}`, val]] as [string, string][];
+    });
 
   const hasData = vitalsRows.length > 0 || painScore >= 0 || mentalTotal > 0;
 
@@ -245,27 +252,17 @@ function VitalsLeftPanel({ entry, form, painScore, mentalAnswers }:
   );
 }
 
-// ─── Vitals form ──────────────────────────────────────────────────────────────
+// ─── Config-driven vitals form ────────────────────────────────────────────────
 
-interface VitalsFormState {
-  date: string; pulseHR: string; tempC: string; bpSystolic: string; bpDiastolic: string;
-  bpPosition: string; bpOrthostatic: string; respiratory: string; bloodSugar: string;
-  weightKg: string; heightCm: string; bmi: string; o2Sat: string; bsa: string;
-}
+function VitalsForm({ vitalValues, setVitalValues, configuredVitals, painScore, setPainScore, mentalAnswers, setMentalAnswers }:
+  { vitalValues: Record<string, string>; setVitalValues: (v: Record<string, string>) => void; configuredVitals: VitalConfig[]; painScore: number; setPainScore: (n: number) => void; mentalAnswers: number[]; setMentalAnswers: (a: number[]) => void }) {
 
-function VitalsForm({ form, setForm, painScore, setPainScore, mentalAnswers, setMentalAnswers }:
-  { form: VitalsFormState; setForm: (f: VitalsFormState) => void; painScore: number; setPainScore: (n: number) => void; mentalAnswers: number[]; setMentalAnswers: (a: number[]) => void }) {
-
-  function field(label: string, key: keyof VitalsFormState, placeholder: string) {
-    return (
-      <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">{label}:</label>
-        <Input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} placeholder={placeholder} className="h-8 text-sm" />
-      </div>
-    );
-  }
+  const displayVitals = configuredVitals.filter(v => v.opd !== "skip" && v.id !== "pain");
+  const painConfig = configuredVitals.find(v => v.id === "pain");
+  const showPainSection = !painConfig || painConfig.opd !== "skip";
   const mentalTotal = mentalAnswers.reduce((s, v) => s + v, 0);
   function setMentalAnswer(qi: number, val: number) { const next = [...mentalAnswers]; next[qi] = val; setMentalAnswers(next); }
+  function setV(key: string, val: string) { setVitalValues({ ...vitalValues, [key]: val }); }
 
   return (
     <div className="flex flex-col h-full">
@@ -274,68 +271,97 @@ function VitalsForm({ form, setForm, painScore, setPainScore, mentalAnswers, set
           <div className="space-y-3 pb-4">
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">Date:</label>
-              <Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="h-8 text-sm" />
+              <Input type="date" value={vitalValues["_date"] ?? ""} onChange={e => setV("_date", e.target.value)} className="h-8 text-sm" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {field("Pulse Heart Rate", "pulseHR", "Enter Pulse Heart Rate")}
-              {field("Temperature C", "tempC", "Enter Temperature")}
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Blood Pressure:</label>
-              <div className="flex items-center gap-2">
-                <Input value={form.bpSystolic} onChange={e => setForm({ ...form, bpSystolic: e.target.value })} placeholder="Systolic" className="h-8 text-sm flex-1 min-w-0" />
-                <span className="text-slate-400 font-bold flex-shrink-0">/</span>
-                <Input value={form.bpDiastolic} onChange={e => setForm({ ...form, bpDiastolic: e.target.value })} placeholder="Diasto" className="h-8 text-sm flex-1 min-w-0" />
-                <Select value={form.bpPosition} onValueChange={v => setForm({ ...form, bpPosition: v })}>
-                  <SelectTrigger className="h-8 text-sm w-28 flex-shrink-0"><SelectValue placeholder="Position" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sitting">Sitting</SelectItem>
-                    <SelectItem value="standing">Standing</SelectItem>
-                    <SelectItem value="supine">Supine</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={form.bpOrthostatic} onValueChange={v => setForm({ ...form, bpOrthostatic: v })}>
-                  <SelectTrigger className="h-8 text-sm w-28 flex-shrink-0"><SelectValue placeholder="Orthostatic" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="yes">Yes</SelectItem>
-                    <SelectItem value="no">No</SelectItem>
-                  </SelectContent>
-                </Select>
-                <button className="h-8 w-8 rounded-lg bg-[#4982CF] text-white flex items-center justify-center flex-shrink-0 hover:bg-[#3a6fb8] transition-colors">
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {field("Respiratory", "respiratory", "Enter Respiratory")}
-              {field("Blood Sugar", "bloodSugar", "Enter Blood Sugar")}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {field("Weight (kg)", "weightKg", "Enter Weight")}
-              {field("Height (cm)", "heightCm", "Enter Height")}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {field("Body Mass Index", "bmi", "Enter Body Mass Index")}
-              {field("Oxygen Saturation", "o2Sat", "Enter Oxygen Saturation")}
-            </div>
-            {field("Body Surface Area", "bsa", "Enter Body Surface Area")}
+
+            {/* Grid for pairs of non-BP vitals; BP gets full-width special row */}
+            {(() => {
+              const rows: React.ReactNode[] = [];
+              let buffer: React.ReactNode[] = [];
+
+              function flush() {
+                if (buffer.length === 1) rows.push(<div key={rows.length}>{buffer[0]}</div>);
+                else if (buffer.length === 2) rows.push(<div key={rows.length} className="grid grid-cols-2 gap-3">{buffer[0]}{buffer[1]}</div>);
+                buffer = [];
+              }
+
+              displayVitals.forEach(v => {
+                if (v.id === "bp") {
+                  flush();
+                  rows.push(
+                    <div key="bp">
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">
+                        Blood Pressure {v.unit ? `(${v.unit})` : ""}:
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input value={vitalValues["bp_sys"] ?? ""} onChange={e => setV("bp_sys", e.target.value)} placeholder="Systolic" className="h-8 text-sm flex-1 min-w-0" />
+                        <span className="text-slate-400 font-bold flex-shrink-0">/</span>
+                        <Input value={vitalValues["bp_dia"] ?? ""} onChange={e => setV("bp_dia", e.target.value)} placeholder="Diastolic" className="h-8 text-sm flex-1 min-w-0" />
+                        <Select value={vitalValues["bp_pos"] ?? ""} onValueChange={val => setV("bp_pos", val)}>
+                          <SelectTrigger className="h-8 text-sm w-28 flex-shrink-0"><SelectValue placeholder="Position" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sitting">Sitting</SelectItem>
+                            <SelectItem value="standing">Standing</SelectItem>
+                            <SelectItem value="supine">Supine</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={vitalValues["bp_orth"] ?? ""} onValueChange={val => setV("bp_orth", val)}>
+                          <SelectTrigger className="h-8 text-sm w-28 flex-shrink-0"><SelectValue placeholder="Orthostatic" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="yes">Yes</SelectItem>
+                            <SelectItem value="no">No</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  const label = `${v.name}${v.unit ? ` (${v.unit})` : ""}`;
+                  const isRequired = v.opd === "required";
+                  buffer.push(
+                    <div key={v.id}>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">
+                        {label}{isRequired && <span className="text-rose-500 ml-0.5">*</span>}:
+                      </label>
+                      <Input
+                        value={vitalValues[v.id] ?? ""}
+                        onChange={e => setV(v.id, e.target.value)}
+                        placeholder={`Enter ${v.name}`}
+                        className="h-8 text-sm"
+                        style={v.refMin || v.refMax ? { borderColor: `${v.color}40` } : undefined}
+                      />
+                      {(v.refMin || v.refMax) && (
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Ref: {v.refMin || "—"} – {v.refMax || "—"} {v.unit}
+                        </p>
+                      )}
+                    </div>
+                  );
+                  if (buffer.length === 2) flush();
+                }
+              });
+              flush();
+              return rows;
+            })()}
           </div>
         </Collapsible>
 
-        <div className="border-t border-slate-100 pt-4">
-          <Collapsible title="Pain Score" accent defaultOpen>
-            <div className="space-y-0 pb-4">
-              {PAIN_LEVELS.map(pl => (
-                <label key={pl.level} className="flex items-start gap-3 py-2.5 cursor-pointer hover:bg-slate-50 rounded-lg px-1 -mx-1">
-                  <input type="radio" name="pain" checked={painScore === pl.level} onChange={() => setPainScore(pl.level)} className="mt-0.5 flex-shrink-0 accent-[#4982CF]" />
-                  <span className="text-sm text-slate-700 leading-snug">
-                    <span className="font-semibold text-slate-800">{pl.label}</span> ({pl.desc})
-                  </span>
-                </label>
-              ))}
-            </div>
-          </Collapsible>
-        </div>
+        {showPainSection && (
+          <div className="border-t border-slate-100 pt-4">
+            <Collapsible title={`Pain Score${painConfig?.opd === "required" ? " *" : ""}`} accent defaultOpen>
+              <div className="space-y-0 pb-4">
+                {PAIN_LEVELS.map(pl => (
+                  <label key={pl.level} className="flex items-start gap-3 py-2.5 cursor-pointer hover:bg-slate-50 rounded-lg px-1 -mx-1">
+                    <input type="radio" name="pain" checked={painScore === pl.level} onChange={() => setPainScore(pl.level)} className="mt-0.5 flex-shrink-0 accent-[#4982CF]" />
+                    <span className="text-sm text-slate-700 leading-snug">
+                      <span className="font-semibold text-slate-800">{pl.label}</span> ({pl.desc})
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </Collapsible>
+          </div>
+        )}
 
         <div className="border-t border-slate-100 pt-4">
           <Collapsible title="Mental Health Screen" accent defaultOpen>
@@ -377,7 +403,6 @@ function VitalsForm({ form, setForm, painScore, setPainScore, mentalAnswers, set
           </Collapsible>
         </div>
       </div>
-
     </div>
   );
 }
@@ -433,15 +458,283 @@ function VitalsTrends() {
   );
 }
 
+// ─── Conditional field visibility helper ─────────────────────────────────────
+
+function isFieldVisible(
+  fieldId: string,
+  rules: ConditionalRule[],
+  values: Record<string, string>,
+): boolean {
+  const controllingRules = rules.filter(r => r.showFieldIds.includes(fieldId));
+  if (controllingRules.length === 0) return true;
+  return controllingRules.some(rule => {
+    if (!rule.triggerFieldId) return false;
+    const val = values[rule.triggerFieldId] ?? "";
+    return rule.triggerValues.length === 0 || rule.triggerValues.includes(val);
+  });
+}
+
+// ─── Custom field renderer ────────────────────────────────────────────────────
+
+function NursingFieldInput({ field, value, onChange }: {
+  field: NursingField;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const { type, label, placeholder, options, required } = field;
+  const labelEl = (
+    <label className="block text-xs font-semibold text-slate-600 mb-1">
+      {label}{required && <span className="text-rose-500 ml-0.5">*</span>}:
+    </label>
+  );
+
+  if (type === "text" || type === "number") {
+    return (
+      <div>
+        {labelEl}
+        <Input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder || `Enter ${label}`} type={type} className="h-8 text-sm" />
+      </div>
+    );
+  }
+  if (type === "date") {
+    return (
+      <div>
+        {labelEl}
+        <Input type="date" value={value} onChange={e => onChange(e.target.value)} className="h-8 text-sm" />
+      </div>
+    );
+  }
+  if (type === "textarea") {
+    return (
+      <div>
+        {labelEl}
+        <textarea
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder || `Enter ${label}`}
+          className="w-full px-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-20"
+        />
+      </div>
+    );
+  }
+  if (type === "dropdown") {
+    return (
+      <div>
+        {labelEl}
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger className="h-8 text-sm"><SelectValue placeholder={placeholder || `Select ${label}`} /></SelectTrigger>
+          <SelectContent>
+            {options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  }
+  if (type === "toggle" || type === "checkbox") {
+    return (
+      <div className="flex items-center gap-3">
+        <input type="checkbox" checked={value === "true"} onChange={e => onChange(e.target.checked ? "true" : "false")} className="h-4 w-4 accent-[#4982CF]" id={field.id} />
+        <label htmlFor={field.id} className="text-sm text-slate-700 cursor-pointer">{label}{required && <span className="text-rose-500 ml-0.5">*</span>}</label>
+      </div>
+    );
+  }
+  if (type === "multi-select") {
+    const selected = value ? value.split(",").filter(Boolean) : [];
+    function toggle(opt: string) {
+      const next = selected.includes(opt) ? selected.filter(o => o !== opt) : [...selected, opt];
+      onChange(next.join(","));
+    }
+    return (
+      <div>
+        {labelEl}
+        <div className="flex flex-wrap gap-1.5">
+          {options.map(opt => {
+            const on = selected.includes(opt);
+            return (
+              <button key={opt} type="button" onClick={() => toggle(opt)}
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${on ? "bg-[#4982CF] text-white border-[#4982CF]" : "border-slate-200 text-slate-600 hover:border-[#4982CF]"}`}>
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
+// ─── Custom component form entry ─────────────────────────────────────────────
+
+function CustomComponentForm({ component, values, onChange }: {
+  component: NursingComponent;
+  values: Record<string, string>;
+  onChange: (v: Record<string, string>) => void;
+}) {
+  const enabledFields = component.fields.filter(f => f.enabled);
+  return (
+    <div className="space-y-3">
+      {enabledFields.map(field => {
+        if (!isFieldVisible(field.id, component.conditionalRules, values)) return null;
+        return (
+          <NursingFieldInput
+            key={field.id}
+            field={field}
+            value={values[field.id] ?? ""}
+            onChange={v => onChange({ ...values, [field.id]: v })}
+          />
+        );
+      })}
+      {enabledFields.length === 0 && (
+        <p className="text-xs text-slate-400 italic">No fields configured for this component.</p>
+      )}
+    </div>
+  );
+}
+
+// ─── History tab content ──────────────────────────────────────────────────────
+
+function HistoryTabContent() {
+  const { config } = useNursingConfig();
+  const enabledTemplates = useMemo(() => config.templates.filter(t => t.enabled), [config.templates]);
+
+  type EntryMap = Record<string, Record<string, string>[]>;
+  const [data, setData] = useState<EntryMap>({});
+  const [systemValues, setSystemValues] = useState<Record<string, string>>({});
+
+  function getEntries(compId: string): Record<string, string>[] {
+    return data[compId] ?? [{}];
+  }
+  function setEntry(compId: string, idx: number, values: Record<string, string>) {
+    setData(prev => {
+      const entries = [...(prev[compId] ?? [{}])];
+      entries[idx] = values;
+      return { ...prev, [compId]: entries };
+    });
+  }
+  function addEntry(compId: string, limit: number | null) {
+    setData(prev => {
+      const entries = prev[compId] ?? [{}];
+      if (limit !== null && entries.length >= limit) return prev;
+      return { ...prev, [compId]: [...entries, {}] };
+    });
+  }
+  function removeEntry(compId: string, idx: number) {
+    setData(prev => {
+      const entries = [...(prev[compId] ?? [{}])];
+      if (entries.length <= 1) return prev;
+      entries.splice(idx, 1);
+      return { ...prev, [compId]: entries };
+    });
+  }
+
+  if (enabledTemplates.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center flex-1 py-20 text-slate-400 gap-3">
+        <ClipboardList className="h-10 w-10 opacity-30" />
+        <p className="text-sm font-semibold">No history templates configured</p>
+        <p className="text-xs">An admin can set up templates in Admin → Nursing History.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+      {enabledTemplates.map(template => (
+        <div key={template.id}>
+          <div className="flex items-center gap-2 mb-3">
+            <Heart className="h-4 w-4 text-teal-600 flex-shrink-0" />
+            <p className="text-sm font-bold text-slate-800">{template.name}</p>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-700 uppercase">Template</span>
+          </div>
+          <div className="space-y-3">
+            {template.components.map(comp => (
+              <Collapsible key={comp.id} title={comp.name} defaultOpen>
+                {comp.type === "system" ? (
+                  <SystemComponentView
+                    systemKey={comp.systemKey}
+                    value={systemValues[comp.id] ?? ""}
+                    onChange={v => setSystemValues(prev => ({ ...prev, [comp.id]: v }))}
+                  />
+                ) : (
+                  <div className="space-y-4 pb-2">
+                    {getEntries(comp.id).map((entryVals, idx) => (
+                      <div key={idx} className={comp.repeatable && getEntries(comp.id).length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
+                        {comp.repeatable && getEntries(comp.id).length > 1 && (
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entry {idx + 1}</span>
+                            <button onClick={() => removeEntry(comp.id, idx)} className="text-slate-300 hover:text-rose-500 transition-colors">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                        <CustomComponentForm
+                          component={comp}
+                          values={entryVals}
+                          onChange={v => setEntry(comp.id, idx, v)}
+                        />
+                      </div>
+                    ))}
+                    {comp.repeatable && (
+                      <button
+                        onClick={() => addEntry(comp.id, comp.repeatLimit)}
+                        disabled={comp.repeatLimit !== null && getEntries(comp.id).length >= comp.repeatLimit}
+                        className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add Entry{comp.repeatLimit !== null ? ` (${getEntries(comp.id).length}/${comp.repeatLimit})` : ""}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </Collapsible>
+            ))}
+            {template.components.length === 0 && (
+              <p className="text-xs text-slate-400 italic px-1">No components in this template.</p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── System component view ────────────────────────────────────────────────────
+
+function SystemComponentView({ systemKey, value, onChange }: {
+  systemKey?: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const def = SYSTEM_COMPONENTS.find(c => c.key === systemKey);
+  return (
+    <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3 mb-2">
+      <div className="flex items-start gap-2 mb-2">
+        <Activity className="h-3.5 w-3.5 text-[#4982CF] flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-xs font-semibold text-[#4982CF]">{def?.name ?? "System Component"}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">{def?.desc ?? "Shared library data"}</p>
+        </div>
+      </div>
+      <textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={`Enter ${def?.name ?? "notes"} here…`}
+        className="w-full px-3 py-2 text-sm rounded-lg border border-blue-100 bg-white resize-none focus:outline-none focus:ring-1 focus:ring-[#4982CF] h-20"
+      />
+    </div>
+  );
+}
+
 // ─── Vitals split panel (fullscreen drawer) ───────────────────────────────────
 
 function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: () => void; onSave: () => void }) {
   const [showTrends, setShowTrends] = useState(false);
-  const [vitalsForm, setVitalsForm] = useState<VitalsFormState>({
-    date: "2025-02-21", pulseHR: "76", tempC: "37.0", bpSystolic: "121",
-    bpDiastolic: "77", bpPosition: "sitting", bpOrthostatic: "no",
-    respiratory: "18", bloodSugar: "5.4", weightKg: "72", heightCm: "168",
-    bmi: "25.5", o2Sat: "97", bsa: "1.85",
+  const configuredVitals = useMemo(() => loadVitalsConfig(), []);
+  const [vitalValues, setVitalValues] = useState<Record<string, string>>({
+    bp_sys: "121", bp_dia: "77", bp_pos: "sitting", bp_orth: "no",
+    pulse: "76", temp: "37.0", spo2: "97", weight: "72", height: "168", bmi: "25.5",
+    _date: new Date().toISOString().slice(0, 10),
   });
   const [painScore, setPainScore]         = useState(5);
   const [mentalAnswers, setMentalAnswers] = useState([1, 1, 2, 1]);
@@ -490,7 +783,7 @@ function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: (
           <div className="flex-1 flex overflow-hidden">
             {/* Left panel */}
             <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
-              <VitalsLeftPanel entry={entry} form={vitalsForm} painScore={painScore} mentalAnswers={mentalAnswers} />
+              <VitalsLeftPanel entry={entry} vitalValues={vitalValues} configuredVitals={configuredVitals} painScore={painScore} mentalAnswers={mentalAnswers} />
             </div>
             {/* Right panel */}
             <div className="flex-1 flex flex-col overflow-hidden">
@@ -516,10 +809,25 @@ function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: (
                 </div>
               </div>
               {showTrends ? <VitalsTrends /> : (
-                <VitalsForm form={vitalsForm} setForm={setVitalsForm} painScore={painScore} setPainScore={setPainScore}
-                  mentalAnswers={mentalAnswers} setMentalAnswers={setMentalAnswers} />
+                <VitalsForm
+                  vitalValues={vitalValues}
+                  setVitalValues={setVitalValues}
+                  configuredVitals={configuredVitals}
+                  painScore={painScore}
+                  setPainScore={setPainScore}
+                  mentalAnswers={mentalAnswers}
+                  setMentalAnswers={setMentalAnswers}
+                />
               )}
             </div>
+          </div>
+        ) : activeCategory === "history" ? (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+              <ClipboardList className="h-4 w-4 text-amber-600" />
+              <span className="text-sm font-bold text-slate-700">Patient History</span>
+            </div>
+            <HistoryTabContent />
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-center p-10">

@@ -22,7 +22,7 @@ interface SoapSection {
   active:       boolean;
 }
 
-interface VitalConfig {
+export interface VitalConfig {
   id:      string;
   name:    string;
   unit:    string;
@@ -76,6 +76,19 @@ const DEFAULT_VITALS: VitalConfig[] = [
   { id: "bmi",    name: "BMI",            unit: "kg/m²", custom: false, opd: "optional", consult: "optional", followup: "optional",  emergency: "skip",      refMin: "18.5",   refMax: "24.9",   color: "#0ea5e9" },
   { id: "pain",   name: "Pain Score",     unit: "/10",   custom: false, opd: "optional", consult: "optional", followup: "optional",  emergency: "required",  refMin: "0",      refMax: "3",      color: "#f43f5e" },
 ];
+
+export const VITALS_STORAGE_KEY = "ehr-vitals-config-v1";
+
+export function loadVitalsConfig(): VitalConfig[] {
+  try {
+    const raw = localStorage.getItem(VITALS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as VitalConfig[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /**/ }
+  return DEFAULT_VITALS;
+}
 
 const VISIT_TYPES = [
   { key: "opd" as const,       label: "OPD"       },
@@ -319,12 +332,17 @@ function NoteStructurePanel({ departments }: NoteStructurePanelProps) {
 // ─── Vitals Configuration Panel ───────────────────────────────────────────────
 
 export function VitalsConfigPanel() {
-  const [vitals, setVitals] = useState<VitalConfig[]>(DEFAULT_VITALS);
+  const [vitals, setVitals] = useState<VitalConfig[]>(() => loadVitalsConfig());
   const [saved, setSaved]   = useState(false);
 
   function updateVital(id: string, patch: Partial<VitalConfig>) {
     setVitals(vs => vs.map(v => v.id === id ? { ...v, ...patch } : v));
     setSaved(false);
+  }
+
+  function handleSave() {
+    try { localStorage.setItem(VITALS_STORAGE_KEY, JSON.stringify(vitals)); } catch { /**/ }
+    setSaved(true);
   }
 
   function addCustomVital() {
@@ -490,7 +508,7 @@ export function VitalsConfigPanel() {
           </span>
         ) : <span />}
         <Button
-          onClick={() => setSaved(true)}
+          onClick={handleSave}
           className="flex items-center gap-1.5 bg-[#4982CF] hover:bg-[#3b6bb5] text-white text-sm">
           <Save className="h-3.5 w-3.5" /> Save Configuration
         </Button>
