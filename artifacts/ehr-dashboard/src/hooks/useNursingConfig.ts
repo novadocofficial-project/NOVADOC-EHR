@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { ConditionalRule } from "@/hooks/useRegConfig";
 
 export type { ConditionalRule };
@@ -148,6 +148,16 @@ function loadConfig(): NursingConfig {
 export function useNursingConfig() {
   const [config, setConfig] = useState<NursingConfig>(loadConfig);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key === STORAGE_KEY) {
+        setConfig(loadConfig());
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   const updateConfig = useCallback((updater: (prev: NursingConfig) => NursingConfig) => {
     setConfig(prev => {

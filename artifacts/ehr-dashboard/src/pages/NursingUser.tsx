@@ -724,17 +724,14 @@ function HistoryTabContent({ visitTypeId }: { visitTypeId?: string }) {
                 <div className="pb-2">
                   {(() => {
                     const entries = getEntries(comp.id);
-                    const isHoriz = comp.repeatable && comp.entryLayout === "horizontal" && entries.length > 0;
+                    const isHoriz = comp.repeatable && comp.entryLayout === "horizontal";
                     const cols = comp.columns ?? 2;
-                    const gridClass = isHoriz
-                      ? cols === 1 ? "grid grid-cols-1 gap-3"
-                      : cols === 2 ? "grid grid-cols-2 gap-3"
-                      : cols === 3 ? "grid grid-cols-3 gap-3"
-                      : "grid grid-cols-4 gap-3"
-                      : "space-y-4";
                     return (
                       <>
-                        <div className={gridClass}>
+                        <div
+                          className={isHoriz ? "grid gap-3" : "space-y-4"}
+                          style={isHoriz ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}
+                        >
                           {entries.map((entryVals, idx) => (
                             <div key={idx} className={comp.repeatable && entries.length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
                               {comp.repeatable && entries.length > 1 && (
