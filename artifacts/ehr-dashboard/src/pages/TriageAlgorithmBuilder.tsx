@@ -559,50 +559,36 @@ function StepCard({
 // ─── AlgorithmListPanel ───────────────────────────────────────────────────────
 
 function AlgorithmListPanel({
-  algorithms, selectedId, onSelect, mutate,
+  algorithms, selectedId, onSelect, onCreate, onDuplicate, onDelete, onToggle,
 }: {
   algorithms: TriageAlgorithm[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  mutate: (updater: (prev: TriageAlgorithm[]) => TriageAlgorithm[]) => void;
+  onCreate: () => string;
+  onDuplicate: (id: string) => string;
+  onDelete: (id: string) => void;
+  onToggle: (id: string) => void;
 }) {
   function create() {
-    const id = uid();
-    const algo: TriageAlgorithm = {
-      id, name: "New Triage Algorithm", complaintLabel: "Chief Complaint", enabled: true,
-      steps: [
-        { id: uid(), type: "patient-details",      title: "Patient Basic Details",  items: [], scaleMax: 10, bands: [] },
-        { id: uid(), type: "presenting-complaint",  title: "Presenting Complaint",   items: [], scaleMax: 10, bands: [] },
-      ],
-    };
-    mutate(prev => [...prev, algo]);
+    const id = onCreate();
     onSelect(id);
   }
 
   function duplicate(algo: TriageAlgorithm) {
-    const id = uid();
-    const copy: TriageAlgorithm = {
-      ...algo, id, name: `${algo.name} (Copy)`,
-      steps: algo.steps.map(s => ({
-        ...s, id: uid(),
-        items: s.items.map(it => ({ ...it, id: uid() })),
-        bands: s.bands.map(b => ({ ...b, id: uid() })),
-      })),
-    };
-    mutate(prev => [...prev, copy]);
+    const id = onDuplicate(algo.id);
     onSelect(id);
   }
 
   function remove(id: string) {
-    mutate(prev => {
-      const next = prev.filter(a => a.id !== id);
-      if (id === selectedId && next.length > 0) onSelect(next[0].id);
-      return next;
-    });
+    if (id === selectedId) {
+      const next = algorithms.find(a => a.id !== id);
+      if (next) onSelect(next.id);
+    }
+    onDelete(id);
   }
 
   function toggle(id: string) {
-    mutate(prev => prev.map(a => a.id === id ? { ...a, enabled: !a.enabled } : a));
+    onToggle(id);
   }
 
   return (
@@ -677,7 +663,10 @@ function AlgorithmListPanel({
 // ─── TriageAlgorithmBuilder ───────────────────────────────────────────────────
 
 export function TriageAlgorithmBuilder() {
-  const { algorithms, mutate } = useTriageConfig();
+  const {
+    algorithms, mutate,
+    createAlgorithm, updateAlgorithm, deleteAlgorithm, duplicateAlgorithm,
+  } = useTriageConfig();
   const [selectedId, setSelectedId] = useState<string | null>(() => algorithms[0]?.id ?? null);
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [showAddStep, setShowAddStep] = useState(false);
@@ -744,7 +733,8 @@ export function TriageAlgorithmBuilder() {
   }
 
   function updateAlgoField(field: "name" | "complaintLabel", value: string) {
-    mutate(prev => prev.map(a => a.id !== selectedId ? a : { ...a, [field]: value }));
+    if (!selectedId) return;
+    updateAlgorithm(selectedId, { [field]: value });
   }
 
   return (
@@ -753,7 +743,10 @@ export function TriageAlgorithmBuilder() {
         algorithms={algorithms}
         selectedId={selectedId}
         onSelect={handleSelect}
-        mutate={mutate}
+        onCreate={createAlgorithm}
+        onDuplicate={duplicateAlgorithm}
+        onDelete={deleteAlgorithm}
+        onToggle={id => updateAlgorithm(id, { enabled: !algorithms.find(a => a.id === id)?.enabled })}
       />
 
       {selected ? (

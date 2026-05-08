@@ -180,7 +180,7 @@ function load(): TriageAlgorithm[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as TriageAlgorithm[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch { /* ignore */ }
   return DEFAULT_ALGORITHMS;
