@@ -4,6 +4,7 @@ import {
   Edit2, X, CheckCircle2, Layers, Heart, Activity,
   Target, Stethoscope, Info, RotateCcw, Pill, Receipt, ShieldCheck,
 } from "lucide-react";
+import { TriageAlgorithmBuilder } from "@/pages/TriageAlgorithmBuilder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -1450,13 +1451,7 @@ interface NursingConfigModuleProps {
 export function NursingConfigModule({ section }: NursingConfigModuleProps) {
   return (
     <>
-      {section === "nursing-triage" && (
-        <PlaceholderSection
-          icon={<AlertCircle className="h-10 w-10" />}
-          title="Triage"
-          message="Triage algorithm configuration will be implemented later."
-        />
-      )}
+      {section === "nursing-triage" && <TriageAlgorithmBuilder />}
       {section === "nursing-history" && <HistoryTemplateBuilder />}
       {section === "nursing-vitals" && (
         <div className="mx-auto max-w-4xl space-y-6">
