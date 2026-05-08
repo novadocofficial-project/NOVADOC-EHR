@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Check, AlertCircle,
   Edit2, X, CheckCircle2, Layers, Heart, Activity, FlaskConical,
-  Camera, Target, Stethoscope, Info, RotateCcw,
+  Camera, Target, Stethoscope, Info, RotateCcw, Pill, Receipt, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   useNursingConfig,
   SYSTEM_COMPONENTS,
+  PROCEDURE_SYSTEM_COMPONENTS,
   type NursingComponent,
   type NursingHistoryTemplate,
+  type NursingProcedureTemplate,
   type NursingField,
   type NursingFieldType,
   type SystemComponentKey,
+  type ProcedureSystemComponentKey,
   type ConditionalRule,
 } from "@/hooks/useNursingConfig";
 import { VitalsConfigPanel } from "@/pages/SoapConfigModule";
@@ -996,6 +999,403 @@ function HistoryTemplateBuilder() {
   );
 }
 
+// ─── Procedure System Component Icons ────────────────────────────────────────
+
+function ProcedureSystemIcon({ k }: { k: ProcedureSystemComponentKey }) {
+  if (k === "vitals")      return <Activity className="h-3 w-3 text-[#4982CF]" />;
+  if (k === "medications") return <Pill className="h-3 w-3 text-violet-500" />;
+  if (k === "consent")     return <ShieldCheck className="h-3 w-3 text-teal-600" />;
+  if (k === "billing")     return <Receipt className="h-3 w-3 text-amber-600" />;
+  return <Activity className="h-3 w-3 text-slate-400" />;
+}
+
+// ─── Procedure System Component Picker ────────────────────────────────────────
+
+function ProcedureSystemComponentPicker({
+  usedKeys,
+  onAdd,
+  onClose,
+}: {
+  usedKeys: ProcedureSystemComponentKey[];
+  onAdd: (keys: ProcedureSystemComponentKey[]) => void;
+  onClose: () => void;
+}) {
+  const available = PROCEDURE_SYSTEM_COMPONENTS.filter(c => !usedKeys.includes(c.key));
+  const [selected, setSelected] = useState<ProcedureSystemComponentKey[]>([]);
+
+  function toggle(key: ProcedureSystemComponentKey) {
+    setSelected(s => s.includes(key) ? s.filter(k => k !== key) : [...s, key]);
+  }
+
+  function confirm() {
+    if (selected.length > 0) onAdd(selected);
+    onClose();
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white shadow-lg p-3 space-y-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Select procedure system components</p>
+      {available.length === 0 ? (
+        <p className="text-xs text-slate-400 text-center py-3">All system components have been added.</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {available.map(c => {
+            const on = selected.includes(c.key);
+            return (
+              <button
+                key={c.key}
+                onClick={() => toggle(c.key)}
+                title={c.desc}
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold border transition-colors ${
+                  on
+                    ? "bg-[#4982CF] text-white border-[#4982CF]"
+                    : "bg-slate-50 text-slate-700 border-slate-200 hover:border-[#4982CF]/50 hover:text-[#4982CF]"
+                }`}
+              >
+                {on && <Check className="h-2.5 w-2.5 flex-shrink-0" />}
+                {c.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="flex gap-2 pt-1 border-t border-slate-100">
+        <button
+          onClick={confirm}
+          disabled={selected.length === 0}
+          className="flex-1 rounded-lg py-1.5 text-xs font-bold bg-[#4982CF] text-white hover:bg-[#3a6bb5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          {selected.length === 0 ? "Select components" : `Add ${selected.length} component${selected.length > 1 ? "s" : ""}`}
+        </button>
+        <button onClick={onClose} className="px-3 rounded-lg py-1.5 text-xs text-slate-400 hover:text-slate-600 border border-slate-200 hover:border-slate-300 transition-colors">Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Procedure Template Editor ────────────────────────────────────────────────
+
+function ProcedureTemplateEditor({
+  template,
+  onUpdate,
+  onRemove,
+}: {
+  template: NursingProcedureTemplate;
+  onUpdate: (patch: Partial<NursingProcedureTemplate>) => void;
+  onRemove: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(template.name);
+  const [showSystemPicker, setShowSystemPicker] = useState(false);
+  const [addingCustomName, setAddingCustomName] = useState(false);
+  const [customName, setCustomName] = useState("");
+
+  function saveName() {
+    if (nameDraft.trim()) onUpdate({ name: nameDraft.trim() });
+    setEditingName(false);
+  }
+
+  const usedSystemKeys = template.components
+    .filter(c => c.type === "system" && c.systemKey)
+    .map(c => c.systemKey as ProcedureSystemComponentKey);
+
+  function addSystemComponent(keys: ProcedureSystemComponentKey[]) {
+    const newComps: NursingComponent[] = keys.map(key => {
+      const def = PROCEDURE_SYSTEM_COMPONENTS.find(c => c.key === key)!;
+      return {
+        id: `npc-${Date.now()}-${key}`,
+        type: "system",
+        systemKey: key,
+        name: def.name,
+        fields: [],
+        repeatable: false,
+        repeatLimit: null,
+        entryLayout: "vertical",
+        columns: 2,
+        conditionalRules: [],
+      };
+    });
+    onUpdate({ components: [...template.components, ...newComps] });
+  }
+
+  function addCustomComponent() {
+    if (!customName.trim()) return;
+    const newComp: NursingComponent = {
+      id: `npc-custom-${Date.now()}`,
+      type: "custom",
+      name: customName.trim(),
+      fields: [],
+      repeatable: false,
+      repeatLimit: null,
+      entryLayout: "vertical",
+      columns: 2,
+      conditionalRules: [],
+    };
+    onUpdate({ components: [...template.components, newComp] });
+    setCustomName("");
+    setAddingCustomName(false);
+  }
+
+  function updateComponent(compId: string, patch: Partial<NursingComponent>) {
+    onUpdate({ components: template.components.map(c => c.id === compId ? { ...c, ...patch } : c) });
+  }
+
+  function removeComponent(compId: string) {
+    onUpdate({ components: template.components.filter(c => c.id !== compId) });
+  }
+
+  function moveComponent(i: number, dir: -1 | 1) {
+    const next = [...template.components];
+    const swap = next[i + dir];
+    if (!swap) return;
+    next[i + dir] = next[i];
+    next[i] = swap;
+    onUpdate({ components: next });
+  }
+
+  return (
+    <div className={`rounded-2xl border shadow-sm overflow-hidden ${template.enabled ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"}`}>
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="h-9 w-9 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0">
+          <Stethoscope className="h-4 w-4 text-violet-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={nameDraft}
+                onChange={e => setNameDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") saveName(); if (e.key === "Escape") { setEditingName(false); setNameDraft(template.name); } }}
+                className="h-8 text-sm font-bold flex-1"
+                autoFocus
+              />
+              <button onClick={saveName} className="text-[#4982CF]"><Check className="h-4 w-4" /></button>
+              <button onClick={() => { setEditingName(false); setNameDraft(template.name); }} className="text-slate-400"><X className="h-4 w-4" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <p className={`text-sm font-bold ${template.enabled ? "text-slate-900" : "text-slate-400"}`}>{template.name}</p>
+              <button onClick={() => setEditingName(true)} className="text-slate-300 hover:text-[#4982CF]"><Edit2 className="h-3 w-3" /></button>
+            </div>
+          )}
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            {template.components.length} component{template.components.length !== 1 ? "s" : ""}
+            {" · "}
+            {template.components.filter(c => c.type === "system").length} system, {template.components.filter(c => c.type === "custom").length} custom
+          </p>
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <button onClick={() => setExpanded(e => !e)} className="text-xs font-semibold text-[#4982CF] hover:opacity-70 flex items-center gap-1">
+            {expanded ? "Collapse" : "Edit"}
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+          <Switch checked={template.enabled} onCheckedChange={v => onUpdate({ enabled: v })} className="data-[state=checked]:bg-[#4982CF]" />
+          <button onClick={onRemove} className="text-slate-300 hover:text-rose-500"><Trash2 className="h-4 w-4" /></button>
+        </div>
+      </div>
+
+      {/* Expanded body */}
+      {expanded && (
+        <div className="border-t border-slate-100 px-4 py-4 space-y-3">
+          <div className="space-y-2">
+            {template.components.length === 0 && (
+              <div className="rounded-xl border border-dashed border-slate-200 py-8 text-center text-sm text-slate-400">
+                No components yet. Add a system or custom component below.
+              </div>
+            )}
+            {template.components.map((comp, i) => (
+              <div key={comp.id} className="flex gap-2">
+                <div className="flex flex-col justify-center gap-0.5 pt-1 flex-shrink-0">
+                  <button onClick={() => moveComponent(i, -1)} disabled={i === 0} className="text-slate-300 hover:text-slate-500 disabled:opacity-20"><ChevronUp className="h-3 w-3" /></button>
+                  <button onClick={() => moveComponent(i, 1)} disabled={i === template.components.length - 1} className="text-slate-300 hover:text-slate-500 disabled:opacity-20"><ChevronDown className="h-3 w-3" /></button>
+                </div>
+                <div className="flex-1 min-w-0">
+                  {comp.type === "system" ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 flex items-center gap-3">
+                      <div className="h-6 w-6 rounded-md bg-blue-50 flex items-center justify-center flex-shrink-0">
+                        <ProcedureSystemIcon k={comp.systemKey as ProcedureSystemComponentKey} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-slate-700">{comp.name}</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 uppercase">System</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          {PROCEDURE_SYSTEM_COMPONENTS.find(s => s.key === comp.systemKey)?.desc ?? "Shared procedure component"}
+                        </p>
+                      </div>
+                      <button onClick={() => removeComponent(comp.id)} className="text-slate-300 hover:text-rose-500 flex-shrink-0">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <CustomComponentEditor
+                      key={comp.id}
+                      component={comp}
+                      onUpdate={patch => updateComponent(comp.id, patch)}
+                      onRemove={() => removeComponent(comp.id)}
+                      templateId={template.id}
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Add component buttons */}
+          <div className="flex gap-2 pt-1 relative">
+            <div className="relative flex-1">
+              <button
+                onClick={() => setShowSystemPicker(s => !s)}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-blue-300 py-2.5 text-xs font-bold text-blue-600 hover:bg-blue-50 transition-colors"
+              >
+                <Activity className="h-3.5 w-3.5" /> Add System Component
+              </button>
+              {showSystemPicker && (
+                <div className="absolute top-full left-0 mt-1 z-50 w-72">
+                  <ProcedureSystemComponentPicker
+                    usedKeys={usedSystemKeys}
+                    onAdd={addSystemComponent}
+                    onClose={() => setShowSystemPicker(false)}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex-1">
+              {addingCustomName ? (
+                <div className="flex items-center gap-2 rounded-xl border border-[#4982CF]/30 bg-[#4982CF]/5 px-3 py-2">
+                  <Input
+                    value={customName}
+                    onChange={e => setCustomName(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") addCustomComponent(); if (e.key === "Escape") { setAddingCustomName(false); setCustomName(""); } }}
+                    placeholder="Component name…"
+                    className="h-7 text-xs flex-1"
+                    autoFocus
+                  />
+                  <button onClick={addCustomComponent} className="text-[#4982CF] hover:opacity-70"><Check className="h-4 w-4" /></button>
+                  <button onClick={() => { setAddingCustomName(false); setCustomName(""); }} className="text-slate-400"><X className="h-4 w-4" /></button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setAddingCustomName(true)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#4982CF]/40 py-2.5 text-xs font-bold text-[#4982CF] hover:bg-[#4982CF]/5 transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add Custom Component
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2 rounded-lg bg-violet-50 border border-violet-100 px-3 py-2.5 text-[11px] text-violet-700">
+            <Info className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+            System components are built-in procedure modules (vitals, medications, consent, billing). Custom components add nursing-specific fields.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Procedure Template Builder ───────────────────────────────────────────────
+
+function ProcedureTemplateBuilder() {
+  const { config, updateConfig, savedAt } = useNursingConfig();
+  const [addingName, setAddingName] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  function addTemplate() {
+    if (!newName.trim()) return;
+    const id = `np-${Date.now()}`;
+    updateConfig(prev => ({
+      ...prev,
+      procedureTemplates: [...prev.procedureTemplates, { id, name: newName.trim(), enabled: true, components: [] }],
+    }));
+    setNewName("");
+    setAddingName(false);
+  }
+
+  function updateTemplate(id: string, patch: Partial<NursingProcedureTemplate>) {
+    updateConfig(prev => ({
+      ...prev,
+      procedureTemplates: prev.procedureTemplates.map(t => t.id === id ? { ...t, ...patch } : t),
+    }));
+  }
+
+  function deleteTemplate(id: string) {
+    updateConfig(prev => ({ ...prev, procedureTemplates: prev.procedureTemplates.filter(t => t.id !== id) }));
+    setDeleteTarget(null);
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-6">
+      <SavedBanner savedAt={savedAt} />
+      <div className="flex items-start justify-between">
+        <PageHeader
+          title="Procedure Template Builder"
+          desc="Design reusable nursing procedure templates combining built-in modules (vitals, medications, consent, billing) with custom components."
+        />
+        <Button size="sm" className="bg-[#4982CF] hover:bg-[#3D73BC] text-white h-9 gap-2 flex-shrink-0" onClick={() => setAddingName(true)}>
+          <Plus className="h-4 w-4" /> New Template
+        </Button>
+      </div>
+
+      {addingName && (
+        <div className="rounded-xl border border-[#4982CF]/30 bg-[#4982CF]/5 p-4 flex items-center gap-3">
+          <Input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            placeholder="Template name…"
+            className="h-9 flex-1"
+            autoFocus
+            onKeyDown={e => { if (e.key === "Enter") addTemplate(); if (e.key === "Escape") setAddingName(false); }}
+          />
+          <Button size="sm" onClick={addTemplate} className="bg-[#4982CF] hover:bg-[#3D73BC] text-white h-9"><Check className="h-4 w-4" /></Button>
+          <Button size="sm" variant="ghost" onClick={() => setAddingName(false)} className="h-9"><X className="h-4 w-4" /></Button>
+        </div>
+      )}
+
+      {config.procedureTemplates.length === 0 && !addingName && (
+        <div className="rounded-xl border border-dashed border-slate-200 py-12 text-center text-slate-400 space-y-2">
+          <Stethoscope className="h-8 w-8 mx-auto text-slate-300" />
+          <p className="text-sm font-semibold">No procedure templates yet</p>
+          <p className="text-xs">Click "New Template" to create one.</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {config.procedureTemplates.map(template => (
+          <ProcedureTemplateEditor
+            key={template.id}
+            template={template}
+            onUpdate={patch => updateTemplate(template.id, patch)}
+            onRemove={() => setDeleteTarget({ id: template.id, name: template.name })}
+          />
+        ))}
+      </div>
+
+      <Dialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600">
+              <AlertCircle className="h-5 w-5" /> Delete Template
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600 mt-1">Delete <strong>{deleteTarget?.name}</strong>? This cannot be undone.</p>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} className="h-8 text-sm">Cancel</Button>
+            <Button onClick={() => deleteTarget && deleteTemplate(deleteTarget.id)} className="bg-rose-500 hover:bg-rose-600 text-white h-8 text-sm gap-2">
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ─── Placeholder Section ──────────────────────────────────────────────────────
 
 function PlaceholderSection({ icon, title, message }: { icon: React.ReactNode; title: string; message: string }) {
@@ -1043,13 +1443,7 @@ export function NursingConfigModule({ section }: NursingConfigModuleProps) {
           message="Configuration will be implemented later."
         />
       )}
-      {section === "nursing-procedures" && (
-        <PlaceholderSection
-          icon={<Stethoscope className="h-10 w-10" />}
-          title="Nursing Procedures"
-          message="Configuration will be implemented later."
-        />
-      )}
+      {section === "nursing-procedures" && <ProcedureTemplateBuilder />}
       {section === "nursing-lab" && (
         <PlaceholderSection
           icon={<FlaskConical className="h-10 w-10" />}

@@ -4,7 +4,7 @@ import {
   Maximize2, Minimize2, Clock, User, AlertCircle, Heart,
   SkipForward, RotateCcw, Activity, FlaskConical, ClipboardList,
   Stethoscope, Camera, Target, TrendingUp, CheckCircle2, Plus,
-  Layers, Trash2,
+  Layers, Trash2, Pill, Receipt, ShieldCheck, DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +18,12 @@ import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import {
   useNursingConfig,
   SYSTEM_COMPONENTS,
+  PROCEDURE_SYSTEM_COMPONENTS,
   type NursingField,
   type NursingComponent,
   type NursingHistoryTemplate,
+  type NursingProcedureTemplate,
+  type ProcedureSystemComponentKey,
   type ConditionalRule,
 } from "@/hooks/useNursingConfig";
 import { loadVitalsConfig, type VitalConfig } from "@/pages/SoapConfigModule";
@@ -807,6 +810,449 @@ function SystemComponentView({ systemKey, value, onChange }: {
   );
 }
 
+// ─── Procedure: Vitals Form ───────────────────────────────────────────────────
+
+function ProcedureVitalsForm({ values, onChange }: { values: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
+  const configuredVitals = useMemo(() => loadVitalsConfig(), []);
+  const displayVitals = configuredVitals.filter(v => v.opd !== "skip" && v.id !== "pain");
+  function setV(key: string, val: string) { onChange({ ...values, [key]: val }); }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Date:</label>
+        <Input type="date" value={values["_date"] ?? ""} onChange={e => setV("_date", e.target.value)} className="h-8 text-sm" />
+      </div>
+      {displayVitals.map(v => {
+        if (v.id === "bp") {
+          return (
+            <div key="bp">
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Blood Pressure {v.unit ? `(${v.unit})` : ""}:</label>
+              <div className="flex items-center gap-2">
+                <Input value={values["bp_sys"] ?? ""} onChange={e => setV("bp_sys", e.target.value)} placeholder="Systolic" className="h-8 text-sm flex-1 min-w-0" />
+                <span className="text-slate-400 font-bold flex-shrink-0">/</span>
+                <Input value={values["bp_dia"] ?? ""} onChange={e => setV("bp_dia", e.target.value)} placeholder="Diastolic" className="h-8 text-sm flex-1 min-w-0" />
+              </div>
+            </div>
+          );
+        }
+        const label = `${v.name}${v.unit ? ` (${v.unit})` : ""}`;
+        return (
+          <div key={v.id}>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
+              {label}{v.opd === "required" && <span className="text-rose-500 ml-0.5">*</span>}:
+            </label>
+            <Input
+              value={values[v.id] ?? ""}
+              onChange={e => setV(v.id, e.target.value)}
+              placeholder={`Enter ${v.name}`}
+              className="h-8 text-sm"
+              style={v.refMin || v.refMax ? { borderColor: `${v.color}40` } : undefined}
+            />
+            {(v.refMin || v.refMax) && (
+              <p className="text-[10px] text-slate-400 mt-0.5">Ref: {v.refMin || "—"} – {v.refMax || "—"} {v.unit}</p>
+            )}
+          </div>
+        );
+      })}
+      {displayVitals.length === 0 && (
+        <p className="text-xs text-slate-400 italic">No vitals configured. Set up vitals in Admin → Nursing Vitals.</p>
+      )}
+    </div>
+  );
+}
+
+// ─── Procedure: Medications Form ──────────────────────────────────────────────
+
+interface MedRow { id: string; drug: string; dose: string; route: string; notes: string; }
+
+function ProcedureMedicationsForm({ rows, onChange }: { rows: MedRow[]; onChange: (r: MedRow[]) => void }) {
+  const ROUTES = ["IV","IM","SC","PO","SL","Topical","Inhalation","Intradermal","Other"];
+
+  function addRow() {
+    onChange([...rows, { id: `m-${Date.now()}`, drug: "", dose: "", route: "", notes: "" }]);
+  }
+  function removeRow(id: string) { onChange(rows.filter(r => r.id !== id)); }
+  function updateRow(id: string, patch: Partial<MedRow>) {
+    onChange(rows.map(r => r.id === id ? { ...r, ...patch } : r));
+  }
+
+  return (
+    <div className="space-y-3">
+      {rows.length === 0 && (
+        <p className="text-xs text-slate-400 italic text-center py-2">No medications added yet.</p>
+      )}
+      {rows.map((row, i) => (
+        <div key={row.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 space-y-2.5">
+          <div className="flex items-center justify-between mb-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Medication {i + 1}</span>
+            <button onClick={() => removeRow(row.id)} className="text-slate-300 hover:text-rose-500 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 mb-1">Drug Name *</label>
+              <Input value={row.drug} onChange={e => updateRow(row.id, { drug: e.target.value })} placeholder="e.g. Metformin" className="h-8 text-sm" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 mb-1">Dose</label>
+              <Input value={row.dose} onChange={e => updateRow(row.id, { dose: e.target.value })} placeholder="e.g. 500 mg" className="h-8 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-slate-500 mb-1">Route</label>
+            <Select value={row.route} onValueChange={v => updateRow(row.id, { route: v })}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select route…" /></SelectTrigger>
+              <SelectContent>{ROUTES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-slate-500 mb-1">Notes</label>
+            <Input value={row.notes} onChange={e => updateRow(row.id, { notes: e.target.value })} placeholder="Optional notes…" className="h-8 text-sm" />
+          </div>
+        </div>
+      ))}
+      <button
+        onClick={addRow}
+        className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 transition-opacity"
+      >
+        <Plus className="h-3.5 w-3.5" /> Add Medication
+      </button>
+    </div>
+  );
+}
+
+// ─── Procedure: Consent Form ──────────────────────────────────────────────────
+
+type ConsentStatus = "obtained" | "pending" | "declined";
+
+interface ConsentData { status: ConsentStatus | ""; witness: string; date: string; notes: string; }
+
+function ProcedureConsentForm({ data, onChange }: { data: ConsentData; onChange: (d: ConsentData) => void }) {
+  const STATUSES: { key: ConsentStatus; label: string; color: string }[] = [
+    { key: "obtained", label: "Obtained",  color: "bg-green-600 border-green-600 text-white" },
+    { key: "pending",  label: "Pending",   color: "bg-amber-500 border-amber-500 text-white" },
+    { key: "declined", label: "Declined",  color: "bg-rose-500 border-rose-500 text-white" },
+  ];
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-2">Consent Status *</label>
+        <div className="flex gap-2">
+          {STATUSES.map(s => (
+            <button
+              key={s.key}
+              onClick={() => onChange({ ...data, status: s.key })}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-colors ${
+                data.status === s.key ? s.color : "border-slate-200 text-slate-500 bg-white hover:border-slate-300"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Witness Name</label>
+        <Input value={data.witness} onChange={e => onChange({ ...data, witness: e.target.value })} placeholder="Enter witness name…" className="h-8 text-sm" />
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Consent Date</label>
+        <Input type="date" value={data.date} onChange={e => onChange({ ...data, date: e.target.value })} className="h-8 text-sm" />
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Additional Notes</label>
+        <textarea
+          value={data.notes}
+          onChange={e => onChange({ ...data, notes: e.target.value })}
+          placeholder="Any relevant consent notes…"
+          className="w-full px-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-16"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Procedure: Billing Form ──────────────────────────────────────────────────
+
+interface BillingRow { id: string; name: string; qty: number; unitFee: number; }
+
+function ProcedureBillingForm({ rows, onChange }: { rows: BillingRow[]; onChange: (r: BillingRow[]) => void }) {
+  function addRow() {
+    onChange([...rows, { id: `b-${Date.now()}`, name: "", qty: 1, unitFee: 0 }]);
+  }
+  function removeRow(id: string) { onChange(rows.filter(r => r.id !== id)); }
+  function updateRow(id: string, patch: Partial<BillingRow>) {
+    onChange(rows.map(r => r.id === id ? { ...r, ...patch } : r));
+  }
+  const grandTotal = rows.reduce((sum, r) => sum + r.qty * r.unitFee, 0);
+
+  return (
+    <div className="space-y-3">
+      {rows.length > 0 && (
+        <div className="rounded-xl border border-slate-200 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left px-3 py-2 font-semibold text-slate-500">Procedure / Item</th>
+                <th className="text-center px-3 py-2 font-semibold text-slate-500 w-16">Qty</th>
+                <th className="text-right px-3 py-2 font-semibold text-slate-500 w-24">Unit Fee</th>
+                <th className="text-right px-3 py-2 font-semibold text-slate-500 w-20">Total</th>
+                <th className="w-8 px-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map(row => (
+                <tr key={row.id} className="bg-white">
+                  <td className="px-3 py-2">
+                    <Input value={row.name} onChange={e => updateRow(row.id, { name: e.target.value })} placeholder="Item name…" className="h-7 text-xs border-0 p-0 focus-visible:ring-0 shadow-none bg-transparent" />
+                  </td>
+                  <td className="px-3 py-2">
+                    <Input
+                      type="number" min={1}
+                      value={row.qty}
+                      onChange={e => updateRow(row.id, { qty: Math.max(1, parseInt(e.target.value) || 1) })}
+                      className="h-7 text-xs text-center border-0 p-0 focus-visible:ring-0 shadow-none bg-transparent w-full"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <Input
+                      type="number" min={0}
+                      value={row.unitFee}
+                      onChange={e => updateRow(row.id, { unitFee: parseFloat(e.target.value) || 0 })}
+                      className="h-7 text-xs text-right border-0 p-0 focus-visible:ring-0 shadow-none bg-transparent w-full"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-right font-semibold text-slate-700">
+                    {(row.qty * row.unitFee).toLocaleString()}
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    <button onClick={() => removeRow(row.id)} className="text-slate-300 hover:text-rose-500"><Trash2 className="h-3 w-3" /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-slate-50 border-t border-slate-200">
+                <td colSpan={3} className="px-3 py-2 text-xs font-bold text-slate-600 text-right">Grand Total</td>
+                <td className="px-3 py-2 text-right">
+                  <span className="text-sm font-black text-[#4982CF]">PKR {grandTotal.toLocaleString()}</span>
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+      {rows.length === 0 && (
+        <div className="flex items-center gap-2 rounded-xl border border-dashed border-slate-200 px-4 py-4 text-xs text-slate-400">
+          <DollarSign className="h-4 w-4 text-slate-300" />
+          No billing items added yet.
+        </div>
+      )}
+      <button
+        onClick={addRow}
+        className="flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:opacity-70 transition-opacity"
+      >
+        <Plus className="h-3.5 w-3.5" /> Add Billing Item
+      </button>
+      {rows.length > 0 && (
+        <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-[11px] text-amber-700">
+          <Receipt className="h-3.5 w-3.5 flex-shrink-0" />
+          Billing summary will be forwarded to the front desk after the procedure is saved.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Procedure: System Component View ─────────────────────────────────────────
+
+function ProcedureSystemComponentView({
+  systemKey,
+  vitalsValues, onVitalsChange,
+  medRows, onMedChange,
+  consentData, onConsentChange,
+  billingRows, onBillingChange,
+}: {
+  systemKey?: string;
+  vitalsValues: Record<string, string>;  onVitalsChange: (v: Record<string, string>) => void;
+  medRows: MedRow[];                     onMedChange: (r: MedRow[]) => void;
+  consentData: ConsentData;              onConsentChange: (d: ConsentData) => void;
+  billingRows: BillingRow[];             onBillingChange: (r: BillingRow[]) => void;
+}) {
+  if (systemKey === "vitals") {
+    return <ProcedureVitalsForm values={vitalsValues} onChange={onVitalsChange} />;
+  }
+  if (systemKey === "medications") {
+    return <ProcedureMedicationsForm rows={medRows} onChange={onMedChange} />;
+  }
+  if (systemKey === "consent") {
+    return <ProcedureConsentForm data={consentData} onChange={onConsentChange} />;
+  }
+  if (systemKey === "billing") {
+    return <ProcedureBillingForm rows={billingRows} onChange={onBillingChange} />;
+  }
+  const def = PROCEDURE_SYSTEM_COMPONENTS.find(c => c.key === systemKey);
+  return (
+    <div className="rounded-xl border border-violet-100 bg-violet-50/40 px-4 py-3">
+      <p className="text-xs font-semibold text-violet-600">{def?.name ?? "System Component"}</p>
+      <p className="text-[11px] text-slate-400 mt-0.5">{def?.desc ?? "Module not yet available."}</p>
+    </div>
+  );
+}
+
+// ─── Procedure Tab Content ────────────────────────────────────────────────────
+
+const PROC_TEMPLATE_SESSION_KEY = "ehr-nursing-proc-template-sel";
+
+function ProcedureTabContent() {
+  const { config } = useNursingConfig();
+  const enabledTemplates = useMemo(() => config.procedureTemplates.filter(t => t.enabled), [config.procedureTemplates]);
+
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(() => {
+    try { return sessionStorage.getItem(PROC_TEMPLATE_SESSION_KEY) ?? null; } catch { return null; }
+  });
+
+  function selectTemplate(id: string) {
+    setSelectedTemplateId(id);
+    try { sessionStorage.setItem(PROC_TEMPLATE_SESSION_KEY, id); } catch { /**/ }
+  }
+
+  const activeTemplate = useMemo(() => {
+    if (enabledTemplates.length === 0) return null;
+    if (enabledTemplates.length === 1) return enabledTemplates[0];
+    const found = enabledTemplates.find(t => t.id === selectedTemplateId);
+    return found ?? enabledTemplates[0];
+  }, [enabledTemplates, selectedTemplateId]);
+
+  const [vitalsValues, setVitalsValues] = useState<Record<string, string>>({ _date: new Date().toISOString().slice(0, 10) });
+  const [medRows, setMedRows] = useState<MedRow[]>([]);
+  const [consentData, setConsentData] = useState<ConsentData>({ status: "", witness: "", date: new Date().toISOString().slice(0, 10), notes: "" });
+  const [billingRows, setBillingRows] = useState<BillingRow[]>([]);
+  const [customValues, setCustomValues] = useState<Record<string, Record<string, string>[]>>({});
+
+  function getEntries(compId: string): Record<string, string>[] {
+    return customValues[compId] ?? [{}];
+  }
+  function setEntry(compId: string, idx: number, values: Record<string, string>) {
+    setCustomValues(prev => { const entries = [...(prev[compId] ?? [{}])]; entries[idx] = values; return { ...prev, [compId]: entries }; });
+  }
+  function addEntry(compId: string, limit: number | null) {
+    setCustomValues(prev => {
+      const entries = prev[compId] ?? [{}];
+      if (limit !== null && entries.length >= limit) return prev;
+      return { ...prev, [compId]: [...entries, {}] };
+    });
+  }
+  function removeEntry(compId: string, idx: number) {
+    setCustomValues(prev => {
+      const entries = [...(prev[compId] ?? [{}])];
+      if (entries.length <= 1) return prev;
+      entries.splice(idx, 1);
+      return { ...prev, [compId]: entries };
+    });
+  }
+
+  if (enabledTemplates.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center flex-1 py-20 text-slate-400 gap-3">
+        <Stethoscope className="h-10 w-10 opacity-30" />
+        <p className="text-sm font-semibold">No procedure templates configured</p>
+        <p className="text-xs">An admin can set up templates in Admin → Nursing Procedures.</p>
+      </div>
+    );
+  }
+
+  const currentId = activeTemplate?.id ?? "";
+
+  return (
+    <div className="flex-1 overflow-y-auto px-5 py-5">
+      {enabledTemplates.length > 1 && (
+        <div className="mb-5 pb-4 border-b border-slate-100">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5">Select Template</p>
+          <div className="flex flex-wrap gap-2">
+            {enabledTemplates.map(t => (
+              <button
+                key={t.id}
+                onClick={() => selectTemplate(t.id)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                  currentId === t.id
+                    ? "bg-[#4982CF] border-[#4982CF] text-white shadow-sm"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-[#4982CF] hover:text-[#4982CF]"
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTemplate && (
+        <div className="space-y-3">
+          {activeTemplate.components.map(comp => (
+            <Collapsible key={comp.id} title={comp.name} defaultOpen>
+              {comp.type === "system" ? (
+                <ProcedureSystemComponentView
+                  systemKey={comp.systemKey as string}
+                  vitalsValues={vitalsValues}     onVitalsChange={setVitalsValues}
+                  medRows={medRows}               onMedChange={setMedRows}
+                  consentData={consentData}       onConsentChange={setConsentData}
+                  billingRows={billingRows}        onBillingChange={setBillingRows}
+                />
+              ) : (
+                <div className="pb-2">
+                  {(() => {
+                    const entries = getEntries(comp.id);
+                    return (
+                      <>
+                        <div className="space-y-4">
+                          {entries.map((entryVals, idx) => (
+                            <div key={idx} className={comp.repeatable && entries.length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
+                              {comp.repeatable && entries.length > 1 && (
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entry {idx + 1}</span>
+                                  <button onClick={() => removeEntry(comp.id, idx)} className="text-slate-300 hover:text-rose-500 transition-colors">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                              <CustomComponentForm
+                                component={comp}
+                                values={entryVals}
+                                onChange={v => setEntry(comp.id, idx, v)}
+                                entryLayout={comp.entryLayout}
+                                columns={comp.columns}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        {comp.repeatable && (
+                          <button
+                            onClick={() => addEntry(comp.id, comp.repeatLimit)}
+                            disabled={comp.repeatLimit !== null && entries.length >= comp.repeatLimit}
+                            className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-3"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add Entry{comp.repeatLimit !== null ? ` (${entries.length}/${comp.repeatLimit})` : ""}
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </Collapsible>
+          ))}
+          {activeTemplate.components.length === 0 && (
+            <p className="text-xs text-slate-400 italic px-1">No components in this template.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Vitals split panel (fullscreen drawer) ───────────────────────────────────
 
 function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: () => void; onSave: () => void }) {
@@ -909,6 +1355,14 @@ function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: (
               <span className="text-sm font-bold text-slate-700">Patient History</span>
             </div>
             <HistoryTabContent visitTypeId={entry.visitTypeId} />
+          </div>
+        ) : activeCategory === "procedures" ? (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+              <Stethoscope className="h-4 w-4 text-violet-600" />
+              <span className="text-sm font-bold text-slate-700">Nursing Procedures</span>
+            </div>
+            <ProcedureTabContent />
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-center p-10">
