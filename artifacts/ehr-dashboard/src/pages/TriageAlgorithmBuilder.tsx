@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import {
   useTriageConfig,
+  SINGLETON_STEP_TYPES,
   type TriageAlgorithm, type TriageStep, type TriageStepType,
   type TriageOutcome, type TriageOutcomeType, type TriageItem, type SeverityBand,
 } from "@/hooks/useTriageConfig";
@@ -721,6 +722,8 @@ export function TriageAlgorithmBuilder() {
   }
 
   function addStep(type: TriageStepType) {
+    if (!selected) return;
+    if (SINGLETON_STEP_TYPES.has(type) && selected.steps.some(s => s.type === type)) return;
     const id = uid();
     const newStep: TriageStep = {
       id, type,
@@ -815,14 +818,27 @@ export function TriageAlgorithmBuilder() {
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
                   {STEP_TYPE_OPTIONS.map(opt => {
                     const meta = STEP_TYPE_META[opt.type];
+                    const alreadyExists =
+                      SINGLETON_STEP_TYPES.has(opt.type) &&
+                      (selected?.steps.some(s => s.type === opt.type) ?? false);
                     return (
                       <button
                         key={opt.type}
-                        onClick={() => addStep(opt.type)}
-                        className={`flex flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-left hover:shadow-sm transition-shadow ${meta.bg}`}
+                        onClick={() => !alreadyExists && addStep(opt.type)}
+                        disabled={alreadyExists}
+                        title={alreadyExists ? "Only one step of this type allowed per algorithm" : undefined}
+                        className={`flex flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-left transition-shadow ${
+                          alreadyExists
+                            ? "opacity-40 cursor-not-allowed bg-slate-50 border-slate-200"
+                            : `hover:shadow-sm ${meta.bg}`
+                        }`}
                       >
-                        <span className={`text-xs font-bold ${meta.color}`}>{meta.label}</span>
-                        <span className="text-[10px] text-slate-400 leading-snug">{opt.desc}</span>
+                        <span className={`text-xs font-bold ${alreadyExists ? "text-slate-400" : meta.color}`}>
+                          {meta.label}
+                        </span>
+                        <span className="text-[10px] text-slate-400 leading-snug">
+                          {alreadyExists ? "Already added (1 per algorithm)" : opt.desc}
+                        </span>
                       </button>
                     );
                   })}

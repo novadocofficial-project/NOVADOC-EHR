@@ -164,6 +164,13 @@ const BACK_PAIN_SEED: TriageAlgorithm = {
 
 const DEFAULT_ALGORITHMS: TriageAlgorithm[] = [BACK_PAIN_SEED];
 
+// ─── Singleton step types (max 1 per algorithm) ───────────────────────────────
+
+export const SINGLETON_STEP_TYPES = new Set<TriageStepType>([
+  "patient-details",
+  "presenting-complaint",
+]);
+
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "ehr-triage-algorithms";
@@ -182,6 +189,8 @@ function load(): TriageAlgorithm[] {
 function save(data: TriageAlgorithm[]): void {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch { /* ignore */ }
 }
+
+function genId() { return `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`; }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -204,5 +213,97 @@ export function useTriageConfig() {
     });
   }, []);
 
-  return { algorithms, mutate };
+  // ── Algorithm mutations ────────────────────────────────────────────────────
+
+  const createAlgorithm = useCallback((): string => {
+    const id = genId();
+    mutate(prev => [...prev, {
+      id, name: "New Triage Algorithm", complaintLabel: "Chief Complaint", enabled: true,
+      steps: [
+        { id: genId(), type: "patient-details",     title: "Patient Basic Details", items: [], scaleMax: 10, bands: [] },
+        { id: genId(), type: "presenting-complaint", title: "Presenting Complaint",  items: [], scaleMax: 10, bands: [] },
+      ],
+    }]);
+    return id;
+  }, [mutate]);
+
+  const updateAlgorithm = useCallback((
+    id: string,
+    patch: Partial<Pick<TriageAlgorithm, "name" | "complaintLabel" | "enabled">>,
+  ) => {
+    mutate(prev => prev.map(a => a.id === id ? { ...a, ...patch } : a));
+  }, [mutate]);
+
+  const deleteAlgorithm = useCallback((id: string) => {
+    mutate(prev => prev.filter(a => a.id !== id));
+  }, [mutate]);
+
+  const duplicateAlgorithm = useCallback((id: string): string => {
+    const newId = genId();
+    mutate(prev => {
+      const src = prev.find(a => a.id === id);
+      if (!src) return prev;
+      return [...prev, {
+        ...src, id: newId, name: `${src.name} (Copy)`,
+        steps: src.steps.map(s => ({
+          ...s, id: genId(),
+          items: s.items.map(it => ({ ...it, id: genId() })),
+          bands: s.bands.map(b => ({ ...b, id: genId() })),
+        })),
+      }];
+    });
+    return newId;
+  }, [mutate]);
+
+  // ── Step mutations ────────────────────────────────────────────────────────
+
+  const addStepToAlgorithm = useCallback((algoId: string, newStep: TriageStep) => {
+    mutate(prev => prev.map(a => {
+      if (a.id !== algoId) return a;
+      if (SINGLETON_STEP_TYPES.has(newStep.type) && a.steps.some(s => s.type === newStep.type)) {
+        return a;
+      }
+      return { ...a, steps: [...a.steps, newStep] };
+    }));
+  }, [mutate]);
+
+  const updateStepInAlgorithm = useCallback((
+    algoId: string,
+    stepId: string,
+    updater: (s: TriageStep) => TriageStep,
+  ) => {
+    mutate(prev => prev.map(a =>
+      a.id !== algoId ? a : { ...a, steps: a.steps.map(s => s.id === stepId ? updater(s) : s) }
+    ));
+  }, [mutate]);
+
+  const deleteStepFromAlgorithm = useCallback((algoId: string, stepId: string) => {
+    mutate(prev => prev.map(a =>
+      a.id !== algoId ? a : { ...a, steps: a.steps.filter(s => s.id !== stepId) }
+    ));
+  }, [mutate]);
+
+  const moveStepInAlgorithm = useCallback((algoId: string, stepId: string, dir: -1 | 1) => {
+    mutate(prev => prev.map(a => {
+      if (a.id !== algoId) return a;
+      const i = a.steps.findIndex(s => s.id === stepId);
+      if (i + dir < 0 || i + dir >= a.steps.length) return a;
+      const steps = [...a.steps];
+      [steps[i], steps[i + dir]] = [steps[i + dir], steps[i]];
+      return { ...a, steps };
+    }));
+  }, [mutate]);
+
+  return {
+    algorithms,
+    mutate,
+    createAlgorithm,
+    updateAlgorithm,
+    deleteAlgorithm,
+    duplicateAlgorithm,
+    addStepToAlgorithm,
+    updateStepInAlgorithm,
+    deleteStepFromAlgorithm,
+    moveStepInAlgorithm,
+  };
 }
