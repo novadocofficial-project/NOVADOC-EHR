@@ -1,0 +1,87 @@
+We are now designing the Nursing Procedure section.
+
+Currently, the proposed fields are:
+
+Procedure Name
+Procedure Type
+Reason for Procedure
+Consultant
+Priority Status (Normal / Urgent)
+Timing Status (Immediate / Scheduled)
+Patient Vitals
+Medications
+Consent Taken
+Billing
+Procedure Name
+Quantity
+Fees
+Total Amount
+Multiple billing entries supported
+Condition at Discharge
+Notes on Patient Reaction or Recovery
+Billing Workflow Logic
+
+Billing is included because, in the current clinic workflow, the patient moves directly from the doctor to the nursing station before making payment.
+
+The intended flow is:
+
+Doctor completes consultation
+Patient goes to Nursing
+Nurse performs the procedure
+Nurse generates the procedure billing
+Nurse informs the front desk about the payable amount
+Patient makes payment afterward
+
+This allows the nurse to finalize billable procedures before the patient reaches the payment counter.
+
+Required Architectural Change
+
+While reviewing this structure, we identified that some fields should not be hardcoded because:
+
+Vitals are already available as a reusable system component.
+Billing should come from the centralized billing/service system instead of being manually recreated inside nursing procedures.
+Different clinics may have completely different nursing workflows.
+
+For example:
+
+Clinic A may require:
+Vitals
+Billing
+Consent
+Recovery Notes
+Clinic B may require:
+Device Usage Tracking
+Observation Duration
+Assistant Nurse Assignment
+Follow-up Instructions
+
+Because of this, the Nursing Procedure module should be designed as a flexible configurable workflow system instead of a fixed form.
+
+Proposed Solution
+
+The Nursing Procedure section should be created inside the Nursing Admin Configuration area.
+
+The admin should be able to:
+
+Create custom nursing procedure templates
+Add or remove components dynamically
+Reorder sections
+Configure required vs optional fields
+Reuse existing system components (Vitals, Billing, Medications, Consent, etc.)
+Add custom multi-entry fields
+Configure clinic-specific workflows
+
+Examples of configurable components:
+
+Vitals Component
+Medication Component
+Billing Component
+Consent Component
+Recovery Notes
+Observation Tracking
+Custom Dynamic Fields
+Data & Visibility Requirements
+Nursing procedure configurations will be stored via local storage/configuration architecture.
+These configured procedures should automatically appear inside the Nursing Panel.
+Nurses should only see and use the workflows configured by the Nursing Admin.
+The architecture should support future multi-clinic customization without requiring development changes.
