@@ -384,7 +384,7 @@ function evalRouting(step: TriageStep, ans: StepAnswer | undefined): TriageOutco
 
 // ─── Main runner component ────────────────────────────────────────────────────
 
-export function TriageRunner({ patient }: { patient: Patient | null }) {
+export function TriageRunner({ patient, onFinishTriage }: { patient: Patient | null; onFinishTriage?: () => void }) {
   const { algorithms } = useTriageConfig();
   const enabled = algorithms.filter(a => a.enabled);
 
@@ -492,6 +492,7 @@ export function TriageRunner({ patient }: { patient: Patient | null }) {
     };
     saveSession(session);
     setDone(true);
+    onFinishTriage?.();
   }
 
   function handleNext() {
@@ -571,20 +572,30 @@ export function TriageRunner({ patient }: { patient: Patient | null }) {
         ) : step?.type === "presenting-complaint" ? (
           <PresentingComplaintStep
             complaintLabel={algo.complaintLabel}
-            value={currentAnswer?.text ?? ""}
+            value={currentAnswer?.text ?? algo.complaintLabel}
             onChange={text => setAnswer(step.id, { text })}
           />
         ) : step?.type === "question-group" ? (
           <QuestionGroupStep
             step={step}
             answers={currentAnswer?.selected ?? {}}
-            onChange={selected => setAnswer(step.id, { selected })}
+            onChange={selected => {
+              setAnswer(step.id, { selected });
+              if (step.ifAnyYes && Object.values(selected).some(v => v === true)) {
+                setRouted({ outcome: step.ifAnyYes, by: step.title });
+              }
+            }}
           />
         ) : step?.type === "flag-checklist" ? (
           <FlagChecklistStep
             step={step}
             answers={currentAnswer?.selected ?? {}}
-            onChange={selected => setAnswer(step.id, { selected })}
+            onChange={selected => {
+              setAnswer(step.id, { selected });
+              if (step.ifAnyYes && Object.values(selected).some(v => v === true)) {
+                setRouted({ outcome: step.ifAnyYes, by: step.title });
+              }
+            }}
           />
         ) : step?.type === "severity-scale" ? (
           <SeverityScaleStep

@@ -1702,7 +1702,7 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
             </div>
           </div>
         ) : activeCategory === "triage" ? (
-          <TriageRunner patient={entry.patient} />
+          <TriageRunner patient={entry.patient} onFinishTriage={onClose} />
         ) : (
           <div className="flex-1 flex items-center justify-center text-center p-10">
             <div>
