@@ -129,7 +129,7 @@ const DEFAULT_CONFIG: NursingConfig = {
         makeComponent({ id: "npc-2", type: "system", systemKey: "consent",  name: "Consent"     }),
         makeComponent({ id: "npc-3", type: "system", systemKey: "billing",  name: "Billing"     }),
         {
-          id: "npc-4", type: "custom", name: "Procedure Details",
+          id: "npc-4", type: "custom", name: "Procedure Notes",
           fields: [
             { id: "pd-1", label: "Procedure Name",  type: "text",     required: true,  enabled: true, options: [], placeholder: "e.g. IV Cannulation" },
             { id: "pd-2", label: "Procedure Type",  type: "dropdown", required: false, enabled: true, options: ["Wound Care","IV Therapy","Catheterization","Injection","Dressing Change","Infusion","Other"], placeholder: "" },

@@ -1329,6 +1329,17 @@ function ProcedureTemplateBuilder() {
     setDeleteTarget(null);
   }
 
+  function moveTemplate(i: number, dir: -1 | 1) {
+    updateConfig(prev => {
+      const next = [...prev.procedureTemplates];
+      const swap = next[i + dir];
+      if (!swap) return prev;
+      next[i + dir] = next[i];
+      next[i] = swap;
+      return { ...prev, procedureTemplates: next };
+    });
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <SavedBanner savedAt={savedAt} />
@@ -1366,13 +1377,34 @@ function ProcedureTemplateBuilder() {
       )}
 
       <div className="space-y-3">
-        {config.procedureTemplates.map(template => (
-          <ProcedureTemplateEditor
-            key={template.id}
-            template={template}
-            onUpdate={patch => updateTemplate(template.id, patch)}
-            onRemove={() => setDeleteTarget({ id: template.id, name: template.name })}
-          />
+        {config.procedureTemplates.map((template, i) => (
+          <div key={template.id} className="flex gap-2">
+            <div className="flex flex-col justify-center gap-0.5 flex-shrink-0">
+              <button
+                onClick={() => moveTemplate(i, -1)}
+                disabled={i === 0}
+                className="text-slate-300 hover:text-slate-500 disabled:opacity-20 transition-colors"
+                title="Move up"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => moveTemplate(i, 1)}
+                disabled={i === config.procedureTemplates.length - 1}
+                className="text-slate-300 hover:text-slate-500 disabled:opacity-20 transition-colors"
+                title="Move down"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 min-w-0">
+              <ProcedureTemplateEditor
+                template={template}
+                onUpdate={patch => updateTemplate(template.id, patch)}
+                onRemove={() => setDeleteTarget({ id: template.id, name: template.name })}
+              />
+            </div>
+          </div>
         ))}
       </div>
 
