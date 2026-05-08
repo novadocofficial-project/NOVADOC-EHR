@@ -257,6 +257,296 @@ function VitalsLeftPanel({ entry, vitalValues, configuredVitals, painScore, ment
   );
 }
 
+// ─── Left panel — Nursing Procedures ─────────────────────────────────────────
+
+function ProcedureLeftPanel({ entry }: { entry: MultiEntry }) {
+  const p = entry.patient;
+  const [exp0, setExp0] = useState(false);
+  const [exp1, setExp1] = useState(false);
+
+  const mockProc = [
+    {
+      date: "21 Feb 2025", range: "Tuesday, 26 Feb 2025",
+      template: "IV Cannulation", doctor: "Dr. Asif Imam", status: "Completed",
+      components: ["Vital Signs", "Medications Given", "Consent Form"],
+    },
+    {
+      date: "14 Jan 2025", range: "Tuesday, 14 Jan 2025",
+      template: "Wound Care", doctor: "Dr. Fatima Zahra", status: "Completed",
+      components: ["Wound Assessment", "Dressing Change", "Patient Education"],
+    },
+  ];
+
+  return (
+    <div className="h-full flex flex-col bg-white">
+      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Record</p>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        <Collapsible title="Patient Info" defaultOpen={false}>
+          {p ? (
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-1.5 text-xs">
+              {[["Name", p.name], ["MRN", p.mrn], ["Gender", p.gender === "M" ? "Male" : "Female"], ["DOB", p.dob], ["Phone", p.phone]].map(([l, v]) => (
+                <div key={l} className="flex justify-between">
+                  <span className="text-slate-400">{l}</span>
+                  <span className="font-semibold text-slate-800">{v}</span>
+                </div>
+              ))}
+            </div>
+          ) : <p className="text-xs text-slate-400 italic">No patient on file</p>}
+        </Collapsible>
+
+        <Collapsible title="Required Actions" badge={1} accent defaultOpen>
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 space-y-1.5 text-xs mb-2">
+            <p className="font-semibold text-slate-800 leading-tight">IV Cannulation procedure pending review</p>
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+              <span>{mockProc[0].date}</span>
+              <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block" />Pending</span>
+              <span className="flex items-center gap-1"><Stethoscope className="h-3 w-3" />{mockProc[0].template}</span>
+              <span className="flex items-center gap-1"><User className="h-3 w-3" />{mockProc[0].doctor}</span>
+            </div>
+          </div>
+        </Collapsible>
+
+        <Collapsible title="All Records" badge={mockProc.length} defaultOpen>
+          {mockProc.map((rec, idx) => {
+            const expanded = idx === 0 ? exp0 : exp1;
+            const setExpanded = idx === 0 ? setExp0 : setExp1;
+            return (
+              <div key={idx} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs mb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold text-slate-800 leading-tight flex-1">{rec.template}</p>
+                  <button
+                    onClick={() => setExpanded(e => !e)}
+                    className="text-[10px] font-bold text-[#4982CF] hover:underline flex-shrink-0 flex items-center gap-1">
+                    {expanded ? <><ChevronUp className="h-3 w-3" /> Collapse</> : <><Maximize2 className="h-3 w-3" /> Expand</>}
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 justify-between mt-1.5">
+                  <span>{rec.date} · {rec.range}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1"><Stethoscope className="h-3 w-3" />{rec.template}</span>
+                    <span className="flex items-center gap-1"><User className="h-3 w-3" />{rec.doctor}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">{rec.status}</span>
+                  </div>
+                </div>
+                {expanded && (
+                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Components Recorded</p>
+                    <div className="rounded-lg overflow-hidden border border-slate-100">
+                      {rec.components.map((comp, i) => (
+                        <div key={comp} className={`flex items-center gap-2 px-2.5 py-1.5 ${i % 2 === 0 ? "bg-violet-50" : "bg-white"}`}>
+                          <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                          <span className="text-slate-600">{comp}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </Collapsible>
+      </div>
+    </div>
+  );
+}
+
+// ─── Left panel — Care Plan ───────────────────────────────────────────────────
+
+function CareLeftPanel({ entry, tasks, execs }: {
+  entry: MultiEntry;
+  tasks: import("@/hooks/useNursingCareTasks").CarePlanTaskRef[];
+  execs: import("@/hooks/useNursingCareTasks").TaskExec[];
+}) {
+  const p = entry.patient;
+  const [exp0, setExp0] = useState(false);
+  const [exp1, setExp1] = useState(false);
+
+  const urgentPending = tasks.filter((t, i) => t.priority === "Urgent" && (execs[i]?.status === "pending" || execs.find(e => e.uid === t.uid)?.status === "pending")).length;
+
+  const mockRecords = [
+    {
+      date: "21 Feb 2025", range: "26 Feb 2025", doctor: "Dr. Asif Imam",
+      taskCount: 4, doneCount: 3,
+      titles: ["Wound dressing", "BP monitoring", "Insulin teaching", "Dietary counseling"],
+    },
+    {
+      date: "14 Jan 2025", range: "21 Jan 2025", doctor: "Dr. Fatima Zahra",
+      taskCount: 3, doneCount: 3,
+      titles: ["Post-op care instructions", "Mobility exercises", "Medication review"],
+    },
+  ];
+
+  return (
+    <div className="h-full flex flex-col bg-white">
+      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Record</p>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        <Collapsible title="Patient Info" defaultOpen={false}>
+          {p ? (
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-1.5 text-xs">
+              {[["Name", p.name], ["MRN", p.mrn], ["Gender", p.gender === "M" ? "Male" : "Female"], ["DOB", p.dob], ["Phone", p.phone]].map(([l, v]) => (
+                <div key={l} className="flex justify-between">
+                  <span className="text-slate-400">{l}</span>
+                  <span className="font-semibold text-slate-800">{v}</span>
+                </div>
+              ))}
+            </div>
+          ) : <p className="text-xs text-slate-400 italic">No patient on file</p>}
+        </Collapsible>
+
+        <Collapsible title="Required Actions" badge={urgentPending} accent defaultOpen>
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 space-y-1.5 text-xs mb-2">
+            {urgentPending > 0 ? (
+              <>
+                <p className="font-semibold text-slate-800 leading-tight">
+                  {urgentPending} urgent task{urgentPending !== 1 ? "s" : ""} pending — action required
+                </p>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                  <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500 inline-block" />Urgent</span>
+                  <span className="flex items-center gap-1"><Heart className="h-3 w-3" />Care Plan</span>
+                  <span className="flex items-center gap-1"><User className="h-3 w-3" />{p?.name ?? "Patient"}</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-slate-400 italic text-[11px]">No urgent actions — all tasks on track.</p>
+            )}
+          </div>
+        </Collapsible>
+
+        <Collapsible title="All Records" badge={mockRecords.length} defaultOpen>
+          {mockRecords.map((rec, idx) => {
+            const expanded = idx === 0 ? exp0 : exp1;
+            const setExpanded = idx === 0 ? setExp0 : setExp1;
+            const pct = Math.round((rec.doneCount / rec.taskCount) * 100);
+            return (
+              <div key={idx} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs mb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold text-slate-800 leading-tight flex-1">
+                    {rec.doneCount}/{rec.taskCount} tasks complete · {pct}%
+                  </p>
+                  <button
+                    onClick={() => setExpanded(e => !e)}
+                    className="text-[10px] font-bold text-[#4982CF] hover:underline flex-shrink-0 flex items-center gap-1">
+                    {expanded ? <><ChevronUp className="h-3 w-3" /> Collapse</> : <><Maximize2 className="h-3 w-3" /> Expand</>}
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 justify-between mt-1.5">
+                  <span>{rec.date} · {rec.range}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1"><Heart className="h-3 w-3" />Care Plan</span>
+                    <span className="flex items-center gap-1"><User className="h-3 w-3" />{rec.doctor}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">Active</span>
+                  </div>
+                </div>
+                <div className="mt-1.5 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: pct === 100 ? "#10b981" : "#4982CF" }} />
+                </div>
+                {expanded && (
+                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Tasks</p>
+                    {rec.titles.map((title, i) => (
+                      <div key={i} className="flex items-center gap-2 text-[11px] text-slate-600">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                        {title}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </Collapsible>
+      </div>
+    </div>
+  );
+}
+
+// ─── Left panel — Goals ───────────────────────────────────────────────────────
+
+function GoalsLeftPanel({ entry }: { entry: MultiEntry }) {
+  const p = entry.patient;
+  const [exp0, setExp0] = useState(false);
+  const [exp1, setExp1] = useState(false);
+
+  const mockRecords = [
+    {
+      date: "21 Feb 2025", range: "01 Jul 2025", doctor: "Dr. Asif Imam",
+      goalCount: 3, notesCount: 2,
+      titles: ["Control blood sugar levels", "Reduce blood pressure", "Improve medication adherence"],
+    },
+    {
+      date: "14 Jan 2025", range: "01 Apr 2025", doctor: "Dr. Fatima Zahra",
+      goalCount: 2, notesCount: 2,
+      titles: ["Improve mobility post-surgery", "Achieve healthy weight range"],
+    },
+  ];
+
+  return (
+    <div className="h-full flex flex-col bg-white">
+      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Record</p>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        <Collapsible title="Patient Info" defaultOpen={false}>
+          {p ? (
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-1.5 text-xs">
+              {[["Name", p.name], ["MRN", p.mrn], ["Gender", p.gender === "M" ? "Male" : "Female"], ["DOB", p.dob], ["Phone", p.phone]].map(([l, v]) => (
+                <div key={l} className="flex justify-between">
+                  <span className="text-slate-400">{l}</span>
+                  <span className="font-semibold text-slate-800">{v}</span>
+                </div>
+              ))}
+            </div>
+          ) : <p className="text-xs text-slate-400 italic">No patient on file</p>}
+        </Collapsible>
+
+        <Collapsible title="All Records" badge={mockRecords.length} defaultOpen>
+          {mockRecords.map((rec, idx) => {
+            const expanded = idx === 0 ? exp0 : exp1;
+            const setExpanded = idx === 0 ? setExp0 : setExp1;
+            return (
+              <div key={idx} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs mb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold text-slate-800 leading-tight flex-1">
+                    {rec.goalCount} goal{rec.goalCount !== 1 ? "s" : ""} · {rec.notesCount} nurse note{rec.notesCount !== 1 ? "s" : ""}
+                  </p>
+                  <button
+                    onClick={() => setExpanded(e => !e)}
+                    className="text-[10px] font-bold text-[#4982CF] hover:underline flex-shrink-0 flex items-center gap-1">
+                    {expanded ? <><ChevronUp className="h-3 w-3" /> Collapse</> : <><Maximize2 className="h-3 w-3" /> Expand</>}
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 justify-between mt-1.5">
+                  <span>{rec.date} · Target: {rec.range}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1"><Target className="h-3 w-3" />Goals</span>
+                    <span className="flex items-center gap-1"><User className="h-3 w-3" />{rec.doctor}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">Active</span>
+                  </div>
+                </div>
+                {expanded && (
+                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Goals</p>
+                    {rec.titles.map((title, i) => (
+                      <div key={i} className="flex items-center gap-2 text-[11px] text-slate-600">
+                        <Target className="h-3 w-3 text-pink-400 flex-shrink-0" />
+                        {title}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </Collapsible>
+      </div>
+    </div>
+  );
+}
+
 // ─── Config-driven vitals form ────────────────────────────────────────────────
 
 function VitalsForm({ vitalValues, setVitalValues, configuredVitals, painScore, setPainScore, mentalAnswers, setMentalAnswers }:
@@ -1364,39 +1654,54 @@ function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: (
             <HistoryTabContent visitTypeId={entry.visitTypeId} />
           </div>
         ) : activeCategory === "procedures" ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
-              <Stethoscope className="h-4 w-4 text-violet-600" />
-              <span className="text-sm font-bold text-slate-700">Nursing Procedures</span>
+          <div className="flex-1 flex overflow-hidden">
+            <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
+              <ProcedureLeftPanel entry={entry} />
             </div>
-            <ProcedureTabContent />
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+                <Stethoscope className="h-4 w-4 text-violet-600" />
+                <span className="text-sm font-bold text-slate-700">Nursing Procedures</span>
+              </div>
+              <ProcedureTabContent />
+            </div>
           </div>
         ) : activeCategory === "care-plan" ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
-              <Heart className="h-4 w-4 text-rose-500" />
-              <span className="text-sm font-bold text-slate-700">Care Plan</span>
+          <div className="flex-1 flex overflow-hidden">
+            <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
+              <CareLeftPanel entry={entry} tasks={tasks} execs={execState.tasks} />
             </div>
-            <CareTasksTab
-              tasks={tasks}
-              execs={execState.tasks}
-              onAdvance={advanceTask}
-              onSkip={skipTask}
-              onReset={resetTask}
-              onNoteChange={updateTaskNote}
-            />
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+                <Heart className="h-4 w-4 text-rose-500" />
+                <span className="text-sm font-bold text-slate-700">Care Plan</span>
+              </div>
+              <CareTasksTab
+                tasks={tasks}
+                execs={execState.tasks}
+                onAdvance={advanceTask}
+                onSkip={skipTask}
+                onReset={resetTask}
+                onNoteChange={updateTaskNote}
+              />
+            </div>
           </div>
         ) : activeCategory === "goals" ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
-              <Target className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-bold text-slate-700">Patient Goals</span>
+          <div className="flex-1 flex overflow-hidden">
+            <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
+              <GoalsLeftPanel entry={entry} />
             </div>
-            <PatientGoalsTab
-              goals={goals}
-              goalNotes={execState.goals}
-              onNoteChange={updateGoalNote}
-            />
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+                <Target className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-bold text-slate-700">Patient Goals</span>
+              </div>
+              <PatientGoalsTab
+                goals={goals}
+                goalNotes={execState.goals}
+                onNoteChange={updateGoalNote}
+              />
+            </div>
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-center p-10">
