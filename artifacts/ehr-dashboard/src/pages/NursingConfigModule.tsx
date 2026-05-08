@@ -20,6 +20,7 @@ import {
   type ConditionalRule,
 } from "@/hooks/useNursingConfig";
 import { VitalsConfigPanel } from "@/pages/SoapConfigModule";
+import { SEED_VISIT_TYPES } from "@/pages/QueueModule";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -834,6 +835,75 @@ function HistoryTemplateBuilder() {
           />
         ))}
       </div>
+
+      {/* ── Visit Type → Template Mapping ─────────────────────────────── */}
+      {config.templates.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 bg-slate-50/60">
+            <div className="h-8 w-8 rounded-lg bg-[#4982CF]/10 flex items-center justify-center flex-shrink-0">
+              <RotateCcw className="h-4 w-4 text-[#4982CF]" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900">Visit Type → Template Mapping</p>
+              <p className="text-xs text-slate-400 mt-0.5">Assign a default template to each visit type so it is pre-selected when the nursing drawer opens.</p>
+            </div>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {SEED_VISIT_TYPES.filter(vt => vt.status === "active").map(vt => {
+              const currentMappedId = config.visitTypeMappings?.[vt.id] ?? "";
+              const enabledTemplates = config.templates.filter(t => t.enabled);
+              return (
+                <div key={vt.id} className="flex items-center gap-4 px-5 py-3">
+                  <span
+                    className="h-7 w-7 rounded-lg flex items-center justify-center text-white text-[10px] font-black flex-shrink-0"
+                    style={{ backgroundColor: vt.color }}
+                  >
+                    {vt.tokenPrefix}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">{vt.name}</p>
+                    <p className="text-[11px] text-slate-400">{vt.code} · {vt.queueMode === "single" ? "Single Queue" : vt.queueMode === "partitioned" ? "Partitioned" : "Multi-Step"}</p>
+                  </div>
+                  <div className="w-52 flex-shrink-0">
+                    <Select
+                      value={currentMappedId || "__none__"}
+                      onValueChange={val => {
+                        updateConfig(prev => {
+                          const next = { ...prev.visitTypeMappings };
+                          if (val === "__none__") {
+                            delete next[vt.id];
+                          } else {
+                            next[vt.id] = val;
+                          }
+                          return { ...prev, visitTypeMappings: next };
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="No default template" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">
+                          <span className="text-slate-400 italic">No default</span>
+                        </SelectItem>
+                        {enabledTemplates.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                        {enabledTemplates.length === 0 && (
+                          <SelectItem value="__no_templates__" disabled>No enabled templates</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {SEED_VISIT_TYPES.filter(vt => vt.status === "active").length === 0 && (
+            <p className="text-xs text-slate-400 italic text-center py-5">No active visit types defined in Queue Setup.</p>
+          )}
+        </div>
+      )}
 
       <Dialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}>
         <DialogContent className="max-w-sm">

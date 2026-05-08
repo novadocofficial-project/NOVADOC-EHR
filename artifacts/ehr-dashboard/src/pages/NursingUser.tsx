@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   PhoneCall, X, ChevronUp, ChevronDown, ChevronRight,
   Maximize2, Minimize2, Clock, User, AlertCircle, Heart,
@@ -594,7 +594,7 @@ function CustomComponentForm({ component, values, onChange }: {
 
 // ─── History tab content ──────────────────────────────────────────────────────
 
-function HistoryTabContent() {
+function HistoryTabContent({ visitTypeId }: { visitTypeId?: string }) {
   const { config } = useNursingConfig();
   const enabledTemplates = useMemo(() => config.templates.filter(t => t.enabled), [config.templates]);
 
@@ -604,7 +604,23 @@ function HistoryTabContent() {
     try { return sessionStorage.getItem(HISTORY_TEMPLATE_KEY) ?? null; } catch { return null; }
   });
 
+  const autoMappedTemplateId = useMemo(() => {
+    if (!visitTypeId) return null;
+    const mappedId = config.visitTypeMappings?.[visitTypeId];
+    if (!mappedId) return null;
+    return enabledTemplates.find(t => t.id === mappedId) ? mappedId : null;
+  }, [visitTypeId, config.visitTypeMappings, enabledTemplates]);
+
+  const hasOverridden = useRef(false);
+
+  useEffect(() => {
+    if (!hasOverridden.current && autoMappedTemplateId) {
+      setSelectedTemplateId(autoMappedTemplateId);
+    }
+  }, [autoMappedTemplateId]);
+
   function selectTemplate(id: string) {
+    hasOverridden.current = true;
     setSelectedTemplateId(id);
     try { sessionStorage.setItem(HISTORY_TEMPLATE_KEY, id); } catch { /**/ }
   }
@@ -662,19 +678,32 @@ function HistoryTabContent() {
     <div className="flex-1 overflow-y-auto px-5 py-5">
       {enabledTemplates.length > 1 && (
         <div className="mb-5 pb-4 border-b border-slate-100">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5">Select Template</p>
+          <div className="flex items-center justify-between mb-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Select Template</p>
+            {autoMappedTemplateId && (
+              <span className="text-[10px] font-semibold text-[#4982CF] flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#4982CF] inline-block" />
+                Pre-selected by visit type
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2">
             {enabledTemplates.map(t => (
               <button
                 key={t.id}
                 onClick={() => selectTemplate(t.id)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors flex items-center gap-1.5 ${
                   currentId === t.id
                     ? "bg-[#4982CF] border-[#4982CF] text-white shadow-sm"
                     : "bg-white border-slate-200 text-slate-600 hover:border-[#4982CF] hover:text-[#4982CF]"
                 }`}
               >
                 {t.name}
+                {t.id === autoMappedTemplateId && (
+                  <span className={`text-[9px] font-black uppercase px-1 py-0.5 rounded ${currentId === t.id ? "bg-white/25 text-white" : "bg-[#4982CF]/10 text-[#4982CF]"}`}>
+                    Auto
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -861,7 +890,7 @@ function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: (
               <ClipboardList className="h-4 w-4 text-amber-600" />
               <span className="text-sm font-bold text-slate-700">Patient History</span>
             </div>
-            <HistoryTabContent />
+            <HistoryTabContent visitTypeId={entry.visitTypeId} />
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-center p-10">

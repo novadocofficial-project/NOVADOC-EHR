@@ -61,11 +61,13 @@ export interface NursingHistoryTemplate {
 
 export interface NursingConfig {
   templates: NursingHistoryTemplate[];
+  visitTypeMappings: Record<string, string>;
 }
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 
 const DEFAULT_CONFIG: NursingConfig = {
+  visitTypeMappings: {},
   templates: [
     {
       id: "nt-default",
@@ -104,6 +106,9 @@ const STORAGE_KEY = "ehr-nursing-config-v1";
 
 function normalizeConfig(stored: Partial<NursingConfig>): NursingConfig {
   return {
+    visitTypeMappings: (stored.visitTypeMappings && typeof stored.visitTypeMappings === "object" && !Array.isArray(stored.visitTypeMappings))
+      ? stored.visitTypeMappings as Record<string, string>
+      : {},
     templates: Array.isArray(stored.templates) && stored.templates.length > 0
       ? stored.templates.map(t => ({
           id: t.id ?? `nt-${Date.now()}`,
