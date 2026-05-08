@@ -27,6 +27,8 @@ import {
   type ConditionalRule,
 } from "@/hooks/useNursingConfig";
 import { loadVitalsConfig, type VitalConfig } from "@/pages/SoapConfigModule";
+import { useNursingCareTasks } from "@/hooks/useNursingCareTasks";
+import { CareTasksTab, PatientGoalsTab } from "@/pages/NursingCareTasksTab";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1269,6 +1271,11 @@ function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: (
   const [activeCategory, setActiveCategory] = useState<NurseCategory>("vitals");
   const [showConfirm, setShowConfirm]     = useState(false);
 
+  const {
+    tasks, goals, execState,
+    advanceTask, skipTask, resetTask, updateTaskNote, updateGoalNote,
+  } = useNursingCareTasks(entry.id);
+
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
@@ -1363,6 +1370,33 @@ function VitalsPanel({ entry, onClose, onSave }: { entry: MultiEntry; onClose: (
               <span className="text-sm font-bold text-slate-700">Nursing Procedures</span>
             </div>
             <ProcedureTabContent />
+          </div>
+        ) : activeCategory === "care-plan" ? (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+              <Heart className="h-4 w-4 text-rose-500" />
+              <span className="text-sm font-bold text-slate-700">Care Plan</span>
+            </div>
+            <CareTasksTab
+              tasks={tasks}
+              execs={execState.tasks}
+              onAdvance={advanceTask}
+              onSkip={skipTask}
+              onReset={resetTask}
+              onNoteChange={updateTaskNote}
+            />
+          </div>
+        ) : activeCategory === "goals" ? (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+              <Target className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-bold text-slate-700">Patient Goals</span>
+            </div>
+            <PatientGoalsTab
+              goals={goals}
+              goalNotes={execState.goals}
+              onNoteChange={updateGoalNote}
+            />
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-center p-10">
