@@ -598,6 +598,24 @@ function HistoryTabContent() {
   const { config } = useNursingConfig();
   const enabledTemplates = useMemo(() => config.templates.filter(t => t.enabled), [config.templates]);
 
+  const HISTORY_TEMPLATE_KEY = "ehr-nursing-history-template-sel";
+
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(() => {
+    try { return sessionStorage.getItem(HISTORY_TEMPLATE_KEY) ?? null; } catch { return null; }
+  });
+
+  function selectTemplate(id: string) {
+    setSelectedTemplateId(id);
+    try { sessionStorage.setItem(HISTORY_TEMPLATE_KEY, id); } catch { /**/ }
+  }
+
+  const activeTemplate = useMemo(() => {
+    if (enabledTemplates.length === 0) return null;
+    if (enabledTemplates.length === 1) return enabledTemplates[0];
+    const found = enabledTemplates.find(t => t.id === selectedTemplateId);
+    return found ?? enabledTemplates[0];
+  }, [enabledTemplates, selectedTemplateId]);
+
   type EntryMap = Record<string, Record<string, string>[]>;
   const [data, setData] = useState<EntryMap>({});
   const [systemValues, setSystemValues] = useState<Record<string, string>>({});
@@ -638,63 +656,79 @@ function HistoryTabContent() {
     );
   }
 
+  const currentId = activeTemplate?.id ?? "";
+
   return (
-    <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
-      {enabledTemplates.map(template => (
-        <div key={template.id}>
-          <div className="flex items-center gap-2 mb-3">
-            <Heart className="h-4 w-4 text-teal-600 flex-shrink-0" />
-            <p className="text-sm font-bold text-slate-800">{template.name}</p>
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-700 uppercase">Template</span>
-          </div>
-          <div className="space-y-3">
-            {template.components.map(comp => (
-              <Collapsible key={comp.id} title={comp.name} defaultOpen>
-                {comp.type === "system" ? (
-                  <SystemComponentView
-                    systemKey={comp.systemKey}
-                    value={systemValues[comp.id] ?? ""}
-                    onChange={v => setSystemValues(prev => ({ ...prev, [comp.id]: v }))}
-                  />
-                ) : (
-                  <div className="space-y-4 pb-2">
-                    {getEntries(comp.id).map((entryVals, idx) => (
-                      <div key={idx} className={comp.repeatable && getEntries(comp.id).length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
-                        {comp.repeatable && getEntries(comp.id).length > 1 && (
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entry {idx + 1}</span>
-                            <button onClick={() => removeEntry(comp.id, idx)} className="text-slate-300 hover:text-rose-500 transition-colors">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        )}
-                        <CustomComponentForm
-                          component={comp}
-                          values={entryVals}
-                          onChange={v => setEntry(comp.id, idx, v)}
-                        />
-                      </div>
-                    ))}
-                    {comp.repeatable && (
-                      <button
-                        onClick={() => addEntry(comp.id, comp.repeatLimit)}
-                        disabled={comp.repeatLimit !== null && getEntries(comp.id).length >= comp.repeatLimit}
-                        className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Add Entry{comp.repeatLimit !== null ? ` (${getEntries(comp.id).length}/${comp.repeatLimit})` : ""}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </Collapsible>
+    <div className="flex-1 overflow-y-auto px-5 py-5">
+      {enabledTemplates.length > 1 && (
+        <div className="mb-5 pb-4 border-b border-slate-100">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5">Select Template</p>
+          <div className="flex flex-wrap gap-2">
+            {enabledTemplates.map(t => (
+              <button
+                key={t.id}
+                onClick={() => selectTemplate(t.id)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                  currentId === t.id
+                    ? "bg-[#4982CF] border-[#4982CF] text-white shadow-sm"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-[#4982CF] hover:text-[#4982CF]"
+                }`}
+              >
+                {t.name}
+              </button>
             ))}
-            {template.components.length === 0 && (
-              <p className="text-xs text-slate-400 italic px-1">No components in this template.</p>
-            )}
           </div>
         </div>
-      ))}
+      )}
+
+      {activeTemplate && (
+        <div className="space-y-3">
+          {activeTemplate.components.map(comp => (
+            <Collapsible key={comp.id} title={comp.name} defaultOpen>
+              {comp.type === "system" ? (
+                <SystemComponentView
+                  systemKey={comp.systemKey}
+                  value={systemValues[comp.id] ?? ""}
+                  onChange={v => setSystemValues(prev => ({ ...prev, [comp.id]: v }))}
+                />
+              ) : (
+                <div className="space-y-4 pb-2">
+                  {getEntries(comp.id).map((entryVals, idx) => (
+                    <div key={idx} className={comp.repeatable && getEntries(comp.id).length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
+                      {comp.repeatable && getEntries(comp.id).length > 1 && (
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entry {idx + 1}</span>
+                          <button onClick={() => removeEntry(comp.id, idx)} className="text-slate-300 hover:text-rose-500 transition-colors">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                      <CustomComponentForm
+                        component={comp}
+                        values={entryVals}
+                        onChange={v => setEntry(comp.id, idx, v)}
+                      />
+                    </div>
+                  ))}
+                  {comp.repeatable && (
+                    <button
+                      onClick={() => addEntry(comp.id, comp.repeatLimit)}
+                      disabled={comp.repeatLimit !== null && getEntries(comp.id).length >= comp.repeatLimit}
+                      className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add Entry{comp.repeatLimit !== null ? ` (${getEntries(comp.id).length}/${comp.repeatLimit})` : ""}
+                    </button>
+                  )}
+                </div>
+              )}
+            </Collapsible>
+          ))}
+          {activeTemplate.components.length === 0 && (
+            <p className="text-xs text-slate-400 italic px-1">No components in this template.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
