@@ -566,14 +566,21 @@ function NursingFieldInput({ field, value, onChange }: {
 
 // ─── Custom component form entry ─────────────────────────────────────────────
 
-function CustomComponentForm({ component, values, onChange }: {
+function CustomComponentForm({ component, values, onChange, entryLayout, columns }: {
   component: NursingComponent;
   values: Record<string, string>;
   onChange: (v: Record<string, string>) => void;
+  entryLayout?: "vertical" | "horizontal";
+  columns?: 1 | 2 | 3 | 4;
 }) {
   const enabledFields = component.fields.filter(f => f.enabled);
+  const isHoriz = entryLayout === "horizontal";
+  const cols = columns ?? 2;
   return (
-    <div className="space-y-3">
+    <div
+      className={isHoriz ? "grid gap-3 items-start" : "space-y-3"}
+      style={isHoriz ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}
+    >
       {enabledFields.map(field => {
         if (!isFieldVisible(field.id, component.conditionalRules, values)) return null;
         return (
@@ -586,7 +593,7 @@ function CustomComponentForm({ component, values, onChange }: {
         );
       })}
       {enabledFields.length === 0 && (
-        <p className="text-xs text-slate-400 italic">No fields configured for this component.</p>
+        <p className="text-xs text-slate-400 italic col-span-full">No fields configured for this component.</p>
       )}
     </div>
   );
@@ -724,14 +731,9 @@ function HistoryTabContent({ visitTypeId }: { visitTypeId?: string }) {
                 <div className="pb-2">
                   {(() => {
                     const entries = getEntries(comp.id);
-                    const isHoriz = comp.repeatable && comp.entryLayout === "horizontal";
-                    const cols = comp.columns ?? 2;
                     return (
                       <>
-                        <div
-                          className={isHoriz ? "grid gap-3" : "space-y-4"}
-                          style={isHoriz ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}
-                        >
+                        <div className="space-y-4">
                           {entries.map((entryVals, idx) => (
                             <div key={idx} className={comp.repeatable && entries.length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
                               {comp.repeatable && entries.length > 1 && (
@@ -746,6 +748,8 @@ function HistoryTabContent({ visitTypeId }: { visitTypeId?: string }) {
                                 component={comp}
                                 values={entryVals}
                                 onChange={v => setEntry(comp.id, idx, v)}
+                                entryLayout={comp.entryLayout}
+                                columns={comp.columns}
                               />
                             </div>
                           ))}

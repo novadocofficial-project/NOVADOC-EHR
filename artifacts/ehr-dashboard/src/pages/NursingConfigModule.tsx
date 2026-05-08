@@ -472,7 +472,7 @@ function CustomComponentEditor({
               </div>
               {/* Entry layout */}
               <div className="flex items-center gap-3">
-                <label className="text-xs font-semibold text-slate-600 w-44 shrink-0">Entry layout</label>
+                <label className="text-xs font-semibold text-slate-600 w-44 shrink-0">Field layout</label>
                 <div className="flex gap-1.5">
                   {(["vertical", "horizontal"] as const).map(opt => (
                     <button
