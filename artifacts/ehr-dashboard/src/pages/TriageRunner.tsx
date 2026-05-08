@@ -26,6 +26,8 @@ interface TriageSession {
   outcomeLabel: string;
   adviceItems: string[];
   routedBy: string | null;
+  severityBandLabel?: string;
+  severityBandColor?: string;
   stepAnswers: { stepId: string; stepTitle: string; summary: string }[];
 }
 
@@ -334,8 +336,8 @@ function CharacterCheckStep({
 }
 
 function OutcomeDisplay({
-  outcome, routedBy, onFinish,
-}: { outcome: TriageOutcome; routedBy: string | null; onFinish: () => void }) {
+  outcome, routedBy, severityBand, onFinish,
+}: { outcome: TriageOutcome; routedBy: string | null; severityBand?: { label: string; color: string }; onFinish: () => void }) {
   const cfg = OUTCOME_CFG[outcome.type];
   return (
     <div className="space-y-4">
@@ -343,6 +345,17 @@ function OutcomeDisplay({
         <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 flex items-center gap-2">
           <ChevronRight className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
           <p className="text-xs font-semibold text-amber-800">Routed by: <span className="italic">{routedBy}</span></p>
+        </div>
+      )}
+      {severityBand && (
+        <div
+          className="flex items-center justify-center gap-2.5 rounded-xl border px-4 py-2.5"
+          style={{ borderColor: `${severityBand.color}55`, background: `${severityBand.color}11` }}
+        >
+          <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ background: severityBand.color }} />
+          <span className="text-sm font-bold" style={{ color: severityBand.color }}>
+            Severity: {severityBand.label}
+          </span>
         </div>
       )}
       <div className={`rounded-2xl border-2 ${cfg.border} ${cfg.bg} p-6 text-center`}>
@@ -375,11 +388,17 @@ function OutcomeDisplay({
 // ─── Routing logic ────────────────────────────────────────────────────────────
 
 function evalRouting(step: TriageStep, ans: StepAnswer | undefined): TriageOutcome | null {
-  if (step.type !== "question-group" && step.type !== "flag-checklist") return null;
-  const sel = ans?.selected ?? {};
-  if (step.ifAnyYes && Object.values(sel).some(v => v === true)) return step.ifAnyYes;
-  // Treat undefined (untouched) items as "No" so an all-unchecked checklist triggers ifAllNo
-  if (step.ifAllNo && step.items.length > 0 && step.items.every(it => sel[it.id] !== true)) return step.ifAllNo;
+  if (step.type === "question-group" || step.type === "flag-checklist") {
+    const sel = ans?.selected ?? {};
+    if (step.ifAnyYes && Object.values(sel).some(v => v === true)) return step.ifAnyYes;
+    // Treat undefined (untouched) items as "No" so an all-unchecked checklist triggers ifAllNo
+    if (step.ifAllNo && step.items.length > 0 && step.items.every(it => sel[it.id] !== true)) return step.ifAllNo;
+  }
+  if (step.type === "severity-scale") {
+    const val = ans?.value ?? 1;
+    const band = step.bands.find(b => val >= b.from && val <= b.to);
+    if (step.ifAnyYes && band) return step.ifAnyYes;
+  }
   return null;
 }
 
@@ -392,7 +411,7 @@ export function TriageRunner({ patient, onFinishTriage }: { patient: Patient | n
   const [algoId, setAlgoId] = useState<string | null>(() => enabled.length === 1 ? enabled[0].id : null);
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, StepAnswer>>({});
-  const [routed, setRouted] = useState<{ outcome: TriageOutcome; by: string } | null>(null);
+  const [routed, setRouted] = useState<{ outcome: TriageOutcome; by: string; severityBand?: { label: string; color: string } } | null>(null);
   const [done, setDone] = useState(false);
   const [startedAt, setStartedAt] = useState(() => Date.now());
 
@@ -486,6 +505,8 @@ export function TriageRunner({ patient, onFinishTriage }: { patient: Patient | n
       outcomeLabel: OUTCOME_CFG[outcome.type].label,
       adviceItems: outcome.adviceItems,
       routedBy: routed?.by ?? null,
+      severityBandLabel: routed?.severityBand?.label,
+      severityBandColor: routed?.severityBand?.color,
       stepAnswers: algo!.steps.slice(0, stepIndex + 1).map(s => ({
         stepId: s.id,
         stepTitle: s.title,
@@ -500,7 +521,16 @@ export function TriageRunner({ patient, onFinishTriage }: { patient: Patient | n
   function handleNext() {
     if (!step || !algo) return;
     const routing = evalRouting(step, currentAnswer);
-    if (routing) { setRouted({ outcome: routing, by: step.title }); return; }
+    if (routing) {
+      let severityBand: { label: string; color: string } | undefined;
+      if (step.type === "severity-scale") {
+        const val = currentAnswer?.value ?? 1;
+        const b = step.bands.find(bd => val >= bd.from && val <= bd.to);
+        if (b) severityBand = { label: b.label, color: b.color };
+      }
+      setRouted({ outcome: routing, by: step.title, severityBand });
+      return;
+    }
     if (stepIndex + 1 >= totalSteps) {
       // No routing fired — fall through with a default clinical-advice outcome
       handleFinish({ type: "advice", adviceItems: [] });
@@ -542,6 +572,7 @@ export function TriageRunner({ patient, onFinishTriage }: { patient: Patient | n
           <OutcomeDisplay
             outcome={routed.outcome}
             routedBy={routed.by}
+            severityBand={routed.severityBand}
             onFinish={() => handleFinish(routed.outcome)}
           />
         ) : isOutcomeStep ? (
