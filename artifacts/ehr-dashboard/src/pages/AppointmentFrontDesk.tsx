@@ -3,16 +3,18 @@ import {
   Calendar, ChevronLeft, ChevronRight, ChevronDown, Plus, Printer,
   Maximize2, Minimize2, X, Search, User, Phone, AlertCircle,
   CheckCircle2, Clock, Edit2, Eye, FileText, Stethoscope,
-  Repeat, AlertTriangle, LayoutGrid, Columns2, RefreshCw,
+  Repeat, AlertTriangle, LayoutGrid, Columns2, RefreshCw, UserPlus, UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { QueueAppHeader } from "@/pages/QueuePageLayout";
+import { QueueAppHeader, type Patient } from "@/pages/QueuePageLayout";
 import { useAppointmentDoctors } from "@/hooks/useAppointmentDoctors";
 import { useAppointments, type Appointment, type ApptStatus } from "@/hooks/useAppointments";
 import { usePatients } from "@/hooks/usePatients";
+import { useRegConfig } from "@/hooks/useRegConfig";
+import { RegFormPanel } from "@/components/reg/RegFormRenderer";
 import { useToast } from "@/hooks/use-toast";
 import type { Doctor } from "@/pages/DoctorsModule";
 
@@ -38,6 +40,17 @@ function formatDateShort(dateStr: string): string {
 function formatDateFull(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+}
+
+function calcAge(dob: string): number | null {
+  if (!dob) return null;
+  const [y, m, d] = dob.split("-").map(Number);
+  if (!y) return null;
+  const today = new Date();
+  return today.getFullYear() - y - (
+    today.getMonth() + 1 < m ||
+    (today.getMonth() + 1 === m && today.getDate() < d) ? 1 : 0
+  );
 }
 
 function addDays(dateStr: string, n: number): string {
@@ -165,6 +178,7 @@ interface BookingForm {
   date: string;
   slotStart: string;
   slotEnd: string;
+  patientId?: string;
   patientName: string;
   patientMrn: string;
   patientPhone: string;
@@ -182,7 +196,7 @@ interface BookingForm {
 function emptyForm(init?: Partial<BookingForm>): BookingForm {
   return {
     doctorId: "", date: todayStr(), slotStart: "", slotEnd: "",
-    patientName: "", patientMrn: "", patientPhone: "",
+    patientId: undefined, patientName: "", patientMrn: "", patientPhone: "",
     type: "", specialty: "", priority: "normal",
     contagious: false, contagiousNote: "",
     repeat: false, repeatType: "weekly", repeatNote: "",
@@ -194,17 +208,20 @@ function emptyForm(init?: Partial<BookingForm>): BookingForm {
 
 interface BookingDrawerProps {
   doctors: Doctor[];
+  appointments: Appointment[];
   init: Partial<BookingForm>;
   editAppt?: Appointment | null;
   onSave: (form: BookingForm) => void;
   onClose: () => void;
 }
 
-function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDrawerProps) {
-  const { patients } = usePatients();
+function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose }: BookingDrawerProps) {
+  const { patients, addPatient } = usePatients();
+  const { config: regConfig } = useRegConfig();
   const [form, setForm] = useState<BookingForm>(() => emptyForm(editAppt ? {
     doctorId: editAppt.doctorId, date: editAppt.date,
     slotStart: editAppt.slotStart, slotEnd: editAppt.slotEnd,
+    patientId: editAppt.patientId,
     patientName: editAppt.patientName, patientMrn: editAppt.patientMrn,
     patientPhone: editAppt.patientPhone, type: editAppt.type,
     specialty: editAppt.specialty, priority: editAppt.priority,
@@ -214,6 +231,9 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
   } : init));
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const [regValues, setRegValues] = useState<Record<string, string>>({});
+  const [regGender, setRegGender] = useState<"M" | "F">("M");
 
   const set = (k: keyof BookingForm, v: BookingForm[typeof k]) =>
     setForm(p => ({ ...p, [k]: v }));
@@ -232,15 +252,20 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
       p.name.toLowerCase().includes(q) ||
       p.mrn.toLowerCase().includes(q) ||
       p.phone.includes(q)
-    ).slice(0, 6);
+    ).slice(0, 8);
   }, [patients, search]);
 
-  function selectPatient(p: (typeof patients)[number]) {
-    set("patientName", p.name);
-    set("patientMrn", p.mrn);
-    set("patientPhone", p.phone);
-    setSearch(p.name);
+  function selectPatient(p: Patient) {
+    setForm(prev => ({ ...prev, patientId: p.id, patientName: p.name, patientMrn: p.mrn, patientPhone: p.phone }));
+    setSearch("");
     setSearchFocused(false);
+    setShowRegister(false);
+  }
+
+  function clearPatient() {
+    setForm(prev => ({ ...prev, patientId: undefined, patientName: "", patientMrn: "", patientPhone: "" }));
+    setSearch("");
+    setShowRegister(false);
   }
 
   const canSave = form.doctorId && form.date && form.slotStart && form.patientName;
@@ -269,57 +294,190 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
     >
       <div className="px-5 py-4 space-y-5">
 
-        {/* Patient Search */}
+        {/* Patient */}
         <section>
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Patient</label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <Input
-              placeholder="Search by name, MRN, or phone..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
-              className="pl-9 h-9 text-sm"
-            />
-            {searchFocused && filteredPatients.length > 0 && (
-              <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-lg z-10 overflow-hidden">
-                {filteredPatients.map(p => (
-                  <button
-                    key={p.id}
-                    onMouseDown={() => selectPatient(p)}
-                    className="w-full text-left px-3 py-2.5 hover:bg-slate-50 border-b border-slate-50 last:border-0"
-                  >
-                    <p className="text-sm font-semibold text-slate-900">{p.name}</p>
-                    <p className="text-xs text-slate-400">{p.mrn} · {p.phone}</p>
-                  </button>
-                ))}
+
+          {/* ── Selected-patient badge (registry-linked) ──────────────────────── */}
+          {form.patientId && (
+            <div className="flex items-center gap-3 px-3 py-2.5 bg-[#4982CF]/[0.06] border border-[#4982CF]/30 rounded-xl">
+              <div className="h-8 w-8 rounded-full bg-[#4982CF]/20 flex items-center justify-center flex-shrink-0">
+                <UserCheck className="h-4 w-4 text-[#4982CF]" />
               </div>
-            )}
-          </div>
-          {(form.patientName || form.patientMrn || form.patientPhone) && (
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-[10px] font-semibold text-slate-400 block mb-1">Full Name</label>
-                <Input value={form.patientName} onChange={e => set("patientName", e.target.value)} className="h-8 text-xs" placeholder="Name..." />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-slate-900 truncate">{form.patientName}</p>
+                <p className="text-xs text-slate-400 truncate">{form.patientMrn}{form.patientPhone ? ` · ${form.patientPhone}` : ""}</p>
               </div>
-              <div>
-                <label className="text-[10px] font-semibold text-slate-400 block mb-1">MR Number</label>
-                <Input value={form.patientMrn} onChange={e => set("patientMrn", e.target.value)} className="h-8 text-xs" placeholder="MR-XXXXX" />
-              </div>
-              <div>
-                <label className="text-[10px] font-semibold text-slate-400 block mb-1">Phone</label>
-                <Input value={form.patientPhone} onChange={e => set("patientPhone", e.target.value)} className="h-8 text-xs" placeholder="+92..." />
-              </div>
+              <button
+                onClick={clearPatient}
+                className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-400 flex-shrink-0"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
-          {!form.patientName && (
-            <button
-              onClick={() => { set("patientName", " "); set("patientMrn", ""); set("patientPhone", ""); setSearch(""); }}
-              className="mt-1.5 text-xs text-[#4982CF] hover:opacity-70 flex items-center gap-1"
-            >
-              <User className="h-3 w-3" /> Enter manually
-            </button>
+
+          {/* ── Search + register panel (when no registry patient attached) ──── */}
+          {!form.patientId && (
+            <>
+              {/* Search input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                <Input
+                  placeholder="Search by name, MRN, or phone..."
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); setShowRegister(false); }}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+                  className="pl-9 h-9 text-sm"
+                />
+
+                {/* Rich result cards */}
+                {searchFocused && search.trim() && filteredPatients.length > 0 && (
+                  <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden max-h-64 overflow-y-auto">
+                    {filteredPatients.map(p => {
+                      const age = calcAge(p.dob);
+                      const lastVisit = appointments
+                        .filter(a => a.patientMrn === p.mrn && a.date < todayStr())
+                        .sort((a, b) => b.date.localeCompare(a.date))[0];
+                      return (
+                        <button
+                          key={p.id}
+                          onMouseDown={() => selectPatient(p)}
+                          className="w-full text-left px-3 py-2.5 hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{p.name}</p>
+                            <span className="text-[10px] font-bold text-[#4982CF] bg-[#4982CF]/10 px-1.5 py-0.5 rounded flex-shrink-0">{p.mrn}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className="text-xs text-slate-400">{p.gender === "M" ? "Male" : "Female"}{age !== null ? ` · ${age}y` : ""}</span>
+                            {p.phone && <><span className="text-slate-300 text-xs">·</span><span className="text-xs text-slate-400">{p.phone}</span></>}
+                            {lastVisit && <><span className="text-slate-300 text-xs">·</span><span className="text-xs text-slate-400">Last: {formatDateShort(lastVisit.date)}</span></>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* No results hint */}
+                {searchFocused && search.trim() && filteredPatients.length === 0 && (
+                  <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-lg z-20 px-3 py-3 text-center">
+                    <p className="text-xs text-slate-400">No patients found for "{search}"</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action links */}
+              <div className="flex items-center gap-3 mt-1.5">
+                <button
+                  onClick={() => { setShowRegister(p => !p); setSearch(""); }}
+                  className="text-xs text-[#4982CF] hover:opacity-70 flex items-center gap-1 font-semibold"
+                >
+                  <UserPlus className="h-3 w-3" />
+                  {showRegister ? "Cancel registration" : "Register New Patient"}
+                </button>
+                {!showRegister && (
+                  <>
+                    <span className="text-slate-200 text-xs">|</span>
+                    <button
+                      onClick={() => { set("patientName", " "); set("patientMrn", ""); set("patientPhone", ""); setSearch(""); }}
+                      className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
+                    >
+                      <User className="h-3 w-3" /> Enter manually
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* ── Inline Registration Panel ──────────────────────────────── */}
+              {showRegister && (
+                <div className="mt-3 border border-[#4982CF]/20 rounded-xl bg-[#4982CF]/[0.02] overflow-hidden">
+                  <div className="px-4 pt-3 pb-2 border-b border-[#4982CF]/10 flex items-center justify-between">
+                    <p className="text-xs font-bold text-slate-700">New Patient Registration</p>
+                    <span className="text-[10px] text-[#4982CF] font-semibold">
+                      {regConfig.quickProfiles[0]?.name ?? "Default Profile"}
+                    </span>
+                  </div>
+                  <div className="px-4 py-3 max-h-64 overflow-y-auto space-y-3">
+                    {/* Gender — always shown first */}
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Gender *</label>
+                      <div className="flex gap-2">
+                        {(["M", "F"] as const).map(g => (
+                          <button
+                            key={g}
+                            onClick={() => setRegGender(g)}
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${regGender === g ? "bg-[#4982CF] text-white border-[#4982CF]" : "text-slate-500 border-slate-200 hover:border-[#4982CF]"}`}
+                          >
+                            {g === "M" ? "Male" : "Female"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Config-driven profile fields */}
+                    {(() => {
+                      const profile = regConfig.quickProfiles[0];
+                      const DEFAULT_FIELDS = [
+                        { fieldId: "name", label: "Full Name", visible: true, required: true, fieldType: "text" as const, placeholder: "Full name", options: [] as string[], isBuiltIn: true as const },
+                        { fieldId: "phone", label: "Phone", visible: true, required: true, fieldType: "text" as const, placeholder: "+92 …", options: [] as string[], isBuiltIn: true as const },
+                      ];
+                      const fields = profile ? profile.fields : DEFAULT_FIELDS;
+                      return (
+                        <RegFormPanel
+                          fields={fields}
+                          values={regValues}
+                          onChange={(fieldId, value) => setRegValues(prev => ({ ...prev, [fieldId]: value }))}
+                        />
+                      );
+                    })()}
+                  </div>
+                  <div className="px-4 pb-3 pt-1">
+                    <Button
+                      className="w-full h-8 bg-[#4982CF] hover:bg-[#3D73BC] text-white text-xs"
+                      disabled={!(regValues["name"]?.trim())}
+                      onClick={() => {
+                        const name = (regValues["name"] ?? "").trim();
+                        if (!name) return;
+                        const newPatient: Patient = {
+                          id: uid(),
+                          mrn: "MR-" + Math.floor(45000 + Math.random() * 5000),
+                          name,
+                          phone: regValues["phone"] ?? "",
+                          dob: regValues["dob"] ?? "",
+                          gender: regGender,
+                        };
+                        addPatient(newPatient);
+                        selectPatient(newPatient);
+                        setRegValues({});
+                        setRegGender("M");
+                      }}
+                    >
+                      <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Register & Attach
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Manual entry fields (no registry link) */}
+              {!showRegister && (form.patientName || form.patientMrn || form.patientPhone) && (
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-400 block mb-1">Full Name</label>
+                    <Input value={form.patientName} onChange={e => set("patientName", e.target.value)} className="h-8 text-xs" placeholder="Name..." />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-400 block mb-1">MR Number</label>
+                    <Input value={form.patientMrn} onChange={e => set("patientMrn", e.target.value)} className="h-8 text-xs" placeholder="MR-XXXXX" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-400 block mb-1">Phone</label>
+                    <Input value={form.patientPhone} onChange={e => set("patientPhone", e.target.value)} className="h-8 text-xs" placeholder="+92..." />
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </section>
 
@@ -1740,6 +1898,7 @@ export function AppointmentFrontDesk() {
       {drawerOpen && (
         <BookingDrawer
           doctors={appointmentDoctors}
+          appointments={appointments}
           init={drawerInitForm}
           editAppt={editAppt}
           onSave={handleSave}

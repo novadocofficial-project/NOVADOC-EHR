@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Workflow, CheckCircle2, Clock, RefreshCw, Search, UserPlus, ChevronRight, X, ArrowRight, LayoutGrid, List, UserX } from "lucide-react";
+import { RegFieldControl } from "@/components/reg/RegFormRenderer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -600,39 +601,6 @@ export function QueueTokenMultiStep() {
                 ? profile.fields.filter(f => f.visible)
                 : DEFAULT_QUICK_FALLBACK;
 
-              // Render the appropriate input control for each field type
-              const renderControl = (f: typeof visFields[0]) => {
-                const ft = f.fieldType ?? "text";
-                const ph = f.placeholder ?? f.label;
-                const val = quickFormValues[f.fieldId] ?? "";
-                const onChange = (v: string) => setQuickFormValues(prev => ({ ...prev, [f.fieldId]: v }));
-
-                if (ft === "dropdown" && f.options?.length) {
-                  return (
-                    <Select value={val} onValueChange={onChange}>
-                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={ph} /></SelectTrigger>
-                      <SelectContent>
-                        {f.options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  );
-                }
-                if (ft === "textarea") {
-                  return (
-                    <textarea
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-16"
-                      placeholder={ph} value={val}
-                      onChange={e => onChange(e.target.value)}
-                    />
-                  );
-                }
-                const inputType = f.fieldId === "phone" ? "tel" : ft === "date" ? "date" : ft === "number" ? "number" : "text";
-                return (
-                  <Input className="h-9 text-sm" type={inputType} placeholder={ph}
-                    value={val} onChange={e => onChange(e.target.value)} />
-                );
-              };
-
               const rows: React.ReactNode[] = [];
               let i = 0;
               while (i < visFields.length) {
@@ -643,11 +611,11 @@ export function QueueTokenMultiStep() {
                     <div key={`gr-${i}`} className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{f.label}{f.required && " *"}</label>
-                        {renderControl(f)}
+                        <RegFieldControl field={f} value={quickFormValues[f.fieldId] ?? ""} onChange={v => setQuickFormValues(prev => ({ ...prev, [f.fieldId]: v }))} />
                       </div>
                       <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{next.label}{next.required && " *"}</label>
-                        {renderControl(next)}
+                        <RegFieldControl field={next} value={quickFormValues[next.fieldId] ?? ""} onChange={v => setQuickFormValues(prev => ({ ...prev, [next.fieldId]: v }))} />
                       </div>
                     </div>
                   );
@@ -656,7 +624,7 @@ export function QueueTokenMultiStep() {
                   rows.push(
                     <div key={`sr-${i}`}>
                       <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">{f.label}{f.required && " *"}</label>
-                      {renderControl(f)}
+                      <RegFieldControl field={f} value={quickFormValues[f.fieldId] ?? ""} onChange={v => setQuickFormValues(prev => ({ ...prev, [f.fieldId]: v }))} />
                     </div>
                   );
                   i++;
