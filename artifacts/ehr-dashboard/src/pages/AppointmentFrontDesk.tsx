@@ -4,6 +4,8 @@ import {
   Maximize2, Minimize2, X, Search, User, Phone, AlertCircle,
   CheckCircle2, Clock, Edit2, Eye, FileText, Stethoscope,
   Repeat, AlertTriangle, LayoutGrid, Columns2, RefreshCw,
+  Hash, Check, ArrowRight, Pencil, CalendarDays, UserPlus,
+  Banknote, Shield, Building2, Heart, FileSignature,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +15,10 @@ import { QueueAppHeader } from "@/pages/QueuePageLayout";
 import { useAppointmentDoctors } from "@/hooks/useAppointmentDoctors";
 import { useAppointments, type Appointment, type ApptStatus } from "@/hooks/useAppointments";
 import { usePatients } from "@/hooks/usePatients";
+import { useRegConfig, type RegField } from "@/hooks/useRegConfig";
 import { useToast } from "@/hooks/use-toast";
 import type { Doctor } from "@/pages/DoctorsModule";
+import type { Patient } from "@/pages/QueuePageLayout";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -190,6 +194,525 @@ function emptyForm(init?: Partial<BookingForm>): BookingForm {
   };
 }
 
+// ─── Appointment Registration Sub-Drawer ─────────────────────────────────────
+
+interface ApptRegDrawerProps {
+  onRegister: (patient: Patient) => void;
+  onClose: () => void;
+}
+
+function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
+  const { config } = useRegConfig();
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [currentStep, setCurrentStep] = useState(0);
+  const [showReview, setShowReview] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+  const sigRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
+  const mrBanner = useRef("MR-" + Math.floor(45100 + Math.random() * 900)).current;
+
+  function setVal(id: string, v: string) { setValues(p => ({ ...p, [id]: v })); }
+
+  const orderedSections = [...config.sections]
+    .filter(s => s.enabled)
+    .sort((a, b) => a.workflowOrder - b.workflowOrder);
+
+  interface RegStepDef { id: string; name: string; sectionType: string; sectionId: string; }
+  const steps: RegStepDef[] = [];
+  const basicInfoSec = orderedSections.find(s => s.sectionType === "basic-info");
+  steps.push({ id: "basic-info", name: "Basic Info", sectionType: "basic-info", sectionId: basicInfoSec?.id ?? "" });
+  for (const sec of orderedSections) {
+    if (sec.sectionType === "demographics" && sec.fields.some(f => f.enabled))
+      steps.push({ id: sec.id, name: sec.name, sectionType: "demographics", sectionId: sec.id });
+  }
+  for (const sec of orderedSections) {
+    if (sec.sectionType === "custom" && (sec.fields.some(f => f.enabled) || sec.signatureRequired))
+      steps.push({ id: sec.id, name: sec.name, sectionType: "custom", sectionId: sec.id });
+  }
+
+  const safeStep = Math.min(currentStep, steps.length - 1);
+  const isLastStep = safeStep === steps.length - 1;
+  const stepDef = steps[safeStep];
+  const multiStep = steps.length > 1;
+
+  const patientType = values["_patient_type"] ?? (config.patientTypes.find(t => t.enabled)?.id ?? "cash");
+  const activeType = config.patientTypes.find(t => t.id === patientType && t.enabled);
+  const welfareForm = activeType?.welfareFormId ? config.welfareForms.find(f => f.id === activeType.welfareFormId) : null;
+  const conditionalFieldIds = basicInfoSec?.conditionalRules.flatMap(r => r.showFieldIds) ?? [];
+  const enabledTypes = config.patientTypes.filter(t => t.enabled);
+
+  function canAdvance(stepIdx: number): boolean {
+    const step = steps[stepIdx];
+    if (!step) return true;
+    const required: string[] = [];
+    if (step.sectionType === "basic-info") {
+      if (basicInfoSec) {
+        basicInfoSec.fields.filter(f => f.enabled && f.required && !conditionalFieldIds.includes(f.id)).forEach(f => required.push(f.id));
+        basicInfoSec.conditionalRules.forEach(rule => {
+          if (rule.triggerValues.includes(values[rule.triggerFieldId] ?? ""))
+            basicInfoSec.fields.filter(f => rule.showFieldIds.includes(f.id) && f.enabled && f.required).forEach(f => required.push(f.id));
+        });
+      }
+      (activeType?.extraFields ?? []).filter(f => f.enabled && f.required).forEach(f => required.push(f.id));
+    } else {
+      const sec = config.sections.find(s => s.id === step.sectionId);
+      if (sec) {
+        const condIds = sec.conditionalRules.flatMap(r => r.showFieldIds);
+        const visIds = sec.conditionalRules.flatMap(rule => rule.triggerValues.includes(values[rule.triggerFieldId] ?? "") ? rule.showFieldIds : []);
+        sec.fields.filter(f => f.enabled && f.required && f.type !== "signature" && f.type !== "file" && (!condIds.includes(f.id) || visIds.includes(f.id))).forEach(f => required.push(f.id));
+      }
+    }
+    return required.every(id => !!(values[id]));
+  }
+
+  const canSubmit = (() => {
+    const required: string[] = [];
+    if (basicInfoSec) {
+      basicInfoSec.fields.filter(f => f.enabled && f.required && !conditionalFieldIds.includes(f.id)).forEach(f => required.push(f.id));
+      basicInfoSec.conditionalRules.forEach(rule => {
+        if (rule.triggerValues.includes(values[rule.triggerFieldId] ?? ""))
+          basicInfoSec.fields.filter(f => rule.showFieldIds.includes(f.id) && f.enabled && f.required).forEach(f => required.push(f.id));
+      });
+    }
+    (activeType?.extraFields ?? []).filter(f => f.enabled && f.required).forEach(f => required.push(f.id));
+    config.sections.filter(s => s.sectionType === "demographics" && s.enabled).forEach(sec =>
+      sec.fields.filter(f => f.enabled && f.required && f.type !== "signature" && f.type !== "file").forEach(f => required.push(f.id))
+    );
+    config.sections.filter(s => s.sectionType === "custom" && s.enabled).forEach(sec => {
+      const condIds = sec.conditionalRules.flatMap(r => r.showFieldIds);
+      const visIds = sec.conditionalRules.flatMap(rule => rule.triggerValues.includes(values[rule.triggerFieldId] ?? "") ? rule.showFieldIds : []);
+      sec.fields.filter(f => f.enabled && f.required && f.type !== "signature" && f.type !== "file" && (!condIds.includes(f.id) || visIds.includes(f.id))).forEach(f => required.push(f.id));
+    });
+    return required.every(id => !!(values[id]));
+  })();
+
+  function renderField(field: RegField): React.ReactNode {
+    const val = values[field.id] ?? "";
+    const lbl = (
+      <label className="text-xs font-semibold text-slate-600 mb-1 block">
+        {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+    );
+    if (field.type === "text" || field.type === "number") {
+      return <div key={field.id}>{lbl}<Input type={field.type === "number" ? "number" : "text"} placeholder={field.placeholder} value={val} onChange={e => setVal(field.id, e.target.value)} /></div>;
+    }
+    if (field.type === "date") {
+      return <div key={field.id}>{lbl}<div className="relative"><CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" /><Input className="pl-8" type="date" value={val} onChange={e => setVal(field.id, e.target.value)} /></div></div>;
+    }
+    if (field.type === "textarea") {
+      return <div key={field.id}>{lbl}<textarea className="w-full px-3 py-2 text-sm rounded-lg border border-input resize-none focus:outline-none focus:ring-1 focus:ring-ring h-16" placeholder={field.placeholder} value={val} onChange={e => setVal(field.id, e.target.value)} /></div>;
+    }
+    if (field.type === "dropdown") {
+      return <div key={field.id}>{lbl}<Select value={val || ""} onValueChange={v => setVal(field.id, v)}><SelectTrigger><SelectValue placeholder={field.placeholder || "Select..."} /></SelectTrigger><SelectContent>{(field.options ?? []).map(opt => <SelectItem key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</SelectItem>)}</SelectContent></Select></div>;
+    }
+    if (field.type === "signature") {
+      return (
+        <div key={field.id}>
+          {lbl}
+          <div className="rounded-xl border-2 border-dashed border-red-200 bg-white overflow-hidden">
+            <canvas
+              ref={el => { sigRefs.current[field.id] = el; }}
+              width={560} height={100}
+              className="w-full touch-none cursor-crosshair"
+              onMouseDown={e => {
+                const cv = sigRefs.current[field.id]; if (!cv) return;
+                setDrawing(true);
+                const r = cv.getBoundingClientRect();
+                const ctx = cv.getContext("2d")!;
+                ctx.beginPath(); ctx.moveTo(e.clientX - r.left, e.clientY - r.top);
+              }}
+              onMouseMove={e => {
+                if (!drawing) return;
+                const cv = sigRefs.current[field.id]; if (!cv) return;
+                const r = cv.getBoundingClientRect();
+                const ctx = cv.getContext("2d")!;
+                ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 2; ctx.lineCap = "round";
+                ctx.lineTo(e.clientX - r.left, e.clientY - r.top); ctx.stroke();
+              }}
+              onMouseUp={() => setDrawing(false)}
+              onMouseLeave={() => setDrawing(false)}
+            />
+          </div>
+          <button onClick={() => { const cv = sigRefs.current[field.id]; if (cv) cv.getContext("2d")!.clearRect(0, 0, cv.width, cv.height); }}
+            className="text-xs font-semibold text-slate-400 hover:text-slate-600 flex items-center gap-1 mt-1">
+            <RefreshCw className="h-3 w-3" /> Clear
+          </button>
+        </div>
+      );
+    }
+    if (field.type === "checkbox") {
+      const checked = (val || "").split(",").filter(Boolean);
+      return (
+        <div key={field.id}>
+          {lbl}
+          <div className="space-y-1.5">
+            {(field.options ?? []).map(opt => (
+              <label key={opt} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                <input type="checkbox" checked={checked.includes(opt)}
+                  onChange={e => { const next = e.target.checked ? [...checked, opt] : checked.filter(x => x !== opt); setVal(field.id, next.join(",")); }}
+                  className="h-4 w-4 rounded border-slate-300 accent-[#4982CF]" />
+                {opt}
+              </label>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    if (field.type === "radio") {
+      return (
+        <div key={field.id}>
+          {lbl}
+          <div className="space-y-1.5">
+            {(field.options ?? []).map(opt => (
+              <label key={opt} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                <input type="radio" name={field.id} value={opt} checked={val === opt}
+                  onChange={() => setVal(field.id, opt)} className="h-4 w-4 border-slate-300 accent-[#4982CF]" />
+                {opt}
+              </label>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    if (field.type === "file") {
+      return <div key={field.id}>{lbl}<input type="file" className="w-full text-sm cursor-pointer file:h-9 file:px-3 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:font-semibold" /></div>;
+    }
+    return null;
+  }
+
+  const SHORT_TYPES = new Set<string>(["text", "number", "date", "dropdown"]);
+  function renderFieldsInGrid(fields: RegField[], keyPrefix = ""): React.ReactNode[] {
+    const rows: React.ReactNode[] = [];
+    let i = 0;
+    while (i < fields.length) {
+      const f = fields[i], next = fields[i + 1];
+      if (SHORT_TYPES.has(f.type) && next && SHORT_TYPES.has(next.type)) {
+        rows.push(<div key={`${keyPrefix}g-${i}`} className="grid grid-cols-2 gap-3">{renderField(f)}{renderField(next)}</div>);
+        i += 2;
+      } else {
+        rows.push(<div key={`${keyPrefix}s-${i}`}>{renderField(f)}</div>);
+        i++;
+      }
+    }
+    return rows;
+  }
+
+  const PT_ICONS: Record<string, React.ReactNode> = {
+    cash: <Banknote className="h-4 w-4" />,
+    insurance: <Shield className="h-4 w-4" />,
+    corporate: <Building2 className="h-4 w-4" />,
+    welfare: <Heart className="h-4 w-4" />,
+  };
+
+  function renderStepContent(): React.ReactNode {
+    if (!stepDef) return null;
+    if (stepDef.sectionType === "basic-info") {
+      const blocks: React.ReactNode[] = [];
+      if (basicInfoSec) {
+        const condIds = basicInfoSec.conditionalRules.flatMap(r => r.showFieldIds);
+        const normalFlds = basicInfoSec.fields.filter(f => f.enabled && !condIds.includes(f.id));
+        blocks.push(
+          <React.Fragment key="bi-fields">
+            {renderFieldsInGrid(normalFlds, basicInfoSec.id)}
+            {basicInfoSec.conditionalRules.map(rule => {
+              const tv = values[rule.triggerFieldId] ?? "";
+              if (!rule.triggerValues.includes(tv)) return null;
+              const condFlds = basicInfoSec.fields.filter(f => rule.showFieldIds.includes(f.id) && f.enabled);
+              if (!condFlds.length) return null;
+              return (
+                <div key={rule.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                  <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{tv} Details</p>
+                  <div className="grid grid-cols-2 gap-3">{condFlds.map(f => renderField(f))}</div>
+                </div>
+              );
+            })}
+          </React.Fragment>
+        );
+      }
+      if (enabledTypes.length > 0) {
+        blocks.push(
+          <div key="__pt__">
+            <label className="text-xs font-semibold text-slate-600 mb-2 block">Type of Patient</label>
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${enabledTypes.length}, 1fr)` }}>
+              {enabledTypes.map(t => (
+                <button key={t.id} onClick={() => setVal("_patient_type", t.id)}
+                  className={`flex flex-col items-center gap-1.5 rounded-xl border py-3 text-xs font-bold transition-all ${patientType === t.id ? "text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}
+                  style={patientType === t.id ? { borderColor: t.color, backgroundColor: t.color } : undefined}>
+                  {PT_ICONS[t.id] ?? <User className="h-4 w-4" />}
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      }
+      if (activeType && activeType.extraFields.filter(f => f.enabled).length > 0) {
+        blocks.push(
+          <div key="__te__" className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{activeType.label} Details</p>
+            {renderFieldsInGrid(activeType.extraFields.filter(f => f.enabled), "te-")}
+          </div>
+        );
+      }
+      if (patientType === "welfare" && welfareForm) {
+        const wfCondIds = (welfareForm.conditionalRules ?? []).flatMap(r => r.showFieldIds);
+        const wfNormFlds = welfareForm.fields.filter(f => f.enabled && !wfCondIds.includes(f.id));
+        blocks.push(
+          <div key="__wf__" className="rounded-xl border border-red-100 bg-red-50 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <FileSignature className="h-4 w-4 text-red-500" />
+              <p className="text-sm font-bold text-red-700">Welfare Form — {welfareForm.name}</p>
+            </div>
+            {wfNormFlds.map(f => renderField(f))}
+            {(welfareForm.conditionalRules ?? []).map(rule => {
+              const tv = values[rule.triggerFieldId] ?? "";
+              if (!rule.triggerValues.includes(tv)) return null;
+              const condFlds = welfareForm.fields.filter(f => rule.showFieldIds.includes(f.id) && f.enabled);
+              if (!condFlds.length) return null;
+              return (
+                <div key={rule.id} className="rounded-xl border border-red-200 bg-white/60 p-3 space-y-3">
+                  <p className="text-xs font-bold text-red-600 uppercase tracking-wide">{tv} Details</p>
+                  <div className="space-y-3">{condFlds.map(f => renderField(f))}</div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+      return <>{blocks}</>;
+    }
+    if (stepDef.sectionType === "demographics") {
+      const sec = config.sections.find(s => s.id === stepDef.sectionId);
+      if (!sec) return null;
+      return <div className="space-y-4">{renderFieldsInGrid(sec.fields.filter(f => f.enabled), sec.id)}</div>;
+    }
+    if (stepDef.sectionType === "custom") {
+      const sec = config.sections.find(s => s.id === stepDef.sectionId);
+      if (!sec) return null;
+      const condIds = sec.conditionalRules.flatMap(r => r.showFieldIds);
+      const visIds = sec.conditionalRules.flatMap(rule => rule.triggerValues.includes(values[rule.triggerFieldId] ?? "") ? rule.showFieldIds : []);
+      const visFields = sec.fields.filter(f => f.enabled && (!condIds.includes(f.id) || visIds.includes(f.id)));
+      const hasContent = visFields.length > 0 || sec.signatureRequired;
+      return (
+        <div className="space-y-4">
+          {sec.description && <p className="text-xs text-slate-400 -mt-1">{sec.description}</p>}
+          {hasContent ? (
+            <>
+              {renderFieldsInGrid(visFields, sec.id)}
+              {sec.signatureRequired && renderField({ id: `${sec.id}_sig`, label: "Section Signature", type: "signature", required: true, enabled: true, options: [], placeholder: "" })}
+            </>
+          ) : (
+            <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-6 text-center">
+              <p className="text-sm text-slate-400">No fields to fill in for this section.</p>
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  }
+
+  function renderReviewSummary(): React.ReactNode {
+    type SummarySection = { title: string; items: { label: string; value: string }[] };
+    const sections: SummarySection[] = [];
+    if (basicInfoSec) {
+      const items: { label: string; value: string }[] = [];
+      const condIds = basicInfoSec.conditionalRules.flatMap(r => r.showFieldIds);
+      const normalFlds = basicInfoSec.fields.filter(f => f.enabled && !condIds.includes(f.id) && f.type !== "signature" && f.type !== "file");
+      for (const f of normalFlds) { const v = values[f.id]; if (v) items.push({ label: f.label, value: v }); }
+      for (const rule of basicInfoSec.conditionalRules) {
+        const tv = values[rule.triggerFieldId] ?? "";
+        if (rule.triggerValues.includes(tv)) {
+          const condFlds = basicInfoSec.fields.filter(f => rule.showFieldIds.includes(f.id) && f.enabled && f.type !== "signature" && f.type !== "file");
+          for (const f of condFlds) { const v = values[f.id]; if (v) items.push({ label: f.label, value: v }); }
+        }
+      }
+      const pt = config.patientTypes.find(t => t.id === patientType);
+      if (pt) items.push({ label: "Patient Type", value: pt.label });
+      if (activeType) {
+        for (const f of activeType.extraFields.filter(ef => ef.enabled && ef.type !== "signature" && ef.type !== "file")) {
+          const v = values[f.id]; if (v) items.push({ label: f.label, value: v });
+        }
+      }
+      if (items.length > 0) sections.push({ title: "Basic Info", items });
+    }
+    for (const sec of orderedSections.filter(s => s.sectionType === "demographics")) {
+      const items: { label: string; value: string }[] = [];
+      for (const f of sec.fields.filter(f => f.enabled && f.type !== "signature" && f.type !== "file")) {
+        const v = values[f.id]; if (v) items.push({ label: f.label, value: v });
+      }
+      if (items.length > 0) sections.push({ title: sec.name, items });
+    }
+    for (const sec of orderedSections.filter(s => s.sectionType === "custom")) {
+      const condIds = sec.conditionalRules.flatMap(r => r.showFieldIds);
+      const visIds = sec.conditionalRules.flatMap(rule => rule.triggerValues.includes(values[rule.triggerFieldId] ?? "") ? rule.showFieldIds : []);
+      const items: { label: string; value: string }[] = [];
+      for (const f of sec.fields.filter(f => f.enabled && f.type !== "signature" && f.type !== "file" && (!condIds.includes(f.id) || visIds.includes(f.id)))) {
+        const v = values[f.id]; if (v) items.push({ label: f.label, value: v });
+      }
+      if (items.length > 0) sections.push({ title: sec.name, items });
+    }
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-[#4982CF]/30 bg-blue-50/70 px-4 py-3 flex items-start gap-2.5">
+          <CheckCircle2 className="h-4 w-4 text-[#4982CF] flex-shrink-0 mt-0.5" />
+          <p className="text-xs font-semibold text-[#4982CF] leading-snug">Review all information below before registering. Tap <span className="font-bold">Back to Edit</span> to make changes.</p>
+        </div>
+        {sections.length === 0 ? (
+          <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-8 text-center">
+            <p className="text-sm text-slate-400">No information filled in yet.</p>
+          </div>
+        ) : (
+          sections.map((sec, si) => (
+            <div key={si} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{sec.title}</p>
+              </div>
+              <div className="divide-y divide-slate-50">
+                {sec.items.map((item, ii) => (
+                  <div key={ii} className="flex items-start gap-3 px-4 py-2.5">
+                    <span className="text-[11px] text-slate-400 w-28 flex-shrink-0 pt-px">{item.label}</span>
+                    <span className="text-[11px] font-semibold text-slate-700 flex-1">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    );
+  }
+
+  function handleSubmit() {
+    const firstName = values["first_name"] ?? "";
+    const lastName  = values["last_name"]  ?? "";
+    onRegister({
+      id:     uid(),
+      mrn:    "MR-" + Math.floor(45000 + Math.random() * 5000),
+      name:   `${firstName} ${lastName}`.trim() || "Patient",
+      phone:  values["phone"] ?? "",
+      dob:    values["dob"]   ?? "",
+      gender: "M",
+    });
+  }
+
+  return (
+    <div className="fixed top-0 right-0 h-full z-[60] w-[42%] min-w-[520px] bg-white flex flex-col shadow-2xl border-l border-slate-200">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 flex-shrink-0 bg-white">
+        <button onClick={onClose}
+          className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex-shrink-0 transition-colors">
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-900">Register Patient</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Fill in details — patient will be added to the appointment</p>
+        </div>
+        <button onClick={onClose}
+          className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Scrollable form body */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-5 space-y-5">
+
+          {/* Step progress indicator */}
+          {multiStep && (
+            <div className="flex items-start gap-0">
+              {steps.map((step, idx) => {
+                const isActive = idx === safeStep;
+                const isDone   = idx < safeStep;
+                return (
+                  <React.Fragment key={step.id}>
+                    {idx > 0 && (
+                      <div className={`flex-1 h-0.5 mt-3.5 transition-colors ${isDone ? "bg-green-400" : "bg-slate-200"}`} />
+                    )}
+                    <div className="flex flex-col items-center flex-shrink-0 w-14">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                        isActive ? "bg-[#4982CF] text-white ring-4 ring-[#4982CF]/20" :
+                        isDone   ? "bg-green-500 text-white" :
+                                   "bg-slate-100 text-slate-400"
+                      }`}>
+                        {isDone ? <Check className="h-3.5 w-3.5" /> : idx + 1}
+                      </div>
+                      <span className={`text-[9px] font-bold uppercase tracking-wide mt-1 text-center leading-tight ${
+                        isActive ? "text-[#4982CF]" : isDone ? "text-green-600" : "text-slate-400"
+                      }`}>{step.name}</span>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
+
+          {/* MR number banner */}
+          {!showReview && (
+            <div className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
+              <Hash className="h-4 w-4 text-slate-400 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient ID / MR No</p>
+                <p className="text-sm font-mono font-bold text-slate-700">{mrBanner} (auto-generated)</p>
+              </div>
+            </div>
+          )}
+
+          {/* Step content or review */}
+          {showReview ? renderReviewSummary() : renderStepContent()}
+        </div>
+      </div>
+
+      {/* Footer navigation */}
+      <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
+        {multiStep ? (
+          showReview ? (
+            <div className="flex gap-3">
+              <Button variant="outline" className="h-11 px-5 text-sm font-bold"
+                onClick={() => setShowReview(false)}>
+                <Pencil className="h-4 w-4 mr-1.5" /> Back to Edit
+              </Button>
+              <Button className="flex-1 h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
+                disabled={!canSubmit} onClick={handleSubmit}>
+                <UserPlus className="h-4 w-4" /> Register Patient
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-3">
+              <Button variant="outline" className="h-11 px-5 text-sm font-bold"
+                onClick={() => setCurrentStep(s => Math.max(0, s - 1))} disabled={safeStep === 0}>
+                <ChevronLeft className="h-4 w-4 mr-1" /> Back
+              </Button>
+              {isLastStep ? (
+                <>
+                  <Button variant="outline" className="h-11 px-4 text-sm font-bold text-[#4982CF] border-[#4982CF]/40 hover:bg-blue-50"
+                    onClick={() => setShowReview(true)}>
+                    <Eye className="h-4 w-4 mr-1.5" /> Review
+                  </Button>
+                  <Button className="flex-1 h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
+                    disabled={!canSubmit} onClick={handleSubmit}>
+                    <UserPlus className="h-4 w-4" /> Register Patient
+                  </Button>
+                </>
+              ) : (
+                <Button className="flex-1 h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
+                  disabled={!canAdvance(safeStep)}
+                  onClick={() => setCurrentStep(s => Math.min(steps.length - 1, s + 1))}>
+                  Next <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )
+        ) : (
+          <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
+            disabled={!canSubmit} onClick={handleSubmit}>
+            <UserPlus className="h-4 w-4" /> Register Patient
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Booking Drawer ───────────────────────────────────────────────────────────
 
 interface BookingDrawerProps {
@@ -201,7 +724,8 @@ interface BookingDrawerProps {
 }
 
 function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDrawerProps) {
-  const { patients } = usePatients();
+  const { patients, addPatient } = usePatients();
+  const [showRegDrawer, setShowRegDrawer] = useState(false);
   const [form, setForm] = useState<BookingForm>(() => emptyForm(editAppt ? {
     doctorId: editAppt.doctorId, date: editAppt.date,
     slotStart: editAppt.slotStart, slotEnd: editAppt.slotEnd,
@@ -249,6 +773,7 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
   const subtitle = editAppt ? `Editing ${editAppt.patientName}` : "Fill in the details below";
 
   return (
+    <>
     <RightDrawer
       title={title}
       subtitle={subtitle}
@@ -272,30 +797,40 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
         {/* Patient Search */}
         <section>
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Patient</label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <Input
-              placeholder="Search by name, MRN, or phone..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
-              className="pl-9 h-9 text-sm"
-            />
-            {searchFocused && filteredPatients.length > 0 && (
-              <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-lg z-10 overflow-hidden">
-                {filteredPatients.map(p => (
-                  <button
-                    key={p.id}
-                    onMouseDown={() => selectPatient(p)}
-                    className="w-full text-left px-3 py-2.5 hover:bg-slate-50 border-b border-slate-50 last:border-0"
-                  >
-                    <p className="text-sm font-semibold text-slate-900">{p.name}</p>
-                    <p className="text-xs text-slate-400">{p.mrn} · {p.phone}</p>
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="flex gap-2 items-start">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Input
+                placeholder="Search by name, MRN, or phone..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+                className="pl-9 h-9 text-sm"
+              />
+              {searchFocused && filteredPatients.length > 0 && (
+                <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-lg z-10 overflow-hidden">
+                  {filteredPatients.map(p => (
+                    <button
+                      key={p.id}
+                      onMouseDown={() => selectPatient(p)}
+                      className="w-full text-left px-3 py-2.5 hover:bg-slate-50 border-b border-slate-50 last:border-0"
+                    >
+                      <p className="text-sm font-semibold text-slate-900">{p.name}</p>
+                      <p className="text-xs text-slate-400">{p.mrn} · {p.phone}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Button
+              type="button"
+              onClick={() => setShowRegDrawer(true)}
+              className="h-9 px-3 text-xs font-bold gap-1.5 flex-shrink-0 bg-[#4982CF] hover:bg-[#3D73BC] text-white"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              Register Patient
+            </Button>
           </div>
           {(form.patientName || form.patientMrn || form.patientPhone) && (
             <div className="mt-2 grid grid-cols-3 gap-2">
@@ -520,6 +1055,17 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
         </section>
       </div>
     </RightDrawer>
+    {showRegDrawer && (
+      <ApptRegDrawer
+        onRegister={patient => {
+          addPatient(patient);
+          selectPatient(patient);
+          setShowRegDrawer(false);
+        }}
+        onClose={() => setShowRegDrawer(false)}
+      />
+    )}
+    </>
   );
 }
 
