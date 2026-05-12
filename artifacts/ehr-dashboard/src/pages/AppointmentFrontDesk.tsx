@@ -275,7 +275,7 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input
-              placeholder="Search by name, MR, CNIC, phone..."
+              placeholder="Search by name, MRN, or phone..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               onFocus={() => setSearchFocused(true)}
@@ -1101,12 +1101,18 @@ export function AppointmentFrontDesk() {
 
   const selectedDoctor = appointmentDoctors.find(d => d.id === selectedDoctorId) ?? appointmentDoctors[0] ?? null;
 
-  // All types from selected doctor's services (for filter chips)
+  // Appointment type filter chips — scoped to the active doctor in calendar mode,
+  // or the union of all doctors' services in doctor-layout mode.
   const allTypes = useMemo(() => {
     const types = new Set<string>();
-    appointmentDoctors.forEach(d => d.services.forEach(s => types.add(s)));
+    if (layoutMode === "doctor") {
+      appointmentDoctors.forEach(d => d.services.forEach(s => types.add(s)));
+    } else {
+      const activeDoc = appointmentDoctors.find(d => d.id === selectedDoctorId);
+      (activeDoc?.services ?? []).forEach(s => types.add(s));
+    }
     return Array.from(types);
-  }, [appointmentDoctors]);
+  }, [appointmentDoctors, layoutMode, selectedDoctorId]);
 
   // Stats
   const stats = useMemo(() => {
