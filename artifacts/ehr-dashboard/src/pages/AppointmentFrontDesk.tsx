@@ -1529,11 +1529,11 @@ export function AppointmentFrontDesk() {
       <QueueAppHeader />
 
       {/* Control Bar */}
-      <div className="bg-white border-b border-slate-200 px-5 py-3 flex items-center gap-3 flex-wrap shadow-sm">
+      <div className="bg-white border-b border-slate-200 px-5 py-3 flex items-center gap-3 shadow-sm">
         {/* Doctor selector (only in calendar mode) */}
         {layoutMode === "calendar" && (
           <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
-            <SelectTrigger className="h-9 w-52 text-sm border-slate-200">
+            <SelectTrigger className="h-9 w-52 text-sm border-slate-200 flex-shrink-0">
               <Stethoscope className="h-3.5 w-3.5 text-[#4982CF] mr-1.5 flex-shrink-0" />
               <SelectValue placeholder="Select doctor..." />
             </SelectTrigger>
@@ -1550,89 +1550,12 @@ export function AppointmentFrontDesk() {
           </Select>
         )}
 
-        {/* Date navigation */}
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" className="h-9 w-9 border-slate-200" onClick={() => navigate(-1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="px-3 py-2 text-sm font-semibold text-slate-700 min-w-[220px] text-center">
-            {dateLabel()}
-          </div>
-          <Button variant="outline" size="icon" className="h-9 w-9 border-slate-200" onClick={() => navigate(1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 text-xs font-semibold text-slate-500 hover:text-slate-700"
-            onClick={() => setSelectedDate(todayStr())}
-          >
-            <RefreshCw className="h-3 w-3 mr-1" /> Today
-          </Button>
-        </div>
-
-        {/* View mode */}
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-          {(["day", "week", "month"] as ViewMode[]).map(v => (
-            <button
-              key={v}
-              onClick={() => setViewMode(v)}
-              className={`px-3 py-1.5 text-xs font-bold capitalize transition-colors border-r border-slate-200 last:border-0 ${viewMode === v ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-
-        {/* Layout mode */}
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-          <button
-            onClick={() => setLayoutMode("calendar")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border-r border-slate-200 transition-colors ${layoutMode === "calendar" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
-          >
-            <Calendar className="h-3.5 w-3.5" /> Calendar
-          </button>
-          <button
-            onClick={() => setLayoutMode("doctor")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors ${layoutMode === "doctor" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
-          >
-            <Columns2 className="h-3.5 w-3.5" /> Doctor
-          </button>
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 text-slate-500 hover:text-slate-700"
-            onClick={() => window.print()}
-          >
-            <Printer className="h-4 w-4" />
-          </Button>
-          <Button
-            className="h-9 bg-[#4982CF] hover:bg-[#3D73BC] text-white text-sm gap-2"
-            onClick={() => openBooking({ doctorId: selectedDoctorId, date: selectedDate })}
-          >
-            <Plus className="h-4 w-4" /> Quick Add
-          </Button>
-        </div>
-      </div>
-
-      {/* Stats + Filter Bar (combined) */}
-      <div className="bg-white border-b border-slate-100 px-5 py-0 flex items-center gap-2 min-h-[40px]">
-        {/* Total */}
+        {/* Status badges — right of Doctor selector */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <div className="h-6 w-6 rounded-full bg-[#4982CF]/10 flex items-center justify-center">
-            <Calendar className="h-3 w-3 text-[#4982CF]" />
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#4982CF]/10 text-xs font-bold text-[#4982CF]">
+            <Calendar className="h-3 w-3 flex-shrink-0" />
+            {stats.total}
           </div>
-          <span className="text-sm font-bold text-slate-900">{stats.total}</span>
-          <span className="text-xs text-slate-400">Total</span>
-        </div>
-
-        <div className="h-4 w-px bg-slate-200 flex-shrink-0" />
-
-        {/* Non-zero status badges only */}
-        <div className="flex items-center gap-1.5 py-2 overflow-hidden">
           {STAT_ITEMS.filter(({ key }) => stats.counts[key] > 0).length === 0 ? (
             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-400">
               <span className="h-1.5 w-1.5 rounded-full bg-slate-300 flex-shrink-0" />
@@ -1651,28 +1574,103 @@ export function AppointmentFrontDesk() {
           )}
         </div>
 
-        {/* Type filter chips — only when multiple types exist */}
-        {allTypes.length > 0 && (
-          <>
-            <div className="h-4 w-px bg-slate-200 flex-shrink-0 ml-auto" />
-            <div className="flex items-center gap-1.5 flex-shrink-0 py-2">
-              {allTypes.map(t => (
-                <button
-                  key={t}
-                  onClick={() => toggleType(t)}
-                  className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-all ${filterTypes.includes(t) ? "bg-[#4982CF] text-white border-[#4982CF]" : "bg-white text-slate-500 border-slate-200 hover:border-[#4982CF]"}`}
-                >
-                  {t}
-                </button>
-              ))}
-              {filterTypes.length > 0 && (
-                <button onClick={() => setFilterTypes([])} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-0.5 ml-1">
-                  <X className="h-3 w-3" /> Clear
-                </button>
-              )}
-            </div>
-          </>
+        {/* Layout mode + Print + Quick Add — pushed to far right */}
+        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+          {/* Calendar / Doctor toggle */}
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+            <button
+              onClick={() => setLayoutMode("calendar")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border-r border-slate-200 transition-colors ${layoutMode === "calendar" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
+            >
+              <Calendar className="h-3.5 w-3.5" /> Calendar
+            </button>
+            <button
+              onClick={() => setLayoutMode("doctor")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors ${layoutMode === "doctor" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
+            >
+              <Columns2 className="h-3.5 w-3.5" /> Doctor
+            </button>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 text-slate-500 hover:text-slate-700"
+            onClick={() => window.print()}
+          >
+            <Printer className="h-4 w-4" />
+          </Button>
+          <Button
+            className="h-9 bg-[#4982CF] hover:bg-[#3D73BC] text-white text-sm gap-2"
+            onClick={() => openBooking({ doctorId: selectedDoctorId, date: selectedDate })}
+          >
+            <Plus className="h-4 w-4" /> Quick Add
+          </Button>
+        </div>
+      </div>
+
+      {/* Sub-bar: Type filters (left) + Date/View nav (right) */}
+      <div className="bg-white border-b border-slate-100 px-5 py-0 flex items-center gap-2 min-h-[40px]">
+        {/* Type filter chips — left side */}
+        {allTypes.length > 0 ? (
+          <div className="flex items-center gap-1.5 py-2 flex-shrink-0">
+            {allTypes.map(t => (
+              <button
+                key={t}
+                onClick={() => toggleType(t)}
+                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-all ${filterTypes.includes(t) ? "bg-[#4982CF] text-white border-[#4982CF]" : "bg-white text-slate-500 border-slate-200 hover:border-[#4982CF]"}`}
+              >
+                {t}
+              </button>
+            ))}
+            {filterTypes.length > 0 && (
+              <button onClick={() => setFilterTypes([])} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-0.5 ml-1">
+                <X className="h-3 w-3" /> Clear
+              </button>
+            )}
+          </div>
+        ) : (
+          <div />
         )}
+
+        {/* Date nav + View mode — right side */}
+        <div className="ml-auto flex items-center gap-2 py-1 flex-shrink-0">
+          {/* Date navigation */}
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="h-8 w-8 border-slate-200" onClick={() => navigate(-1)}>
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <div className="px-3 text-sm font-semibold text-slate-700 min-w-[200px] text-center">
+              {dateLabel()}
+            </div>
+            <Button variant="outline" size="icon" className="h-8 w-8 border-slate-200" onClick={() => navigate(1)}>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs font-semibold text-slate-500 hover:text-slate-700"
+              onClick={() => setSelectedDate(todayStr())}
+            >
+              <RefreshCw className="h-3 w-3 mr-1" /> Today
+            </Button>
+          </div>
+
+          <div className="h-4 w-px bg-slate-200" />
+
+          {/* Day / Week / Month toggle */}
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+            {(["day", "week", "month"] as ViewMode[]).map(v => (
+              <button
+                key={v}
+                onClick={() => setViewMode(v)}
+                className={`px-3 py-1 text-xs font-bold capitalize transition-colors border-r border-slate-200 last:border-0 ${viewMode === v ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Calendar Content */}
