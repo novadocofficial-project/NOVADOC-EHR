@@ -1236,6 +1236,92 @@ function MonthDayOverlay({ date, doctor, appointments, filterTypes, onClickAppt,
   );
 }
 
+// ─── Month Slot Picker ────────────────────────────────────────────────────────
+
+interface MonthSlotPickerProps {
+  date: string;
+  doctor: Doctor;
+  appointments: Appointment[];
+  onSelectSlot: (slot: SlotBlock) => void;
+  onAnyTime: () => void;
+  onClose: () => void;
+}
+
+function MonthSlotPicker({ date, doctor, appointments, onSelectSlot, onAnyTime, onClose }: MonthSlotPickerProps) {
+  const slots = useMemo(() => doctor.timings.flatMap(t => generateSlots(t, date)), [doctor, date]);
+  const dayLabel = new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
+      <div className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] max-w-[92vw] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[72vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
+          <div>
+            <p className="text-sm font-bold text-slate-900">Pick a time slot</p>
+            <p className="text-xs text-slate-400 mt-0.5">{dayLabel}</p>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Slot list */}
+        <div className="flex-1 overflow-y-auto px-3 py-2">
+          {slots.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-6">No slots available for this day.</p>
+          ) : (
+            slots.map(slot => {
+              const booked = appointments.filter(a =>
+                a.doctorId === doctor.id &&
+                a.date === date &&
+                a.slotStart === slot.start &&
+                a.status !== "cancelled" &&
+                a.status !== "no_show"
+              ).length;
+              const isFull = !slot.allowMultiple && booked > 0;
+              return (
+                <button
+                  key={slot.timingId + slot.start}
+                  onClick={() => { if (!isFull) onSelectSlot(slot); }}
+                  disabled={isFull}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl mb-1 text-left transition-colors
+                    ${isFull ? "opacity-50 cursor-not-allowed" : "hover:bg-[#4982CF]/[0.06] cursor-pointer"}`}
+                >
+                  <span className={`text-sm font-semibold font-mono ${isFull ? "text-slate-400" : "text-slate-800"}`}>
+                    {slot.start}
+                    <span className="text-xs font-normal text-slate-400 ml-1.5">→ {slot.end}</span>
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {booked > 0 && (
+                      <span className="text-[10px] font-semibold text-slate-400">{booked} booked</span>
+                    )}
+                    {isFull ? (
+                      <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full">Full</span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Open</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer — any time option */}
+        <div className="flex-shrink-0 border-t border-slate-100 px-3 py-2.5">
+          <button
+            onClick={onAnyTime}
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-slate-200 text-slate-500 text-sm font-semibold hover:bg-slate-50 transition-colors"
+          >
+            Book at any time
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Doctor View (multi-column) ───────────────────────────────────────────────
 
 interface DoctorViewProps {
@@ -1313,6 +1399,9 @@ export function AppointmentFrontDesk() {
 
   // Month View day-detail overlay
   const [monthOverlayDate, setMonthOverlayDate] = useState<string | null>(null);
+
+  // Month View slot picker
+  const [monthSlotPickerDate, setMonthSlotPickerDate] = useState<string | null>(null);
 
   const selectedDoctor = appointmentDoctors.find(d => d.id === selectedDoctorId) ?? appointmentDoctors[0] ?? null;
 
@@ -1623,7 +1712,7 @@ export function AppointmentFrontDesk() {
             selectedDate={selectedDate}
             onSelectDate={d => setSelectedDate(d)}
             onClickAppt={handleApptClick}
-            onBookDate={d => { setSelectedDate(d); openBooking({ doctorId: selectedDoctor.id, date: d }); }}
+            onBookDate={d => { setSelectedDate(d); setMonthSlotPickerDate(d); }}
             onClickMore={d => { setSelectedDate(d); setMonthOverlayDate(d); }}
           />
         )}
@@ -1665,6 +1754,24 @@ export function AppointmentFrontDesk() {
           doctorName={appointmentDoctors.find(d => d.id === viewAppt.doctorId)?.name ?? "Unknown Doctor"}
           onClose={() => setViewAppt(null)}
           onEdit={() => { openBooking({}, viewAppt); setViewAppt(null); }}
+        />
+      )}
+
+      {/* Month View Slot Picker */}
+      {monthSlotPickerDate && selectedDoctor && (
+        <MonthSlotPicker
+          date={monthSlotPickerDate}
+          doctor={selectedDoctor}
+          appointments={appointments}
+          onSelectSlot={slot => {
+            openBooking({ doctorId: selectedDoctor.id, date: monthSlotPickerDate, slotStart: slot.start, slotEnd: slot.end });
+            setMonthSlotPickerDate(null);
+          }}
+          onAnyTime={() => {
+            openBooking({ doctorId: selectedDoctor.id, date: monthSlotPickerDate });
+            setMonthSlotPickerDate(null);
+          }}
+          onClose={() => setMonthSlotPickerDate(null)}
         />
       )}
 
