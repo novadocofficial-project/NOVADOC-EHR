@@ -882,8 +882,8 @@ function DayView({ doctor, date, appointments, filterTypes, onClickSlot, onClick
   const dayAppts = appointments.filter(a => a.doctorId === doctor.id && a.date === date);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="flex flex-col flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex-shrink-0 px-5 py-4 border-b border-slate-100 flex items-center justify-between">
         <div>
           <h3 className="font-bold text-slate-900">{doctor.name}</h3>
           <p className="text-xs text-slate-400 mt-0.5">{formatDateFull(date)} · {slots.length} slot{slots.length !== 1 ? "s" : ""}</p>
@@ -893,7 +893,7 @@ function DayView({ doctor, date, appointments, filterTypes, onClickSlot, onClick
           <p className="text-[10px] text-slate-400">booked</p>
         </div>
       </div>
-      <div>
+      <div className="flex-1 overflow-y-auto min-h-0">
         {slots.map(slot => {
           const slotAppts = dayAppts.filter(a => a.slotStart === slot.start);
           return (
@@ -1007,10 +1007,10 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
   }, [allTimes, nowMinutes, isCurrentWeek]);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm">
 
-      {/* ── Header row (sticky) ────────────────────────────────────────────── */}
-      <div className="flex border-b border-slate-300 bg-slate-50 sticky top-0 z-10">
+      {/* ── Header row (pinned — flex-shrink-0) ─────────────────────────── */}
+      <div className="flex border-b border-slate-300 bg-slate-50 flex-shrink-0 rounded-t-2xl overflow-hidden">
         {/* Ruler stub — same width as the time-label column below */}
         <div className="w-16 flex-shrink-0 border-r border-slate-200" />
         {dayData.map(({ date, slots, isToday }) => {
@@ -1038,7 +1038,7 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
       </div>
 
       {/* ── Time-aligned grid body ─────────────────────────────────────────── */}
-      <div className="overflow-y-auto max-h-[640px]">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {allTimes.length === 0 ? (
           <div className="py-20 text-center">
             <Calendar className="h-8 w-8 text-slate-200 mx-auto mb-2" />
@@ -1119,13 +1119,13 @@ function MonthView({ date, doctor, appointments, filterTypes, selectedDate, onSe
   const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="grid grid-cols-7 border-b border-slate-300 bg-slate-50">
+    <div className="flex flex-col flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex-shrink-0 grid grid-cols-7 border-b border-slate-300 bg-slate-50 rounded-t-2xl overflow-hidden">
         {DAY_LABELS.map(l => (
           <div key={l} className="py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider border-r border-slate-200 last:border-0">{l}</div>
         ))}
       </div>
-      <div className="grid grid-cols-7">
+      <div className="flex-1 overflow-y-auto min-h-0 grid grid-cols-7 auto-rows-min">
         {cells.map((d, i) => {
           const inMonth = parseInt(d.split("-")[1]) === m;
           const isToday = d === today;
@@ -1335,7 +1335,7 @@ interface DoctorViewProps {
 
 function DoctorViewPanel({ doctors, date, appointments, filterTypes, onClickSlot, onClickAppt }: DoctorViewProps) {
   return (
-    <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.min(doctors.length, 4)}, minmax(0, 1fr))` }}>
+    <div className="flex-1 overflow-y-auto min-h-0 grid gap-4 auto-rows-min" style={{ gridTemplateColumns: `repeat(${Math.min(doctors.length, 4)}, minmax(0, 1fr))` }}>
       {doctors.map(doc => {
         const slots = doc.timings.flatMap(t => generateSlots(t, date));
         const docAppts = appointments.filter(a => a.doctorId === doc.id && a.date === date);
@@ -1674,7 +1674,7 @@ export function AppointmentFrontDesk() {
       </div>
 
       {/* Calendar Content */}
-      <div className="flex-1 overflow-auto px-5 py-5">
+      <div className="flex-1 overflow-hidden flex flex-col min-h-0 px-4 pt-3 pb-0">
         {appointmentDoctors.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <Stethoscope className="h-12 w-12 text-slate-200 mb-4" />
