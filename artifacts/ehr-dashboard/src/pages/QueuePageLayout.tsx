@@ -1,7 +1,7 @@
 import { useLocation, Link } from "wouter";
 import {
   Bell, Search, Ticket, ChevronDown, Zap, Users, Workflow, BarChart2, Receipt,
-  X, Printer, ArrowRight, Heart, Stethoscope, FlaskConical, LayoutDashboard,
+  X, Printer, ArrowRight, Heart, Stethoscope, FlaskConical, LayoutDashboard, Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -393,6 +393,49 @@ export function QueueNavDropdown() {
   );
 }
 
+// ─── Appointments Nav Dropdown ────────────────────────────────────────────────
+
+export function AppointmentsNavDropdown() {
+  const [location, setLocation] = useLocation();
+  const isActive = location.startsWith("/appointments");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className={`h-9 px-3 gap-1.5 text-sm font-medium
+            ${isActive
+              ? "bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15"
+              : "text-slate-600 hover:bg-slate-100"}`}
+        >
+          <Calendar className="h-4 w-4" />
+          Appointments
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-2">
+          Scheduling
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => setLocation("/appointments/frontdesk")}
+          className={`gap-3 cursor-pointer py-2.5 ${location === "/appointments/frontdesk" ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
+        >
+          <span className="h-7 w-7 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+            <Calendar className="h-3.5 w-3.5 text-indigo-600" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold leading-tight">Front Desk</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Book & manage appointments</p>
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 // ─── Reports Nav Dropdown (Transactions lives here) ──────────────────────────
 
 export function ReportsNavDropdown() {
@@ -450,6 +493,7 @@ export function QueueAppHeader() {
         <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
           <HomeNavButton />
           <QueueNavDropdown />
+          <AppointmentsNavDropdown />
           <ReportsNavDropdown />
         </nav>
       </div>

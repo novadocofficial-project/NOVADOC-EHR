@@ -13,6 +13,7 @@ import { FrontDeskUser } from "@/pages/FrontDeskUser";
 import { NursingUser } from "@/pages/NursingUser";
 import { DoctorUser } from "@/pages/DoctorUser";
 import { LabUser } from "@/pages/LabUser";
+import { AppointmentFrontDesk } from "@/pages/AppointmentFrontDesk";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/queue/nursing" component={NursingUser} />
       <Route path="/queue/doctor" component={DoctorUser} />
       <Route path="/queue/lab" component={LabUser} />
+      <Route path="/appointments/frontdesk" component={AppointmentFrontDesk} />
       <Route component={NotFound} />
     </Switch>
   );
