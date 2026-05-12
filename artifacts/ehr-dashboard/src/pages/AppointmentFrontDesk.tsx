@@ -951,7 +951,7 @@ function WeekSlotCell({ date, slot, appointments, filterTypes, doctorId, onClick
         </button>
       )}
       {!canBook && slotAppts.length > 0 && (
-        <p className="text-[9px] text-slate-300 mt-0.5">Full</p>
+        <p className="text-[9px] text-slate-300 mt-0.5">Single booking only</p>
       )}
     </div>
   );
@@ -1004,7 +1004,7 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
       </div>
 
       {/* Slot body — each column scrolls as part of the unified container */}
-      <div className="flex items-start overflow-y-auto max-h-[580px]">
+      <div className="flex items-start overflow-y-auto max-h-[600px]">
         {dayData.map(({ date, slots, isToday }) => (
           <div
             key={date}
@@ -1017,7 +1017,7 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
             ) : (
               slots.map(slot => (
                 <WeekSlotCell
-                  key={slot.start}
+                  key={slot.timingId + slot.start}
                   date={date}
                   slot={slot}
                   appointments={appointments}
