@@ -12,7 +12,6 @@ export type ApptStatus =
 export interface Appointment {
   id: string;
   doctorId: string;
-  patientId?: string;
   patientName: string;
   patientMrn: string;
   patientPhone: string;
