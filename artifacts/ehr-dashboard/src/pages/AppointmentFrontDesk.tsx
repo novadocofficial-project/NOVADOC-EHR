@@ -1007,38 +1007,40 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
   }, [allTimes, nowMinutes, isCurrentWeek]);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm">
+    <div className="flex flex-col flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
-      {/* ── Header row (pinned — flex-shrink-0) ─────────────────────────── */}
-      <div className="flex border-b border-slate-300 bg-slate-50 flex-shrink-0 rounded-t-2xl overflow-hidden">
-        {/* Ruler stub — same width as the time-label column below */}
-        <div className="w-16 flex-shrink-0 border-r border-slate-200" />
-        {dayData.map(({ date, slots, isToday }) => {
-          const dateNum = parseInt(date.split("-")[2]);
-          const dayName = getDayName(date).slice(0, 3).toUpperCase();
-          const hasSlots = slots.length > 0;
-          return (
-            <div
-              key={date}
-              className={`flex-1 min-w-0 border-r border-slate-200 last:border-0 px-2 py-3 text-center ${isToday ? "border-t-2 border-t-[#4982CF] bg-[#4982CF]/5" : ""}`}
-            >
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{dayName}</p>
-              <p className={`text-2xl font-bold mt-0.5 leading-none ${isToday ? "text-[#4982CF]" : hasSlots ? "text-slate-800" : "text-slate-300"}`}>
-                {dateNum}
-              </p>
-              <p className="text-xs mt-1 font-medium">
-                {hasSlots
-                  ? <span className="text-slate-500">{slots.length} slot{slots.length !== 1 ? "s" : ""}</span>
-                  : <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-400">Off</span>
-                }
-              </p>
-            </div>
-          );
-        })}
-      </div>
+      {/* ── Single scroll container — header is sticky inside so widths always match ── */}
+      <div className="flex-1 overflow-y-auto min-h-0">
 
-      {/* ── Time-aligned grid body ─────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto min-h-0 [scrollbar-gutter:stable]">
+        {/* ── Header row (sticky inside scroll — same width as rows below) ── */}
+        <div className="flex border-b border-slate-300 bg-slate-50 sticky top-0 z-10">
+          {/* Ruler stub — same width as the time-label column below */}
+          <div className="w-16 flex-shrink-0 border-r border-slate-200" />
+          {dayData.map(({ date, slots, isToday }) => {
+            const dateNum = parseInt(date.split("-")[2]);
+            const dayName = getDayName(date).slice(0, 3).toUpperCase();
+            const hasSlots = slots.length > 0;
+            return (
+              <div
+                key={date}
+                className={`flex-1 min-w-0 border-r border-slate-200 last:border-0 px-2 py-3 text-center ${isToday ? "border-t-2 border-t-[#4982CF] bg-[#4982CF]/5" : ""}`}
+              >
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{dayName}</p>
+                <p className={`text-2xl font-bold mt-0.5 leading-none ${isToday ? "text-[#4982CF]" : hasSlots ? "text-slate-800" : "text-slate-300"}`}>
+                  {dateNum}
+                </p>
+                <p className="text-xs mt-1 font-medium">
+                  {hasSlots
+                    ? <span className="text-slate-500">{slots.length} slot{slots.length !== 1 ? "s" : ""}</span>
+                    : <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-400">Off</span>
+                  }
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Time-aligned grid rows ─────────────────────────────────────── */}
         {allTimes.length === 0 ? (
           <div className="py-20 text-center">
             <Calendar className="h-8 w-8 text-slate-200 mx-auto mb-2" />
