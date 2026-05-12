@@ -433,30 +433,42 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
                       );
                     })()}
                   </div>
-                  <div className="px-4 pb-3 pt-1">
-                    <Button
-                      className="w-full h-8 bg-[#4982CF] hover:bg-[#3D73BC] text-white text-xs"
-                      disabled={!(regValues["name"]?.trim())}
-                      onClick={() => {
-                        const name = (regValues["name"] ?? "").trim();
-                        if (!name) return;
-                        const newPatient: Patient = {
-                          id: uid(),
-                          mrn: "MR-" + Math.floor(45000 + Math.random() * 5000),
-                          name,
-                          phone: regValues["phone"] ?? "",
-                          dob: regValues["dob"] ?? "",
-                          gender: regGender,
-                        };
-                        addPatient(newPatient);
-                        selectPatient(newPatient);
-                        setRegValues({});
-                        setRegGender("M");
-                      }}
-                    >
-                      <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Register & Attach
-                    </Button>
-                  </div>
+                  {(() => {
+                    const profile = regConfig.quickProfiles[0];
+                    const DEFAULT_FIELDS = [
+                      { fieldId: "name", label: "Full Name", visible: true, required: true, fieldType: "text" as const, placeholder: "Full name", options: [] as string[], isBuiltIn: true as const },
+                      { fieldId: "phone", label: "Phone", visible: true, required: true, fieldType: "text" as const, placeholder: "+92 …", options: [] as string[], isBuiltIn: true as const },
+                    ];
+                    const visFields = profile ? profile.fields.filter(f => f.visible) : DEFAULT_FIELDS;
+                    const requiredIds = visFields.filter(f => f.required).map(f => f.fieldId);
+                    const canSubmit = requiredIds.every(id => !!(regValues[id]?.trim()));
+                    return (
+                      <div className="px-4 pb-3 pt-1">
+                        <Button
+                          className="w-full h-8 bg-[#4982CF] hover:bg-[#3D73BC] text-white text-xs"
+                          disabled={!canSubmit}
+                          onClick={() => {
+                            if (!canSubmit) return;
+                            const name = (regValues["name"] ?? "").trim();
+                            const newPatient: Patient = {
+                              id: uid(),
+                              mrn: "MR-" + Math.floor(45000 + Math.random() * 5000),
+                              name: name || "Patient",
+                              phone: regValues["phone"] ?? "",
+                              dob: regValues["dob"] ?? "",
+                              gender: regGender,
+                            };
+                            addPatient(newPatient);
+                            selectPatient(newPatient);
+                            setRegValues({});
+                            setRegGender("M");
+                          }}
+                        >
+                          <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Register & Attach
+                        </Button>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
