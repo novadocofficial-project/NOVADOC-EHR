@@ -931,8 +931,7 @@ function WeekSlotCell({ date, slot, appointments, filterTypes, doctorId, onClick
   const canBook = slotAppts.length === 0 || slot.allowMultiple;
 
   return (
-    <div className="group px-1.5 py-1.5 border-b border-slate-50 last:border-0 hover:bg-slate-50/70 transition-colors min-h-[52px]">
-      <p className="text-[9px] font-mono text-slate-300 leading-none mb-1">{slot.start}</p>
+    <div className="group h-full px-1.5 py-1.5 hover:bg-slate-50/70 transition-colors">
       {shown.map(a => <ApptChip key={a.id} appt={a} onClick={onClickAppt} />)}
       {visible.length > 2 && (
         <button
@@ -975,10 +974,18 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
     isToday: d === today,
   }));
 
+  // Union of all slot start times across the week, sorted — forms the time-axis rows
+  const allTimes = Array.from(
+    new Set(dayData.flatMap(({ slots }) => slots.map(s => s.start))),
+  ).sort();
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      {/* Sticky column headers */}
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+
+      {/* ── Header row (sticky) ────────────────────────────────────────────── */}
+      <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+        {/* Ruler stub — same width as the time-label column below */}
+        <div className="w-14 flex-shrink-0 border-r border-slate-100" />
         {dayData.map(({ date, slots, isToday }) => {
           const dateNum = parseInt(date.split("-")[2]);
           const dayName = getDayName(date).slice(0, 3).toUpperCase();
@@ -986,7 +993,7 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
           return (
             <div
               key={date}
-              className={`border-r border-slate-100 last:border-0 px-2 py-3 text-center ${isToday ? "border-t-2 border-t-[#4982CF] bg-[#4982CF]/5" : ""}`}
+              className={`flex-1 min-w-0 border-r border-slate-100 last:border-0 px-2 py-3 text-center ${isToday ? "border-t-2 border-t-[#4982CF] bg-[#4982CF]/5" : ""}`}
             >
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{dayName}</p>
               <p className={`text-xl font-bold mt-0.5 leading-none ${isToday ? "text-[#4982CF]" : hasSlots ? "text-slate-800" : "text-slate-300"}`}>
@@ -1003,33 +1010,54 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
         })}
       </div>
 
-      {/* Slot body — each column scrolls as part of the unified container */}
-      <div className="flex items-start overflow-y-auto max-h-[600px]">
-        {dayData.map(({ date, slots, isToday }) => (
-          <div
-            key={date}
-            className={`flex-1 min-w-0 border-r border-slate-100 last:border-0 ${isToday ? "bg-[#4982CF]/[0.02]" : ""}`}
-          >
-            {slots.length === 0 ? (
-              <div className="flex items-start justify-center pt-10 pb-6">
-                <span className="text-[10px] font-bold text-slate-200 uppercase tracking-widest">Off</span>
-              </div>
-            ) : (
-              slots.map(slot => (
-                <WeekSlotCell
-                  key={slot.timingId + slot.start}
-                  date={date}
-                  slot={slot}
-                  appointments={appointments}
-                  filterTypes={filterTypes}
-                  doctorId={doctor.id}
-                  onClickSlot={onClickSlot}
-                  onClickAppt={onClickAppt}
-                />
-              ))
-            )}
+      {/* ── Time-aligned grid body ─────────────────────────────────────────── */}
+      <div className="overflow-y-auto max-h-[600px]">
+        {allTimes.length === 0 ? (
+          <div className="py-20 text-center">
+            <Calendar className="h-8 w-8 text-slate-200 mx-auto mb-2" />
+            <p className="text-sm text-slate-400 font-medium">No slots this week</p>
+            <p className="text-xs text-slate-300 mt-1">This doctor has no timings configured for any day this week.</p>
           </div>
-        ))}
+        ) : (
+          allTimes.map(time => (
+            <div key={time} className="flex border-b border-slate-50 last:border-0">
+              {/* ── Time-axis label ── */}
+              <div className="w-14 flex-shrink-0 border-r border-slate-100 px-2 py-2 flex items-center justify-end">
+                <span className="text-[9px] font-mono text-slate-300 leading-none">{time}</span>
+              </div>
+
+              {/* ── Day cells for this time row ── */}
+              {dayData.map(({ date, slots, isToday }) => {
+                const slot = slots.find(s => s.start === time);
+                if (!slot) {
+                  // This day has no slot at this time — grey band (off / outside schedule)
+                  return (
+                    <div
+                      key={date}
+                      className={`flex-1 min-w-0 min-h-[52px] border-r border-slate-100 last:border-0 ${isToday ? "bg-[#4982CF]/[0.015]" : "bg-slate-50/50"}`}
+                    />
+                  );
+                }
+                return (
+                  <div
+                    key={date}
+                    className={`flex-1 min-w-0 border-r border-slate-100 last:border-0 min-h-[52px] ${isToday ? "bg-[#4982CF]/[0.02]" : ""}`}
+                  >
+                    <WeekSlotCell
+                      date={date}
+                      slot={slot}
+                      appointments={appointments}
+                      filterTypes={filterTypes}
+                      doctorId={doctor.id}
+                      onClickSlot={onClickSlot}
+                      onClickAppt={onClickAppt}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
