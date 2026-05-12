@@ -1117,9 +1117,9 @@ function MonthView({ date, doctor, appointments, filterTypes, selectedDate, onSe
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50">
+      <div className="grid grid-cols-7 border-b border-slate-300 bg-slate-50">
         {DAY_LABELS.map(l => (
-          <div key={l} className="py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider border-r border-slate-100 last:border-0">{l}</div>
+          <div key={l} className="py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider border-r border-slate-200 last:border-0">{l}</div>
         ))}
       </div>
       <div className="grid grid-cols-7">
@@ -1136,21 +1136,25 @@ function MonthView({ date, doctor, appointments, filterTypes, selectedDate, onSe
             <div
               key={i}
               onClick={() => inMonth && hasSlots && onSelectDate(d)}
-              className={`min-h-[80px] border-r border-b border-slate-100 last-of-row:border-r-0 px-2 py-1.5 transition-colors ${!inMonth ? "bg-slate-50/50" : hasSlots ? "cursor-pointer hover:bg-slate-50" : ""} ${isSelected ? "bg-[#4982CF]/5" : ""}`}
+              className={`min-h-[100px] border-r border-b border-slate-200 px-2 py-2 transition-colors
+                ${!inMonth ? "bg-slate-100/50" : hasSlots ? "cursor-pointer hover:bg-slate-50" : ""}
+                ${isToday && !isSelected ? "bg-[#4982CF]/[0.04]" : ""}
+                ${isSelected ? "bg-[#4982CF]/[0.08] ring-1 ring-inset ring-[#4982CF]/30" : ""}`}
             >
-              <div className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isToday ? "bg-[#4982CF] text-white" : inMonth ? "text-slate-700" : "text-slate-300"}`}>
+              <div className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full mb-1.5
+                ${isToday ? "bg-[#4982CF] text-white shadow-sm" : inMonth ? "text-slate-800" : "text-slate-300"}`}>
                 {parseInt(d.split("-")[2])}
               </div>
-              {inMonth && dayAppts.slice(0, 2).map(a => {
+              {inMonth && dayAppts.slice(0, 3).map(a => {
                 const sc = STATUS_CONFIG[a.status];
                 return (
-                  <div key={a.id} className={`text-[9px] font-semibold px-1 py-0.5 rounded mb-0.5 truncate ${sc.bg} ${sc.text}`}>
+                  <div key={a.id} className={`text-[11px] font-semibold px-1.5 py-0.5 rounded border mb-0.5 truncate leading-tight ${sc.bg} ${sc.text}`}>
                     {a.patientName}
                   </div>
                 );
               })}
-              {inMonth && dayAppts.length > 2 && (
-                <div className="text-[9px] text-[#4982CF] font-bold">+{dayAppts.length - 2}</div>
+              {inMonth && dayAppts.length > 3 && (
+                <div className="text-xs text-[#4982CF] font-bold mt-0.5">+{dayAppts.length - 3} more</div>
               )}
             </div>
           );
