@@ -1662,15 +1662,21 @@ export function AppointmentFrontDesk() {
 
           {/* Day / Week / Month toggle */}
           <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-            {(["day", "week", "month"] as ViewMode[]).map(v => (
-              <button
-                key={v}
-                onClick={() => setViewMode(v)}
-                className={`px-3 py-1 text-xs font-bold capitalize transition-colors border-r border-slate-200 last:border-0 ${viewMode === v ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
-              >
-                {v}
-              </button>
-            ))}
+            {(["day", "week", "month"] as ViewMode[]).map(v => {
+              const doctorOnly = layoutMode === "doctor" && v !== "day";
+              return (
+                <button
+                  key={v}
+                  onClick={() => !doctorOnly && setViewMode(v)}
+                  disabled={doctorOnly}
+                  title={doctorOnly ? "Doctor view is day-only" : undefined}
+                  className={`px-3 py-1 text-xs font-bold capitalize transition-colors border-r border-slate-200 last:border-0
+                    ${doctorOnly ? "text-slate-300 bg-slate-50 cursor-not-allowed" : viewMode === v ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
+                >
+                  {v}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
