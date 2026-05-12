@@ -910,53 +910,126 @@ function DayView({ doctor, date, appointments, filterTypes, onClickSlot, onClick
 
 // ─── Week View ────────────────────────────────────────────────────────────────
 
+interface WeekSlotCellProps {
+  date: string;
+  slot: SlotBlock;
+  appointments: Appointment[];
+  filterTypes: string[];
+  doctorId: string;
+  onClickSlot: (date: string, slot: SlotBlock) => void;
+  onClickAppt: (appt: Appointment, e: React.MouseEvent) => void;
+}
+
+function WeekSlotCell({ date, slot, appointments, filterTypes, doctorId, onClickSlot, onClickAppt }: WeekSlotCellProps) {
+  const [expanded, setExpanded] = useState(false);
+  const slotAppts = appointments.filter(
+    a => a.doctorId === doctorId && a.date === date && a.slotStart === slot.start,
+  );
+  const visible = filterTypes.length > 0 ? slotAppts.filter(a => filterTypes.includes(a.type)) : slotAppts;
+  const shown = expanded ? visible : visible.slice(0, 2);
+  // capacity check uses ALL slot appts, not filtered subset
+  const canBook = slotAppts.length === 0 || slot.allowMultiple;
+
+  return (
+    <div className="group px-1.5 py-1.5 border-b border-slate-50 last:border-0 hover:bg-slate-50/70 transition-colors min-h-[52px]">
+      <p className="text-[9px] font-mono text-slate-300 leading-none mb-1">{slot.start}</p>
+      {shown.map(a => <ApptChip key={a.id} appt={a} onClick={onClickAppt} />)}
+      {visible.length > 2 && (
+        <button
+          onClick={() => setExpanded(p => !p)}
+          className="text-[10px] text-[#4982CF] font-semibold block mt-0.5"
+        >
+          {expanded ? "▲ less" : `+${visible.length - 2} more`}
+        </button>
+      )}
+      {canBook && (
+        <button
+          onClick={() => onClickSlot(date, slot)}
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-[#4982CF] font-semibold flex items-center gap-0.5 mt-0.5 hover:underline"
+        >
+          <Plus className="h-2.5 w-2.5" /> Book
+        </button>
+      )}
+      {!canBook && slotAppts.length > 0 && (
+        <p className="text-[9px] text-slate-300 mt-0.5">Full</p>
+      )}
+    </div>
+  );
+}
+
 interface WeekViewProps {
   doctor: Doctor;
   weekDays: string[];
   appointments: Appointment[];
   filterTypes: string[];
-  onClickDay: (date: string) => void;
+  onClickSlot: (date: string, slot: SlotBlock) => void;
   onClickAppt: (appt: Appointment, e: React.MouseEvent) => void;
 }
 
-function WeekView({ doctor, weekDays, appointments, filterTypes, onClickDay, onClickAppt }: WeekViewProps) {
+function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, onClickAppt }: WeekViewProps) {
   const today = todayStr();
+
+  const dayData = weekDays.map(d => ({
+    date: d,
+    slots: doctor.timings.flatMap(t => generateSlots(t, d)),
+    isToday: d === today,
+  }));
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="grid grid-cols-7 border-b border-slate-100">
-        {weekDays.map(d => {
-          const isToday = d === today;
-          const dayAppts = appointments.filter(a => a.doctorId === doctor.id && a.date === d &&
-            (filterTypes.length === 0 || filterTypes.includes(a.type)));
-          const hasSlots = doctor.timings.some(t => getDayName(d) === t.day);
+      {/* Sticky column headers */}
+      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+        {dayData.map(({ date, slots, isToday }) => {
+          const dateNum = parseInt(date.split("-")[2]);
+          const dayName = getDayName(date).slice(0, 3).toUpperCase();
+          const hasSlots = slots.length > 0;
           return (
-            <div key={d} className={`border-r border-slate-100 last:border-0 ${isToday ? "bg-[#4982CF]/5" : ""}`}>
-              <div
-                onClick={() => hasSlots && onClickDay(d)}
-                className={`px-3 py-3 text-center border-b border-slate-100 ${hasSlots ? "cursor-pointer hover:bg-slate-50" : ""}`}
-              >
-                <p className="text-[10px] font-bold text-slate-400 uppercase">{getDayName(d).slice(0, 3)}</p>
-                <p className={`text-lg font-bold mt-0.5 ${isToday ? "text-[#4982CF]" : hasSlots ? "text-slate-800" : "text-slate-300"}`}>
-                  {d.split("-")[2]}
-                </p>
-                {dayAppts.length > 0 && (
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#4982CF] mt-1" />
-                )}
-              </div>
-              <div className="px-2 py-2 space-y-1 min-h-[120px]">
-                {dayAppts.slice(0, 3).map(a => (
-                  <ApptChip key={a.id} appt={a} onClick={onClickAppt} />
-                ))}
-                {dayAppts.length > 3 && (
-                  <button onClick={() => onClickDay(d)} className="text-[11px] text-[#4982CF] font-semibold">
-                    +{dayAppts.length - 3} more
-                  </button>
-                )}
-                {!hasSlots && <p className="text-center text-[10px] text-slate-200 py-4">Off</p>}
-              </div>
+            <div
+              key={date}
+              className={`border-r border-slate-100 last:border-0 px-2 py-3 text-center ${isToday ? "border-t-2 border-t-[#4982CF] bg-[#4982CF]/5" : ""}`}
+            >
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{dayName}</p>
+              <p className={`text-xl font-bold mt-0.5 leading-none ${isToday ? "text-[#4982CF]" : hasSlots ? "text-slate-800" : "text-slate-300"}`}>
+                {dateNum}
+              </p>
+              <p className="text-[9px] mt-1 font-medium">
+                {hasSlots
+                  ? <span className="text-slate-400">{slots.length} slot{slots.length !== 1 ? "s" : ""}</span>
+                  : <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-300">Off</span>
+                }
+              </p>
             </div>
           );
         })}
+      </div>
+
+      {/* Slot body — each column scrolls as part of the unified container */}
+      <div className="flex items-start overflow-y-auto max-h-[580px]">
+        {dayData.map(({ date, slots, isToday }) => (
+          <div
+            key={date}
+            className={`flex-1 min-w-0 border-r border-slate-100 last:border-0 ${isToday ? "bg-[#4982CF]/[0.02]" : ""}`}
+          >
+            {slots.length === 0 ? (
+              <div className="flex items-start justify-center pt-10 pb-6">
+                <span className="text-[10px] font-bold text-slate-200 uppercase tracking-widest">Off</span>
+              </div>
+            ) : (
+              slots.map(slot => (
+                <WeekSlotCell
+                  key={slot.start}
+                  date={date}
+                  slot={slot}
+                  appointments={appointments}
+                  filterTypes={filterTypes}
+                  doctorId={doctor.id}
+                  onClickSlot={onClickSlot}
+                  onClickAppt={onClickAppt}
+                />
+              ))
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1084,7 +1157,7 @@ export function AppointmentFrontDesk() {
 
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>(() => appointmentDoctors[0]?.id ?? "");
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
-  const [viewMode, setViewMode] = useState<ViewMode>("day");
+  const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("calendar");
   const [filterTypes, setFilterTypes] = useState<string[]>([]);
 
@@ -1393,7 +1466,10 @@ export function AppointmentFrontDesk() {
             weekDays={weekDays}
             appointments={appointments}
             filterTypes={filterTypes}
-            onClickDay={d => { setSelectedDate(d); setViewMode("day"); }}
+            onClickSlot={(date, slot) => {
+              setSelectedDate(date);
+              openBooking({ doctorId: selectedDoctor.id, date, slotStart: slot.start, slotEnd: slot.end });
+            }}
             onClickAppt={handleApptClick}
           />
         ) : (
