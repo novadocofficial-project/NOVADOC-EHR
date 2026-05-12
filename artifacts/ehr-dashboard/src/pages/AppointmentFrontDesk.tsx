@@ -1632,9 +1632,12 @@ export function AppointmentFrontDesk() {
         <div className="h-4 w-px bg-slate-200 flex-shrink-0" />
 
         {/* Non-zero status badges only */}
-        <div className="flex items-center gap-1.5 flex-wrap py-2">
+        <div className="flex items-center gap-1.5 py-2 overflow-hidden">
           {STAT_ITEMS.filter(({ key }) => stats.counts[key] > 0).length === 0 ? (
-            <span className="text-xs text-slate-400 italic">No appointments</span>
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-300 flex-shrink-0" />
+              No appointments
+            </div>
           ) : (
             STAT_ITEMS.filter(({ key }) => stats.counts[key] > 0).map(({ key, short }) => {
               const sc = STATUS_CONFIG[key];
