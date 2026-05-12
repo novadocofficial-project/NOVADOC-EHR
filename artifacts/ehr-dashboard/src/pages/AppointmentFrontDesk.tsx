@@ -808,7 +808,8 @@ function SlotRow({ slot, appts, filterTypes, onClickEmpty, onClickAppt }: SlotRo
   const [expanded, setExpanded] = useState(false);
   const visible = filterTypes.length > 0 ? appts.filter(a => filterTypes.includes(a.type)) : appts;
   const shown = expanded ? visible : visible.slice(0, 2);
-  const canBook = visible.length === 0 || slot.allowMultiple;
+  // Use ALL appts (not filtered) for booking eligibility so type filters can't bypass capacity
+  const canBook = appts.length === 0 || slot.allowMultiple;
 
   return (
     <div className="flex items-start gap-3 px-4 py-2.5 border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
@@ -1141,6 +1142,33 @@ export function AppointmentFrontDesk() {
   }
 
   function handleSave(form: BookingForm) {
+    // ── Slot-capacity enforcement ──────────────────────────────────────────────
+    // Look up allowMultiple from the doctor's timing configuration (source of truth).
+    const doctor = appointmentDoctors.find(d => d.id === form.doctorId);
+    if (doctor) {
+      const slots = doctor.timings.flatMap(t => generateSlots(t, form.date));
+      const matchSlot = slots.find(s => s.start === form.slotStart);
+      if (matchSlot && !matchSlot.allowMultiple) {
+        // Count existing, non-cancelled appointments in this slot (exclude the one being edited).
+        const conflict = appointments.filter(a =>
+          a.doctorId === form.doctorId &&
+          a.date     === form.date &&
+          a.slotStart === form.slotStart &&
+          a.status !== "cancelled" &&
+          a.status !== "no_show" &&
+          (!editAppt || a.id !== editAppt.id)
+        );
+        if (conflict.length > 0) {
+          toast({
+            title: "Slot unavailable",
+            description: "This slot only allows one booking. Please choose a different time.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    }
+    // ── Persist ───────────────────────────────────────────────────────────────
     if (editAppt) {
       updateAppointment(editAppt.id, { ...form });
       toast({ title: "Appointment updated", description: `${form.patientName} — ${form.slotStart}` });
