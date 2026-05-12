@@ -49,7 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { HomeNavButton, QueueNavDropdown, ReportsNavDropdown } from "@/pages/QueuePageLayout";
+import { HomeNavButton, QueueNavDropdown, AppointmentsNavDropdown, ReportsNavDropdown } from "@/pages/QueuePageLayout";
 
 const SUMMARY_STATS = [
   { title: "Total Revenue", value: "$142,500.00", icon: DollarSign, trend: "+12.5%" },
@@ -700,6 +700,7 @@ export function Dashboard() {
           <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
             <HomeNavButton />
             <QueueNavDropdown />
+            <AppointmentsNavDropdown />
             <ReportsNavDropdown />
           </nav>
         </div>
