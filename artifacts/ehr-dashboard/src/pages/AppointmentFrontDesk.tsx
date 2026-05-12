@@ -419,18 +419,53 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
               <span className="text-xs text-slate-500">{form.contagious ? "Yes" : "No"}</span>
               <Switch
                 checked={form.contagious}
-                onCheckedChange={v => set("contagious", v)}
+                onCheckedChange={v => { set("contagious", v); if (!v) set("contagiousNote", ""); }}
                 className="data-[state=checked]:bg-red-500"
               />
             </div>
           </div>
           {form.contagious && (
-            <Input
-              value={form.contagiousNote}
-              onChange={e => set("contagiousNote", e.target.value)}
-              placeholder="Specify disease / precautions..."
-              className="h-9 text-sm"
-            />
+            <div className="space-y-2">
+              <p className="text-[10px] text-slate-400 font-semibold">Select disease(s):</p>
+              <div className="flex flex-wrap gap-1.5">
+                {CONTAGIOUS_OPTIONS.map(opt => {
+                  const notes = form.contagiousNote.split(",").map(s => s.trim()).filter(Boolean);
+                  const isOther = opt === "Other";
+                  const selected = isOther
+                    ? notes.some(n => !CONTAGIOUS_OPTIONS.slice(0, -1).includes(n))
+                    : notes.includes(opt);
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => {
+                        const current = form.contagiousNote.split(",").map(s => s.trim()).filter(Boolean);
+                        if (isOther) return;
+                        const next = selected ? current.filter(n => n !== opt) : [...current, opt];
+                        set("contagiousNote", next.join(", "));
+                      }}
+                      className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${selected ? "bg-red-500 text-white border-red-500" : "bg-white text-slate-500 border-slate-200 hover:border-red-300"}`}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+              <Input
+                value={(() => {
+                  const known = new Set(CONTAGIOUS_OPTIONS.slice(0, -1));
+                  return form.contagiousNote.split(",").map(s => s.trim()).filter(n => n && !known.has(n)).join(", ");
+                })()}
+                onChange={e => {
+                  const known = new Set(CONTAGIOUS_OPTIONS.slice(0, -1));
+                  const chips = form.contagiousNote.split(",").map(s => s.trim()).filter(n => n && known.has(n));
+                  const custom = e.target.value.trim();
+                  set("contagiousNote", [...chips, ...(custom ? [custom] : [])].join(", "));
+                }}
+                placeholder='Other (specify)...'
+                className="h-8 text-xs"
+              />
+            </div>
           )}
         </section>
 
@@ -488,6 +523,117 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
   );
 }
 
+// ─── Contagious Disease Options ───────────────────────────────────────────────
+
+const CONTAGIOUS_OPTIONS = [
+  "COVID-19", "Tuberculosis (TB)", "Influenza", "Hepatitis A/B/C",
+  "MRSA", "Chickenpox", "Measles", "Other",
+];
+
+// ─── View Drawer (read-only appointment details) ──────────────────────────────
+
+interface ViewDrawerProps {
+  appt: Appointment;
+  doctorName: string;
+  onClose: () => void;
+  onEdit: () => void;
+}
+
+function ViewDrawer({ appt, doctorName, onClose, onEdit }: ViewDrawerProps) {
+  const sc = STATUS_CONFIG[appt.status];
+  const pc = PRIORITY_CONFIG[appt.priority];
+
+  function Row({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+      <div className="flex items-start justify-between py-2.5 border-b border-slate-50 last:border-0 gap-4">
+        <span className="text-xs font-semibold text-slate-400 flex-shrink-0 w-28">{label}</span>
+        <span className="text-xs text-slate-800 text-right flex-1 min-w-0">{children}</span>
+      </div>
+    );
+  }
+
+  return (
+    <RightDrawer
+      title="Appointment Details"
+      subtitle={`${appt.patientName} — ${formatDateShort(appt.date)}`}
+      onClose={onClose}
+      footer={
+        <Button
+          onClick={onEdit}
+          className="w-full h-9 bg-[#4982CF] hover:bg-[#3D73BC] text-white gap-2"
+        >
+          <Edit2 className="h-4 w-4" /> Edit Appointment
+        </Button>
+      }
+    >
+      <div className="px-5 py-4">
+        {/* Status badge */}
+        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold mb-5 ${sc.bg} ${sc.text}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
+          {sc.label}
+        </div>
+
+        {/* Patient */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-4">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Patient</p>
+          <p className="font-bold text-slate-900">{appt.patientName}</p>
+          {appt.patientMrn && <p className="text-xs text-slate-500 mt-0.5">{appt.patientMrn}</p>}
+          {appt.patientPhone && (
+            <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+              <Phone className="h-3 w-3" /> {appt.patientPhone}
+            </p>
+          )}
+        </div>
+
+        {/* Details */}
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-1 mb-4">
+          <Row label="Doctor">{doctorName}</Row>
+          <Row label="Date">{formatDateFull(appt.date)}</Row>
+          <Row label="Time Slot">{appt.slotStart} – {appt.slotEnd}</Row>
+          {appt.type && <Row label="Type">{appt.type}</Row>}
+          {appt.specialty && <Row label="Specialty">{appt.specialty}</Row>}
+          <Row label="Priority">
+            <span className={`font-bold capitalize ${pc.text}`}>{appt.priority}</span>
+          </Row>
+        </div>
+
+        {/* Flags */}
+        {(appt.contagious || appt.repeat) && (
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-1 mb-4">
+            {appt.contagious && (
+              <Row label="Contagious Disease">
+                <span className="text-red-600 font-semibold">
+                  Yes{appt.contagiousNote ? ` — ${appt.contagiousNote}` : ""}
+                </span>
+              </Row>
+            )}
+            {appt.repeat && (
+              <Row label="Repeat">
+                <span className="text-[#4982CF] font-semibold capitalize">
+                  {appt.repeatType}{appt.repeatNote ? ` — ${appt.repeatNote}` : ""}
+                </span>
+              </Row>
+            )}
+          </div>
+        )}
+
+        {/* Comments */}
+        {appt.comments && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Comments</p>
+            <p className="text-sm text-slate-700 italic">"{appt.comments}"</p>
+          </div>
+        )}
+
+        {/* Meta */}
+        <p className="text-[10px] text-slate-300 text-center mt-2">
+          Booked {new Date(appt.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+        </p>
+      </div>
+    </RightDrawer>
+  );
+}
+
 // ─── Appointment Chip ─────────────────────────────────────────────────────────
 
 interface ChipProps {
@@ -528,19 +674,20 @@ interface CardState {
 interface ApptCardProps {
   state: CardState;
   onClose: () => void;
+  onView: (appt: Appointment) => void;
   onEdit: (appt: Appointment) => void;
   onStatusChange: (id: string, status: ApptStatus) => void;
   onInvoice: () => void;
 }
 
-function AppointmentCard({ state, onClose, onEdit, onStatusChange, onInvoice }: ApptCardProps) {
+function AppointmentCard({ state, onClose, onView, onEdit, onStatusChange, onInvoice }: ApptCardProps) {
   const { appt, x, y } = state;
   const sc = STATUS_CONFIG[appt.status];
 
   const nextStatuses: ApptStatus[] = (() => {
-    if (appt.status === "booked")      return ["confirmed", "checked_in", "cancelled", "no_show"];
-    if (appt.status === "confirmed")   return ["checked_in", "cancelled", "no_show"];
-    if (appt.status === "checked_in")  return ["checked_out", "cancelled"];
+    if (appt.status === "booked")      return ["confirmed", "checked_in", "rescheduled", "cancelled", "no_show"];
+    if (appt.status === "confirmed")   return ["checked_in", "rescheduled", "cancelled", "no_show"];
+    if (appt.status === "checked_in")  return ["checked_out", "rescheduled", "cancelled"];
     if (appt.status === "rescheduled") return ["booked", "confirmed", "cancelled"];
     return [];
   })();
@@ -632,6 +779,9 @@ function AppointmentCard({ state, onClose, onEdit, onStatusChange, onInvoice }: 
 
         {/* Actions */}
         <div className="px-4 py-3 flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => { onView(appt); onClose(); }} className="flex-1 h-8 text-xs gap-1.5">
+            <Eye className="h-3 w-3" /> View
+          </Button>
           <Button size="sm" variant="outline" onClick={() => { onEdit(appt); onClose(); }} className="flex-1 h-8 text-xs gap-1.5">
             <Edit2 className="h-3 w-3" /> Edit
           </Button>
@@ -945,6 +1095,9 @@ export function AppointmentFrontDesk() {
   // Appointment card
   const [cardState, setCardState] = useState<CardState | null>(null);
 
+  // View drawer (read-only)
+  const [viewAppt, setViewAppt] = useState<Appointment | null>(null);
+
   const selectedDoctor = appointmentDoctors.find(d => d.id === selectedDoctorId) ?? appointmentDoctors[0] ?? null;
 
   // All types from selected doctor's services (for filter chips)
@@ -1237,6 +1390,7 @@ export function AppointmentFrontDesk() {
         <AppointmentCard
           state={cardState}
           onClose={() => setCardState(null)}
+          onView={appt => setViewAppt(appt)}
           onEdit={appt => openBooking({}, appt)}
           onStatusChange={(id, status) => {
             updateAppointment(id, { status });
@@ -1246,6 +1400,16 @@ export function AppointmentFrontDesk() {
             setCardState(null);
             toast({ title: "Invoice", description: "Invoice generation coming soon." });
           }}
+        />
+      )}
+
+      {/* View Drawer (read-only) */}
+      {viewAppt && (
+        <ViewDrawer
+          appt={viewAppt}
+          doctorName={appointmentDoctors.find(d => d.id === viewAppt.doctorId)?.name ?? "Unknown Doctor"}
+          onClose={() => setViewAppt(null)}
+          onEdit={() => { openBooking({}, viewAppt); setViewAppt(null); }}
         />
       )}
     </div>
