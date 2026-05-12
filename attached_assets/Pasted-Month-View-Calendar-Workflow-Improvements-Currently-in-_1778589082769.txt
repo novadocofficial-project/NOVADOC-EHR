@@ -1,0 +1,295 @@
+Month View Calendar Workflow Improvements
+Currently, in Month View:
+
+
+When the user clicks on a date, the system automatically switches to Day View.
+
+
+This behavior interrupts workflow consistency.
+
+
+This should be changed.
+The Month View should behave similarly to the improved Week View workflow, while keeping Month View visually simplified.
+
+Required Month View Behavior
+1. Prevent Auto Navigation to Day View
+Currently:
+
+
+Clicking on any date in Month View automatically opens Day View.
+
+
+This must be removed.
+New Expected Behavior
+When a user clicks:
+
+
+a date
+
+
+an appointment
+
+
+a booking item
+
+
+inside Month View:
+
+
+The calendar must remain in Month View.
+
+
+Only the related drawer/card/modal should open.
+
+
+No automatic view switching should happen.
+
+
+Users should manually decide if they want to move to Day View.
+
+2. Month View Should Support Booking
+Month View should not only be for viewing appointments.
+Front desk staff must also be able to:
+
+
+Create appointments
+
+
+View appointments
+
+
+Edit appointments
+
+
+Change statuses
+
+
+Open invoices
+
+
+Handle multi-bookings
+
+
+directly from Month View.
+
+3. Simplified Month View Structure
+Unlike Week View:
+Month View does not need a full visible time-slot ruler because:
+
+
+Space is limited
+
+
+Full slot rendering would overcrowd the UI
+
+
+Time-scale grids are not practical in monthly layout
+
+
+Instead:
+
+
+Month View should use compact appointment cards/lists inside each day cell.
+
+
+
+4. Month Cell Layout
+Each date cell in Month View should display:
+Day Header
+Example:
+
+
+Mon 12
+
+
+Tue 13
+
+
+
+Appointment Indicators
+Compact appointment items should show:
+
+
+Patient Name
+
+
+Time
+
+
+Status Color
+
+
+Doctor Name (optional if in Doctor View)
+
+
+Example:
+
+
+10:00 AM – Ahmed
+
+
+11:30 AM – Sara
+
+
+
+5. Empty Date Click Behavior
+When clicking an empty area inside a date cell:
+The system should:
+
+
+Open Quick Appointment Drawer
+
+
+Pre-fill:
+
+
+Selected date
+
+
+Active doctor
+
+
+Default slot suggestions if available
+
+
+
+
+WITHOUT changing the calendar view.
+
+6. Existing Appointment Click Behavior
+When clicking an existing appointment inside Month View:
+Open Appointment Card or Drawer with:
+
+
+Patient Details
+
+
+Appointment Status
+
+
+View/Edit Options
+
+
+Invoice Option
+
+
+Status Change Actions
+
+
+without navigating away from Month View.
+
+7. Multi Booking Display
+If many appointments exist on the same date:
+The Month cell should:
+
+
+Show first few appointments
+
+
+Then display:
+
+
+“+3 more”
+
+
+“View More”
+
+
+Expand button
+
+
+
+
+Clicking it should:
+
+
+Open day appointment overlay/modal/drawer
+
+
+NOT switch to Day View automatically
+
+
+
+8. Month View Status Colors
+Appointment status colors should remain visible in Month View.
+Example:
+
+
+Grey → Booked
+
+
+Green → Confirmed
+
+
+Blue → Checked In
+
+
+Red → Cancelled
+
+
+Orange → No Show
+
+
+This helps front desk quickly identify schedule conditions across the whole month.
+
+9. Better Month View Readability
+Current Month View should be redesigned for:
+
+
+Better spacing
+
+
+Better typography
+
+
+Better visibility
+
+
+Required Improvements
+
+
+Larger date numbers
+
+
+Stronger contrast
+
+
+Better appointment spacing
+
+
+Cleaner borders
+
+
+More visible hover states
+
+
+
+10. Consistent Calendar Behavior Across All Views
+The user experience should now be consistent across:
+ViewCan BookCan EditCan ViewAuto Switches ViewDay ViewYesYesYesNoWeek ViewYesYesYesNoMonth ViewYesYesYesNo
+
+11. Expected Final Workflow
+In Month View
+Users should be able to:
+
+
+Click any date
+
+
+Add appointment
+
+
+Manage appointments
+
+
+Open drawers
+
+
+Change statuses
+
+
+View multiple bookings
+
+
+while remaining fully inside Month View.
+The calendar should only change views when the user explicitly selects another view manually.
