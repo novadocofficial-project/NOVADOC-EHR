@@ -1,0 +1,353 @@
+# Appointment Management Module – Front Desk Workflow
+
+## 1. Navigation Structure
+
+A new module called **Appointments** will be added to the main horizontal navigation bar.
+
+### Navigation Flow
+
+* **Appointments**
+
+  * **Front Desk**
+
+When the user clicks on **Front Desk**, a new appointment management page will open where the front desk staff can book and manage doctor appointments.
+
+---
+
+# 2. Appointment Calendar Page
+
+The Front Desk Appointment page will contain a calendar-based appointment booking system.
+
+## Doctor Selection
+
+At the top of the page, the front desk staff will first select a doctor.
+
+Once a doctor is selected:
+
+* The system will load that doctor’s configured slot settings from local storage/system configuration.
+* The appointment calendar will automatically display available booking slots according to the doctor’s schedule and slot timings.
+
+---
+
+# 3. Calendar Features
+
+## Calendar Views
+
+The calendar can be toggled between:
+
+* Day View
+* Week View
+* Month View
+
+## Layout Toggle
+
+The front desk can also switch between:
+
+* Calendar View
+* Doctor View
+
+### Calendar View
+
+Displays appointments for a selected doctor in a normal calendar format.
+
+### Doctor View
+
+Displays appointments for all doctors together on a single screen for easier management.
+
+## Print Support
+
+Printing functionality should be available for:
+
+* Calendar View
+* Doctor View
+
+---
+
+# 4. Appointment Slot Interaction
+
+When the front desk clicks on an available slot in the calendar:
+
+* A right-side drawer will open.
+* Drawer width will be approximately 40% of the screen.
+* The drawer should also support Full Screen mode.
+
+---
+
+# 5. Appointment Booking Drawer
+
+The appointment drawer will contain the following sections and functionality:
+
+## Patient Search
+
+Front desk staff can search patients using:
+
+* Patient Name
+* MR Number
+* CNIC
+* Phone Number
+
+If a patient is found:
+
+* The patient will automatically be assigned to the appointment.
+
+---
+
+# 6. Pre-Filled Doctor Information
+
+Since the appointment slot was selected from a specific doctor’s calendar:
+
+The following fields will already be pre-filled:
+
+* Doctor/Provider Name
+* Date
+* Available Time Slot
+
+However, these fields are **not restricted**.
+
+This means:
+
+* Staff can still change the doctor manually if needed.
+* The system will then move the appointment into the selected doctor’s booking schedule.
+
+The pre-filled values are only for convenience and faster booking.
+
+---
+
+# 7. Appointment Form Fields
+
+The drawer will contain the following fields:
+
+## Provider / Staff
+
+* Auto-filled from selected calendar doctor
+* Editable dropdown
+
+## Appointment Date
+
+* Defaults to today’s date
+* Editable by front desk
+
+## Appointment Type
+
+This dropdown will fetch consultation types configured in the doctor profile, such as:
+
+* General Consultation
+* Follow-Up
+* Emergency
+* Tele Consult
+* Services
+
+## Doctor Speciality
+
+* Auto-fetched from doctor profile
+
+## Time Slots
+
+* Displayed as selectable block buttons
+* Easy click-based selection
+
+---
+
+# 8. Multi Booking Support
+
+If the doctor has enabled **Multi Booking** in their profile settings:
+
+* Front desk staff can book multiple patients in the same time slot.
+* Example:
+
+  * 2 patients can be booked at 10:00 AM if multi-booking is enabled.
+
+---
+
+# 9. Additional Appointment Fields
+
+## Priority Dropdown
+
+Possible options:
+
+* Normal
+* Urgent
+* Emergency
+
+---
+
+## Contagious Disease Option
+
+A Yes/No selection will be available.
+
+### If “Yes” is selected:
+
+Additional configurable options will appear.
+
+---
+
+## Repeat Appointment
+
+A checkbox will be available:
+
+* “Repeat Appointment”
+
+If checked:
+
+* Staff can configure recurrence settings such as:
+
+  * Daily
+  * Weekly
+  * Monthly
+  * Custom Repeat
+
+---
+
+## Comments
+
+* Free text notes section for additional instructions or comments.
+
+---
+
+# 10. Appointment Type Filters
+
+The calendar should support filtering appointments based on consultation types configured in the consultant profile.
+
+Examples:
+
+* General Consultation
+* Follow-Up
+* Emergency
+* Tele Consult
+* Services
+
+---
+
+# 11. Appointment Display Inside Slots
+
+After an appointment is booked, the slot should display:
+
+* Patient Name
+* MR Number
+* Phone Number
+
+---
+
+# 12. Multi Appointment Display in Single Slot
+
+If multiple patients are booked in the same slot:
+
+* The slot should display:
+
+  * First two visible appointments
+  * Arrow/Expand button to view remaining appointments
+
+---
+
+# 13. Appointment Card View
+
+When the user clicks on a patient name inside a slot:
+
+A card-based view will open displaying:
+
+* Patient Name
+* Appointment Time
+* Appointment Status
+* Consultant Name
+
+## Action Buttons
+
+### View
+
+* Opens drawer in read-only mode
+
+### Edit
+
+* Opens editable appointment drawer
+
+### Invoice
+
+* Generates appointment invoice
+
+---
+
+# 14. Quick Add Appointment
+
+A separate **Add Appointment** button will also be available on the page.
+
+## Purpose
+
+Allows front desk staff to quickly create appointments without changing the active calendar doctor.
+
+### Example Scenario
+
+* Active calendar is showing Dr. Asia
+* Staff wants to book appointment for Dr. Emily
+
+Instead of:
+
+1. Changing the calendar doctor
+2. Reloading slots
+3. Clicking a slot
+
+Staff can directly:
+
+* Click “Add Appointment”
+* Select another doctor
+* Create the appointment immediately
+
+---
+
+# 15. Appointment Status Workflow
+
+Each appointment will support status management with color indicators.
+
+## Appointment Statuses
+
+| Status      | Description                              | Color Indicator |
+| ----------- | ---------------------------------------- | --------------- |
+| Booked      | Initial appointment created              | Grey            |
+| Confirmed   | Patient confirmed manually by front desk | Configurable    |
+| Checked In  | Patient arrived at front desk            | Configurable    |
+| Cancelled   | Appointment cancelled                    | Configurable    |
+| No Show     | Patient never arrived                    | Configurable    |
+| Rescheduled | Appointment moved to another slot        | Configurable    |
+| Checked Out | Patient completed visit and left         | Configurable    |
+
+---
+
+# 16. Status Change Actions
+
+Each appointment inside the slot should provide quick status update actions.
+
+### Example Workflow
+
+1. Appointment created → Status = Booked
+2. Front desk calls patient → Status changed to Confirmed
+3. Patient arrives → Status changed to Checked In
+4. Consultation completed → Status changed to Checked Out
+
+---
+
+# 17. Daily Appointment Indicators
+
+A dashboard indicator section should display today’s appointment counts by status.
+
+Example:
+
+* Total Booked
+* Total Confirmed
+* Total Checked In
+* Total Cancelled
+* Total No Shows
+* Total Checked Out
+
+---
+
+# 18. Local Storage Requirements
+
+All appointment-related data should be stored in **browser local storage**.
+
+## Requirements
+
+* Save appointments in local storage
+* Retrieve appointments from local storage
+* Retrieve doctor slot settings from local storage wherever possible
+* Reflect updates in real time across the application
+
+This is required so the system behavior and live changes can be tested easily during development without backend dependency.
