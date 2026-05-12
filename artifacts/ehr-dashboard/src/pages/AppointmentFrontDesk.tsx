@@ -1038,7 +1038,7 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
       </div>
 
       {/* ── Time-aligned grid body ─────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0 [scrollbar-gutter:stable]">
         {allTimes.length === 0 ? (
           <div className="py-20 text-center">
             <Calendar className="h-8 w-8 text-slate-200 mx-auto mb-2" />
