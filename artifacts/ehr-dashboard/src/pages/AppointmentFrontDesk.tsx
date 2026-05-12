@@ -701,9 +701,9 @@ function AppointmentCard({ state, onClose, onView, onEdit, onStatusChange, onInv
 
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="fixed inset-0 z-[60]" onClick={onClose} />
       <div
-        className="fixed z-50 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden"
+        className="fixed z-[70] w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden"
         style={{ left: adjustedX, top: adjustedY }}
       >
         {/* Header */}
