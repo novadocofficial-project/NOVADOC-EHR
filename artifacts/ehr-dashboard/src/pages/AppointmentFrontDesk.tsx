@@ -104,13 +104,13 @@ function generateSlots(timing: Doctor["timings"][number], dateStr: string): Slot
 // ─── Status Config ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<ApptStatus, { label: string; text: string; bg: string; dot: string }> = {
-  booked:      { label: "Booked",      text: "text-slate-600",  bg: "bg-slate-100 border-slate-300",   dot: "bg-slate-400"   },
-  confirmed:   { label: "Confirmed",   text: "text-blue-700",   bg: "bg-blue-50 border-blue-300",      dot: "bg-blue-500"    },
-  checked_in:  { label: "Checked In",  text: "text-green-700",  bg: "bg-green-50 border-green-300",    dot: "bg-green-500"   },
-  cancelled:   { label: "Cancelled",   text: "text-red-600",    bg: "bg-red-50 border-red-300",        dot: "bg-red-500"     },
-  no_show:     { label: "No Show",     text: "text-orange-600", bg: "bg-orange-50 border-orange-300",  dot: "bg-orange-500"  },
-  rescheduled: { label: "Rescheduled", text: "text-purple-600", bg: "bg-purple-50 border-purple-300",  dot: "bg-purple-500"  },
-  checked_out: { label: "Checked Out", text: "text-teal-700",   bg: "bg-teal-50 border-teal-300",      dot: "bg-teal-500"    },
+  booked:      { label: "Booked",      text: "text-slate-700",   bg: "bg-slate-100 border-slate-400",    dot: "bg-slate-500"    },
+  confirmed:   { label: "Confirmed",   text: "text-emerald-800", bg: "bg-emerald-100 border-emerald-500", dot: "bg-emerald-500"  },
+  checked_in:  { label: "Checked In",  text: "text-blue-800",    bg: "bg-blue-100 border-blue-500",      dot: "bg-blue-500"     },
+  cancelled:   { label: "Cancelled",   text: "text-red-700",     bg: "bg-red-100 border-red-500",        dot: "bg-red-500"      },
+  no_show:     { label: "No Show",     text: "text-orange-700",  bg: "bg-orange-100 border-orange-500",  dot: "bg-orange-500"   },
+  rescheduled: { label: "Rescheduled", text: "text-purple-800",  bg: "bg-purple-100 border-purple-500",  dot: "bg-purple-500"   },
+  checked_out: { label: "Checked Out", text: "text-slate-800",   bg: "bg-slate-200 border-slate-500",    dot: "bg-slate-600"    },
 };
 
 const ALL_STATUSES = Object.keys(STATUS_CONFIG) as ApptStatus[];
@@ -647,18 +647,22 @@ function ApptChip({ appt, onClick }: ChipProps) {
   return (
     <button
       onClick={e => onClick(appt, e)}
-      className={`w-full text-left px-2.5 py-1.5 rounded-lg border text-xs mb-1 hover:opacity-80 transition-opacity ${sc.bg}`}
+      className={`w-full text-left px-3 py-2 rounded-lg border-2 mb-1.5 hover:brightness-95 transition-all ${sc.bg}`}
     >
-      <div className="flex items-center gap-1.5">
-        <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
-        <span className={`font-semibold truncate ${sc.text}`}>{appt.patientName}</span>
+      <div className="flex items-center gap-2">
+        <span className={`h-2 w-2 rounded-full flex-shrink-0 ${sc.dot}`} />
+        <span className={`text-sm font-bold truncate leading-tight ${sc.text}`}>{appt.patientName}</span>
         {appt.priority !== "normal" && (
-          <span className={`ml-auto text-[9px] font-bold uppercase px-1 rounded ${pc.bg} ${pc.text}`}>
+          <span className={`ml-auto text-[9px] font-black uppercase px-1.5 py-0.5 rounded flex-shrink-0 ${pc.bg} ${pc.text}`}>
             {appt.priority === "urgent" ? "URG" : "EMR"}
           </span>
         )}
       </div>
-      {appt.patientMrn && <p className="text-slate-400 text-[10px] mt-0.5 ml-3">{appt.patientMrn} {appt.patientPhone && `· ${appt.patientPhone}`}</p>}
+      <div className="ml-4 mt-0.5 flex items-center gap-2 flex-wrap">
+        <span className={`text-xs font-mono font-semibold ${sc.text} opacity-75`}>{appt.slotStart}</span>
+        {appt.patientMrn && <span className={`text-xs font-medium ${sc.text} opacity-60`}>{appt.patientMrn}</span>}
+        {appt.patientPhone && <span className={`text-xs ${sc.text} opacity-50`}>{appt.patientPhone}</span>}
+      </div>
     </button>
   );
 }
@@ -812,11 +816,11 @@ function SlotRow({ slot, appts, filterTypes, onClickEmpty, onClickAppt }: SlotRo
   const canBook = appts.length === 0 || slot.allowMultiple;
 
   return (
-    <div className="flex items-start gap-3 px-4 py-2.5 border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
-      <div className="w-24 flex-shrink-0 text-xs font-mono text-slate-400 pt-1.5">
+    <div className="flex items-start gap-3 px-4 py-4 border-b border-slate-200 group hover:bg-slate-50 transition-colors">
+      <div className="w-24 flex-shrink-0 text-sm font-mono text-slate-600 font-semibold pt-1">
         {slot.start}
-        <div className="text-[10px] text-slate-300">{slot.end}</div>
-        {slot.allowMultiple && <span className="text-[9px] text-indigo-400 font-bold">MULTI</span>}
+        <div className="text-xs text-slate-400 font-normal">{slot.end}</div>
+        {slot.allowMultiple && <span className="text-[10px] text-indigo-500 font-bold">MULTI</span>}
       </div>
       <div className="flex-1 min-w-0">
         {shown.map(a => <ApptChip key={a.id} appt={a} onClick={onClickAppt} />)}
@@ -931,12 +935,12 @@ function WeekSlotCell({ date, slot, appointments, filterTypes, doctorId, onClick
   const canBook = slotAppts.length === 0 || slot.allowMultiple;
 
   return (
-    <div className="group h-full px-1.5 py-1.5 hover:bg-slate-50/70 transition-colors">
+    <div className="group h-full px-2 py-3 hover:bg-slate-50 transition-colors">
       {shown.map(a => <ApptChip key={a.id} appt={a} onClick={onClickAppt} />)}
       {visible.length > 2 && (
         <button
           onClick={() => setExpanded(p => !p)}
-          className="text-[10px] text-[#4982CF] font-semibold block mt-0.5"
+          className="text-xs text-[#4982CF] font-semibold block mt-0.5"
         >
           {expanded ? "▲ less" : `+${visible.length - 2} more`}
         </button>
@@ -944,13 +948,13 @@ function WeekSlotCell({ date, slot, appointments, filterTypes, doctorId, onClick
       {canBook && (
         <button
           onClick={() => onClickSlot(date, slot)}
-          className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-[#4982CF] font-semibold flex items-center gap-0.5 mt-0.5 hover:underline"
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-[#4982CF] font-semibold flex items-center gap-0.5 mt-1 hover:underline"
         >
-          <Plus className="h-2.5 w-2.5" /> Book
+          <Plus className="h-3 w-3" /> Book
         </button>
       )}
       {!canBook && slotAppts.length > 0 && (
-        <p className="text-[9px] text-slate-300 mt-0.5">Single booking only</p>
+        <p className="text-[10px] text-slate-400 mt-0.5">Single booking only</p>
       )}
     </div>
   );
@@ -963,6 +967,11 @@ interface WeekViewProps {
   filterTypes: string[];
   onClickSlot: (date: string, slot: SlotBlock) => void;
   onClickAppt: (appt: Appointment, e: React.MouseEvent) => void;
+}
+
+function timeToMinutes(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
 }
 
 function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, onClickAppt }: WeekViewProps) {
@@ -979,13 +988,31 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
     new Set(dayData.flatMap(({ slots }) => slots.map(s => s.start))),
   ).sort();
 
+  // Current-time indicator: static at mount (no live tick needed for v1)
+  const nowMinutes = useMemo(() => {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }, []);
+  const isCurrentWeek = weekDays.includes(today);
+
+  // Find the row whose time slot straddles "now": rowStart <= now < nextRowStart
+  const currentTimeRow = useMemo(() => {
+    if (!isCurrentWeek) return null;
+    for (let i = 0; i < allTimes.length; i++) {
+      const rowStart = timeToMinutes(allTimes[i]);
+      const rowEnd = i + 1 < allTimes.length ? timeToMinutes(allTimes[i + 1]) : rowStart + 30;
+      if (nowMinutes >= rowStart && nowMinutes < rowEnd) return allTimes[i];
+    }
+    return null;
+  }, [allTimes, nowMinutes, isCurrentWeek]);
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
       {/* ── Header row (sticky) ────────────────────────────────────────────── */}
-      <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+      <div className="flex border-b border-slate-300 bg-slate-50 sticky top-0 z-10">
         {/* Ruler stub — same width as the time-label column below */}
-        <div className="w-14 flex-shrink-0 border-r border-slate-100" />
+        <div className="w-16 flex-shrink-0 border-r border-slate-200" />
         {dayData.map(({ date, slots, isToday }) => {
           const dateNum = parseInt(date.split("-")[2]);
           const dayName = getDayName(date).slice(0, 3).toUpperCase();
@@ -993,16 +1020,16 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
           return (
             <div
               key={date}
-              className={`flex-1 min-w-0 border-r border-slate-100 last:border-0 px-2 py-3 text-center ${isToday ? "border-t-2 border-t-[#4982CF] bg-[#4982CF]/5" : ""}`}
+              className={`flex-1 min-w-0 border-r border-slate-200 last:border-0 px-2 py-3 text-center ${isToday ? "border-t-2 border-t-[#4982CF] bg-[#4982CF]/5" : ""}`}
             >
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{dayName}</p>
-              <p className={`text-xl font-bold mt-0.5 leading-none ${isToday ? "text-[#4982CF]" : hasSlots ? "text-slate-800" : "text-slate-300"}`}>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{dayName}</p>
+              <p className={`text-2xl font-bold mt-0.5 leading-none ${isToday ? "text-[#4982CF]" : hasSlots ? "text-slate-800" : "text-slate-300"}`}>
                 {dateNum}
               </p>
-              <p className="text-[9px] mt-1 font-medium">
+              <p className="text-xs mt-1 font-medium">
                 {hasSlots
-                  ? <span className="text-slate-400">{slots.length} slot{slots.length !== 1 ? "s" : ""}</span>
-                  : <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-300">Off</span>
+                  ? <span className="text-slate-500">{slots.length} slot{slots.length !== 1 ? "s" : ""}</span>
+                  : <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-400">Off</span>
                 }
               </p>
             </div>
@@ -1011,7 +1038,7 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
       </div>
 
       {/* ── Time-aligned grid body ─────────────────────────────────────────── */}
-      <div className="overflow-y-auto max-h-[600px]">
+      <div className="overflow-y-auto max-h-[640px]">
         {allTimes.length === 0 ? (
           <div className="py-20 text-center">
             <Calendar className="h-8 w-8 text-slate-200 mx-auto mb-2" />
@@ -1019,44 +1046,52 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
             <p className="text-xs text-slate-300 mt-1">This doctor has no timings configured for any day this week.</p>
           </div>
         ) : (
-          allTimes.map(time => (
-            <div key={time} className="flex border-b border-slate-50 last:border-0">
-              {/* ── Time-axis label ── */}
-              <div className="w-14 flex-shrink-0 border-r border-slate-100 px-2 py-2 flex items-center justify-end">
-                <span className="text-[9px] font-mono text-slate-300 leading-none">{time}</span>
-              </div>
+          allTimes.map(time => {
+            const isNowRow = currentTimeRow === time;
+            return (
+              <div key={time} className={`flex border-b border-slate-200 last:border-0 relative ${isNowRow ? "z-[1]" : ""}`}>
+                {/* Current-time indicator — red bar across full row width */}
+                {isNowRow && (
+                  <div className="absolute inset-x-0 top-0 h-0.5 bg-red-500 z-10 pointer-events-none" />
+                )}
 
-              {/* ── Day cells for this time row ── */}
-              {dayData.map(({ date, slots, isToday }) => {
-                const slot = slots.find(s => s.start === time);
-                if (!slot) {
-                  // This day has no slot at this time — grey band (off / outside schedule)
+                {/* ── Time-axis label ── */}
+                <div className={`w-16 flex-shrink-0 border-r border-slate-200 px-2 py-3 flex items-center justify-end ${isNowRow ? "bg-red-50" : ""}`}>
+                  <span className={`text-xs font-semibold font-mono leading-none ${isNowRow ? "text-red-500" : "text-slate-500"}`}>{time}</span>
+                </div>
+
+                {/* ── Day cells for this time row ── */}
+                {dayData.map(({ date, slots, isToday }) => {
+                  const slot = slots.find(s => s.start === time);
+                  if (!slot) {
+                    // This day has no slot at this time — grey band (off / outside schedule)
+                    return (
+                      <div
+                        key={date}
+                        className={`flex-1 min-w-0 min-h-[68px] border-r border-slate-200 last:border-0 ${isToday ? "bg-[#4982CF]/[0.04]" : "bg-slate-100/60"}`}
+                      />
+                    );
+                  }
                   return (
                     <div
                       key={date}
-                      className={`flex-1 min-w-0 min-h-[52px] border-r border-slate-100 last:border-0 ${isToday ? "bg-[#4982CF]/[0.015]" : "bg-slate-50/50"}`}
-                    />
+                      className={`flex-1 min-w-0 border-r border-slate-200 last:border-0 min-h-[68px] ${isToday ? "bg-[#4982CF]/[0.05]" : ""}`}
+                    >
+                      <WeekSlotCell
+                        date={date}
+                        slot={slot}
+                        appointments={appointments}
+                        filterTypes={filterTypes}
+                        doctorId={doctor.id}
+                        onClickSlot={onClickSlot}
+                        onClickAppt={onClickAppt}
+                      />
+                    </div>
                   );
-                }
-                return (
-                  <div
-                    key={date}
-                    className={`flex-1 min-w-0 border-r border-slate-100 last:border-0 min-h-[52px] ${isToday ? "bg-[#4982CF]/[0.02]" : ""}`}
-                  >
-                    <WeekSlotCell
-                      date={date}
-                      slot={slot}
-                      appointments={appointments}
-                      filterTypes={filterTypes}
-                      doctorId={doctor.id}
-                      onClickSlot={onClickSlot}
-                      onClickAppt={onClickAppt}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          ))
+                })}
+              </div>
+            );
+          })
         )}
       </div>
     </div>
