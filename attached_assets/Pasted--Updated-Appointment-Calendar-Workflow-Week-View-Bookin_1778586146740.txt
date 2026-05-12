@@ -1,0 +1,180 @@
+# Updated Appointment Calendar Workflow – Week View Booking Support
+
+Currently, the appointment calendar only supports full slot booking functionality in **Day View**. In **Week View**, users can only see appointments, and clicking on a date automatically switches the calendar to Day View.
+
+This behavior needs to be changed.
+
+---
+
+# Required Changes
+
+## 1. Default Calendar View
+
+When the Appointment page loads:
+
+* The calendar should open in **Week View by default**.
+* The selected doctor’s complete weekly availability and slots should immediately be visible.
+
+---
+
+# 2. Week View Must Support Full Booking
+
+The Week View should not be a read-only preview anymore.
+
+Instead, the front desk staff must be able to perform full appointment operations directly inside Week View, including:
+
+* Viewing available slots
+* Clicking slots
+* Booking appointments
+* Viewing booked appointments
+* Updating appointment statuses
+* Opening appointment cards
+* Managing multi-bookings
+
+without switching to Day View.
+
+---
+
+# 3. Prevent Automatic Switch to Day View
+
+Currently:
+
+* Clicking on a date or slot in Week View automatically changes the calendar into Day View.
+
+This should be removed.
+
+## New Behavior
+
+When a user clicks on:
+
+* a date
+* a time slot
+* an appointment
+
+inside Week View:
+
+* The calendar must remain in Week View.
+* Only the appointment drawer or appointment card should open.
+* No navigation or automatic layout switching should occur.
+
+---
+
+# 4. Weekly Slot Visibility
+
+In Week View:
+
+* All available slots for the selected doctor should be visible directly in the weekly grid.
+* Availability should load according to the doctor’s configured slot settings from local storage.
+
+Example:
+
+* Monday → 9 AM – 5 PM slots
+* Tuesday → 10 AM – 2 PM slots
+* Wednesday → Off
+* Thursday → Evening slots
+
+The system should render all configured availability directly in the Week View calendar.
+
+---
+
+# 5. Slot Interaction in Week View
+
+The same booking interaction available in Day View should also work in Week View.
+
+## Clicking Empty Slot
+
+Should:
+
+* Open Appointment Drawer
+* Pre-fill:
+
+  * Doctor
+  * Date
+  * Time Slot
+
+## Clicking Existing Appointment
+
+Should:
+
+* Open Appointment Card View
+* Allow:
+
+  * View
+  * Edit
+  * Invoice
+  * Status Updates
+
+---
+
+# 6. Multi Booking in Week View
+
+If a doctor allows multi-booking:
+
+* Multiple appointments should be displayed inside the same slot in Week View.
+* If more appointments exist than visible space allows:
+
+  * Show first appointments
+  * Display expand/arrow button to reveal remaining bookings
+
+---
+
+# 7. Week View Status Colors
+
+Appointment status color coding must also work inside Week View.
+
+Example:
+
+* Grey → Booked
+* Green → Confirmed
+* Blue → Checked In
+* Red → Cancelled
+* Orange → No Show
+* Purple → Rescheduled
+* Dark Grey → Checked Out
+
+---
+
+# 8. Doctor Availability Rendering
+
+Week View should visually differentiate:
+
+* Available slots
+* Booked slots
+* Off days
+* Blocked timings
+
+This makes it easier for the front desk to manage the doctor’s full weekly schedule from a single screen.
+
+---
+
+# 9. Improved Front Desk Workflow
+
+With this update:
+
+* Front desk staff can manage an entire week without changing views repeatedly.
+* Appointment booking becomes faster.
+* Weekly planning and overload detection become easier.
+* Multi-doctor scheduling becomes more efficient.
+
+---
+
+# Expected Final Behavior
+
+## On Appointment Page Load
+
+* Week View opens by default
+* Selected doctor’s full weekly slots load automatically
+
+## Inside Week View
+
+Users can:
+
+* Book appointments directly
+* View appointment details
+* Edit appointments
+* Change statuses
+* Handle multi-bookings
+* Open invoices
+* Manage weekly scheduling
+
+without ever switching to Day View unless they manually choose to do so.
