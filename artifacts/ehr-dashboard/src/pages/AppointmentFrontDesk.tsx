@@ -1674,7 +1674,7 @@ export function AppointmentFrontDesk() {
       </div>
 
       {/* Calendar Content */}
-      <div className="flex-1 overflow-hidden flex flex-col min-h-0 px-4 pt-3 pb-0">
+      <div className="flex-1 overflow-hidden flex flex-col min-h-0 px-4 pt-3 pb-3">
         {appointmentDoctors.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <Stethoscope className="h-12 w-12 text-slate-200 mb-4" />
