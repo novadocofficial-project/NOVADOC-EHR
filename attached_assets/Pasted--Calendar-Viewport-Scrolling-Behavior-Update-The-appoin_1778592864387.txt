@@ -1,0 +1,204 @@
+# Calendar Viewport & Scrolling Behavior Update
+
+The appointment calendar layout should now be redesigned so that the calendar remains fixed inside the viewport.
+
+Currently:
+
+* The entire page scrolls vertically
+* Users need to scroll the full page to navigate appointments
+* This creates poor usability, especially in Week and Day View
+
+This behavior should be changed.
+
+---
+
+# Required Behavior
+
+## 1. Fixed Full-Height Calendar Layout
+
+The Appointment page should behave like a professional scheduling workspace.
+
+## Expected Layout
+
+* Header/Navbar remains fixed
+* Filters/toolbar remain fixed
+* Calendar occupies the remaining viewport height
+* The page itself should NOT scroll
+
+Instead:
+
+* Only the calendar content area should scroll internally
+
+---
+
+# 2. Prevent Page-Level Scrolling
+
+Currently:
+
+* Browser/page scroll is active
+
+This should be disabled for the appointment workspace.
+
+## New Behavior
+
+* Body/page scroll should remain fixed
+* Calendar container becomes independently scrollable
+
+This creates:
+
+* Faster navigation
+* Better scheduling workflow
+* More desktop-app-like experience
+
+---
+
+# 3. Internal Calendar Scroll
+
+The calendar itself should support internal scrolling for:
+
+* Time slots
+* Long schedules
+* Multi-bookings
+* Week/day vertical navigation
+
+## Example
+
+* User scrolls inside the calendar grid
+* Time ruler scrolls together
+* Header stays fixed
+* Toolbar stays fixed
+
+---
+
+# 4. Sticky Calendar Headers
+
+The following sections should remain visible while scrolling inside the calendar:
+
+## Sticky Elements
+
+* Day headers
+* Time ruler labels
+* Doctor names (in doctor view)
+* Toolbar actions
+* View toggle buttons
+
+This improves orientation while navigating long schedules.
+
+---
+
+# 5. Recommended Layout Structure
+
+## Page Structure
+
+### Fixed Top Header
+
+Contains:
+
+* Navigation
+* Appointment module title
+
+---
+
+### Fixed Toolbar Section
+
+Contains:
+
+* Doctor selector
+* Day/Week/Month toggle
+* Calendar/Doctor view toggle
+* Filters
+* Print button
+* Add Appointment button
+* Status indicators
+
+---
+
+### Scrollable Calendar Container
+
+Contains:
+
+* Time grid
+* Slots
+* Appointments
+* Weekly/monthly layout
+
+Only this section should scroll.
+
+---
+
+# 6. Better Height Management
+
+The calendar should dynamically fit:
+
+* Laptop screens
+* Desktop monitors
+* Smaller displays
+
+## Recommended Behavior
+
+Use viewport-based sizing such as:
+
+* `height: calc(100vh - headerHeight - toolbarHeight)`
+
+This ensures:
+
+* No unnecessary page overflow
+* Maximum visible scheduling area
+
+---
+
+# 7. Drawer Behavior
+
+When the appointment drawer opens:
+
+* Background calendar remains fixed
+* Internal calendar position should not reset
+* User should return to the same scroll position after closing drawer
+
+This is important for operational efficiency.
+
+---
+
+# 8. Month View Scrolling
+
+Month View should:
+
+* Fit inside viewport
+* Avoid full-page scrolling
+* Support internal content scrolling only if needed
+
+The month grid itself should remain stable and readable.
+
+---
+
+# 9. UX Goal
+
+The appointment module should feel like:
+
+* Google Calendar
+* Outlook Calendar
+* Professional EMR scheduling systems
+
+not like a traditional scrolling webpage.
+
+The scheduling workspace should behave more like an application dashboard rather than a normal web page.
+
+---
+
+# Expected Final Experience
+
+Users should be able to:
+
+* Open appointment page
+* Stay inside a fixed workspace
+* Scroll only inside calendar content
+* Keep toolbar/header always visible
+* Navigate schedules smoothly without page jumps or full-page scrolling
+
+This will significantly improve:
+
+* Speed
+* Accessibility
+* Focus
+* Multi-appointment handling
+* Front desk operational workflow.
