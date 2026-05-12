@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import {
   Activity,
@@ -225,7 +225,16 @@ export function AdminSettings() {
   const toggleNav = (key: keyof typeof navExpanded) =>
     setNavExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
-  const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
+  const [doctors, setDoctors] = useState<Doctor[]>(() => {
+    try {
+      const raw = localStorage.getItem("ehr-doctors-v1");
+      if (raw) return JSON.parse(raw) as Doctor[];
+    } catch {}
+    return INITIAL_DOCTORS;
+  });
+  useEffect(() => {
+    try { localStorage.setItem("ehr-doctors-v1", JSON.stringify(doctors)); } catch {}
+  }, [doctors]);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>(INITIAL_SERVICE_TYPES);
   const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
   const [labSections, setLabSections] = useState<LabSection[]>(LAB_SEED_SECTIONS);
