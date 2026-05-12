@@ -1107,11 +1107,14 @@ interface MonthViewProps {
   filterTypes: string[];
   selectedDate: string;
   onSelectDate: (d: string) => void;
+  onClickAppt: (appt: Appointment, e: React.MouseEvent) => void;
+  onBookDate: (date: string) => void;
+  onClickMore: (date: string) => void;
 }
 
-function MonthView({ date, doctor, appointments, filterTypes, selectedDate, onSelectDate }: MonthViewProps) {
+function MonthView({ date, doctor, appointments, filterTypes, selectedDate, onSelectDate, onClickAppt, onBookDate, onClickMore }: MonthViewProps) {
   const cells = useMemo(() => getMonthDays(date), [date]);
-  const [y, m] = date.split("-").map(Number);
+  const [, m] = date.split("-").map(Number);
   const today = todayStr();
   const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -1135,8 +1138,8 @@ function MonthView({ date, doctor, appointments, filterTypes, selectedDate, onSe
           return (
             <div
               key={i}
-              onClick={() => inMonth && hasSlots && onSelectDate(d)}
-              className={`min-h-[100px] border-r border-b border-slate-200 px-2 py-2 transition-colors
+              onClick={() => { if (inMonth && hasSlots) { onSelectDate(d); onBookDate(d); } }}
+              className={`min-h-[100px] border-r border-b border-slate-200 px-2 py-2 transition-colors relative
                 ${!inMonth ? "bg-slate-100/50" : hasSlots ? "cursor-pointer hover:bg-slate-50" : ""}
                 ${isToday && !isSelected ? "bg-[#4982CF]/[0.04]" : ""}
                 ${isSelected ? "bg-[#4982CF]/[0.08] ring-1 ring-inset ring-[#4982CF]/30" : ""}`}
@@ -1145,22 +1148,91 @@ function MonthView({ date, doctor, appointments, filterTypes, selectedDate, onSe
                 ${isToday ? "bg-[#4982CF] text-white shadow-sm" : inMonth ? "text-slate-800" : "text-slate-300"}`}>
                 {parseInt(d.split("-")[2])}
               </div>
-              {inMonth && dayAppts.slice(0, 3).map(a => {
+              {inMonth && dayAppts.slice(0, 2).map(a => {
                 const sc = STATUS_CONFIG[a.status];
                 return (
-                  <div key={a.id} className={`text-[11px] font-semibold px-1.5 py-0.5 rounded border mb-0.5 truncate leading-tight ${sc.bg} ${sc.text}`}>
-                    {a.patientName}
-                  </div>
+                  <button
+                    key={a.id}
+                    onClick={e => { e.stopPropagation(); onClickAppt(a, e); }}
+                    className={`w-full text-left text-[11px] font-semibold px-1.5 py-0.5 rounded border mb-0.5 truncate leading-tight hover:brightness-95 transition-all ${sc.bg} ${sc.text}`}
+                  >
+                    <span className="font-mono opacity-75 mr-1">{a.slotStart}</span>{a.patientName}
+                  </button>
                 );
               })}
-              {inMonth && dayAppts.length > 3 && (
-                <div className="text-xs text-[#4982CF] font-bold mt-0.5">+{dayAppts.length - 3} more</div>
+              {inMonth && dayAppts.length > 2 && (
+                <button
+                  onClick={e => { e.stopPropagation(); onClickMore(d); }}
+                  className="text-xs text-[#4982CF] font-bold mt-0.5 hover:underline block"
+                >
+                  +{dayAppts.length - 2} more
+                </button>
               )}
             </div>
           );
         })}
       </div>
     </div>
+  );
+}
+
+// ─── Month Day Overlay ────────────────────────────────────────────────────────
+
+interface MonthDayOverlayProps {
+  date: string;
+  doctor: Doctor;
+  appointments: Appointment[];
+  filterTypes: string[];
+  onClickAppt: (appt: Appointment, e: React.MouseEvent) => void;
+  onBook: () => void;
+  onClose: () => void;
+}
+
+function MonthDayOverlay({ date, doctor, appointments, filterTypes, onClickAppt, onBook, onClose }: MonthDayOverlayProps) {
+  const dayAppts = appointments.filter(a =>
+    a.doctorId === doctor.id && a.date === date &&
+    (filterTypes.length === 0 || filterTypes.includes(a.type))
+  );
+  const dayLabel = new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
+      <div className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[95vw] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[80vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
+          <div>
+            <p className="text-sm font-bold text-slate-900">{dayLabel}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{dayAppts.length} appointment{dayAppts.length !== 1 ? "s" : ""}</p>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Appointment list */}
+        <div className="flex-1 overflow-y-auto px-4 py-3">
+          {dayAppts.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-6">No appointments for this day.</p>
+          ) : (
+            dayAppts
+              .slice()
+              .sort((a, b) => a.slotStart.localeCompare(b.slotStart))
+              .map(a => <ApptChip key={a.id} appt={a} onClick={(appt, e) => { onClickAppt(appt, e); onClose(); }} />)
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 border-t border-slate-100 px-4 py-3">
+          <button
+            onClick={() => { onBook(); onClose(); }}
+            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#4982CF] text-white text-sm font-bold hover:bg-[#3a6db5] transition-colors"
+          >
+            <Plus className="h-4 w-4" /> Book Appointment
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -1238,6 +1310,9 @@ export function AppointmentFrontDesk() {
 
   // View drawer (read-only)
   const [viewAppt, setViewAppt] = useState<Appointment | null>(null);
+
+  // Month View day-detail overlay
+  const [monthOverlayDate, setMonthOverlayDate] = useState<string | null>(null);
 
   const selectedDoctor = appointmentDoctors.find(d => d.id === selectedDoctorId) ?? appointmentDoctors[0] ?? null;
 
@@ -1546,7 +1621,10 @@ export function AppointmentFrontDesk() {
             appointments={appointments}
             filterTypes={filterTypes}
             selectedDate={selectedDate}
-            onSelectDate={d => { setSelectedDate(d); setViewMode("day"); }}
+            onSelectDate={d => setSelectedDate(d)}
+            onClickAppt={handleApptClick}
+            onBookDate={d => { setSelectedDate(d); openBooking({ doctorId: selectedDoctor.id, date: d }); }}
+            onClickMore={d => { setSelectedDate(d); setMonthOverlayDate(d); }}
           />
         )}
       </div>
@@ -1587,6 +1665,19 @@ export function AppointmentFrontDesk() {
           doctorName={appointmentDoctors.find(d => d.id === viewAppt.doctorId)?.name ?? "Unknown Doctor"}
           onClose={() => setViewAppt(null)}
           onEdit={() => { openBooking({}, viewAppt); setViewAppt(null); }}
+        />
+      )}
+
+      {/* Month View Day Detail Overlay */}
+      {monthOverlayDate && selectedDoctor && (
+        <MonthDayOverlay
+          date={monthOverlayDate}
+          doctor={selectedDoctor}
+          appointments={appointments}
+          filterTypes={filterTypes}
+          onClickAppt={(appt, e) => { setMonthOverlayDate(null); handleApptClick(appt, e); }}
+          onBook={() => openBooking({ doctorId: selectedDoctor.id, date: monthOverlayDate })}
+          onClose={() => setMonthOverlayDate(null)}
         />
       )}
     </div>
