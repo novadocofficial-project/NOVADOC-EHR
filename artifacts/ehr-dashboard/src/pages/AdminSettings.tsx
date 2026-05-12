@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import {
   Activity,
   AlertCircle,
   Banknote,
   Bell,
-  CalendarDays,
   FileText,
   FlaskConical,
   Sliders,
@@ -194,8 +193,7 @@ type ActiveModule =
   | "lab-order-sets" | "imaging-order-sets"
   | "users-counters"
   | "reg-basic-info" | "reg-patient-types" | "reg-welfare-forms"
-  | "reg-demographics" | "reg-custom-sections" | "reg-workflow" | "reg-quick"
-  | "appt-doctors";
+  | "reg-demographics" | "reg-custom-sections" | "reg-workflow" | "reg-quick";
 
 export function AdminSettings() {
   const [, setLocation] = useLocation();
@@ -221,23 +219,13 @@ export function AdminSettings() {
     consumables: false,
     permissions: false,
     users: false,
-    appointments: false,
   });
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DATA);
 
   const toggleNav = (key: keyof typeof navExpanded) =>
     setNavExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
-  const [doctors, setDoctors] = useState<Doctor[]>(() => {
-    try {
-      const raw = localStorage.getItem("ehr-doctors-v1");
-      if (raw) return JSON.parse(raw) as Doctor[];
-    } catch {}
-    return INITIAL_DOCTORS;
-  });
-  useEffect(() => {
-    try { localStorage.setItem("ehr-doctors-v1", JSON.stringify(doctors)); } catch {}
-  }, [doctors]);
+  const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>(INITIAL_SERVICE_TYPES);
   const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
   const [labSections, setLabSections] = useState<LabSection[]>(LAB_SEED_SECTIONS);
@@ -759,29 +747,13 @@ export function AdminSettings() {
                 {subNavItem("permissions",    <Shield className="h-3.5 w-3.5" />, "Security")}
               </div>
             )}
-
-            {/* ── Appointments Group ── */}
-            <button
-              type="button"
-              onClick={() => toggleNav("appointments")}
-              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <CalendarDays className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Appointments</span>
-              {navExpanded.appointments ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-            </button>
-            {navExpanded.appointments && (
-              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("appt-doctors", <Stethoscope className="h-3.5 w-3.5" />, "Appointment Doctors")}
-              </div>
-            )}
           </nav>
         </aside>
 
         {/* Right Content */}
         <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","care-plan-library","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","formulary-partners","imaging-tests","imaging-reasons","imaging-partners","consumables-master","consumables-providers","lab-order-sets","imaging-order-sets","nursing-triage"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
 
-          {(activeModule === "doctors" || activeModule === "appt-doctors") && (
+          {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
           )}
           {activeModule === "specialties" && (
