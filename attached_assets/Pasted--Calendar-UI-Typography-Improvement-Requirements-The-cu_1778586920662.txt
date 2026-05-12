@@ -1,0 +1,262 @@
+# Calendar UI & Typography Improvement Requirements
+
+The current appointment calendar UI has visibility and readability issues.
+
+Problems identified:
+
+* Calendar colors are too dim
+* Low contrast between slots and background
+* Time ruler text is too small
+* Slot typography is difficult to read
+* Overall usability is weak for senior doctors or long-hour usage
+
+This is especially problematic for:
+
+* Doctors aged 60+
+* Users working on lower brightness screens
+* Front desk staff handling appointments all day
+* High-volume appointment environments
+
+The calendar UI needs to be redesigned with better accessibility, readability, spacing, and visual hierarchy.
+
+---
+
+# 1. Improve Overall Calendar Contrast
+
+The calendar currently feels visually faded and difficult to scan quickly.
+
+## Required Changes
+
+* Increase contrast between:
+
+  * Background
+  * Time grid
+  * Appointment cards
+  * Borders
+  * Active slots
+
+## UI Direction
+
+Use:
+
+* Cleaner white/light background
+* Stronger divider lines
+* More visible hover states
+* Clear appointment block separation
+
+Avoid:
+
+* Washed out grey tones
+* Thin unreadable borders
+* Low-opacity text
+
+---
+
+# 2. Increase Typography Size
+
+The current slot and ruler text is too small.
+
+## Required Typography Improvements
+
+### Time Ruler
+
+Increase:
+
+* Font size
+* Font weight
+* Row height
+
+The doctor should be able to quickly read:
+
+* 09:00 AM
+* 10:00 AM
+* 11:30 AM
+
+without zooming or focusing excessively.
+
+---
+
+# 3. Larger Slot Heights
+
+Time slots are visually compressed.
+
+## Required Changes
+
+Increase:
+
+* Slot row height
+* Vertical spacing
+* Appointment card padding
+
+This allows:
+
+* Easier clicking
+* Better readability
+* Improved multi-booking visibility
+
+---
+
+# 4. Accessibility First Design
+
+The calendar should be optimized for:
+
+* Elderly doctors
+* Long working hours
+* Fast appointment scanning
+* Touchscreen usage
+
+## Accessibility Improvements
+
+* Larger clickable areas
+* Higher contrast text
+* Better font rendering
+* Clear hover states
+* Distinct selected slot states
+
+---
+
+# 5. Appointment Card Redesign
+
+Current appointment blocks should be visually stronger.
+
+## Each Appointment Block Should Clearly Show
+
+* Patient Name
+* MR Number
+* Appointment Time
+* Status Color
+* Phone Number (optional)
+
+## Typography
+
+Use:
+
+* Larger patient name
+* Medium weight MR number
+* Compact secondary information
+
+---
+
+# 6. Better Color System
+
+The calendar should use clearer medical scheduling colors.
+
+## Suggested Status Colors
+
+| Status      | Suggested Color Behavior |
+| ----------- | ------------------------ |
+| Booked      | Neutral Grey             |
+| Confirmed   | Green                    |
+| Checked In  | Blue                     |
+| Cancelled   | Red                      |
+| No Show     | Orange                   |
+| Rescheduled | Purple                   |
+| Checked Out | Dark Slate               |
+
+Colors should be:
+
+* Solid
+* Easy to differentiate
+* Colorblind-friendly where possible
+
+Avoid:
+
+* Pale pastel tones
+* Low opacity backgrounds
+
+---
+
+# 7. Improve Week View Readability
+
+Week View currently becomes visually crowded.
+
+## Required Improvements
+
+* Increase column spacing
+* Sticky day headers
+* Better separation between days
+* Larger day/date labels
+
+Example:
+MON 12
+TUE 13
+WED 14
+
+should appear bold and clearly visible.
+
+---
+
+# 8. Current Time Indicator
+
+The current time line should be:
+
+* More visible
+* Slightly thicker
+* High contrast
+
+Example:
+
+* Bright blue/red indicator line
+* Small live time badge
+
+This helps doctors quickly identify current schedule position.
+
+---
+
+# 9. Responsive Scaling
+
+Calendar should intelligently scale for:
+
+* Large monitors
+* Tablets
+* Touch screens
+* Lower resolution displays
+
+Typography and spacing should not shrink aggressively.
+
+---
+
+# 10. Reduce Visual Fatigue
+
+Doctors and front desk staff may use this screen continuously for 8–12 hours.
+
+The UI should therefore:
+
+* Reduce eye strain
+* Use balanced spacing
+* Avoid overcrowding
+* Improve scan speed
+
+---
+
+# 11. Recommended Design Direction
+
+The calendar should feel similar to:
+
+* Modern hospital EMR scheduling systems
+* Google Calendar readability
+* Outlook calendar spacing
+* Clinical dashboard accessibility standards
+
+Focus on:
+
+* Clarity
+* Fast scanning
+* Accessibility
+* Operational efficiency
+
+instead of compact dense layouts.
+
+---
+
+# Expected Final Experience
+
+A doctor or front desk staff member should be able to:
+
+* Read the calendar from a distance
+* Quickly identify appointments
+* Easily distinguish statuses
+* Click slots comfortably
+* Navigate Week View without strain
+
+even during high patient volume or extended working hours.
