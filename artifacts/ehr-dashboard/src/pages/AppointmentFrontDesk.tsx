@@ -1218,7 +1218,7 @@ function MonthDayOverlay({ date, doctor, appointments, filterTypes, onClickAppt,
             dayAppts
               .slice()
               .sort((a, b) => a.slotStart.localeCompare(b.slotStart))
-              .map(a => <ApptChip key={a.id} appt={a} onClick={(appt, e) => { onClickAppt(appt, e); onClose(); }} />)
+              .map(a => <ApptChip key={a.id} appt={a} onClick={(appt, e) => { onClickAppt(appt, e); }} />)
           )}
         </div>
 
