@@ -84,11 +84,18 @@ function buildCatalogue(): { categories: BillCategory[]; packages: BillPackage[]
     getItems: () => {
       const items: BillCatItem[] = [];
       for (const doc of activeDocs) {
-        const firstRow: FeeRow | undefined = (feesMap[doc.id] ?? [])[0];
+        const rows = feesMap[doc.id] ?? [];
         for (const svc of doc.services) {
           if (!CONSULT_SERVICES.includes(svc)) continue;
           const feeKey = SVC_TO_FEE[svc];
-          const price  = parseFloat((firstRow?.[feeKey] as string | undefined) ?? "") || 0;
+          // Scan all subdept rows for the first non-zero configured fee.
+          // This correctly handles doctors assigned to multiple departments
+          // with different fee schedules — we surface the first meaningful value
+          // rather than always reading row[0] which may have an empty fee.
+          const price = rows.reduce<number>((best, row) => {
+            if (best > 0) return best;
+            return parseFloat((row[feeKey] as string | undefined) ?? "") || 0;
+          }, 0);
           items.push({ id: `${doc.id}::${svc}`, name: svc, price, subLabel: doc.name });
         }
       }
