@@ -237,10 +237,22 @@ export function AdminSettings() {
   }, [doctors]);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>(INITIAL_SERVICE_TYPES);
   const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
-  const [labSections, setLabSections] = useState<LabSection[]>(LAB_SEED_SECTIONS);
-  const [labProviders, setLabProviders] = useState<LabProvider[]>(LAB_SEED_PROVIDERS);
-  const [procSections, setProcSections] = useState<ProcedureSection[]>(INITIAL_PROC_SECTIONS);
-  const [procPartners, setProcPartners] = useState<ProcedurePartner[]>(INITIAL_PROC_PARTNERS);
+  const [labSections, setLabSections] = useState<LabSection[]>(() => {
+    try { const r = localStorage.getItem("ehr-lab-sections-v1"); if (r) return JSON.parse(r) as LabSection[]; } catch { /**/ }
+    return LAB_SEED_SECTIONS;
+  });
+  const [labProviders, setLabProviders] = useState<LabProvider[]>(() => {
+    try { const r = localStorage.getItem("ehr-lab-providers-v1"); if (r) return JSON.parse(r) as LabProvider[]; } catch { /**/ }
+    return LAB_SEED_PROVIDERS;
+  });
+  const [procSections, setProcSections] = useState<ProcedureSection[]>(() => {
+    try { const r = localStorage.getItem("ehr-procedure-sections-v1"); if (r) return JSON.parse(r) as ProcedureSection[]; } catch { /**/ }
+    return INITIAL_PROC_SECTIONS;
+  });
+  const [procPartners, setProcPartners] = useState<ProcedurePartner[]>(() => {
+    try { const r = localStorage.getItem("ehr-procedure-partners-v1"); if (r) return JSON.parse(r) as ProcedurePartner[]; } catch { /**/ }
+    return INITIAL_PROC_PARTNERS;
+  });
   const [imagingPartners, setImagingPartners] = useState<ImagingPartner[]>(() => {
     try {
       const raw = localStorage.getItem("ehr-imaging-partners-v1");
@@ -278,6 +290,7 @@ export function AdminSettings() {
   });
 
   const [doctorFees, setDoctorFees] = useState<Record<string, FeeRow[]>>(() => {
+    try { const r = localStorage.getItem("ehr-doctor-fees-v1"); if (r) return JSON.parse(r) as Record<string, FeeRow[]>; } catch { /**/ }
     const fee = (
       deptId: string, subDeptId: string,
       consultationFee: string, shareType: "value" | "percentage", shareAmount: string,
@@ -307,6 +320,12 @@ export function AdminSettings() {
       ],
     };
   });
+
+  useEffect(() => { try { localStorage.setItem("ehr-lab-sections-v1",       JSON.stringify(labSections));  } catch { /**/ } }, [labSections]);
+  useEffect(() => { try { localStorage.setItem("ehr-lab-providers-v1",      JSON.stringify(labProviders)); } catch { /**/ } }, [labProviders]);
+  useEffect(() => { try { localStorage.setItem("ehr-procedure-sections-v1", JSON.stringify(procSections)); } catch { /**/ } }, [procSections]);
+  useEffect(() => { try { localStorage.setItem("ehr-procedure-partners-v1", JSON.stringify(procPartners)); } catch { /**/ } }, [procPartners]);
+  useEffect(() => { try { localStorage.setItem("ehr-doctor-fees-v1",        JSON.stringify(doctorFees));   } catch { /**/ } }, [doctorFees]);
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
     d1: true, d2: true, d3: false, d4: true,

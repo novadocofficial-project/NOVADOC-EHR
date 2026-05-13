@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Plus, Search, Edit2, Trash2, Package,
   ChevronRight, ChevronLeft, Check, X, Info, Layers, Tag,
@@ -158,8 +158,17 @@ function PriceBreakdown({ baseTotal, discount, finalPrice }: { baseTotal: number
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+const PACKAGES_KEY = "ehr-packages-v1";
+
 export function PackagesModule({ services = [], serviceTypes = [] }: { services?: Service[]; serviceTypes?: ServiceType[] }) {
-  const [bundles, setBundles] = useState<Bundle[]>(SEED_BUNDLES);
+  const [bundles, setBundles] = useState<Bundle[]>(() => {
+    try { const r = localStorage.getItem(PACKAGES_KEY); if (r) return JSON.parse(r) as Bundle[]; } catch { /**/ }
+    return SEED_BUNDLES;
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem(PACKAGES_KEY, JSON.stringify(bundles)); } catch { /**/ }
+  }, [bundles]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [mode, setMode] = useState<"list" | "create" | "edit" | "view">("list");

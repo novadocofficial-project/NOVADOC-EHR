@@ -16,6 +16,8 @@ import { QueueAppHeader, SEED_PATIENTS, timeAgo, Patient, uid } from "@/pages/Qu
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useRegConfig, type RegField } from "@/hooks/useRegConfig";
 import { usePatients } from "@/hooks/usePatients";
+import { useBillingCatalogue } from "@/hooks/useBillingCatalogue";
+import type { BillCatItem, BillPackage } from "@/hooks/useBillingCatalogue";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -29,59 +31,23 @@ function getSecsLeft(callTimestamp: number | null): number {
 
 function fmt(n: number) { return "Rs. " + n.toLocaleString("en-PK"); }
 
-// ─── Billing Seed Data ────────────────────────────────────────────────────────
+// ─── Billing Category Styles ──────────────────────────────────────────────────
 
-interface SvcCategory { id: string; name: string; color: string; bg: string; }
-interface SvcItem     { id: string; catId: string; name: string; price: number; }
-interface BillPkg     { id: string; name: string; desc: string; price: number; }
-
-const SVC_CATEGORIES: SvcCategory[] = [
-  { id: "cat-1", name: "Consultation",    color: "text-[#4982CF]",  bg: "bg-blue-50   border-blue-200"   },
-  { id: "cat-2", name: "Lab / Pathology", color: "text-purple-700", bg: "bg-purple-50 border-purple-200" },
-  { id: "cat-3", name: "Radiology",       color: "text-teal-700",   bg: "bg-teal-50   border-teal-200"   },
-  { id: "cat-4", name: "Pharmacy",        color: "text-green-700",  bg: "bg-green-50  border-green-200"  },
-  { id: "cat-5", name: "Nursing",         color: "text-rose-700",   bg: "bg-rose-50   border-rose-200"   },
-];
+const CAT_STYLE: Record<string, { color: string; bg: string }> = {
+  consultation: { color: "text-[#4982CF]",  bg: "bg-blue-50   border-blue-200"   },
+  lab:          { color: "text-purple-700", bg: "bg-purple-50 border-purple-200" },
+  imaging:      { color: "text-teal-700",   bg: "bg-teal-50   border-teal-200"   },
+  pharmacy:     { color: "text-green-700",  bg: "bg-green-50  border-green-200"  },
+  procedures:   { color: "text-rose-700",   bg: "bg-rose-50   border-rose-200"   },
+};
 
 function catIcon(id: string, cls = "h-5 w-5") {
-  if (id === "cat-1") return <Stethoscope className={cls} />;
-  if (id === "cat-2") return <TestTube2   className={cls} />;
-  if (id === "cat-3") return <Scan        className={cls} />;
-  if (id === "cat-4") return <Pill        className={cls} />;
-  return                      <Heart      className={cls} />;
+  if (id === "consultation") return <Stethoscope className={cls} />;
+  if (id === "lab")          return <TestTube2   className={cls} />;
+  if (id === "imaging")      return <Scan        className={cls} />;
+  if (id === "pharmacy")     return <Pill        className={cls} />;
+  return                            <Heart       className={cls} />;
 }
-
-const SVC_ITEMS: SvcItem[] = [
-  { id: "s-101", catId: "cat-1", name: "General OPD Consultation",     price: 500  },
-  { id: "s-102", catId: "cat-1", name: "Specialist Consultation",      price: 1200 },
-  { id: "s-103", catId: "cat-1", name: "Follow-up Visit",              price: 300  },
-  { id: "s-104", catId: "cat-1", name: "Emergency Consultation",       price: 1500 },
-  { id: "s-201", catId: "cat-2", name: "CBC (Complete Blood Count)",   price: 800  },
-  { id: "s-202", catId: "cat-2", name: "Blood Sugar Fasting",          price: 250  },
-  { id: "s-203", catId: "cat-2", name: "Liver Function Tests (LFTs)",  price: 1500 },
-  { id: "s-204", catId: "cat-2", name: "Urine D/R & C/S",             price: 600  },
-  { id: "s-205", catId: "cat-2", name: "HbA1c",                       price: 900  },
-  { id: "s-206", catId: "cat-2", name: "Thyroid Profile (T3/T4/TSH)", price: 1800 },
-  { id: "s-301", catId: "cat-3", name: "Chest X-Ray (PA)",            price: 1200 },
-  { id: "s-302", catId: "cat-3", name: "Ultrasound Abdomen",          price: 2500 },
-  { id: "s-303", catId: "cat-3", name: "ECG (12-lead)",               price: 700  },
-  { id: "s-304", catId: "cat-3", name: "X-Ray Pelvis / Hip",          price: 1400 },
-  { id: "s-401", catId: "cat-4", name: "Paracetamol 500mg (Strip)",   price: 150  },
-  { id: "s-402", catId: "cat-4", name: "Amoxicillin 500mg (Strip)",   price: 320  },
-  { id: "s-403", catId: "cat-4", name: "Omeprazole 20mg (Strip)",     price: 280  },
-  { id: "s-501", catId: "cat-5", name: "IV Line Insertion",           price: 500  },
-  { id: "s-502", catId: "cat-5", name: "Wound Dressing",              price: 350  },
-  { id: "s-503", catId: "cat-5", name: "Nebulization",                price: 400  },
-  { id: "s-504", catId: "cat-5", name: "Blood Pressure Monitoring",   price: 200  },
-];
-
-const BILL_PKGS: BillPkg[] = [
-  { id: "pkg-1", name: "Basic Health Checkup",  price: 2500, desc: "CBC + Blood Sugar + Urine D/R + OPD Consultation" },
-  { id: "pkg-2", name: "Cardiac Package",        price: 4500, desc: "ECG + Chest X-Ray + Specialist Consultation" },
-  { id: "pkg-3", name: "Diabetes Panel",         price: 3200, desc: "HbA1c + Blood Sugar + Urine D/R + Consultation" },
-  { id: "pkg-4", name: "Liver Function Panel",   price: 3800, desc: "LFTs + Ultrasound Abdomen + Consultation" },
-  { id: "pkg-5", name: "Antenatal Profile",      price: 5500, desc: "CBC + LFTs + Blood Sugar + Urine + Ultrasound" },
-];
 
 // ─── Right Drawer ─────────────────────────────────────────────────────────────
 
@@ -926,7 +892,10 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
   const [mode, setMode]         = useState<BillingMode>("services");
   const [catId, setCatId]       = useState<string | null>(null);
   const [cart, setCart]         = useState<CartLine[]>([]);
-  const [showDiscFor, setShowDiscFor] = useState<string | null>(null);
+  const [showDiscFor, setShowDiscFor]       = useState<string | null>(null);
+  const [selectedProviders, setSelectedProviders] = useState<Record<string, string | null>>({});
+
+  const { categories, packages: billPackages } = useBillingCatalogue();
 
   // Payment state
   const [payType, setPayType]     = useState<PayType | null>(null);
@@ -941,16 +910,17 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
   const grandTotal = cart.reduce((s, l) => s + lineTotal(l), 0);
   const totalDiscount = cart.reduce((s, l) => s + (l.price * l.qty * l.discount / 100), 0);
 
-  function addService(svc: SvcItem) {
+  function addService(item: BillCatItem) {
+    const cat = catId ? categories.find(c => c.id === catId) ?? null : null;
+    const catLabel = cat?.label ?? "";
     setCart(prev => {
-      const existing = prev.find(c => c.itemId === svc.id);
-      if (existing) return prev.map(c => c.itemId === svc.id ? { ...c, qty: c.qty + 1 } : c);
-      const cat = SVC_CATEGORIES.find(c => c.id === svc.catId)!;
-      return [...prev, { uid: uid(), itemId: svc.id, name: svc.name, catName: cat.name, price: svc.price, qty: 1, discount: 0 }];
+      const existing = prev.find(c => c.itemId === item.id);
+      if (existing) return prev.map(c => c.itemId === item.id ? { ...c, qty: c.qty + 1 } : c);
+      return [...prev, { uid: uid(), itemId: item.id, name: item.name, catName: catLabel, price: item.price, qty: 1, discount: 0 }];
     });
   }
 
-  function addPackage(pkg: BillPkg) {
+  function addBillPackage(pkg: BillPackage) {
     setCart(prev => {
       if (prev.find(c => c.itemId === pkg.id)) return prev;
       return [...prev, { uid: uid(), itemId: pkg.id, name: pkg.name, catName: "Package", price: pkg.price, qty: 1, discount: 0 }];
@@ -984,8 +954,9 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
     return true;
   }
 
-  const currentCatItems = catId ? SVC_ITEMS.filter(s => s.catId === catId) : [];
-  const currentCat = catId ? SVC_CATEGORIES.find(c => c.id === catId) : null;
+  const currentCat        = catId ? (categories.find(c => c.id === catId) ?? null) : null;
+  const currentProviderId = catId ? (selectedProviders[catId] ?? currentCat?.defaultProviderId ?? null) : null;
+  const currentCatItems   = currentCat ? currentCat.getItems(currentProviderId) : [];
 
   // ─────────────────────────────────────────────────────────────────
   // STEP: CART
@@ -1018,18 +989,20 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
       {/* Scrollable selection + cart */}
       <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
 
-        {/* ── SERVICES ──────────────────────────────────────────────── */}
+        {/* ── SERVICES — category grid ──────────────────────────────── */}
         {mode === "services" && !catId && (
           <div className="grid grid-cols-2 gap-3">
-            {SVC_CATEGORIES.map(cat => {
-              const count = SVC_ITEMS.filter(s => s.catId === cat.id).length;
-              const added = cart.filter(c => SVC_ITEMS.find(s => s.id === c.itemId && s.catId === cat.id)).length;
+            {categories.map(cat => {
+              const style  = CAT_STYLE[cat.id] ?? { color: "text-slate-700", bg: "bg-slate-50 border-slate-200" };
+              const provId = selectedProviders[cat.id] ?? cat.defaultProviderId ?? null;
+              const count  = cat.getItems(provId).length;
+              const added  = cart.filter(c => c.catName === cat.label).length;
               return (
                 <button key={cat.id} onClick={() => setCatId(cat.id)}
-                  className={`flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all hover:shadow-sm ${cat.bg} relative`}>
-                  <div className={cat.color}>{catIcon(cat.id)}</div>
+                  className={`flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all hover:shadow-sm ${style.bg} relative`}>
+                  <div className={style.color}>{catIcon(cat.id)}</div>
                   <div>
-                    <p className={`text-sm font-bold ${cat.color}`}>{cat.name}</p>
+                    <p className={`text-sm font-bold ${style.color}`}>{cat.label}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">{count} services</p>
                   </div>
                   {added > 0 && (
@@ -1041,49 +1014,117 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
           </div>
         )}
 
-        {mode === "services" && catId && currentCat && (
-          <div className="space-y-2">
-            <button onClick={() => setCatId(null)}
-              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#4982CF] transition-colors mb-3">
-              <ChevronLeft className="h-3.5 w-3.5" /> Back to categories
-            </button>
-            <div className={`flex items-center gap-2 rounded-xl border p-3 mb-3 ${currentCat.bg}`}>
-              <div className={currentCat.color}>{catIcon(catId, "h-4 w-4")}</div>
-              <p className={`text-sm font-bold ${currentCat.color}`}>{currentCat.name}</p>
-            </div>
-            {currentCatItems.map(svc => {
-              const inCart = cart.find(c => c.itemId === svc.id);
-              return (
-                <div key={svc.id} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-4 py-3 hover:border-slate-200 transition-all">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 leading-tight">{svc.name}</p>
-                    <p className="text-xs font-bold text-[#4982CF] mt-0.5">{fmt(svc.price)}</p>
-                  </div>
-                  {inCart ? (
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <div className="flex items-center gap-1 rounded-lg border border-[#4982CF]/30 bg-blue-50 px-2 py-1">
-                        <button onClick={() => updateQty(inCart.uid, -1)} className="text-[#4982CF] hover:text-blue-700"><Minus className="h-3 w-3" /></button>
-                        <span className="text-xs font-black text-[#4982CF] w-4 text-center">{inCart.qty}</span>
-                        <button onClick={() => updateQty(inCart.uid, 1)} className="text-[#4982CF] hover:text-blue-700"><Plus className="h-3 w-3" /></button>
-                      </div>
-                      <button onClick={() => removeItem(inCart.uid)} className="text-slate-300 hover:text-red-400 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
-                    </div>
-                  ) : (
-                    <button onClick={() => addService(svc)}
-                      className="flex items-center gap-1 h-8 px-3 rounded-lg bg-[#4982CF] text-white text-xs font-bold hover:bg-blue-600 transition-colors flex-shrink-0">
-                      <Plus className="h-3.5 w-3.5" /> Add
-                    </button>
-                  )}
+        {/* ── SERVICES — category drill-down ────────────────────────── */}
+        {mode === "services" && catId && currentCat && (() => {
+          const style = CAT_STYLE[catId] ?? { color: "text-slate-700", bg: "bg-slate-50 border-slate-200" };
+
+          // Group consultation items by doctor (subLabel)
+          const isConsult = catId === "consultation";
+          const doctorGroups: Record<string, BillCatItem[]> = {};
+          if (isConsult) {
+            for (const item of currentCatItems) {
+              const key = item.subLabel ?? "Other";
+              (doctorGroups[key] ??= []).push(item);
+            }
+          }
+
+          function ServiceRow({ item }: { item: BillCatItem }) {
+            const inCart = cart.find(c => c.itemId === item.id);
+            return (
+              <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-4 py-3 hover:border-slate-200 transition-all">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 leading-tight">{item.name}</p>
+                  <p className="text-xs font-bold text-[#4982CF] mt-0.5">{item.price > 0 ? fmt(item.price) : <span className="text-slate-400 font-normal">—</span>}</p>
                 </div>
-              );
-            })}
-          </div>
-        )}
+                {inCart ? (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-1 rounded-lg border border-[#4982CF]/30 bg-blue-50 px-2 py-1">
+                      <button onClick={() => updateQty(inCart.uid, -1)} className="text-[#4982CF] hover:text-blue-700"><Minus className="h-3 w-3" /></button>
+                      <span className="text-xs font-black text-[#4982CF] w-4 text-center">{inCart.qty}</span>
+                      <button onClick={() => updateQty(inCart.uid, 1)} className="text-[#4982CF] hover:text-blue-700"><Plus className="h-3 w-3" /></button>
+                    </div>
+                    <button onClick={() => removeItem(inCart.uid)} className="text-slate-300 hover:text-red-400 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                ) : (
+                  <button onClick={() => addService(item)}
+                    className="flex items-center gap-1 h-8 px-3 rounded-lg bg-[#4982CF] text-white text-xs font-bold hover:bg-blue-600 transition-colors flex-shrink-0">
+                    <Plus className="h-3.5 w-3.5" /> Add
+                  </button>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div className="space-y-2">
+              <button onClick={() => setCatId(null)}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#4982CF] transition-colors mb-3">
+                <ChevronLeft className="h-3.5 w-3.5" /> Back to categories
+              </button>
+
+              {/* Category header */}
+              <div className={`flex items-center gap-2 rounded-xl border p-3 mb-3 ${style.bg}`}>
+                <div className={style.color}>{catIcon(catId, "h-4 w-4")}</div>
+                <p className={`text-sm font-bold ${style.color}`}>{currentCat.label}</p>
+                {currentCat.providers.length === 1 && (
+                  <span className="ml-auto text-[10px] text-slate-400 font-medium">{currentCat.providers[0].name}</span>
+                )}
+              </div>
+
+              {/* Provider picker — shown only when 2+ providers exist */}
+              {currentCat.providers.length > 1 && (
+                <div className="flex gap-2 mb-3 flex-wrap">
+                  {currentCat.providers.map(p => (
+                    <button key={p.id}
+                      onClick={() => setSelectedProviders(prev => ({ ...prev, [catId]: p.id }))}
+                      className={`h-7 px-3 rounded-full text-xs font-bold border transition-all ${
+                        currentProviderId === p.id
+                          ? "bg-[#4982CF] text-white border-[#4982CF]"
+                          : "bg-white text-slate-600 border-slate-200 hover:border-[#4982CF]/50"
+                      }`}>
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Items — consultation grouped by doctor, others flat */}
+              {isConsult ? (
+                Object.entries(doctorGroups).map(([doctorName, items]) => (
+                  <div key={doctorName} className="mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 mt-3 first:mt-0 px-1">{doctorName}</p>
+                    <div className="space-y-2">
+                      {items.map(item => <ServiceRow key={item.id} item={item} />)}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="space-y-2">
+                  {currentCatItems.map(item => <ServiceRow key={item.id} item={item} />)}
+                </div>
+              )}
+
+              {/* Empty state */}
+              {currentCatItems.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <p className="text-sm font-medium text-slate-400">No items configured</p>
+                  <p className="text-xs text-slate-300 mt-1">Set up items in Admin Settings</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── PACKAGES ──────────────────────────────────────────────── */}
         {mode === "packages" && (
           <div className="space-y-3">
-            {BILL_PKGS.map(pkg => {
+            {billPackages.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <p className="text-sm font-medium text-slate-400">No packages configured</p>
+                <p className="text-xs text-slate-300 mt-1">Create packages in Admin → Packages</p>
+              </div>
+            )}
+            {billPackages.map(pkg => {
               const inCart = cart.find(c => c.itemId === pkg.id);
               return (
                 <div key={pkg.id} className={`rounded-xl border p-4 transition-all ${inCart ? "border-[#4982CF]/40 bg-blue-50/60" : "border-slate-200 bg-white hover:border-slate-300"}`}>
@@ -1093,13 +1134,13 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-900">{pkg.name}</p>
-                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{pkg.desc}</p>
-                      <p className="text-sm font-black text-[#4982CF] mt-1.5">{fmt(pkg.price)}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{pkg.description}</p>
+                      <p className="text-sm font-black text-[#4982CF] mt-1.5">{pkg.price > 0 ? fmt(pkg.price) : <span className="text-slate-400 font-normal text-xs">Auto-priced on cart</span>}</p>
                     </div>
                     {inCart ? (
                       <button onClick={() => removeItem(inCart.uid)} className="text-xs font-bold text-red-400 hover:text-red-600 flex-shrink-0 mt-0.5">Remove</button>
                     ) : (
-                      <button onClick={() => addPackage(pkg)}
+                      <button onClick={() => addBillPackage(pkg)}
                         className="flex items-center gap-1 h-8 px-3 rounded-lg bg-[#4982CF] text-white text-xs font-bold hover:bg-blue-600 transition-colors flex-shrink-0 mt-0.5">
                         <Plus className="h-3.5 w-3.5" /> Add
                       </button>
