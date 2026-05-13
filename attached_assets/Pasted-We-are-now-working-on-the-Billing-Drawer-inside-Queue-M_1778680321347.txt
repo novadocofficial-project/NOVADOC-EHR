@@ -1,0 +1,77 @@
+We are now working on the Billing Drawer inside Queue Management. Previously, we were using seeded/mock data, but now the drawer will fetch actual data from the Admin module settings.
+
+## Billing Drawer Logic & Requirements
+
+### 1. Data Source
+
+The entire Billing Drawer will fetch its configuration and service data from local storage, which is synchronized with the Admin Settings module.
+
+The following categories will be loaded dynamically:
+
+* Consultations
+* Imaging
+* Laboratory
+* Pharmacy
+* Procedures
+
+---
+
+## 2. Multi-Provider Support Per Branch
+
+Our clinics support multiple providers for:
+
+* Labs
+* Procedures
+* Imaging
+* Pharmacy services
+
+When a user opens any service category, the system should:
+
+1. Check which provider is marked as the **Primary Provider** for the current branch.
+2. Automatically display that provider’s service rates by default.
+3. Still allow the user to manually switch the provider within that category if needed.
+
+This provider-switching option should be available in every applicable service category.
+
+---
+
+## 3. Consultation Logic
+
+Doctors are not yet configured branch-wise. Therefore:
+
+* The Consultation category should display **all doctors** in the system.
+* Each doctor may have multiple consultation service types, for example:
+
+  * Consultation
+  * Follow-up
+  * Emergency Consultation
+  * Tele Consultation
+
+The drawer must fetch and display all consultation services associated with each doctor.
+
+---
+
+## 4. Multi-Specialty Consultation Handling
+
+If doctors belong to multiple specialties and provide different consultation service types, then:
+
+* All consultation-related services across all specialties should appear inside the Consultation section.
+* The system should not restrict consultation services specialty-wise at this stage.
+
+---
+
+## 5. Synchronization Behavior
+
+The Billing Drawer should:
+
+* Read data from local storage for fast performance.
+* Keep local storage synchronized with Admin Settings.
+* Reflect newly added or updated services automatically after sync.
+
+This synchronization applies to all billing categories:
+
+* Consultation
+* Imaging
+* Lab
+* Pharmacy
+* Procedures
