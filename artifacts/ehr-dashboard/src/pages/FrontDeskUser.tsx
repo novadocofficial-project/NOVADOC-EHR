@@ -918,8 +918,9 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
       ? (cat?.providers.find(p => p.id === currentProviderId)?.name ?? undefined)
       : undefined;
     setCart(prev => {
-      const existing = prev.find(c => c.itemId === item.id);
-      if (existing) return prev.map(c => c.itemId === item.id ? { ...c, qty: c.qty + 1 } : c);
+      const match = (c: CartLine) => c.itemId === item.id && c.providerName === providerName;
+      const existing = prev.find(match);
+      if (existing) return prev.map(c => match(c) ? { ...c, qty: c.qty + 1 } : c);
       return [...prev, { uid: uid(), itemId: item.id, name: item.name, catName: catLabel, providerName, price: item.price, qty: 1, discount: 0 }];
     });
   }
