@@ -841,6 +841,7 @@ interface CartLine {
   itemId: string;
   name: string;
   catName: string;
+  providerName?: string;
   price: number;
   qty: number;
   discount: number;
@@ -913,10 +914,13 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
   function addService(item: BillCatItem) {
     const cat = catId ? categories.find(c => c.id === catId) ?? null : null;
     const catLabel = cat?.label ?? "";
+    const providerName = currentProviderId
+      ? (cat?.providers.find(p => p.id === currentProviderId)?.name ?? undefined)
+      : undefined;
     setCart(prev => {
       const existing = prev.find(c => c.itemId === item.id);
       if (existing) return prev.map(c => c.itemId === item.id ? { ...c, qty: c.qty + 1 } : c);
-      return [...prev, { uid: uid(), itemId: item.id, name: item.name, catName: catLabel, price: item.price, qty: 1, discount: 0 }];
+      return [...prev, { uid: uid(), itemId: item.id, name: item.name, catName: catLabel, providerName, price: item.price, qty: 1, discount: 0 }];
     });
   }
 
@@ -1192,7 +1196,9 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
                 <div className="flex items-start gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-white leading-tight">{line.name}</p>
-                    <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-full bg-white/10 text-[9px] font-bold text-slate-400">{line.catName}</span>
+                    <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-full bg-white/10 text-[9px] font-bold text-slate-400">
+                      {line.catName}{line.providerName ? ` · ${line.providerName}` : ""}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <div className="flex items-center gap-1 rounded-lg bg-white/10 px-2 py-1">
@@ -1480,7 +1486,9 @@ export function FrontDeskUser() {
     const payLabel: Record<string, string> = { cash: "Cash", card: "Card / Transfer", corporate: "Corporate", insurance: "Insurance", welfare: "Welfare" };
     const lines = r.items.map(l => {
       const sub = Math.round(l.price * l.qty * (1 - l.discount / 100));
-      return `${l.name.padEnd(28).slice(0, 28)}  x${l.qty}  Rs.${sub.toLocaleString("en-PK")}`;
+      const nameLine = l.name.padEnd(28).slice(0, 28);
+      const provLine = l.providerName ? `  [${l.providerName}]` : "";
+      return `${nameLine}  x${l.qty}  Rs.${sub.toLocaleString("en-PK")}${provLine}`;
     }).join("\n");
     const html = `<!DOCTYPE html><html><head><title>Receipt ${r.invNo}</title><style>
       body { font-family: 'Courier New', monospace; font-size: 11px; width: 72mm; margin: 0 auto; padding: 4mm; }
