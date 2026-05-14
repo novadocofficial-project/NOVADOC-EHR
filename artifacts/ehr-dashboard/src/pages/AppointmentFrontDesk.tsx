@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { QueueAppHeader } from "@/pages/QueuePageLayout";
 import { useAppointmentDoctors } from "@/hooks/useAppointmentDoctors";
 import { useAppointments, type Appointment, type ApptStatus } from "@/hooks/useAppointments";
+import { useApptInvoices } from "@/hooks/useApptInvoices";
 import { usePatients } from "@/hooks/usePatients";
 import { useRegConfig, type RegField } from "@/hooks/useRegConfig";
 import { useToast } from "@/hooks/use-toast";
@@ -1182,10 +1183,11 @@ function ViewDrawer({ appt, doctorName, onClose, onEdit }: ViewDrawerProps) {
 
 interface ChipProps {
   appt: Appointment;
+  isPaid: boolean;
   onClick: (appt: Appointment, e: React.MouseEvent) => void;
 }
 
-function ApptChip({ appt, onClick }: ChipProps) {
+function ApptChip({ appt, isPaid, onClick }: ChipProps) {
   const sc = STATUS_CONFIG[appt.status];
   const pc = PRIORITY_CONFIG[appt.priority];
   return (
@@ -1199,6 +1201,11 @@ function ApptChip({ appt, onClick }: ChipProps) {
         {appt.priority !== "normal" && (
           <span className={`ml-auto text-[9px] font-black uppercase px-1.5 py-0.5 rounded flex-shrink-0 ${pc.bg} ${pc.text}`}>
             {appt.priority === "urgent" ? "URG" : "EMR"}
+          </span>
+        )}
+        {isPaid && (
+          <span className="ml-auto text-[9px] font-black uppercase px-1.5 py-0.5 rounded flex-shrink-0 bg-green-100 text-green-700">
+            ✓ PAID
           </span>
         )}
       </div>
@@ -1221,6 +1228,7 @@ interface CardState {
 
 interface ApptCardProps {
   state: CardState;
+  isPaid: boolean;
   onClose: () => void;
   onView: (appt: Appointment) => void;
   onEdit: (appt: Appointment) => void;
@@ -1228,7 +1236,7 @@ interface ApptCardProps {
   onInvoice: (appt: Appointment) => void;
 }
 
-function AppointmentCard({ state, onClose, onView, onEdit, onStatusChange, onInvoice: onInvoiceRaw }: ApptCardProps) {
+function AppointmentCard({ state, isPaid, onClose, onView, onEdit, onStatusChange, onInvoice: onInvoiceRaw }: ApptCardProps) {
   function onInvoice() { onInvoiceRaw(state.appt); }
   const { appt, x, y } = state;
   const sc = STATUS_CONFIG[appt.status];
@@ -1257,6 +1265,9 @@ function AppointmentCard({ state, onClose, onView, onEdit, onStatusChange, onInv
             <div className="flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full ${sc.dot}`} />
               <span className={`text-xs font-bold uppercase tracking-wider ${sc.text}`}>{sc.label}</span>
+              {isPaid && (
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-green-100 text-green-700">✓ Paid</span>
+              )}
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
           </div>
@@ -1334,8 +1345,13 @@ function AppointmentCard({ state, onClose, onView, onEdit, onStatusChange, onInv
           <Button size="sm" variant="outline" onClick={() => { onEdit(appt); onClose(); }} className="flex-1 h-8 text-xs gap-1.5">
             <Edit2 className="h-3 w-3" /> Edit
           </Button>
-          <Button size="sm" variant="outline" onClick={onInvoice} className="flex-1 h-8 text-xs gap-1.5">
-            <FileText className="h-3 w-3" /> Invoice
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onInvoice}
+            className={`flex-1 h-8 text-xs gap-1.5 ${isPaid ? "border-green-200 text-green-700 hover:bg-green-50" : ""}`}
+          >
+            {isPaid ? <><CheckCircle2 className="h-3 w-3" /> Receipt</> : <><FileText className="h-3 w-3" /> Invoice</>}
           </Button>
         </div>
       </div>
@@ -1349,11 +1365,12 @@ interface SlotRowProps {
   slot: SlotBlock;
   appts: Appointment[];
   filterTypes: string[];
+  paidIds: Set<string>;
   onClickEmpty: () => void;
   onClickAppt: (appt: Appointment, e: React.MouseEvent) => void;
 }
 
-function SlotRow({ slot, appts, filterTypes, onClickEmpty, onClickAppt }: SlotRowProps) {
+function SlotRow({ slot, appts, filterTypes, paidIds, onClickEmpty, onClickAppt }: SlotRowProps) {
   const [expanded, setExpanded] = useState(false);
   const visible = filterTypes.length > 0 ? appts.filter(a => filterTypes.includes(a.type)) : appts;
   const shown = expanded ? visible : visible.slice(0, 2);
@@ -1368,7 +1385,7 @@ function SlotRow({ slot, appts, filterTypes, onClickEmpty, onClickAppt }: SlotRo
         {slot.allowMultiple && <span className="text-[10px] text-indigo-500 font-bold">MULTI</span>}
       </div>
       <div className="flex-1 min-w-0">
-        {shown.map(a => <ApptChip key={a.id} appt={a} onClick={onClickAppt} />)}
+        {shown.map(a => <ApptChip key={a.id} appt={a} isPaid={paidIds.has(a.id)} onClick={onClickAppt} />)}
         {visible.length > 2 && (
           <button onClick={() => setExpanded(p => !p)} className="text-[11px] text-[#4982CF] font-semibold flex items-center gap-0.5 mb-1">
             <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
@@ -1398,11 +1415,12 @@ interface DayViewProps {
   date: string;
   appointments: Appointment[];
   filterTypes: string[];
+  paidIds: Set<string>;
   onClickSlot: (slot: SlotBlock) => void;
   onClickAppt: (appt: Appointment, e: React.MouseEvent) => void;
 }
 
-function DayView({ doctor, date, appointments, filterTypes, onClickSlot, onClickAppt }: DayViewProps) {
+function DayView({ doctor, date, appointments, filterTypes, paidIds, onClickSlot, onClickAppt }: DayViewProps) {
   const slots = useMemo(
     () => doctor.timings.flatMap(t => generateSlots(t, date)),
     [doctor, date]
@@ -1447,6 +1465,7 @@ function DayView({ doctor, date, appointments, filterTypes, onClickSlot, onClick
               slot={slot}
               appts={slotAppts}
               filterTypes={filterTypes}
+              paidIds={paidIds}
               onClickEmpty={() => onClickSlot(slot)}
               onClickAppt={onClickAppt}
             />
@@ -1465,11 +1484,12 @@ interface WeekSlotCellProps {
   appointments: Appointment[];
   filterTypes: string[];
   doctorId: string;
+  paidIds: Set<string>;
   onClickSlot: (date: string, slot: SlotBlock) => void;
   onClickAppt: (appt: Appointment, e: React.MouseEvent) => void;
 }
 
-function WeekSlotCell({ date, slot, appointments, filterTypes, doctorId, onClickSlot, onClickAppt }: WeekSlotCellProps) {
+function WeekSlotCell({ date, slot, appointments, filterTypes, doctorId, paidIds, onClickSlot, onClickAppt }: WeekSlotCellProps) {
   const [expanded, setExpanded] = useState(false);
   const slotAppts = appointments.filter(
     a => a.doctorId === doctorId && a.date === date && a.slotStart === slot.start,
@@ -1481,7 +1501,7 @@ function WeekSlotCell({ date, slot, appointments, filterTypes, doctorId, onClick
 
   return (
     <div className="group h-full px-2 py-3 hover:bg-slate-50 transition-colors">
-      {shown.map(a => <ApptChip key={a.id} appt={a} onClick={onClickAppt} />)}
+      {shown.map(a => <ApptChip key={a.id} appt={a} isPaid={paidIds.has(a.id)} onClick={onClickAppt} />)}
       {visible.length > 2 && (
         <button
           onClick={() => setExpanded(p => !p)}
@@ -1510,6 +1530,7 @@ interface WeekViewProps {
   weekDays: string[];
   appointments: Appointment[];
   filterTypes: string[];
+  paidIds: Set<string>;
   onClickSlot: (date: string, slot: SlotBlock) => void;
   onClickAppt: (appt: Appointment, e: React.MouseEvent) => void;
 }
@@ -1519,7 +1540,7 @@ function timeToMinutes(t: string): number {
   return h * 60 + m;
 }
 
-function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, onClickAppt }: WeekViewProps) {
+function WeekView({ doctor, weekDays, appointments, filterTypes, paidIds, onClickSlot, onClickAppt }: WeekViewProps) {
   const today = todayStr();
 
   const dayData = weekDays.map(d => ({
@@ -1630,6 +1651,7 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, onClickSlot, on
                         appointments={appointments}
                         filterTypes={filterTypes}
                         doctorId={doctor.id}
+                        paidIds={paidIds}
                         onClickSlot={onClickSlot}
                         onClickAppt={onClickAppt}
                       />
@@ -1730,12 +1752,13 @@ interface MonthDayOverlayProps {
   doctor: Doctor;
   appointments: Appointment[];
   filterTypes: string[];
+  paidIds: Set<string>;
   onClickAppt: (appt: Appointment, e: React.MouseEvent) => void;
   onBook: () => void;
   onClose: () => void;
 }
 
-function MonthDayOverlay({ date, doctor, appointments, filterTypes, onClickAppt, onBook, onClose }: MonthDayOverlayProps) {
+function MonthDayOverlay({ date, doctor, appointments, filterTypes, paidIds, onClickAppt, onBook, onClose }: MonthDayOverlayProps) {
   const dayAppts = appointments.filter(a =>
     a.doctorId === doctor.id && a.date === date &&
     (filterTypes.length === 0 || filterTypes.includes(a.type))
@@ -1765,7 +1788,7 @@ function MonthDayOverlay({ date, doctor, appointments, filterTypes, onClickAppt,
             dayAppts
               .slice()
               .sort((a, b) => a.slotStart.localeCompare(b.slotStart))
-              .map(a => <ApptChip key={a.id} appt={a} onClick={(appt, e) => { onClickAppt(appt, e); }} />)
+              .map(a => <ApptChip key={a.id} appt={a} isPaid={paidIds.has(a.id)} onClick={(appt, e) => { onClickAppt(appt, e); }} />)
           )}
         </div>
 
@@ -1876,11 +1899,12 @@ interface DoctorViewProps {
   date: string;
   appointments: Appointment[];
   filterTypes: string[];
+  paidIds: Set<string>;
   onClickSlot: (doctorId: string, slot: SlotBlock) => void;
   onClickAppt: (appt: Appointment, e: React.MouseEvent) => void;
 }
 
-function DoctorViewPanel({ doctors, date, appointments, filterTypes, onClickSlot, onClickAppt }: DoctorViewProps) {
+function DoctorViewPanel({ doctors, date, appointments, filterTypes, paidIds, onClickSlot, onClickAppt }: DoctorViewProps) {
   return (
     <div className="flex-1 overflow-y-auto min-h-0 grid gap-4 auto-rows-min" style={{ gridTemplateColumns: `repeat(${Math.min(doctors.length, 4)}, minmax(0, 1fr))` }}>
       {doctors.map(doc => {
@@ -1904,6 +1928,7 @@ function DoctorViewPanel({ doctors, date, appointments, filterTypes, onClickSlot
                     slot={slot}
                     appts={slotAppts}
                     filterTypes={filterTypes}
+                    paidIds={paidIds}
                     onClickEmpty={() => onClickSlot(doc.id, slot)}
                     onClickAppt={onClickAppt}
                   />
@@ -1925,6 +1950,7 @@ type LayoutMode = "calendar" | "doctor";
 export function AppointmentFrontDesk() {
   const { appointmentDoctors } = useAppointmentDoctors();
   const { appointments, addAppointment, updateAppointment } = useAppointments();
+  const { invoices, saveInvoice, paidIds } = useApptInvoices();
   const { toast } = useToast();
 
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>(() => appointmentDoctors[0]?.id ?? "");
@@ -2245,6 +2271,7 @@ export function AppointmentFrontDesk() {
             date={selectedDate}
             appointments={appointments}
             filterTypes={filterTypes}
+            paidIds={paidIds}
             onClickSlot={(doctorId, slot) => openBooking({ doctorId, date: selectedDate, slotStart: slot.start, slotEnd: slot.end })}
             onClickAppt={handleApptClick}
           />
@@ -2256,6 +2283,7 @@ export function AppointmentFrontDesk() {
             date={selectedDate}
             appointments={appointments}
             filterTypes={filterTypes}
+            paidIds={paidIds}
             onClickSlot={slot => openBooking({ doctorId: selectedDoctor.id, date: selectedDate, slotStart: slot.start, slotEnd: slot.end })}
             onClickAppt={handleApptClick}
           />
@@ -2265,6 +2293,7 @@ export function AppointmentFrontDesk() {
             weekDays={weekDays}
             appointments={appointments}
             filterTypes={filterTypes}
+            paidIds={paidIds}
             onClickSlot={(date, slot) => {
               setSelectedDate(date);
               openBooking({ doctorId: selectedDoctor.id, date, slotStart: slot.start, slotEnd: slot.end });
@@ -2301,6 +2330,7 @@ export function AppointmentFrontDesk() {
       {cardState && (
         <AppointmentCard
           state={cardState}
+          isPaid={paidIds.has(cardState.appt.id)}
           onClose={() => setCardState(null)}
           onView={appt => setViewAppt(appt)}
           onEdit={appt => openBooking({}, appt)}
@@ -2310,9 +2340,15 @@ export function AppointmentFrontDesk() {
           }}
           onInvoice={appt => {
             setCardState(null);
-            setInvoiceAppt(appt);
-            setInvoiceFullscreen(false);
-            setInvoiceReceipt(null);
+            const existing = invoices[appt.id];
+            if (existing) {
+              setInvoiceAppt(appt);
+              setInvoiceReceipt(existing);
+            } else {
+              setInvoiceAppt(appt);
+              setInvoiceFullscreen(false);
+              setInvoiceReceipt(null);
+            }
           }}
         />
       )}
@@ -2348,7 +2384,7 @@ export function AppointmentFrontDesk() {
                     phone: invoiceAppt.patientPhone || undefined,
                   },
                 }}
-                onComplete={r => { setInvoiceReceipt(r); }}
+                onComplete={r => { setInvoiceReceipt(r); if (invoiceAppt) saveInvoice(invoiceAppt.id, r); }}
                 isFullscreen={invoiceFullscreen}
               />
             </div>
@@ -2439,6 +2475,7 @@ export function AppointmentFrontDesk() {
           doctor={selectedDoctor}
           appointments={appointments}
           filterTypes={filterTypes}
+          paidIds={paidIds}
           onClickAppt={(appt, e) => { setMonthOverlayDate(null); handleApptClick(appt, e); }}
           onBook={() => openBooking({ doctorId: selectedDoctor.id, date: monthOverlayDate })}
           onClose={() => setMonthOverlayDate(null)}
