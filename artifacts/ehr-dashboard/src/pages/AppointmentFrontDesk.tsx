@@ -833,19 +833,24 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
             </Button>
           </div>
           {(form.patientName || form.patientMrn || form.patientPhone) && (
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-[10px] font-semibold text-slate-400 block mb-1">Full Name</label>
-                <Input value={form.patientName} onChange={e => set("patientName", e.target.value)} className="h-8 text-xs" placeholder="Name..." />
+            <div className="mt-2 flex items-center gap-3 rounded-xl border border-[#4982CF]/30 bg-[#4982CF]/5 px-3 py-2.5">
+              <div className="h-9 w-9 rounded-full bg-[#4982CF] flex items-center justify-center flex-shrink-0">
+                <span className="text-xs font-black text-white">
+                  {form.patientName.trim().split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "?"}
+                </span>
               </div>
-              <div>
-                <label className="text-[10px] font-semibold text-slate-400 block mb-1">MR Number</label>
-                <Input value={form.patientMrn} onChange={e => set("patientMrn", e.target.value)} className="h-8 text-xs" placeholder="MR-XXXXX" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-slate-900 leading-tight truncate">{form.patientName.trim()}</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {[form.patientMrn, form.patientPhone].filter(Boolean).join(" · ")}
+                </p>
               </div>
-              <div>
-                <label className="text-[10px] font-semibold text-slate-400 block mb-1">Phone</label>
-                <Input value={form.patientPhone} onChange={e => set("patientPhone", e.target.value)} className="h-8 text-xs" placeholder="+92..." />
-              </div>
+              <button
+                onClick={() => { set("patientName", ""); set("patientMrn", ""); set("patientPhone", ""); setSearch(""); }}
+                className="flex-shrink-0 text-slate-300 hover:text-slate-500 transition-colors"
+                title="Clear patient">
+                <X className="h-4 w-4" />
+              </button>
             </div>
           )}
         </section>
