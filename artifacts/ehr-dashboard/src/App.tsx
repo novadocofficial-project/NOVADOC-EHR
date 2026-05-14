@@ -30,8 +30,12 @@ function Router() {
       <Route path="/queue/nursing" component={NursingUser} />
       <Route path="/queue/doctor" component={DoctorUser} />
       <Route path="/queue/lab" component={LabUser} />
-      <Route path="/appointments/frontdesk" component={AppointmentFrontDesk} />
-      <Route path="/appointments/nursing" component={AppointmentFrontDesk} />
+      <Route path="/appointments/frontdesk">
+        {() => <AppointmentFrontDesk key="frontdesk" role="frontdesk" />}
+      </Route>
+      <Route path="/appointments/nursing">
+        {() => <AppointmentFrontDesk key="nursing" role="nursing" />}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

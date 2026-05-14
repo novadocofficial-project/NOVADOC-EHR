@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Calendar, ChevronLeft, ChevronRight, ChevronDown, Plus, Printer,
   Maximize2, Minimize2, X, Search, User, Phone, AlertCircle,
@@ -1965,16 +1965,48 @@ function DoctorViewPanel({ doctors, date, appointments, filterTypes, paidIds, on
 
 type ViewMode = "day" | "week" | "month";
 type LayoutMode = "calendar" | "doctor";
+type Role = "frontdesk" | "nursing";
 
-export function AppointmentFrontDesk() {
+interface ApptUiState {
+  selectedDoctorId: string;
+  selectedDate: string;
+  viewMode: ViewMode;
+}
+
+function loadUiState(role: Role, fallbackDoctorId: string): ApptUiState {
+  try {
+    const raw = localStorage.getItem(`ehr-appt-ui-${role}`);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<ApptUiState>;
+      return {
+        selectedDoctorId: parsed.selectedDoctorId ?? fallbackDoctorId,
+        selectedDate: parsed.selectedDate ?? todayStr(),
+        viewMode: (parsed.viewMode as ViewMode | undefined) ?? "week",
+      };
+    }
+  } catch {}
+  return { selectedDoctorId: fallbackDoctorId, selectedDate: todayStr(), viewMode: "week" };
+}
+
+function saveUiState(role: Role, state: ApptUiState) {
+  try { localStorage.setItem(`ehr-appt-ui-${role}`, JSON.stringify(state)); } catch {}
+}
+
+export function AppointmentFrontDesk({ role }: { role: Role }) {
   const { appointmentDoctors } = useAppointmentDoctors();
   const { appointments, addAppointment, updateAppointment } = useAppointments();
   const { invoices, saveInvoice, paidIds } = useApptInvoices();
   const { toast } = useToast();
 
-  const [selectedDoctorId, setSelectedDoctorId] = useState<string>(() => appointmentDoctors[0]?.id ?? "");
-  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
-  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const initialUi = loadUiState(role, appointmentDoctors[0]?.id ?? "");
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>(initialUi.selectedDoctorId);
+  const [selectedDate, setSelectedDate] = useState<string>(initialUi.selectedDate);
+  const [viewMode, setViewMode] = useState<ViewMode>(initialUi.viewMode);
+
+  useEffect(() => {
+    saveUiState(role, { selectedDoctorId, selectedDate, viewMode });
+  }, [role, selectedDoctorId, selectedDate, viewMode]);
+
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("calendar");
   const [filterTypes, setFilterTypes] = useState<string[]>([]);
 
@@ -2127,6 +2159,18 @@ export function AppointmentFrontDesk() {
 
       {/* Control Bar */}
       <div className="bg-white border-b border-slate-200 px-5 py-3 flex items-center gap-3 shadow-sm">
+        {/* Role badge */}
+        {role === "frontdesk" ? (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold flex-shrink-0 select-none">
+            <Calendar className="h-3 w-3" />
+            Front Desk
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-100 text-rose-600 text-xs font-semibold flex-shrink-0 select-none">
+            <Heart className="h-3 w-3" />
+            Nursing
+          </span>
+        )}
         {/* Doctor selector (only in calendar mode) */}
         {layoutMode === "calendar" && (
           <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
