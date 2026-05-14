@@ -868,8 +868,13 @@ export interface ReceiptInfo {
   cartDiscAmt: number;
 }
 
+export interface BillingEntry {
+  tokenLabel: string;
+  patient: { name: string; mrn?: string; phone?: string } | null;
+}
+
 interface BillingContentProps {
-  entry: MultiEntry;
+  entry: BillingEntry;
   onComplete: (receipt: ReceiptInfo) => void;
   isFullscreen: boolean;
 }
@@ -897,7 +902,7 @@ function BillingStepBar({ step }: { step: BillingStep }) {
   );
 }
 
-function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps) {
+export function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps) {
   const [step, setStep]         = useState<BillingStep>("cart");
   const [mode, setMode]         = useState<BillingMode>("services");
   const [catId, setCatId]       = useState<string | null>(null);
@@ -1005,7 +1010,7 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
             <p className="text-sm font-bold text-slate-900 truncate">{entry.patient?.name ?? "Walk-in Patient"}</p>
             {entry.patient && <p className="text-xs text-slate-400">{entry.patient.mrn}</p>}
           </div>
-          <span className="font-mono font-black text-[#4982CF] text-sm">{entry.tokenNumber}</span>
+          <span className="font-mono font-black text-[#4982CF] text-sm">{entry.tokenLabel}</span>
         </div>
         <div className="flex rounded-xl border border-slate-200 p-1 bg-slate-50 gap-1">
           <button onClick={() => { setMode("services"); setCatId(null); }}
@@ -1583,7 +1588,7 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
         <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
           disabled={!canProceed()}
           onClick={() => onComplete({
-            tokenNumber: entry.tokenNumber,
+            tokenNumber: entry.tokenLabel,
             patientName: entry.patient?.name ?? "Walk-in Patient",
             total: grandTotal,
             payType: payType!,
@@ -1602,6 +1607,57 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
       </div>
     </div>
   );
+}
+
+// ─── Thermal Receipt Printer (module-level so it can be reused) ───────────────
+
+export function printThermalReceipt(r: ReceiptInfo) {
+  const now = new Date();
+  const dt = now.toLocaleString("en-PK", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const payLabel: Record<string, string> = { cash: "Cash", card: "Card / Transfer", corporate: "Corporate", insurance: "Insurance", welfare: "Welfare" };
+  const lines = r.items.map(l => {
+    const gross = l.price * l.qty;
+    const disc  = l.discountMode === "amount" ? Math.min(l.discount, gross) : gross * l.discount / 100;
+    const sub   = Math.round(gross - disc);
+    const nameLine = l.name.padEnd(28).slice(0, 28);
+    const mainLine = `${nameLine}  x${l.qty}  Rs.${sub.toLocaleString("en-PK")}`;
+    const provLine = l.providerName ? `\n  ${l.providerName}` : "";
+    const discLine = disc > 0
+      ? `\n  Disc (${l.discountMode === "percent" ? `${l.discount}%` : `Rs.${l.discount.toLocaleString("en-PK")}`}, ${l.discountSource === "doctor" ? "Dr." : l.discountSource === "hospital" ? "Clinic" : "Both"}): -Rs.${Math.round(disc).toLocaleString("en-PK")}`
+      : "";
+    return `${mainLine}${provLine}${discLine}`;
+  }).join("\n");
+  const html = `<!DOCTYPE html><html><head><title>Receipt ${r.invNo}</title><style>
+    body { font-family: 'Courier New', monospace; font-size: 11px; width: 72mm; margin: 0 auto; padding: 4mm; }
+    .center { text-align: center; } .bold { font-weight: bold; }
+    .sep { border-top: 1px dashed #000; margin: 4px 0; }
+    .logo { font-size: 18px; font-weight: 900; letter-spacing: 1px; }
+    .total { font-size: 14px; font-weight: 900; }
+  </style></head><body>
+    <div class="center logo">NovaDoc</div>
+    <div class="center" style="font-size:9px">EHR · Billing Receipt</div>
+    <div class="sep"></div>
+    <div>Invoice: <span class="bold">${r.invNo}</span></div>
+    <div class="center" style="font-size:36px;font-weight:900;letter-spacing:2px;margin:6px 0 2px">${r.tokenNumber}</div>
+    <div>Patient: <span class="bold">${r.patientName}</span></div>
+    <div>${dt}</div>
+    <div class="sep"></div>
+    <pre>${lines}</pre>
+    <div class="sep"></div>
+    ${r.items.reduce((s, l) => { const g = l.price * l.qty; return s + (l.discountMode === "amount" ? Math.min(l.discount, g) : g * l.discount / 100); }, 0) > 0 ? `<div>Item Discounts: -Rs.${Math.round(r.items.reduce((s,l)=>{ const g=l.price*l.qty; return s+(l.discountMode==="amount"?Math.min(l.discount,g):g*l.discount/100); },0)).toLocaleString("en-PK")}</div>` : ""}
+    ${r.cartDiscAmt > 0 ? `<div>Cart Disc (${r.cartDiscMode === "percent" ? `${r.cartDisc}%` : `Rs.${r.cartDisc.toLocaleString("en-PK")}`}, ${r.cartDiscSource === "doctor" ? "Dr." : r.cartDiscSource === "hospital" ? "Clinic" : "Both"}): -Rs.${r.cartDiscAmt.toLocaleString("en-PK")}</div>` : ""}
+    <div class="total">TOTAL: Rs.${r.total.toLocaleString("en-PK")}</div>
+    <div>Payment: <span class="bold">${payLabel[r.payType] ?? r.payType}</span></div>
+    ${r.payType === "cash" && r.cashReceived > r.total ? `<div>Cash Rcvd: Rs.${r.cashReceived.toLocaleString("en-PK")}</div><div>Change: Rs.${(r.cashReceived - r.total).toLocaleString("en-PK")}</div>` : ""}
+    ${r.payType === "welfare" ? `<div>Co-Pay: Rs.${r.coPay.toLocaleString("en-PK")}</div><div>Welfare: Rs.${(r.total - r.coPay).toLocaleString("en-PK")}</div>` : ""}
+    ${r.refNum ? `<div>Ref: ${r.refNum}</div>` : ""}
+    <div class="sep"></div>
+    <div class="center" style="font-size:9px">Thank you · Please proceed to Vitals</div>
+    <div class="center" style="font-size:9px">novadoc.health</div>
+    <script>window.onload=function(){ window.print(); window.close(); }</script>
+  </body></html>`;
+  const w = window.open("", "_blank", "width=340,height=600");
+  if (w) { w.document.write(html); w.document.close(); }
 }
 
 // ─── Front Desk User Page ─────────────────────────────────────────────────────
@@ -1675,54 +1731,6 @@ export function FrontDeskUser() {
     setReceipt(r);
   }
 
-  function printThermalReceipt(r: ReceiptInfo) {
-    const now = new Date();
-    const dt = now.toLocaleString("en-PK", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-    const payLabel: Record<string, string> = { cash: "Cash", card: "Card / Transfer", corporate: "Corporate", insurance: "Insurance", welfare: "Welfare" };
-    const lines = r.items.map(l => {
-      const gross = l.price * l.qty;
-      const disc  = l.discountMode === "amount" ? Math.min(l.discount, gross) : gross * l.discount / 100;
-      const sub   = Math.round(gross - disc);
-      const nameLine = l.name.padEnd(28).slice(0, 28);
-      const mainLine = `${nameLine}  x${l.qty}  Rs.${sub.toLocaleString("en-PK")}`;
-      const provLine = l.providerName ? `\n  ${l.providerName}` : "";
-      const discLine = disc > 0
-        ? `\n  Disc (${l.discountMode === "percent" ? `${l.discount}%` : `Rs.${l.discount.toLocaleString("en-PK")}`}, ${l.discountSource === "doctor" ? "Dr." : l.discountSource === "hospital" ? "Clinic" : "Both"}): -Rs.${Math.round(disc).toLocaleString("en-PK")}`
-        : "";
-      return `${mainLine}${provLine}${discLine}`;
-    }).join("\n");
-    const html = `<!DOCTYPE html><html><head><title>Receipt ${r.invNo}</title><style>
-      body { font-family: 'Courier New', monospace; font-size: 11px; width: 72mm; margin: 0 auto; padding: 4mm; }
-      .center { text-align: center; } .bold { font-weight: bold; }
-      .sep { border-top: 1px dashed #000; margin: 4px 0; }
-      .logo { font-size: 18px; font-weight: 900; letter-spacing: 1px; }
-      .total { font-size: 14px; font-weight: 900; }
-    </style></head><body>
-      <div class="center logo">NovaDoc</div>
-      <div class="center" style="font-size:9px">EHR · Billing Receipt</div>
-      <div class="sep"></div>
-      <div>Invoice: <span class="bold">${r.invNo}</span></div>
-      <div class="center" style="font-size:36px;font-weight:900;letter-spacing:2px;margin:6px 0 2px">${r.tokenNumber}</div>
-      <div>Patient: <span class="bold">${r.patientName}</span></div>
-      <div>${dt}</div>
-      <div class="sep"></div>
-      <pre>${lines}</pre>
-      <div class="sep"></div>
-      ${r.items.reduce((s, l) => { const g = l.price * l.qty; return s + (l.discountMode === "amount" ? Math.min(l.discount, g) : g * l.discount / 100); }, 0) > 0 ? `<div>Item Discounts: -Rs.${Math.round(r.items.reduce((s,l)=>{ const g=l.price*l.qty; return s+(l.discountMode==="amount"?Math.min(l.discount,g):g*l.discount/100); },0)).toLocaleString("en-PK")}</div>` : ""}
-      ${r.cartDiscAmt > 0 ? `<div>Cart Disc (${r.cartDiscMode === "percent" ? `${r.cartDisc}%` : `Rs.${r.cartDisc.toLocaleString("en-PK")}`}, ${r.cartDiscSource === "doctor" ? "Dr." : r.cartDiscSource === "hospital" ? "Clinic" : "Both"}): -Rs.${r.cartDiscAmt.toLocaleString("en-PK")}</div>` : ""}
-      <div class="total">TOTAL: Rs.${r.total.toLocaleString("en-PK")}</div>
-      <div>Payment: <span class="bold">${payLabel[r.payType] ?? r.payType}</span></div>
-      ${r.payType === "cash" && r.cashReceived > r.total ? `<div>Cash Rcvd: Rs.${r.cashReceived.toLocaleString("en-PK")}</div><div>Change: Rs.${(r.cashReceived - r.total).toLocaleString("en-PK")}</div>` : ""}
-      ${r.payType === "welfare" ? `<div>Co-Pay: Rs.${r.coPay.toLocaleString("en-PK")}</div><div>Welfare: Rs.${(r.total - r.coPay).toLocaleString("en-PK")}</div>` : ""}
-      ${r.refNum ? `<div>Ref: ${r.refNum}</div>` : ""}
-      <div class="sep"></div>
-      <div class="center" style="font-size:9px">Thank you · Please proceed to Vitals</div>
-      <div class="center" style="font-size:9px">novadoc.health</div>
-      <script>window.onload=function(){ window.print(); window.close(); }</script>
-    </body></html>`;
-    const w = window.open("", "_blank", "width=340,height=600");
-    if (w) { w.document.write(html); w.document.close(); }
-  }
   function handleSkip(id: string) { fdSkip(id); closeDrawer(); showToastMsg("Token skipped"); }
   function handleRecall(id: string, tokenNum: string) { fdRecall(id); showToastMsg(`Token ${tokenNum} recalled to queue`); }
 
@@ -1966,7 +1974,11 @@ export function FrontDeskUser() {
       {drawerType === "billing" && activeDrawerEntry && (
         <RightDrawer title="Billing" subtitle={activeDrawerEntry.patient?.name ?? "Walk-in Patient"} onClose={closeDrawer}
           onFullscreenChange={setBillingFullscreen}>
-          <BillingContent entry={activeDrawerEntry} onComplete={handleBillingComplete} isFullscreen={billingFullscreen} />
+          <BillingContent
+            entry={{ tokenLabel: activeDrawerEntry.tokenNumber, patient: activeDrawerEntry.patient ?? null }}
+            onComplete={handleBillingComplete}
+            isFullscreen={billingFullscreen}
+          />
         </RightDrawer>
       )}
 

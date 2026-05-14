@@ -5,8 +5,9 @@ import {
   CheckCircle2, Clock, Edit2, Eye, FileText, Stethoscope,
   Repeat, AlertTriangle, LayoutGrid, Columns2, RefreshCw,
   Hash, Check, ArrowRight, Pencil, CalendarDays, UserPlus,
-  Banknote, Shield, Building2, Heart, FileSignature,
+  Banknote, Shield, Building2, Heart, FileSignature, Receipt,
 } from "lucide-react";
+import { BillingContent, BillingEntry, ReceiptInfo, printThermalReceipt } from "@/pages/FrontDeskUser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1224,10 +1225,11 @@ interface ApptCardProps {
   onView: (appt: Appointment) => void;
   onEdit: (appt: Appointment) => void;
   onStatusChange: (id: string, status: ApptStatus) => void;
-  onInvoice: () => void;
+  onInvoice: (appt: Appointment) => void;
 }
 
-function AppointmentCard({ state, onClose, onView, onEdit, onStatusChange, onInvoice }: ApptCardProps) {
+function AppointmentCard({ state, onClose, onView, onEdit, onStatusChange, onInvoice: onInvoiceRaw }: ApptCardProps) {
+  function onInvoice() { onInvoiceRaw(state.appt); }
   const { appt, x, y } = state;
   const sc = STATUS_CONFIG[appt.status];
 
@@ -1942,6 +1944,11 @@ export function AppointmentFrontDesk() {
   // View drawer (read-only)
   const [viewAppt, setViewAppt] = useState<Appointment | null>(null);
 
+  // Invoice billing drawer
+  const [invoiceAppt, setInvoiceAppt] = useState<Appointment | null>(null);
+  const [invoiceFullscreen, setInvoiceFullscreen] = useState(false);
+  const [invoiceReceipt, setInvoiceReceipt] = useState<ReceiptInfo | null>(null);
+
   // Month View day-detail overlay
   const [monthOverlayDate, setMonthOverlayDate] = useState<string | null>(null);
 
@@ -2301,11 +2308,100 @@ export function AppointmentFrontDesk() {
             updateAppointment(id, { status });
             toast({ title: "Status updated", description: STATUS_CONFIG[status].label });
           }}
-          onInvoice={() => {
+          onInvoice={appt => {
             setCardState(null);
-            toast({ title: "Invoice", description: "Invoice generation coming soon." });
+            setInvoiceAppt(appt);
+            setInvoiceFullscreen(false);
+            setInvoiceReceipt(null);
           }}
         />
+      )}
+
+      {/* Invoice Billing Drawer */}
+      {invoiceAppt && !invoiceReceipt && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" onClick={() => setInvoiceAppt(null)} />
+          <div className={`relative flex flex-col bg-white shadow-2xl border-l border-slate-200 transition-all duration-300 ${invoiceFullscreen ? "w-full" : "w-[40%] min-w-[520px]"}`}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-white flex-shrink-0">
+              <div>
+                <p className="text-sm font-bold text-slate-900">{invoiceAppt.patientName}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{invoiceAppt.patientMrn || invoiceAppt.patientPhone || ""}</p>
+              </div>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setInvoiceFullscreen(f => !f)}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+                  {invoiceFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </button>
+                <button onClick={() => setInvoiceAppt(null)}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <BillingContent
+                entry={{
+                  tokenLabel: `APT-${invoiceAppt.id.slice(-5).toUpperCase()}`,
+                  patient: {
+                    name: invoiceAppt.patientName,
+                    mrn: invoiceAppt.patientMrn || undefined,
+                    phone: invoiceAppt.patientPhone || undefined,
+                  },
+                }}
+                onComplete={r => { setInvoiceReceipt(r); }}
+                isFullscreen={invoiceFullscreen}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Receipt Card */}
+      {invoiceReceipt && invoiceAppt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" onClick={() => { setInvoiceReceipt(null); setInvoiceAppt(null); }} />
+          <div className="relative z-10 w-80 rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-3">
+            <div className="h-1.5 w-full bg-green-500" />
+            <div className="flex justify-end px-3 pt-3">
+              <button onClick={() => { setInvoiceReceipt(null); setInvoiceAppt(null); }}
+                className="h-6 w-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+                <X className="h-3 w-3 text-slate-500" />
+              </button>
+            </div>
+            <div className="flex flex-col items-center pb-4 px-4 -mt-1">
+              <div className="h-10 w-10 rounded-xl bg-[#4982CF] flex items-center justify-center mb-2 shadow-md">
+                <span className="text-white font-black text-sm">N</span>
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">NovaDoc · Invoice Finalized</p>
+              <p className="font-mono font-black text-[#4982CF] text-4xl leading-none tracking-tight">{invoiceReceipt.tokenNumber}</p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                <p className="text-[10px] font-semibold text-green-600">Payment collected successfully</p>
+              </div>
+            </div>
+            <div className="px-4 pb-4 space-y-3">
+              <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-black text-slate-900">{invoiceReceipt.patientName}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{invoiceReceipt.invNo}</p>
+                  </div>
+                  <p className="text-base font-black text-slate-900">Rs. {invoiceReceipt.total.toLocaleString("en-PK")}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => printThermalReceipt(invoiceReceipt)}
+                  className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl bg-[#4982CF] text-white text-xs font-bold hover:bg-blue-600 transition-colors">
+                  <Printer className="h-3.5 w-3.5" /> Print Receipt
+                </button>
+                <button onClick={() => printThermalReceipt(invoiceReceipt)}
+                  className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors">
+                  <Receipt className="h-3.5 w-3.5" /> Download PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* View Drawer (read-only) */}
