@@ -1210,27 +1210,11 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
                       <span className="text-xs font-black text-white w-4 text-center">{line.qty}</span>
                       <button onClick={() => updateQty(line.uid, 1)} className="text-slate-400 hover:text-white transition-colors"><Plus className="h-3 w-3" /></button>
                     </div>
-                    <button onClick={() => setShowDiscFor(showDiscFor === line.uid ? null : line.uid)}
-                      className={`transition-colors ${line.discount > 0 ? "text-amber-400" : "text-white/25 hover:text-amber-400"}`}>
-                      <Percent className="h-3.5 w-3.5" />
-                    </button>
                     <button onClick={() => removeItem(line.uid)} className="text-white/20 hover:text-red-400 transition-colors">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
-                {showDiscFor === line.uid && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="text-[10px] text-slate-400 font-semibold">Disc %</span>
-                    <Input type="number" min={0} max={100}
-                      className="h-6 w-14 text-xs px-2 bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:ring-[#4982CF]"
-                      value={line.discount || ""} placeholder="0"
-                      onChange={e => updateDiscount(line.uid, e.target.value)} />
-                    {line.discount > 0 && (
-                      <span className="text-[10px] text-amber-400 font-bold">−{fmt(line.price * line.qty * line.discount / 100)}</span>
-                    )}
-                  </div>
-                )}
                 <div className="flex justify-between items-center mt-1.5">
                   <span className="text-[10px] text-white/35">{fmt(line.price)} × {line.qty}{line.discount > 0 ? ` − ${line.discount}%` : ""}</span>
                   <span className="text-xs font-black text-white">{fmt(lineTotal(line))}</span>
