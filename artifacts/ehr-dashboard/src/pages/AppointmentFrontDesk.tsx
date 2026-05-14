@@ -7,7 +7,7 @@ import {
   Hash, Check, ArrowRight, Pencil, CalendarDays, UserPlus,
   Banknote, Shield, Building2, Heart, FileSignature, Receipt,
 } from "lucide-react";
-import { BillingContent, BillingEntry, ReceiptInfo, printThermalReceipt } from "@/pages/FrontDeskUser";
+import { BillingContent, ReceiptInfo, printThermalReceipt } from "@/pages/FrontDeskUser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
