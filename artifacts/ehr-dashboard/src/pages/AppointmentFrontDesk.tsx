@@ -1449,11 +1449,21 @@ function DayView({ doctor, date, appointments, filterTypes, paidIds, onClickSlot
       <div className="flex-shrink-0 px-5 py-4 border-b border-slate-100 flex items-center justify-between">
         <div>
           <h3 className="font-bold text-slate-900">{doctor.name}</h3>
-          <p className="text-xs text-slate-400 mt-0.5">{formatDateFull(date)} · {slots.length} slot{slots.length !== 1 ? "s" : ""}</p>
+          <p className="text-xs text-slate-400 mt-0.5">{formatDateFull(date)}</p>
         </div>
-        <div className="text-right">
-          <p className="text-2xl font-bold text-[#4982CF]">{dayAppts.length}</p>
-          <p className="text-[10px] text-slate-400">booked</p>
+        <div className="flex items-center gap-4 text-right">
+          <div>
+            <p className="text-lg font-bold text-slate-700">{slots.length}</p>
+            <p className="text-[10px] text-slate-400">total</p>
+          </div>
+          <div>
+            <p className="text-lg font-bold text-[#4982CF]">{dayAppts.length}</p>
+            <p className="text-[10px] text-slate-400">booked</p>
+          </div>
+          <div>
+            <p className="text-lg font-bold text-emerald-600">{Math.max(0, slots.length - dayAppts.length)}</p>
+            <p className="text-[10px] text-slate-400">free</p>
+          </div>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
