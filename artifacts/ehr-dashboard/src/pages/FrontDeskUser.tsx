@@ -1356,7 +1356,7 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
                               ? "bg-[#4982CF] text-white border-[#4982CF]"
                               : "text-slate-500 border-slate-200 hover:border-[#4982CF]/50"
                           }`}>
-                          {src === "doctor" ? "Doctor Share" : src === "hospital" ? "Hospital Share" : "Both"}
+                          {src === "doctor" ? "Doctor Share" : src === "hospital" ? "Clinic Share" : "Both"}
                         </button>
                       ))}
                     </div>
@@ -1449,7 +1449,7 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
                         ? "bg-[#4982CF] text-white border-[#4982CF]"
                         : "text-slate-500 border-slate-200 hover:border-[#4982CF]/50"
                     }`}>
-                    {src === "doctor" ? "Doctor Share" : src === "hospital" ? "Hospital Share" : "Both"}
+                    {src === "doctor" ? "Doctor Share" : src === "hospital" ? "Clinic Share" : "Both"}
                   </button>
                 ))}
               </div>
@@ -1687,7 +1687,7 @@ export function FrontDeskUser() {
       const mainLine = `${nameLine}  x${l.qty}  Rs.${sub.toLocaleString("en-PK")}`;
       const provLine = l.providerName ? `\n  ${l.providerName}` : "";
       const discLine = disc > 0
-        ? `\n  Disc (${l.discountMode === "percent" ? `${l.discount}%` : `Rs.${l.discount.toLocaleString("en-PK")}`}, ${l.discountSource === "doctor" ? "Dr." : l.discountSource === "hospital" ? "Hosp." : "Both"}): -Rs.${Math.round(disc).toLocaleString("en-PK")}`
+        ? `\n  Disc (${l.discountMode === "percent" ? `${l.discount}%` : `Rs.${l.discount.toLocaleString("en-PK")}`}, ${l.discountSource === "doctor" ? "Dr." : l.discountSource === "hospital" ? "Clinic" : "Both"}): -Rs.${Math.round(disc).toLocaleString("en-PK")}`
         : "";
       return `${mainLine}${provLine}${discLine}`;
     }).join("\n");
@@ -1709,7 +1709,7 @@ export function FrontDeskUser() {
       <pre>${lines}</pre>
       <div class="sep"></div>
       ${r.items.reduce((s, l) => { const g = l.price * l.qty; return s + (l.discountMode === "amount" ? Math.min(l.discount, g) : g * l.discount / 100); }, 0) > 0 ? `<div>Item Discounts: -Rs.${Math.round(r.items.reduce((s,l)=>{ const g=l.price*l.qty; return s+(l.discountMode==="amount"?Math.min(l.discount,g):g*l.discount/100); },0)).toLocaleString("en-PK")}</div>` : ""}
-      ${r.cartDiscAmt > 0 ? `<div>Cart Disc (${r.cartDiscMode === "percent" ? `${r.cartDisc}%` : `Rs.${r.cartDisc.toLocaleString("en-PK")}`}, ${r.cartDiscSource === "doctor" ? "Dr." : r.cartDiscSource === "hospital" ? "Hosp." : "Both"}): -Rs.${r.cartDiscAmt.toLocaleString("en-PK")}</div>` : ""}
+      ${r.cartDiscAmt > 0 ? `<div>Cart Disc (${r.cartDiscMode === "percent" ? `${r.cartDisc}%` : `Rs.${r.cartDisc.toLocaleString("en-PK")}`}, ${r.cartDiscSource === "doctor" ? "Dr." : r.cartDiscSource === "hospital" ? "Clinic" : "Both"}): -Rs.${r.cartDiscAmt.toLocaleString("en-PK")}</div>` : ""}
       <div class="total">TOTAL: Rs.${r.total.toLocaleString("en-PK")}</div>
       <div>Payment: <span class="bold">${payLabel[r.payType] ?? r.payType}</span></div>
       ${r.payType === "cash" && r.cashReceived > r.total ? `<div>Cash Rcvd: Rs.${r.cashReceived.toLocaleString("en-PK")}</div><div>Change: Rs.${(r.cashReceived - r.total).toLocaleString("en-PK")}</div>` : ""}
