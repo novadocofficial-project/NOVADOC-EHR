@@ -917,9 +917,11 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
     if (l.discountMode === "amount") return Math.min(l.discount, gross);
     return gross * l.discount / 100;
   };
-  const lineTotal    = (l: CartLine) => Math.round(l.price * l.qty - lineDiscount(l));
-  const grandTotal   = cart.reduce((s, l) => s + lineTotal(l), 0);
+  const lineTotal     = (l: CartLine) => Math.round(l.price * l.qty - lineDiscount(l));
+  const grossTotal    = cart.reduce((s, l) => s + l.price * l.qty, 0);
+  const grandTotal    = cart.reduce((s, l) => s + lineTotal(l), 0);
   const totalDiscount = cart.reduce((s, l) => s + lineDiscount(l), 0);
+  const discountPct   = grossTotal > 0 ? Math.round((totalDiscount / grossTotal) * 100) : 0;
 
   function addService(item: BillCatItem) {
     const cat = catId ? categories.find(c => c.id === catId) ?? null : null;
@@ -1269,7 +1271,9 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
           <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
             <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Items ({cart.length})</p>
             {totalDiscount > 0 && (
-              <p className="text-[10px] font-semibold text-amber-600">Disc: -{fmt(Math.round(totalDiscount))}</p>
+              <p className="text-[10px] font-semibold text-amber-600">
+                Disc: -{fmt(Math.round(totalDiscount))} ({discountPct}% off)
+              </p>
             )}
           </div>
           <div className="divide-y divide-slate-50">
@@ -1353,6 +1357,23 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
               </div>
             ))}
           </div>
+
+          {/* Savings summary — only when any discount is applied */}
+          {totalDiscount > 0 && (
+            <div className="px-4 py-2.5 bg-amber-50/70 border-t border-amber-100 flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Original amount</p>
+                <p className="text-xs font-bold text-slate-400 line-through">{fmt(Math.round(grossTotal))}</p>
+              </div>
+              <div className="text-right space-y-0.5">
+                <p className="text-[10px] text-amber-600 font-semibold uppercase tracking-wider">You save</p>
+                <p className="text-xs font-black text-amber-600">
+                  -{fmt(Math.round(totalDiscount))}
+                  <span className="ml-1 font-semibold text-amber-500">({discountPct}%)</span>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Invoice total summary */}
