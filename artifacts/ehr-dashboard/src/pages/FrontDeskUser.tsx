@@ -914,9 +914,12 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
   function addService(item: BillCatItem) {
     const cat = catId ? categories.find(c => c.id === catId) ?? null : null;
     const catLabel = cat?.label ?? "";
-    const providerName = currentProviderId
-      ? (cat?.providers.find(p => p.id === currentProviderId)?.name ?? undefined)
-      : undefined;
+    // Consultation has no external providers — use the doctor name (item.subLabel) instead.
+    const providerName = catId === "consultation"
+      ? (item.subLabel ?? undefined)
+      : currentProviderId
+        ? (cat?.providers.find(p => p.id === currentProviderId)?.name ?? undefined)
+        : undefined;
     setCart(prev => {
       const match = (c: CartLine) => c.itemId === item.id && c.providerName === providerName;
       const existing = prev.find(match);
@@ -1488,8 +1491,9 @@ export function FrontDeskUser() {
     const lines = r.items.map(l => {
       const sub = Math.round(l.price * l.qty * (1 - l.discount / 100));
       const nameLine = l.name.padEnd(28).slice(0, 28);
-      const provLine = l.providerName ? `  [${l.providerName}]` : "";
-      return `${nameLine}  x${l.qty}  Rs.${sub.toLocaleString("en-PK")}${provLine}`;
+      const mainLine = `${nameLine}  x${l.qty}  Rs.${sub.toLocaleString("en-PK")}`;
+      const provLine = l.providerName ? `\n  ${l.providerName}` : "";
+      return `${mainLine}${provLine}`;
     }).join("\n");
     const html = `<!DOCTYPE html><html><head><title>Receipt ${r.invNo}</title><style>
       body { font-family: 'Courier New', monospace; font-size: 11px; width: 72mm; margin: 0 auto; padding: 4mm; }
