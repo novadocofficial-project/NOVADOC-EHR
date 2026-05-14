@@ -69,7 +69,7 @@ function RightDrawer({ title, subtitle, onClose, children, onFullscreenChange }:
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
-      <div className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-in-out border-l border-slate-200 ${fullscreen ? "w-full" : "w-[60%] min-w-[624px]"}`}>
+      <div className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-in-out border-l border-slate-200 ${fullscreen ? "w-full" : "w-[40%] min-w-[520px]"}`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-white flex-shrink-0">
           <div>
             <p className="text-sm font-bold text-slate-900">{title}</p>
@@ -970,7 +970,7 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
   // STEP: CART
   // ─────────────────────────────────────────────────────────────────
   if (step === "cart") return (
-    <div className={`flex flex-col h-full transition-all duration-200 ${isFullscreen && cart.length > 0 ? "pl-72" : ""}`}>
+    <div className={`flex flex-col h-full transition-all duration-200 ${isFullscreen && cart.length > 0 ? "pl-[344px]" : ""}`}>
       <BillingStepBar step="cart" />
 
       {/* Mode toggle + patient info */}
@@ -1179,8 +1179,8 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
             bg-slate-900/97 backdrop-blur-sm shadow-2xl
             border-white/10 animate-in duration-200
             ${isFullscreen
-              ? "left-0 w-72 border-r slide-in-from-left-2"
-              : "w-64 border-r slide-in-from-right-2"
+              ? "left-0 w-[344px] border-r slide-in-from-left-2"
+              : "w-[308px] border-r slide-in-from-right-2"
             }`}
           style={isFullscreen ? undefined : { right: "max(40%, 520px)" }}
         >
