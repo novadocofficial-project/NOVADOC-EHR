@@ -836,6 +836,9 @@ type BillingStep = "cart" | "payment";
 type BillingMode = "services" | "packages";
 type PayType = "cash" | "card" | "corporate" | "insurance" | "welfare";
 
+type DiscountMode   = "percent" | "amount";
+type DiscountSource = "doctor" | "hospital" | "both";
+
 interface CartLine {
   uid: string;
   itemId: string;
@@ -845,6 +848,8 @@ interface CartLine {
   price: number;
   qty: number;
   discount: number;
+  discountMode:   DiscountMode;
+  discountSource: DiscountSource;
 }
 
 export interface ReceiptInfo {
@@ -907,9 +912,14 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
   const invNo = useRef("INV-" + Math.random().toString(36).substr(2, 6).toUpperCase()).current;
 
   // ── Cart helpers ─────────────────────────────────────────────────
-  const lineTotal = (l: CartLine) => Math.round(l.price * l.qty * (1 - l.discount / 100));
-  const grandTotal = cart.reduce((s, l) => s + lineTotal(l), 0);
-  const totalDiscount = cart.reduce((s, l) => s + (l.price * l.qty * l.discount / 100), 0);
+  const lineDiscount = (l: CartLine) => {
+    const gross = l.price * l.qty;
+    if (l.discountMode === "amount") return Math.min(l.discount, gross);
+    return gross * l.discount / 100;
+  };
+  const lineTotal    = (l: CartLine) => Math.round(l.price * l.qty - lineDiscount(l));
+  const grandTotal   = cart.reduce((s, l) => s + lineTotal(l), 0);
+  const totalDiscount = cart.reduce((s, l) => s + lineDiscount(l), 0);
 
   function addService(item: BillCatItem) {
     const cat = catId ? categories.find(c => c.id === catId) ?? null : null;
@@ -924,14 +934,14 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
       const match = (c: CartLine) => c.itemId === item.id && c.providerName === providerName;
       const existing = prev.find(match);
       if (existing) return prev.map(c => match(c) ? { ...c, qty: c.qty + 1 } : c);
-      return [...prev, { uid: uid(), itemId: item.id, name: item.name, catName: catLabel, providerName, price: item.price, qty: 1, discount: 0 }];
+      return [...prev, { uid: uid(), itemId: item.id, name: item.name, catName: catLabel, providerName, price: item.price, qty: 1, discount: 0, discountMode: "percent" as DiscountMode, discountSource: "both" as DiscountSource }];
     });
   }
 
   function addBillPackage(pkg: BillPackage) {
     setCart(prev => {
       if (prev.find(c => c.itemId === pkg.id)) return prev;
-      return [...prev, { uid: uid(), itemId: pkg.id, name: pkg.name, catName: "Package", price: pkg.price, qty: 1, discount: 0 }];
+      return [...prev, { uid: uid(), itemId: pkg.id, name: pkg.name, catName: "Package", price: pkg.price, qty: 1, discount: 0, discountMode: "percent" as DiscountMode, discountSource: "both" as DiscountSource }];
     });
   }
 
@@ -1290,23 +1300,54 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
                   </div>
                 </div>
                 {showDiscFor === line.uid && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="text-[10px] text-slate-400 font-semibold">Disc %</span>
-                    <Input
-                      type="number" min={0} max={100}
-                      value={line.discount === 0 ? "" : line.discount}
-                      onChange={e => setCart(prev => prev.map(c => c.uid === line.uid
-                        ? { ...c, discount: Math.min(100, Math.max(0, Number(e.target.value) || 0)) }
-                        : c))}
-                      className="h-7 w-20 text-xs text-center py-0 px-2"
-                      placeholder="0"
-                    />
-                    <span className="text-[10px] text-slate-400">%</span>
-                    {line.discount > 0 && (
-                      <span className="text-[10px] text-amber-600 font-semibold">
-                        -{fmt(Math.round(line.price * line.qty * line.discount / 100))}
-                      </span>
-                    )}
+                  <div className="mt-2.5 rounded-lg border border-amber-200 bg-amber-50/60 p-3 space-y-2.5">
+                    {/* Mode toggle + value input */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex rounded-lg border border-slate-200 overflow-hidden flex-shrink-0">
+                        {(["percent", "amount"] as DiscountMode[]).map(m => (
+                          <button key={m}
+                            onClick={() => setCart(prev => prev.map(c => c.uid === line.uid ? { ...c, discountMode: m, discount: 0 } : c))}
+                            className={`px-2.5 py-1 text-[10px] font-bold transition-colors ${line.discountMode === m ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-100"}`}>
+                            {m === "percent" ? "%" : "Rs."}
+                          </button>
+                        ))}
+                      </div>
+                      <Input
+                        type="number" min={0}
+                        max={line.discountMode === "percent" ? 100 : line.price * line.qty}
+                        value={line.discount === 0 ? "" : line.discount}
+                        onChange={e => setCart(prev => prev.map(c => c.uid === line.uid ? {
+                          ...c,
+                          discount: c.discountMode === "percent"
+                            ? Math.min(100, Math.max(0, Number(e.target.value) || 0))
+                            : Math.min(c.price * c.qty, Math.max(0, Number(e.target.value) || 0))
+                        } : c))}
+                        className="h-7 w-24 text-xs text-center py-0 px-2"
+                        placeholder="0"
+                        autoFocus
+                      />
+                      <span className="text-[10px] text-slate-400">{line.discountMode === "percent" ? "%" : "PKR"}</span>
+                      {line.discount > 0 && (
+                        <span className="text-[10px] text-amber-600 font-bold ml-auto">
+                          -{fmt(Math.round(lineDiscount(line)))}
+                        </span>
+                      )}
+                    </div>
+                    {/* Deduction source */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-500 font-semibold flex-shrink-0">Deduct from:</span>
+                      {(["doctor", "hospital", "both"] as DiscountSource[]).map(src => (
+                        <button key={src}
+                          onClick={() => setCart(prev => prev.map(c => c.uid === line.uid ? { ...c, discountSource: src } : c))}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all ${
+                            line.discountSource === src
+                              ? "bg-[#4982CF] text-white border-[#4982CF]"
+                              : "text-slate-500 border-slate-200 hover:border-[#4982CF]/50"
+                          }`}>
+                          {src === "doctor" ? "Doctor" : src === "hospital" ? "Hospital" : "Both"}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1533,11 +1574,16 @@ export function FrontDeskUser() {
     const dt = now.toLocaleString("en-PK", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
     const payLabel: Record<string, string> = { cash: "Cash", card: "Card / Transfer", corporate: "Corporate", insurance: "Insurance", welfare: "Welfare" };
     const lines = r.items.map(l => {
-      const sub = Math.round(l.price * l.qty * (1 - l.discount / 100));
+      const gross = l.price * l.qty;
+      const disc  = l.discountMode === "amount" ? Math.min(l.discount, gross) : gross * l.discount / 100;
+      const sub   = Math.round(gross - disc);
       const nameLine = l.name.padEnd(28).slice(0, 28);
       const mainLine = `${nameLine}  x${l.qty}  Rs.${sub.toLocaleString("en-PK")}`;
       const provLine = l.providerName ? `\n  ${l.providerName}` : "";
-      return `${mainLine}${provLine}`;
+      const discLine = disc > 0
+        ? `\n  Disc (${l.discountMode === "percent" ? `${l.discount}%` : `Rs.${l.discount.toLocaleString("en-PK")}`}, ${l.discountSource === "doctor" ? "Dr." : l.discountSource === "hospital" ? "Hosp." : "Both"}): -Rs.${Math.round(disc).toLocaleString("en-PK")}`
+        : "";
+      return `${mainLine}${provLine}${discLine}`;
     }).join("\n");
     const html = `<!DOCTYPE html><html><head><title>Receipt ${r.invNo}</title><style>
       body { font-family: 'Courier New', monospace; font-size: 11px; width: 72mm; margin: 0 auto; padding: 4mm; }
@@ -1556,7 +1602,7 @@ export function FrontDeskUser() {
       <div class="sep"></div>
       <pre>${lines}</pre>
       <div class="sep"></div>
-      ${r.items.reduce((s, l) => s + l.price * l.qty * l.discount / 100, 0) > 0 ? `<div>Discount: -Rs.${Math.round(r.items.reduce((s,l)=>s+(l.price*l.qty*l.discount/100),0)).toLocaleString("en-PK")}</div>` : ""}
+      ${r.items.reduce((s, l) => { const g = l.price * l.qty; return s + (l.discountMode === "amount" ? Math.min(l.discount, g) : g * l.discount / 100); }, 0) > 0 ? `<div>Discount: -Rs.${Math.round(r.items.reduce((s,l)=>{ const g=l.price*l.qty; return s+(l.discountMode==="amount"?Math.min(l.discount,g):g*l.discount/100); },0)).toLocaleString("en-PK")}</div>` : ""}
       <div class="total">TOTAL: Rs.${r.total.toLocaleString("en-PK")}</div>
       <div>Payment: <span class="bold">${payLabel[r.payType] ?? r.payType}</span></div>
       ${r.payType === "cash" && r.cashReceived > r.total ? `<div>Cash Rcvd: Rs.${r.cashReceived.toLocaleString("en-PK")}</div><div>Change: Rs.${(r.cashReceived - r.total).toLocaleString("en-PK")}</div>` : ""}
