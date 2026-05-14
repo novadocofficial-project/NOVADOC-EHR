@@ -934,14 +934,14 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
       const match = (c: CartLine) => c.itemId === item.id && c.providerName === providerName;
       const existing = prev.find(match);
       if (existing) return prev.map(c => match(c) ? { ...c, qty: c.qty + 1 } : c);
-      return [...prev, { uid: uid(), itemId: item.id, name: item.name, catName: catLabel, providerName, price: item.price, qty: 1, discount: 0, discountMode: "percent" as DiscountMode, discountSource: "both" as DiscountSource }];
+      return [...prev, { uid: uid(), itemId: item.id, name: item.name, catName: catLabel, providerName, price: item.price, qty: 1, discount: 0, discountMode: "percent", discountSource: "both" }];
     });
   }
 
   function addBillPackage(pkg: BillPackage) {
     setCart(prev => {
       if (prev.find(c => c.itemId === pkg.id)) return prev;
-      return [...prev, { uid: uid(), itemId: pkg.id, name: pkg.name, catName: "Package", price: pkg.price, qty: 1, discount: 0, discountMode: "percent" as DiscountMode, discountSource: "both" as DiscountSource }];
+      return [...prev, { uid: uid(), itemId: pkg.id, name: pkg.name, catName: "Package", price: pkg.price, qty: 1, discount: 0, discountMode: "percent", discountSource: "both" }];
     });
   }
 
@@ -1344,7 +1344,7 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
                               ? "bg-[#4982CF] text-white border-[#4982CF]"
                               : "text-slate-500 border-slate-200 hover:border-[#4982CF]/50"
                           }`}>
-                          {src === "doctor" ? "Doctor" : src === "hospital" ? "Hospital" : "Both"}
+                          {src === "doctor" ? "Doctor Share" : src === "hospital" ? "Hospital Share" : "Both"}
                         </button>
                       ))}
                     </div>
