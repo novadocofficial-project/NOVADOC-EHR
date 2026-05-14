@@ -848,14 +848,6 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
               </div>
             </div>
           )}
-          {!form.patientName && (
-            <button
-              onClick={() => { set("patientName", " "); set("patientMrn", ""); set("patientPhone", ""); setSearch(""); }}
-              className="mt-1.5 text-xs text-[#4982CF] hover:opacity-70 flex items-center gap-1"
-            >
-              <User className="h-3 w-3" /> Enter manually
-            </button>
-          )}
         </section>
 
         <div className="h-px bg-slate-100" />
