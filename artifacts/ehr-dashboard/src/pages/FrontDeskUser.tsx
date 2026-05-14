@@ -69,7 +69,7 @@ function RightDrawer({ title, subtitle, onClose, children, onFullscreenChange }:
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[1px]" onClick={onClose} />
-      <div className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-in-out border-l border-slate-200 ${fullscreen ? "w-full" : "w-[40%] min-w-[520px]"}`}>
+      <div className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-in-out border-l border-slate-200 ${fullscreen ? "w-full" : "w-[60%] min-w-[624px]"}`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-white flex-shrink-0">
           <div>
             <p className="text-sm font-bold text-slate-900">{title}</p>
