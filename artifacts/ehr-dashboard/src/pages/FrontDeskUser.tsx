@@ -1270,6 +1270,66 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
 
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
 
+        {/* Cart items summary */}
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Items ({cart.length})</p>
+            {totalDiscount > 0 && (
+              <p className="text-[10px] font-semibold text-amber-600">Disc: -{fmt(Math.round(totalDiscount))}</p>
+            )}
+          </div>
+          <div className="divide-y divide-slate-50">
+            {cart.map(line => (
+              <div key={line.uid} className="px-4 py-2.5">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-900 leading-tight">{line.name}</p>
+                    {line.providerName && (
+                      <p className="text-[10px] text-slate-400 mt-0.5">{line.providerName}</p>
+                    )}
+                    <p className="text-[10px] text-slate-400">{fmt(line.price)} × {line.qty}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+                    <p className="text-xs font-bold text-slate-800">{fmt(lineTotal(line))}</p>
+                    <button
+                      onClick={() => setShowDiscFor(showDiscFor === line.uid ? null : line.uid)}
+                      className={`transition-colors ${line.discount > 0 ? "text-amber-500" : "text-slate-300 hover:text-amber-500"}`}
+                      title="Apply discount">
+                      <Percent className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => removeItem(line.uid)}
+                      className="text-slate-300 hover:text-red-400 transition-colors"
+                      title="Remove item">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+                {showDiscFor === line.uid && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400 font-semibold">Disc %</span>
+                    <Input
+                      type="number" min={0} max={100}
+                      value={line.discount === 0 ? "" : line.discount}
+                      onChange={e => setCart(prev => prev.map(c => c.uid === line.uid
+                        ? { ...c, discount: Math.min(100, Math.max(0, Number(e.target.value) || 0)) }
+                        : c))}
+                      className="h-7 w-20 text-xs text-center py-0 px-2"
+                      placeholder="0"
+                    />
+                    <span className="text-[10px] text-slate-400">%</span>
+                    {line.discount > 0 && (
+                      <span className="text-[10px] text-amber-600 font-semibold">
+                        -{fmt(Math.round(line.price * line.qty * line.discount / 100))}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Invoice total summary */}
         <div className="rounded-xl border border-[#4982CF]/20 bg-blue-50/40 px-4 py-3 flex items-center gap-3">
           <Receipt className="h-4 w-4 text-[#4982CF] flex-shrink-0" />
