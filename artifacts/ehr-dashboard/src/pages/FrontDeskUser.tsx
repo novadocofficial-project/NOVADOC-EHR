@@ -1270,11 +1270,6 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
           <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
             <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Items ({cart.length})</p>
-            {totalDiscount > 0 && (
-              <p className="text-[10px] font-semibold text-amber-600">
-                Disc: -{fmt(Math.round(totalDiscount))} ({discountPct}% off)
-              </p>
-            )}
           </div>
           <div className="divide-y divide-slate-50">
             {cart.map(line => (
