@@ -906,6 +906,7 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
   const [cartDisc, setCartDisc]             = useState(0);
   const [cartDiscMode, setCartDiscMode]     = useState<DiscountMode>("percent");
   const [cartDiscSource, setCartDiscSource] = useState<DiscountSource>("both");
+  const [showCartDisc, setShowCartDisc]     = useState(false);
   const [selectedProviders, setSelectedProviders] = useState<Record<string, string | null>>({});
 
   const { categories, packages: billPackages } = useBillingCatalogue();
@@ -1383,60 +1384,77 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
           )}
         </div>
 
-        {/* Cart-wide discount */}
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Cart Discount</p>
-            {cartDiscAmt > 0 && (
-              <p className="text-[10px] font-bold text-amber-600">-{fmt(cartDiscAmt)}</p>
+        {/* Cart-wide discount — collapsed by default */}
+        <div>
+          {/* Toggle button row */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setShowCartDisc(v => !v)}
+              className={`flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+                cartDiscAmt > 0
+                  ? "border-amber-300 bg-amber-50 text-amber-700"
+                  : "border-slate-200 text-slate-400 hover:border-[#4982CF]/40 hover:text-[#4982CF]"
+              }`}>
+              <Percent className="h-3 w-3" />
+              {cartDiscAmt > 0 ? `Cart disc: -${fmt(cartDiscAmt)}` : "Add cart discount"}
+            </button>
+            {cartDiscAmt > 0 && !showCartDisc && (
+              <button
+                onClick={() => { setCartDisc(0); }}
+                className="text-[10px] text-slate-400 hover:text-red-400 transition-colors">
+                Remove
+              </button>
             )}
           </div>
-          <div className="px-4 py-3 space-y-2.5">
-            {/* Mode toggle + value */}
-            <div className="flex items-center gap-2">
-              <div className="flex rounded-lg border border-slate-200 overflow-hidden flex-shrink-0">
-                {(["percent", "amount"] as DiscountMode[]).map(m => (
-                  <button key={m}
-                    onClick={() => { setCartDiscMode(m); setCartDisc(0); }}
-                    className={`px-2.5 py-1 text-[10px] font-bold transition-colors ${cartDiscMode === m ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-100"}`}>
-                    {m === "percent" ? "%" : "Rs."}
+
+          {/* Inline panel — shown when toggled */}
+          {showCartDisc && (
+            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 space-y-2.5">
+              {/* Mode toggle + value */}
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg border border-slate-200 overflow-hidden flex-shrink-0">
+                  {(["percent", "amount"] as DiscountMode[]).map(m => (
+                    <button key={m}
+                      onClick={() => { setCartDiscMode(m); setCartDisc(0); }}
+                      className={`px-2.5 py-1 text-[10px] font-bold transition-colors ${cartDiscMode === m ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-100"}`}>
+                      {m === "percent" ? "%" : "Rs."}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="number" min={0}
+                  max={cartDiscMode === "percent" ? 100 : itemsSubtotal}
+                  value={cartDisc === 0 ? "" : cartDisc}
+                  onChange={e => {
+                    const v = Math.max(0, Number(e.target.value) || 0);
+                    setCartDisc(cartDiscMode === "percent" ? Math.min(100, v) : Math.min(itemsSubtotal, v));
+                  }}
+                  className="h-7 w-24 rounded-md border border-slate-200 text-xs text-center px-2 focus:outline-none focus:ring-1 focus:ring-[#4982CF]"
+                  placeholder="0"
+                  autoFocus
+                />
+                <span className="text-[10px] text-slate-400">{cartDiscMode === "percent" ? "%" : "PKR"}</span>
+                {cartDiscAmt > 0 && (
+                  <span className="ml-auto text-[10px] font-black text-amber-600">-{fmt(cartDiscAmt)}</span>
+                )}
+              </div>
+              {/* Deduction source */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-slate-500 font-semibold flex-shrink-0">Deduct from:</span>
+                {(["doctor", "hospital", "both"] as DiscountSource[]).map(src => (
+                  <button key={src}
+                    onClick={() => setCartDiscSource(src)}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all ${
+                      cartDiscSource === src
+                        ? "bg-[#4982CF] text-white border-[#4982CF]"
+                        : "text-slate-500 border-slate-200 hover:border-[#4982CF]/50"
+                    }`}>
+                    {src === "doctor" ? "Doctor Share" : src === "hospital" ? "Hospital Share" : "Both"}
                   </button>
                 ))}
               </div>
-              <input
-                type="number" min={0}
-                max={cartDiscMode === "percent" ? 100 : itemsSubtotal}
-                value={cartDisc === 0 ? "" : cartDisc}
-                onChange={e => {
-                  const v = Math.max(0, Number(e.target.value) || 0);
-                  setCartDisc(cartDiscMode === "percent" ? Math.min(100, v) : Math.min(itemsSubtotal, v));
-                }}
-                className="h-7 w-24 rounded-md border border-slate-200 text-xs text-center px-2 focus:outline-none focus:ring-1 focus:ring-[#4982CF]"
-                placeholder="0"
-              />
-              <span className="text-[10px] text-slate-400">{cartDiscMode === "percent" ? "%" : "PKR"}</span>
-              {cartDiscAmt > 0 && (
-                <span className="ml-auto text-[10px] font-black text-amber-600">
-                  -{fmt(cartDiscAmt)}
-                </span>
-              )}
             </div>
-            {/* Deduction source */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-slate-500 font-semibold flex-shrink-0">Deduct from:</span>
-              {(["doctor", "hospital", "both"] as DiscountSource[]).map(src => (
-                <button key={src}
-                  onClick={() => setCartDiscSource(src)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all ${
-                    cartDiscSource === src
-                      ? "bg-[#4982CF] text-white border-[#4982CF]"
-                      : "text-slate-500 border-slate-200 hover:border-[#4982CF]/50"
-                  }`}>
-                  {src === "doctor" ? "Doctor Share" : src === "hospital" ? "Hospital Share" : "Both"}
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Invoice total summary */}
