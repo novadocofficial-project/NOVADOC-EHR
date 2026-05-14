@@ -1586,6 +1586,8 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, paidIds, onClic
             const dateNum = parseInt(date.split("-")[2]);
             const dayName = getDayName(date).slice(0, 3).toUpperCase();
             const hasSlots = slots.length > 0;
+            const booked = appointments.filter(a => a.doctorId === doctor.id && a.date === date).length;
+            const available = Math.max(0, slots.length - booked);
             return (
               <div
                 key={date}
@@ -1595,11 +1597,18 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, paidIds, onClic
                 <p className={`text-2xl font-bold mt-0.5 leading-none ${isToday ? "text-[#4982CF]" : hasSlots ? "text-slate-800" : "text-slate-300"}`}>
                   {dateNum}
                 </p>
-                <p className="text-xs mt-1 font-medium">
-                  {hasSlots
-                    ? <span className="text-slate-500">{slots.length} slot{slots.length !== 1 ? "s" : ""}</span>
-                    : <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-400">Off</span>
-                  }
+                <p className="text-[10px] mt-1 leading-snug">
+                  {hasSlots ? (
+                    <span className="text-slate-400">
+                      <span className="font-bold text-slate-600">{slots.length}</span> total
+                      {" · "}
+                      <span className="font-bold text-[#4982CF]">{booked}</span> booked
+                      {" · "}
+                      <span className="font-bold text-emerald-600">{available}</span> free
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-400">Off</span>
+                  )}
                 </p>
               </div>
             );
