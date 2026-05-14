@@ -862,6 +862,10 @@ export interface ReceiptInfo {
   refNum: string;
   cashReceived: number;
   coPay: number;
+  cartDisc: number;
+  cartDiscMode: DiscountMode;
+  cartDiscSource: DiscountSource;
+  cartDiscAmt: number;
 }
 
 interface BillingContentProps {
@@ -899,6 +903,9 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
   const [catId, setCatId]       = useState<string | null>(null);
   const [cart, setCart]         = useState<CartLine[]>([]);
   const [showDiscFor, setShowDiscFor]       = useState<string | null>(null);
+  const [cartDisc, setCartDisc]             = useState(0);
+  const [cartDiscMode, setCartDiscMode]     = useState<DiscountMode>("percent");
+  const [cartDiscSource, setCartDiscSource] = useState<DiscountSource>("both");
   const [selectedProviders, setSelectedProviders] = useState<Record<string, string | null>>({});
 
   const { categories, packages: billPackages } = useBillingCatalogue();
@@ -917,11 +924,16 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
     if (l.discountMode === "amount") return Math.min(l.discount, gross);
     return gross * l.discount / 100;
   };
-  const lineTotal     = (l: CartLine) => Math.round(l.price * l.qty - lineDiscount(l));
-  const grossTotal    = cart.reduce((s, l) => s + l.price * l.qty, 0);
-  const grandTotal    = cart.reduce((s, l) => s + lineTotal(l), 0);
-  const totalDiscount = cart.reduce((s, l) => s + lineDiscount(l), 0);
-  const discountPct   = grossTotal > 0 ? Math.round((totalDiscount / grossTotal) * 100) : 0;
+  const lineTotal      = (l: CartLine) => Math.round(l.price * l.qty - lineDiscount(l));
+  const grossTotal     = cart.reduce((s, l) => s + l.price * l.qty, 0);
+  const itemsSubtotal  = cart.reduce((s, l) => s + lineTotal(l), 0);
+  const totalDiscount  = cart.reduce((s, l) => s + lineDiscount(l), 0);
+  const cartDiscAmt    = cartDiscMode === "amount"
+    ? Math.min(cartDisc, itemsSubtotal)
+    : Math.round(itemsSubtotal * cartDisc / 100);
+  const grandTotal     = itemsSubtotal - cartDiscAmt;
+  const totalSaved     = totalDiscount + cartDiscAmt;
+  const discountPct    = grossTotal > 0 ? Math.round((totalSaved / grossTotal) * 100) : 0;
 
   function addService(item: BillCatItem) {
     const cat = catId ? categories.find(c => c.id === catId) ?? null : null;
@@ -1354,7 +1366,7 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
           </div>
 
           {/* Savings summary — only when any discount is applied */}
-          {totalDiscount > 0 && (
+          {totalSaved > 0 && (
             <div className="px-4 py-2.5 bg-amber-50/70 border-t border-amber-100 flex items-center justify-between">
               <div className="space-y-0.5">
                 <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Original amount</p>
@@ -1363,12 +1375,68 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
               <div className="text-right space-y-0.5">
                 <p className="text-[10px] text-amber-600 font-semibold uppercase tracking-wider">You save</p>
                 <p className="text-xs font-black text-amber-600">
-                  -{fmt(Math.round(totalDiscount))}
+                  -{fmt(Math.round(totalSaved))}
                   <span className="ml-1 font-semibold text-amber-500">({discountPct}%)</span>
                 </p>
               </div>
             </div>
           )}
+        </div>
+
+        {/* Cart-wide discount */}
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Cart Discount</p>
+            {cartDiscAmt > 0 && (
+              <p className="text-[10px] font-bold text-amber-600">-{fmt(cartDiscAmt)}</p>
+            )}
+          </div>
+          <div className="px-4 py-3 space-y-2.5">
+            {/* Mode toggle + value */}
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-lg border border-slate-200 overflow-hidden flex-shrink-0">
+                {(["percent", "amount"] as DiscountMode[]).map(m => (
+                  <button key={m}
+                    onClick={() => { setCartDiscMode(m); setCartDisc(0); }}
+                    className={`px-2.5 py-1 text-[10px] font-bold transition-colors ${cartDiscMode === m ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-100"}`}>
+                    {m === "percent" ? "%" : "Rs."}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number" min={0}
+                max={cartDiscMode === "percent" ? 100 : itemsSubtotal}
+                value={cartDisc === 0 ? "" : cartDisc}
+                onChange={e => {
+                  const v = Math.max(0, Number(e.target.value) || 0);
+                  setCartDisc(cartDiscMode === "percent" ? Math.min(100, v) : Math.min(itemsSubtotal, v));
+                }}
+                className="h-7 w-24 rounded-md border border-slate-200 text-xs text-center px-2 focus:outline-none focus:ring-1 focus:ring-[#4982CF]"
+                placeholder="0"
+              />
+              <span className="text-[10px] text-slate-400">{cartDiscMode === "percent" ? "%" : "PKR"}</span>
+              {cartDiscAmt > 0 && (
+                <span className="ml-auto text-[10px] font-black text-amber-600">
+                  -{fmt(cartDiscAmt)}
+                </span>
+              )}
+            </div>
+            {/* Deduction source */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-slate-500 font-semibold flex-shrink-0">Deduct from:</span>
+              {(["doctor", "hospital", "both"] as DiscountSource[]).map(src => (
+                <button key={src}
+                  onClick={() => setCartDiscSource(src)}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all ${
+                    cartDiscSource === src
+                      ? "bg-[#4982CF] text-white border-[#4982CF]"
+                      : "text-slate-500 border-slate-200 hover:border-[#4982CF]/50"
+                  }`}>
+                  {src === "doctor" ? "Doctor Share" : src === "hospital" ? "Hospital Share" : "Both"}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Invoice total summary */}
@@ -1506,6 +1574,10 @@ function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps
             refNum,
             cashReceived: Number(cashRx) || 0,
             coPay: Number(coPayAmt) || 0,
+            cartDisc,
+            cartDiscMode,
+            cartDiscSource,
+            cartDiscAmt,
           })}>
           <CheckCircle2 className="h-4 w-4" /> Generate Invoice &amp; Advance to Vitals
         </Button>
@@ -1618,7 +1690,8 @@ export function FrontDeskUser() {
       <div class="sep"></div>
       <pre>${lines}</pre>
       <div class="sep"></div>
-      ${r.items.reduce((s, l) => { const g = l.price * l.qty; return s + (l.discountMode === "amount" ? Math.min(l.discount, g) : g * l.discount / 100); }, 0) > 0 ? `<div>Discount: -Rs.${Math.round(r.items.reduce((s,l)=>{ const g=l.price*l.qty; return s+(l.discountMode==="amount"?Math.min(l.discount,g):g*l.discount/100); },0)).toLocaleString("en-PK")}</div>` : ""}
+      ${r.items.reduce((s, l) => { const g = l.price * l.qty; return s + (l.discountMode === "amount" ? Math.min(l.discount, g) : g * l.discount / 100); }, 0) > 0 ? `<div>Item Discounts: -Rs.${Math.round(r.items.reduce((s,l)=>{ const g=l.price*l.qty; return s+(l.discountMode==="amount"?Math.min(l.discount,g):g*l.discount/100); },0)).toLocaleString("en-PK")}</div>` : ""}
+      ${r.cartDiscAmt > 0 ? `<div>Cart Disc (${r.cartDiscMode === "percent" ? `${r.cartDisc}%` : `Rs.${r.cartDisc.toLocaleString("en-PK")}`}, ${r.cartDiscSource === "doctor" ? "Dr." : r.cartDiscSource === "hospital" ? "Hosp." : "Both"}): -Rs.${r.cartDiscAmt.toLocaleString("en-PK")}</div>` : ""}
       <div class="total">TOTAL: Rs.${r.total.toLocaleString("en-PK")}</div>
       <div>Payment: <span class="bold">${payLabel[r.payType] ?? r.payType}</span></div>
       ${r.payType === "cash" && r.cashReceived > r.total ? `<div>Cash Rcvd: Rs.${r.cashReceived.toLocaleString("en-PK")}</div><div>Change: Rs.${(r.cashReceived - r.total).toLocaleString("en-PK")}</div>` : ""}
