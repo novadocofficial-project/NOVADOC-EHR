@@ -31,6 +31,7 @@ function Router() {
       <Route path="/queue/doctor" component={DoctorUser} />
       <Route path="/queue/lab" component={LabUser} />
       <Route path="/appointments/frontdesk" component={AppointmentFrontDesk} />
+      <Route path="/appointments/nursing" component={AppointmentFrontDesk} />
       <Route component={NotFound} />
     </Switch>
   );

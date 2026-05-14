@@ -431,6 +431,18 @@ export function AppointmentsNavDropdown() {
             <p className="text-[10px] text-slate-400 leading-tight">Book & manage appointments</p>
           </div>
         </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setLocation("/appointments/nursing")}
+          className={`gap-3 cursor-pointer py-2.5 ${location === "/appointments/nursing" ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
+        >
+          <span className="h-7 w-7 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
+            <Heart className="h-3.5 w-3.5 text-rose-500" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold leading-tight">Nursing</p>
+            <p className="text-[10px] text-slate-400 leading-tight">View & track appointments</p>
+          </div>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

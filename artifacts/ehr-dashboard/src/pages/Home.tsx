@@ -13,6 +13,7 @@ import {
   Globe,
   GraduationCap,
   Headphones,
+  Heart,
   Home as HomeIcon,
   LayoutDashboard,
   MapPin,
@@ -46,6 +47,7 @@ type Mod = {
 
 const MODULES: Mod[] = [
   { id: "appointments",     label: "Appointments",                   icon: Calendar,     iconColor: "#6366f1", iconBg: "#ede9fe", active: true,  href: "/appointments/frontdesk", desc: "Schedule & manage patient appointments" },
+  { id: "nursing-appt",    label: "Nursing",                        icon: Heart,        iconColor: "#f43f5e", iconBg: "#ffe4e6", active: true,  href: "/appointments/nursing",   desc: "Nursing view of appointment calendar" },
   { id: "patient-queue",    label: "Patient Queue",                  icon: Ticket,       iconColor: "#4982CF", iconBg: "#dbeafe", active: true,  href: "/queue/token/single", desc: "Token management & live queue" },
   { id: "primary-hc",       label: "Primary Healthcare",             icon: Stethoscope,  iconColor: "#059669", iconBg: "#d1fae5", active: true,  href: "/queue/token/multistep", desc: "OPD multi-step visit workflow" },
   { id: "ncd-clinic",       label: "NCD Clinic",                     icon: Activity,     iconColor: "#d97706", iconBg: "#fef3c7", active: false },
