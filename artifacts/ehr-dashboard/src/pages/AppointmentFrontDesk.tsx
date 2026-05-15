@@ -10,7 +10,7 @@ import {
 import { BillingContent, ReceiptInfo, printThermalReceipt } from "@/pages/FrontDeskUser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { QueueAppHeader } from "@/pages/QueuePageLayout";
 import { useAppointmentDoctors } from "@/hooks/useAppointmentDoctors";
@@ -2047,6 +2047,23 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
     return Array.from(types);
   }, [appointmentDoctors, layoutMode, selectedDoctorId]);
 
+  // Doctors grouped by specialty for the dropdown.
+  // Each doctor is placed into exactly one group (their first specialty) so Radix
+  // SelectItem's portal-to-trigger mechanism only fires once per selected value.
+  const doctorsBySpecialty = useMemo(() => {
+    const map = new Map<string, typeof appointmentDoctors>();
+    for (const doc of appointmentDoctors) {
+      const spec = doc.specialties[0] ?? "General / Other";
+      if (!map.has(spec)) map.set(spec, []);
+      map.get(spec)!.push(doc);
+    }
+    return [...map.entries()].sort(([a], [b]) => {
+      if (a === "General / Other") return 1;
+      if (b === "General / Other") return -1;
+      return a.localeCompare(b);
+    });
+  }, [appointmentDoctors]);
+
   // Stats
   const stats = useMemo(() => {
     const dayAppts = appointments.filter(a =>
@@ -2174,7 +2191,7 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
         {/* Doctor selector (only in calendar mode) */}
         {layoutMode === "calendar" && (
           <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
-            <SelectTrigger className="h-9 w-52 text-sm border-slate-200 flex-shrink-0">
+            <SelectTrigger className="h-9 w-60 text-sm border-slate-200 flex-shrink-0">
               <Stethoscope className="h-3.5 w-3.5 text-[#4982CF] mr-1.5 flex-shrink-0" />
               <SelectValue placeholder="Select doctor..." />
             </SelectTrigger>
@@ -2182,10 +2199,20 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
               {appointmentDoctors.length === 0 && (
                 <SelectItem value="__none" disabled>No appointment doctors</SelectItem>
               )}
-              {appointmentDoctors.map(d => (
-                <SelectItem key={d.id} value={d.id}>
-                  {d.name}
-                </SelectItem>
+              {doctorsBySpecialty.map(([specialty, docs], idx) => (
+                <React.Fragment key={specialty}>
+                  {idx > 0 && <SelectSeparator />}
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-2 py-1.5">
+                      {specialty}
+                    </SelectLabel>
+                    {docs.map(d => (
+                      <SelectItem key={`${specialty}::${d.id}`} value={d.id} textValue={d.name}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </React.Fragment>
               ))}
             </SelectContent>
           </Select>
