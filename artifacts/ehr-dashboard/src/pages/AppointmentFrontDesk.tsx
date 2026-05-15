@@ -2048,14 +2048,18 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
   }, [appointmentDoctors, layoutMode, selectedDoctorId]);
 
   // Doctors grouped by specialty for the dropdown.
-  // Each doctor is placed into exactly one group (their first specialty) so Radix
-  // SelectItem's portal-to-trigger mechanism only fires once per selected value.
+  // A doctor with multiple specialties appears once per specialty group.
+  // Each SelectItem uses a compound value `${spec}::${docId}` so every item has
+  // a unique value — this prevents Radix from double-portalling the selected
+  // item's text into the trigger when the same doctor appears in two groups.
   const doctorsBySpecialty = useMemo(() => {
     const map = new Map<string, typeof appointmentDoctors>();
     for (const doc of appointmentDoctors) {
-      const spec = doc.specialties[0] ?? "General / Other";
-      if (!map.has(spec)) map.set(spec, []);
-      map.get(spec)!.push(doc);
+      const specs = doc.specialties.length > 0 ? doc.specialties : ["General / Other"];
+      for (const spec of specs) {
+        if (!map.has(spec)) map.set(spec, []);
+        map.get(spec)!.push(doc);
+      }
     }
     return [...map.entries()].sort(([a], [b]) => {
       if (a === "General / Other") return 1;
@@ -2063,6 +2067,19 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
       return a.localeCompare(b);
     });
   }, [appointmentDoctors]);
+
+  // The Select's `value` prop must match a SelectItem value exactly.
+  // Since items use compound keys `${spec}::${docId}`, derive the first
+  // matching key for the currently selected doctor.
+  const selectedDoctorItemKey = useMemo(() => {
+    if (!selectedDoctorId) return selectedDoctorId;
+    for (const [spec, docs] of doctorsBySpecialty) {
+      if (docs.some(d => d.id === selectedDoctorId)) {
+        return `${spec}::${selectedDoctorId}`;
+      }
+    }
+    return selectedDoctorId;
+  }, [selectedDoctorId, doctorsBySpecialty]);
 
   // Stats
   const stats = useMemo(() => {
@@ -2190,7 +2207,13 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
         )}
         {/* Doctor selector (only in calendar mode) */}
         {layoutMode === "calendar" && (
-          <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
+          <Select
+            value={selectedDoctorItemKey}
+            onValueChange={val => {
+              const sep = val.indexOf("::");
+              setSelectedDoctorId(sep >= 0 ? val.slice(sep + 2) : val);
+            }}
+          >
             <SelectTrigger className="h-9 w-60 text-sm border-slate-200 flex-shrink-0">
               <Stethoscope className="h-3.5 w-3.5 text-[#4982CF] mr-1.5 flex-shrink-0" />
               <SelectValue placeholder="Select doctor..." />
@@ -2207,7 +2230,11 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
                       {specialty}
                     </SelectLabel>
                     {docs.map(d => (
-                      <SelectItem key={`${specialty}::${d.id}`} value={d.id} textValue={d.name}>
+                      <SelectItem
+                        key={`${specialty}::${d.id}`}
+                        value={`${specialty}::${d.id}`}
+                        textValue={d.name}
+                      >
                         {d.name}
                       </SelectItem>
                     ))}
