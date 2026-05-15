@@ -2047,19 +2047,19 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
     return Array.from(types);
   }, [appointmentDoctors, layoutMode, selectedDoctorId]);
 
-  // Doctors grouped by specialty for the dropdown.
-  // A doctor with multiple specialties appears once per specialty group.
-  // Each SelectItem uses a compound value `${spec}::${docId}` so every item has
-  // a unique value — this prevents Radix from double-portalling the selected
-  // item's text into the trigger when the same doctor appears in two groups.
-  const doctorsBySpecialty = useMemo(() => {
+  // Doctors grouped by primary (first) specialty for the dropdown.
+  // Each doctor appears exactly once, under their primary specialty.
+  // Doctors with multiple specialties show the extra ones as a subtitle inside the item.
+  const doctorsByPrimarySpecialty = useMemo(() => {
     const map = new Map<string, typeof appointmentDoctors>();
     for (const doc of appointmentDoctors) {
-      const specs = doc.specialties.length > 0 ? doc.specialties : ["General / Other"];
-      for (const spec of specs) {
-        if (!map.has(spec)) map.set(spec, []);
-        map.get(spec)!.push(doc);
-      }
+      const primary = doc.specialties[0] ?? "General / Other";
+      if (!map.has(primary)) map.set(primary, []);
+      map.get(primary)!.push(doc);
+    }
+    // Sort doctors within each group alphabetically by name
+    for (const docs of map.values()) {
+      docs.sort((a, b) => a.name.localeCompare(b.name));
     }
     return [...map.entries()].sort(([a], [b]) => {
       if (a === "General / Other") return 1;
@@ -2067,19 +2067,6 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
       return a.localeCompare(b);
     });
   }, [appointmentDoctors]);
-
-  // The Select's `value` prop must match a SelectItem value exactly.
-  // Since items use compound keys `${spec}::${docId}`, derive the first
-  // matching key for the currently selected doctor.
-  const selectedDoctorItemKey = useMemo(() => {
-    if (!selectedDoctorId) return selectedDoctorId;
-    for (const [spec, docs] of doctorsBySpecialty) {
-      if (docs.some(d => d.id === selectedDoctorId)) {
-        return `${spec}::${selectedDoctorId}`;
-      }
-    }
-    return selectedDoctorId;
-  }, [selectedDoctorId, doctorsBySpecialty]);
 
   // Stats
   const stats = useMemo(() => {
@@ -2207,13 +2194,7 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
         )}
         {/* Doctor selector (only in calendar mode) */}
         {layoutMode === "calendar" && (
-          <Select
-            value={selectedDoctorItemKey}
-            onValueChange={val => {
-              const sep = val.indexOf("::");
-              setSelectedDoctorId(sep >= 0 ? val.slice(sep + 2) : val);
-            }}
-          >
+          <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
             <SelectTrigger className="h-9 w-60 text-sm border-slate-200 flex-shrink-0">
               <Stethoscope className="h-3.5 w-3.5 text-[#4982CF] mr-1.5 flex-shrink-0" />
               <SelectValue placeholder="Select doctor..." />
@@ -2222,7 +2203,7 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
               {appointmentDoctors.length === 0 && (
                 <SelectItem value="__none" disabled>No appointment doctors</SelectItem>
               )}
-              {doctorsBySpecialty.map(([specialty, docs], idx) => (
+              {doctorsByPrimarySpecialty.map(([specialty, docs], idx) => (
                 <React.Fragment key={specialty}>
                   {idx > 0 && <SelectSeparator />}
                   <SelectGroup>
@@ -2231,9 +2212,10 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
                     </SelectLabel>
                     {docs.map(d => (
                       <SelectItem
-                        key={`${specialty}::${d.id}`}
-                        value={`${specialty}::${d.id}`}
+                        key={d.id}
+                        value={d.id}
                         textValue={d.name}
+                        subtitle={d.specialties.length > 1 ? d.specialties.slice(1).join(" · ") : undefined}
                       >
                         {d.name}
                       </SelectItem>
