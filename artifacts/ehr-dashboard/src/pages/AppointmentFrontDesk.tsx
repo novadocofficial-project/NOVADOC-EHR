@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import { useLocation } from "wouter";
 import {
   Calendar, ChevronLeft, ChevronRight, ChevronDown, Plus, Printer,
   Maximize2, Minimize2, X, Search, User, Phone, AlertCircle,
@@ -1086,6 +1087,7 @@ interface ViewDrawerProps {
 }
 
 function ViewDrawer({ appt, doctorName, onClose, onEdit }: ViewDrawerProps) {
+  const [, navTo] = useLocation();
   const sc = STATUS_CONFIG[appt.status];
   const pc = PRIORITY_CONFIG[appt.priority];
 
@@ -1122,7 +1124,12 @@ function ViewDrawer({ appt, doctorName, onClose, onEdit }: ViewDrawerProps) {
         {/* Patient */}
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-4">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Patient</p>
-          <p className="font-bold text-slate-900">{appt.patientName}</p>
+          <button
+            onClick={() => navTo(`/patients/${appt.patientMrn}`)}
+            className="font-bold text-slate-900 hover:text-[#4982CF] hover:underline transition-colors text-left"
+          >
+            {appt.patientName}
+          </button>
           {appt.patientMrn && <p className="text-xs text-slate-500 mt-0.5">{appt.patientMrn}</p>}
           {appt.patientPhone && (
             <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
@@ -1240,6 +1247,7 @@ interface ApptCardProps {
 }
 
 function AppointmentCard({ state, isPaid, role, onClose, onView, onEdit, onStatusChange, onInvoice: onInvoiceRaw, onNursing }: ApptCardProps) {
+  const [, navTo] = useLocation();
   function onInvoice() { onInvoiceRaw(state.appt); }
   const { appt, x, y } = state;
   const sc = STATUS_CONFIG[appt.status];
@@ -1274,7 +1282,12 @@ function AppointmentCard({ state, isPaid, role, onClose, onView, onEdit, onStatu
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
           </div>
-          <p className="font-bold text-slate-900 mt-1">{appt.patientName}</p>
+          <button
+            onClick={() => navTo(`/patients/${appt.patientMrn}`)}
+            className="font-bold text-slate-900 mt-1 hover:text-[#4982CF] hover:underline transition-colors text-left block"
+          >
+            {appt.patientName}
+          </button>
           <p className="text-xs text-slate-500">{appt.patientMrn} {appt.patientPhone && `· ${appt.patientPhone}`}</p>
         </div>
 

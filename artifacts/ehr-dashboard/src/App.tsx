@@ -14,6 +14,7 @@ import { NursingUser } from "@/pages/NursingUser";
 import { DoctorUser } from "@/pages/DoctorUser";
 import { LabUser } from "@/pages/LabUser";
 import { AppointmentFrontDesk } from "@/pages/AppointmentFrontDesk";
+import { PatientProfile } from "@/pages/PatientProfile";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/appointments/nursing">
         {() => <AppointmentFrontDesk key="nursing" role="nursing" />}
       </Route>
+      <Route path="/patients/:mrn" component={PatientProfile} />
       <Route component={NotFound} />
     </Switch>
   );
