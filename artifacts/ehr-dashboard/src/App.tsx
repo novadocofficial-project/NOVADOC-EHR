@@ -37,7 +37,7 @@ function Router() {
       <Route path="/appointments/nursing">
         {() => <AppointmentFrontDesk key="nursing" role="nursing" />}
       </Route>
-      <Route path="/patients/:mrn" component={PatientProfile} />
+      <Route path="/patients/:id" component={PatientProfile} />
       <Route component={NotFound} />
     </Switch>
   );

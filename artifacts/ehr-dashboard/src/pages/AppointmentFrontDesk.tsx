@@ -18,7 +18,7 @@ import { QueueAppHeader } from "@/pages/QueuePageLayout";
 import { useAppointmentDoctors } from "@/hooks/useAppointmentDoctors";
 import { useAppointments, type Appointment, type ApptStatus } from "@/hooks/useAppointments";
 import { useApptInvoices } from "@/hooks/useApptInvoices";
-import { usePatients } from "@/hooks/usePatients";
+import { usePatients, getPatientIdByMrn } from "@/hooks/usePatients";
 import { useRegConfig, type RegField } from "@/hooks/useRegConfig";
 import { useToast } from "@/hooks/use-toast";
 import type { Doctor } from "@/pages/DoctorsModule";
@@ -1125,7 +1125,7 @@ function ViewDrawer({ appt, doctorName, onClose, onEdit }: ViewDrawerProps) {
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-4">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Patient</p>
           <button
-            onClick={() => navTo(`/patients/${appt.patientMrn}`)}
+            onClick={() => navTo(`/patients/${getPatientIdByMrn(appt.patientMrn)}`)}
             className="font-bold text-slate-900 hover:text-[#4982CF] hover:underline transition-colors text-left"
           >
             {appt.patientName}
@@ -1210,7 +1210,7 @@ function ApptChip({ appt, isPaid, onClick }: ChipProps) {
       <div className="flex items-center gap-2">
         <span className={`h-2 w-2 rounded-full flex-shrink-0 ${sc.dot}`} />
         <button
-          onClick={e => { e.stopPropagation(); navTo(`/patients/${appt.patientMrn}`); }}
+          onClick={e => { e.stopPropagation(); navTo(`/patients/${getPatientIdByMrn(appt.patientMrn)}`); }}
           className={`text-sm font-bold truncate leading-tight ${sc.text} hover:underline text-left`}
         >
           {appt.patientName}
@@ -1292,7 +1292,7 @@ function AppointmentCard({ state, isPaid, role, onClose, onView, onEdit, onStatu
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
           </div>
           <button
-            onClick={() => navTo(`/patients/${appt.patientMrn}`)}
+            onClick={() => navTo(`/patients/${getPatientIdByMrn(appt.patientMrn)}`)}
             className="font-bold text-slate-900 mt-1 hover:text-[#4982CF] hover:underline transition-colors text-left block"
           >
             {appt.patientName}
@@ -1788,7 +1788,7 @@ function MonthView({ date, doctor, appointments, filterTypes, selectedDate, onSe
                   >
                     <span className="font-mono opacity-75 flex-shrink-0">{a.slotStart}</span>
                     <button
-                      onClick={e => { e.stopPropagation(); navTo(`/patients/${a.patientMrn}`); }}
+                      onClick={e => { e.stopPropagation(); navTo(`/patients/${getPatientIdByMrn(a.patientMrn)}`); }}
                       className="truncate hover:underline text-left flex-1"
                     >
                       {a.patientName}

@@ -524,17 +524,17 @@ type DrawerKey =
   | null;
 
 export function PatientProfile() {
-  const { mrn }       = useParams<{ mrn: string }>();
+  const { id }        = useParams<{ id: string }>();
   const [, navigate]  = useLocation();
   const { patients, updatePatient } = usePatients();
   const { toast }     = useToast();
 
+  const patient = patients.find(p => p.id === (id ?? "")) ?? null;
+
   const {
     appointments, invoices, visits,
     allergies, medicines, labOrders, imagingOrders, fhRows,
-  } = usePatientProfile(mrn ?? "");
-
-  const patient = patients.find(p => p.mrn === (mrn ?? "")) ?? null;
+  } = usePatientProfile(patient?.mrn ?? "");
 
   const [openDrawer, setOpenDrawer] = useState<DrawerKey>(null);
   const [showEdit,   setShowEdit]   = useState(false);
@@ -559,7 +559,7 @@ export function PatientProfile() {
           </div>
           <div className="text-center">
             <p className="text-sm font-bold text-slate-600">Patient not found</p>
-            <p className="text-xs text-slate-400 mt-1">MR# {mrn}</p>
+            <p className="text-xs text-slate-400 mt-1">Patient ID: {id}</p>
           </div>
           <button
             onClick={() => navigate("/")}

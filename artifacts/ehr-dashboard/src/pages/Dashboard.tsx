@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { HomeNavButton, QueueNavDropdown, AppointmentsNavDropdown, ReportsNavDropdown } from "@/pages/QueuePageLayout";
+import { getPatientIdByMrn } from "@/hooks/usePatients";
 
 const SUMMARY_STATS = [
   { title: "Total Revenue", value: "$142,500.00", icon: DollarSign, trend: "+12.5%" },
@@ -853,7 +854,7 @@ export function Dashboard() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex items-center gap-2">
-                      <Link href={`/patients/${trx.mrn}`} className="truncate text-sm font-bold text-slate-900 hover:text-[#4982CF] hover:underline transition-colors cursor-pointer">{trx.patientName}</Link>
+                      <Link href={`/patients/${getPatientIdByMrn(trx.mrn)}`} className="truncate text-sm font-bold text-slate-900 hover:text-[#4982CF] hover:underline transition-colors cursor-pointer">{trx.patientName}</Link>
                       <span className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">{trx.mrn}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-slate-600">
