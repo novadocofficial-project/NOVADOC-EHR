@@ -11,8 +11,12 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { SOAP_DUMMY } from "@/data/soapDummy";
 import { usePatientProfile } from "@/hooks/usePatientProfile";
+import type { AllergyEntry } from "@/pages/AllergySelector";
+import type { FamilyRow } from "@/pages/MedicalHistorySection";
+import type { MedicineEntry } from "@/pages/FormularySection";
+import type { LabOrder } from "@/pages/LabDrawer";
+import type { ImagingOrder } from "@/pages/ImagingSection";
 import { usePatients } from "@/hooks/usePatients";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -40,42 +44,6 @@ const AVATAR_COLORS = ["#4982CF","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec489
 function avatarColor(name: string): string {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 }
-
-// ─── Static demo data (SOAP_DUMMY — same pattern as PatientFaceSheet) ─────────
-
-const DEMO_ALLERGIES = Array.from(
-  new Map(
-    SOAP_DUMMY.flatMap(r => r.allergies)
-      .filter(a => !a.name.toLowerCase().startsWith("no known"))
-      .map(a => [a.name, a]),
-  ).values(),
-);
-
-const DEMO_MEDS = Array.from(
-  new Map(SOAP_DUMMY.flatMap(r => r.prescriptions).map(rx => [rx.drug, rx])).values(),
-);
-
-const DEMO_LABS = SOAP_DUMMY.filter(r => r.labs.length > 0).map(r => ({
-  date:   r.signedAt,
-  doctor: r.signedBy,
-  tests:  r.labs,
-}));
-
-const DEMO_RADIOLOGY = SOAP_DUMMY.filter(r => r.imaging.length > 0).map(r => ({
-  date:  r.signedAt,
-  doc:   r.signedBy,
-  scans: r.imaging,
-}));
-
-const DEMO_FAMILY_HX = Array.from(new Set(SOAP_DUMMY.flatMap(r => r.familyHistory)));
-
-const DEMO_VITALS = [...SOAP_DUMMY].reverse().map(r => ({
-  date:      r.signedAt.split(",")[0],
-  systolic:  parseInt(r.vitals.bp.split("/")[0], 10),
-  diastolic: parseInt(r.vitals.bp.split("/")[1], 10),
-  pulse:     parseInt(r.vitals.pulse, 10),
-  spo2:      parseInt(r.vitals.spo2, 10),
-}));
 
 const SEV_COLOR: Record<string, string> = {
   Severe:   "#ef4444",
@@ -130,12 +98,12 @@ function SectionDrawer({
 
 // ─── Drawer contents ──────────────────────────────────────────────────────────
 
-function AllergiesContent() {
+function AllergiesContent({ allergies }: { allergies: AllergyEntry[] }) {
   return (
     <div className="space-y-3">
-      {DEMO_ALLERGIES.length === 0
+      {allergies.length === 0
         ? <p className="text-sm text-slate-400 text-center py-8">No allergies recorded.</p>
-        : DEMO_ALLERGIES.map((a, i) => (
+        : allergies.map((a, i) => (
           <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white">
             <div className="h-3 w-3 rounded-full mt-0.5 flex-shrink-0" style={{ backgroundColor: SEV_COLOR[a.severity] ?? "#94a3b8" }} />
             <div className="flex-1 min-w-0">
@@ -155,70 +123,48 @@ function AllergiesContent() {
   );
 }
 
-function MedicationsContent() {
+function MedicationsContent({ medicines }: { medicines: MedicineEntry[] }) {
   return (
     <div className="space-y-3">
-      {DEMO_MEDS.map((m, i) => (
-        <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white">
-          <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-purple-50">
-            <Pill className="h-3.5 w-3.5 text-purple-500" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-slate-800">{m.drug}</p>
-            <p className="text-xs text-slate-500">{m.sig}</p>
-          </div>
-          <span className="text-[11px] font-bold text-slate-400 flex-shrink-0">Qty: {m.qty}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function LabReportsContent() {
-  return (
-    <div className="space-y-4">
-      {DEMO_LABS.map((lab, i) => (
-        <div key={i} className="rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-4 py-2.5 bg-slate-50 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Visit</p>
-              <p className="text-xs font-bold text-slate-700">{lab.date}</p>
+      {medicines.length === 0
+        ? <p className="text-sm text-slate-400 text-center py-8">No medications prescribed yet.</p>
+        : medicines.map((m, i) => (
+          <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white">
+            <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-purple-50">
+              <Pill className="h-3.5 w-3.5 text-purple-500" />
             </div>
-            <p className="text-xs text-slate-500">{lab.doctor}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-800">{m.genericName}</p>
+              <p className="text-xs text-slate-500">{m.brand}{m.strength ? ` · ${m.strength}` : ""}{m.frequency ? ` · ${m.frequency}` : ""}</p>
+            </div>
+            <span className="text-[11px] font-bold text-slate-400 flex-shrink-0">{m.route || ""}</span>
           </div>
-          <div className="px-4 py-3 space-y-2">
-            {lab.tests.map((t, j) => (
-              <div key={j} className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                <p className="text-xs text-slate-700">{t}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
+        ))
+      }
     </div>
   );
 }
 
-function RadiologyContent() {
+function LabReportsContent({ labOrders }: { labOrders: LabOrder[] }) {
+  const active = labOrders.filter(lo => !lo.voided);
   return (
     <div className="space-y-4">
-      {DEMO_RADIOLOGY.length === 0
-        ? <p className="text-sm text-slate-400 text-center py-8">No radiology reports recorded.</p>
-        : DEMO_RADIOLOGY.map((r, i) => (
+      {active.length === 0
+        ? <p className="text-sm text-slate-400 text-center py-8">No laboratory orders on file.</p>
+        : active.map((lo, i) => (
           <div key={i} className="rounded-xl border border-slate-200 overflow-hidden">
             <div className="px-4 py-2.5 bg-slate-50 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Visit</p>
-                <p className="text-xs font-bold text-slate-700">{r.date}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Order</p>
+                <p className="text-xs font-bold text-slate-700">{lo.orderSetName ?? "Lab Order"}</p>
               </div>
-              <p className="text-xs text-slate-500">{r.doc}</p>
+              {lo.sentAt && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Sent</span>}
             </div>
             <div className="px-4 py-3 space-y-2">
-              {r.scans.map((s, j) => (
+              {lo.tests.map((t, j) => (
                 <div key={j} className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-sky-400 flex-shrink-0" />
-                  <p className="text-xs text-slate-700">{s}</p>
+                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                  <p className="text-xs text-slate-700">{t.name}</p>
                 </div>
               ))}
             </div>
@@ -229,15 +175,41 @@ function RadiologyContent() {
   );
 }
 
-function FamilyHistoryContent() {
+function RadiologyContent({ imagingOrders }: { imagingOrders: ImagingOrder[] }) {
+  return (
+    <div className="space-y-3">
+      {imagingOrders.length === 0
+        ? <p className="text-sm text-slate-400 text-center py-8">No radiology orders on file.</p>
+        : imagingOrders.map((io, i) => (
+          <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white">
+            <Scan className="h-4 w-4 text-sky-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-800">{io.testName}</p>
+              <p className="text-xs text-slate-500">{io.category}{io.reason ? ` · ${io.reason}` : ""}</p>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  );
+}
+
+function FamilyHistoryContent({ fhRows }: { fhRows: FamilyRow[] }) {
+  const filled = fhRows.filter(r => r.condition || r.relation);
   return (
     <div className="space-y-2.5">
-      {DEMO_FAMILY_HX.map((entry, i) => (
-        <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white">
-          <Users className="h-4 w-4 text-rose-400 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-slate-700">{entry}</p>
-        </div>
-      ))}
+      {filled.length === 0
+        ? <p className="text-sm text-slate-400 text-center py-8">No family history recorded.</p>
+        : filled.map((row, i) => (
+          <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white">
+            <Users className="h-4 w-4 text-rose-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800">{row.condition || "—"}</p>
+              {row.relation && <p className="text-xs text-slate-500">{row.relation}</p>}
+            </div>
+          </div>
+        ))
+      }
     </div>
   );
 }
@@ -350,49 +322,14 @@ function InvoicesContent({
 
 function VitalsContent() {
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-slate-200 p-4">
-        <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-3">Blood Pressure (mmHg)</p>
-        <ResponsiveContainer width="100%" height={180}>
-          <LineChart data={DEMO_VITALS}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} domain={[60, 180]} />
-            <Tooltip />
-            <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-            <Line type="monotone" dataKey="systolic"  stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Systolic"  />
-            <Line type="monotone" dataKey="diastolic" stroke="#f97316" strokeWidth={2} dot={{ r: 3 }} name="Diastolic" />
-          </LineChart>
-        </ResponsiveContainer>
+    <div className="flex flex-col items-center justify-center py-16 gap-3">
+      <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center">
+        <Activity className="h-5 w-5 text-slate-300" />
       </div>
-
-      <div className="rounded-xl border border-slate-200 p-4">
-        <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-3">Pulse & SpO₂</p>
-        <ResponsiveContainer width="100%" height={180}>
-          <LineChart data={DEMO_VITALS}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} />
-            <Tooltip />
-            <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-            <Line type="monotone" dataKey="pulse" stroke={ACCENT}   strokeWidth={2} dot={{ r: 3 }} name="Pulse (bpm)" />
-            <Line type="monotone" dataKey="spo2"  stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="SpO₂ (%)"    />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        {DEMO_VITALS.map((v, i) => (
-          <div key={i} className="rounded-xl border border-slate-200 px-4 py-3 bg-white">
-            <p className="text-[10px] text-slate-400 font-medium mb-1.5">{v.date}</p>
-            <div className="space-y-0.5">
-              <p className="text-xs font-semibold text-slate-700">BP: <span className="text-red-600">{v.systolic}/{v.diastolic}</span></p>
-              <p className="text-xs font-semibold text-slate-700">Pulse: <span style={{ color: ACCENT }}>{v.pulse} bpm</span></p>
-              <p className="text-xs font-semibold text-slate-700">SpO₂: <span className="text-emerald-600">{v.spo2}%</span></p>
-            </div>
-          </div>
-        ))}
-      </div>
+      <p className="text-sm font-semibold text-slate-500">No vital trends recorded.</p>
+      <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed">
+        Vital signs (BP, pulse, SpO₂) recorded during consultations will appear here as trend charts.
+      </p>
     </div>
   );
 }
@@ -592,7 +529,10 @@ export function PatientProfile() {
   const { patients, updatePatient } = usePatients();
   const { toast }     = useToast();
 
-  const { appointments, invoices, visits }        = usePatientProfile(mrn ?? "");
+  const {
+    appointments, invoices, visits,
+    allergies, medicines, labOrders, imagingOrders, fhRows,
+  } = usePatientProfile(mrn ?? "");
 
   const patient = patients.find(p => p.mrn === (mrn ?? "")) ?? null;
 
@@ -635,8 +575,8 @@ export function PatientProfile() {
   const age          = calcAge(patient.dob);
   const inits        = initials(patient.name);
   const bg           = avatarColor(patient.name);
-  const labCount     = DEMO_LABS.reduce((s, l) => s + l.tests.length, 0);
-  const radCount     = DEMO_RADIOLOGY.reduce((s, r) => s + r.scans.length, 0);
+  const labCount     = labOrders.filter(lo => !lo.voided).reduce((s, lo) => s + lo.tests.length, 0);
+  const radCount     = imagingOrders.length;
   const invoiceCount = appointments.filter(a => invoices[a.id]).length;
   const visitCount   = visits.reduce((s, v) => s + v.signedRecords.length, 0) + appointments.length;
 
@@ -737,34 +677,48 @@ export function PatientProfile() {
           </SectionCard>
 
           {/* 3. Laboratory Reports */}
-          <SectionCard title="Laboratory Reports" icon={FlaskConical} color="#f59e0b" count={labCount} onViewAll={() => setOpenDrawer("labs")}>
-            {DEMO_LABS[0]?.tests.slice(0, 3).map((t, i) => (
-              <div key={i} className="flex items-center gap-2 py-0.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                <p className="text-xs text-slate-600 truncate">{t}</p>
-              </div>
-            ))}
+          <SectionCard title="Laboratory Reports" icon={FlaskConical} color="#f59e0b" count={labCount || undefined} onViewAll={() => setOpenDrawer("labs")}>
+            {labCount === 0
+              ? <p className="text-xs text-slate-400 text-center py-3">No lab orders yet</p>
+              : labOrders.filter(lo => !lo.voided)[0]?.tests.slice(0, 3).map((t, i) => (
+                <div key={i} className="flex items-center gap-2 py-0.5">
+                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                  <p className="text-xs text-slate-600 truncate">{t.name}</p>
+                </div>
+              ))
+            }
           </SectionCard>
 
           {/* 4. Radiology Reports */}
           <SectionCard title="Radiology Reports" icon={Scan} color="#0ea5e9" count={radCount || undefined} onViewAll={() => setOpenDrawer("radiology")}>
-            {DEMO_RADIOLOGY[0]?.scans.slice(0, 3).map((s, i) => (
-              <div key={i} className="flex items-center gap-2 py-0.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-sky-400 flex-shrink-0" />
-                <p className="text-xs text-slate-600 truncate">{s}</p>
-              </div>
-            )) ?? <p className="text-xs text-slate-400 text-center py-3">No reports yet</p>}
+            {imagingOrders.length === 0
+              ? <p className="text-xs text-slate-400 text-center py-3">No reports yet</p>
+              : imagingOrders.slice(0, 3).map((io, i) => (
+                <div key={i} className="flex items-center gap-2 py-0.5">
+                  <div className="h-1.5 w-1.5 rounded-full bg-sky-400 flex-shrink-0" />
+                  <p className="text-xs text-slate-600 truncate">{io.testName}</p>
+                </div>
+              ))
+            }
           </SectionCard>
 
           {/* 5. Family History */}
-          <SectionCard title="Family History" icon={Users} color="#ec4899" count={DEMO_FAMILY_HX.length} onViewAll={() => setOpenDrawer("family")}>
-            {DEMO_FAMILY_HX.slice(0, 3).map((entry, i) => (
-              <div key={i} className="flex items-start gap-2 py-0.5">
-                <Users className="h-3 w-3 text-rose-400 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-slate-600 leading-snug line-clamp-1">{entry}</p>
-              </div>
-            ))}
-          </SectionCard>
+          {(() => {
+            const filledFh = fhRows.filter(r => r.condition || r.relation);
+            return (
+              <SectionCard title="Family History" icon={Users} color="#ec4899" count={filledFh.length || undefined} onViewAll={() => setOpenDrawer("family")}>
+                {filledFh.length === 0
+                  ? <p className="text-xs text-slate-400 text-center py-3">No family history</p>
+                  : filledFh.slice(0, 3).map((row, i) => (
+                    <div key={i} className="flex items-start gap-2 py-0.5">
+                      <Users className="h-3 w-3 text-rose-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-slate-600 leading-snug line-clamp-1">{row.condition}{row.relation ? ` · ${row.relation}` : ""}</p>
+                    </div>
+                  ))
+                }
+              </SectionCard>
+            );
+          })()}
 
           {/* 6. Invoices */}
           <SectionCard title="Invoices" icon={Receipt} color="#10b981" count={invoiceCount || undefined} onViewAll={() => setOpenDrawer("invoices")}>
@@ -784,40 +738,37 @@ export function PatientProfile() {
           </SectionCard>
 
           {/* 7. Allergies */}
-          <SectionCard title="Allergies" icon={AlertCircle} color="#ef4444" count={DEMO_ALLERGIES.length} onViewAll={() => setOpenDrawer("allergies")}>
-            {DEMO_ALLERGIES.slice(0, 3).map((a, i) => (
-              <div key={i} className="flex items-center gap-2 py-0.5">
-                <div className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: SEV_COLOR[a.severity] ?? "#94a3b8" }} />
-                <p className="text-xs text-slate-700 truncate flex-1 font-medium">{a.name}</p>
-                <span className="text-[9px] font-black flex-shrink-0" style={{ color: SEV_COLOR[a.severity] ?? "#94a3b8" }}>
-                  {a.severity}
-                </span>
-              </div>
-            ))}
+          <SectionCard title="Allergies" icon={AlertCircle} color="#ef4444" count={allergies.length || undefined} onViewAll={() => setOpenDrawer("allergies")}>
+            {allergies.length === 0
+              ? <p className="text-xs text-slate-400 text-center py-3">No allergies recorded</p>
+              : allergies.slice(0, 3).map((a, i) => (
+                <div key={i} className="flex items-center gap-2 py-0.5">
+                  <div className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: SEV_COLOR[a.severity] ?? "#94a3b8" }} />
+                  <p className="text-xs text-slate-700 truncate flex-1 font-medium">{a.name}</p>
+                  <span className="text-[9px] font-black flex-shrink-0" style={{ color: SEV_COLOR[a.severity] ?? "#94a3b8" }}>
+                    {a.severity}
+                  </span>
+                </div>
+              ))
+            }
           </SectionCard>
 
           {/* 8. Vital Trends */}
           <SectionCard title="Vital Trends" icon={Activity} color="#8b5cf6" onViewAll={() => setOpenDrawer("vitals")}>
-            <ResponsiveContainer width="100%" height={70}>
-              <LineChart data={DEMO_VITALS} margin={{ top: 2, right: 4, left: -20, bottom: 0 }}>
-                <Line type="monotone" dataKey="systolic" stroke="#ef4444" strokeWidth={1.5} dot={false} />
-                <Line type="monotone" dataKey="pulse"    stroke={ACCENT}  strokeWidth={1.5} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-            <div className="flex gap-3">
-              <div className="flex items-center gap-1"><div className="h-2 w-4 rounded-full bg-red-400" /><span className="text-[9px] text-slate-400">BP</span></div>
-              <div className="flex items-center gap-1"><div className="h-2 w-4 rounded-full" style={{ backgroundColor: ACCENT }} /><span className="text-[9px] text-slate-400">Pulse</span></div>
-            </div>
+            <p className="text-xs text-slate-400 text-center py-3">Record vitals during consultations</p>
           </SectionCard>
 
           {/* 9. Medications */}
-          <SectionCard title="Patient Medications" icon={Pill} color="#8b5cf6" count={DEMO_MEDS.length} onViewAll={() => setOpenDrawer("meds")}>
-            {DEMO_MEDS.slice(0, 3).map((m, i) => (
-              <div key={i} className="flex items-center gap-2 py-0.5">
-                <Pill className="h-3 w-3 text-purple-400 flex-shrink-0" />
-                <p className="text-xs text-slate-700 truncate flex-1">{m.drug}</p>
-              </div>
-            ))}
+          <SectionCard title="Patient Medications" icon={Pill} color="#8b5cf6" count={medicines.length || undefined} onViewAll={() => setOpenDrawer("meds")}>
+            {medicines.length === 0
+              ? <p className="text-xs text-slate-400 text-center py-3">No medications prescribed</p>
+              : medicines.slice(0, 3).map((m, i) => (
+                <div key={i} className="flex items-center gap-2 py-0.5">
+                  <Pill className="h-3 w-3 text-purple-400 flex-shrink-0" />
+                  <p className="text-xs text-slate-700 truncate flex-1">{m.genericName}</p>
+                </div>
+              ))
+            }
           </SectionCard>
 
         </div>
@@ -836,17 +787,17 @@ export function PatientProfile() {
       )}
       {openDrawer === "labs" && (
         <SectionDrawer title="Laboratory Reports" icon={FlaskConical} color="#f59e0b" onClose={() => setOpenDrawer(null)}>
-          <LabReportsContent />
+          <LabReportsContent labOrders={labOrders} />
         </SectionDrawer>
       )}
       {openDrawer === "radiology" && (
         <SectionDrawer title="Radiology Reports" icon={Scan} color="#0ea5e9" onClose={() => setOpenDrawer(null)}>
-          <RadiologyContent />
+          <RadiologyContent imagingOrders={imagingOrders} />
         </SectionDrawer>
       )}
       {openDrawer === "family" && (
         <SectionDrawer title="Family History" icon={Users} color="#ec4899" onClose={() => setOpenDrawer(null)}>
-          <FamilyHistoryContent />
+          <FamilyHistoryContent fhRows={fhRows} />
         </SectionDrawer>
       )}
       {openDrawer === "invoices" && (
@@ -856,7 +807,7 @@ export function PatientProfile() {
       )}
       {openDrawer === "allergies" && (
         <SectionDrawer title="Allergies" icon={AlertCircle} color="#ef4444" onClose={() => setOpenDrawer(null)}>
-          <AllergiesContent />
+          <AllergiesContent allergies={allergies} />
         </SectionDrawer>
       )}
       {openDrawer === "vitals" && (
@@ -866,7 +817,7 @@ export function PatientProfile() {
       )}
       {openDrawer === "meds" && (
         <SectionDrawer title="Patient Medications" icon={Pill} color="#8b5cf6" onClose={() => setOpenDrawer(null)}>
-          <MedicationsContent />
+          <MedicationsContent medicines={medicines} />
         </SectionDrawer>
       )}
 

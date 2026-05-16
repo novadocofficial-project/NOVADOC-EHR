@@ -1204,7 +1204,7 @@ function ApptChip({ appt, isPaid, onClick }: ChipProps) {
       role="button"
       tabIndex={0}
       onClick={e => onClick(appt, e)}
-      onKeyDown={e => { if (e.key === "Enter") onClick(appt, e as unknown as React.MouseEvent); }}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }}
       className={`w-full text-left px-3 py-2 rounded-lg border-2 mb-1.5 hover:brightness-95 transition-all cursor-pointer ${sc.bg}`}
     >
       <div className="flex items-center gap-2">
@@ -1783,7 +1783,7 @@ function MonthView({ date, doctor, appointments, filterTypes, selectedDate, onSe
                     role="button"
                     tabIndex={0}
                     onClick={e => { e.stopPropagation(); onClickAppt(a, e); }}
-                    onKeyDown={e => { if (e.key === "Enter") { e.stopPropagation(); onClickAppt(a, e as unknown as React.MouseEvent); } }}
+                    onKeyDown={e => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }}
                     className={`w-full text-left text-[11px] font-semibold px-1.5 py-0.5 rounded border mb-0.5 leading-tight hover:brightness-95 transition-all cursor-pointer flex items-center gap-1 ${sc.bg} ${sc.text}`}
                   >
                     <span className="font-mono opacity-75 flex-shrink-0">{a.slotStart}</span>
