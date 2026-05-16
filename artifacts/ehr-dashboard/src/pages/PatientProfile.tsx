@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   ArrowLeft, User, Phone, Calendar, Hash, Edit2,
@@ -602,6 +602,16 @@ export function PatientProfile() {
 
   const [openDrawer, setOpenDrawer] = useState<DrawerKey>(null);
   const [showEdit,   setShowEdit]   = useState(false);
+  const [printMode,  setPrintMode]  = useState<"registration" | "family" | null>(null);
+
+  useEffect(() => {
+    if (!printMode || !patient) return;
+    const t = setTimeout(() => {
+      window.print();
+      setPrintMode(null);
+    }, 80);
+    return () => clearTimeout(t);
+  }, [printMode, patient]);
 
   function handleSave(patch: Partial<Patient>) {
     if (!patient) return;
@@ -660,13 +670,13 @@ export function PatientProfile() {
           </button>
           <div className="flex-1" />
           <button
-            onClick={() => window.print()}
+            onClick={() => setPrintMode("registration")}
             className="flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
           >
             <Printer className="h-3.5 w-3.5" /> Print Registration Card
           </button>
           <button
-            onClick={() => window.print()}
+            onClick={() => setPrintMode("family")}
             className="flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
           >
             <Printer className="h-3.5 w-3.5" /> Print Family Card
@@ -720,8 +730,8 @@ export function PatientProfile() {
         {/* Quick actions */}
         <QuickActions onEdit={() => setShowEdit(true)} onComingSoon={comingSoon} />
 
-        {/* 9 Section cards — 3×3 grid */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* 9 Section cards — responsive grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 
           {/* 1. Health Records */}
           <SectionCard title="Health Records" icon={FileText} color="#4982CF" count={visitCount || undefined} onViewAll={() => setOpenDrawer("health")}>
@@ -901,6 +911,76 @@ export function PatientProfile() {
           onClose={() => setShowEdit(false)}
           onSave={handleSave}
         />
+      )}
+
+      {/* ── Print cards (screen-hidden, print-visible) ─────────────────────── */}
+      {printMode && patient && (
+        <>
+          <style>{`
+            @media print {
+              body > *:not(#patient-print-root) { display: none !important; }
+              #patient-print-root { display: block !important; }
+              .no-print { display: none !important; }
+            }
+          `}</style>
+          <div id="patient-print-root" style={{ display: "none" }}
+            className="print:block font-sans p-8 max-w-lg mx-auto text-slate-900">
+            <div className="border-2 border-slate-300 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
+                <div>
+                  <h1 className="text-lg font-black">
+                    {printMode === "registration" ? "Registration Card" : "Family History Card"}
+                  </h1>
+                  <p className="text-xs text-slate-500">NovaDoc EHR</p>
+                </div>
+                <p className="text-xs text-slate-400">{new Date().toLocaleDateString()}</p>
+              </div>
+
+              {/* Demographics — always shown */}
+              <div className="space-y-1.5 mb-4">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Patient</p>
+                <p className="text-base font-black">{patient.name}</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-slate-700">
+                  <span><span className="font-semibold">MRN:</span> {patient.mrn}</span>
+                  <span><span className="font-semibold">DOB:</span> {patient.dob}</span>
+                  <span><span className="font-semibold">Gender:</span> {patient.gender}</span>
+                  <span><span className="font-semibold">Phone:</span> {patient.phone}</span>
+                </div>
+              </div>
+
+              {/* Registration Card extra: allergies */}
+              {printMode === "registration" && allergies.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-slate-200">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Allergies</p>
+                  <div className="space-y-1">
+                    {allergies.map((a, i) => (
+                      <p key={i} className="text-sm">{(a as { name?: string }).name ?? "—"}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Family Card extra: family history rows */}
+              {printMode === "family" && fhRows.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-slate-200">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Family History</p>
+                  <div className="space-y-1">
+                    {fhRows.map((row, i) => (
+                      <p key={i} className="text-sm">
+                        {(row as { relation?: string; condition?: string }).relation ?? "—"}
+                        {" — "}
+                        {(row as { condition?: string }).condition ?? ""}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {printMode === "family" && fhRows.length === 0 && (
+                <p className="text-xs text-slate-400 mt-3">No family history recorded.</p>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

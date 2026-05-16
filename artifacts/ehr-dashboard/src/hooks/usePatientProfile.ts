@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { Appointment } from "@/hooks/useAppointments";
-import { readSoapDraft, readPatientClinicalSnapshot } from "@/hooks/useSoapNoteDraft";
+import { readPatientClinicalSnapshot } from "@/hooks/useSoapNoteDraft";
 import type { VitalEntry } from "@/types/vitals";
 import type { AllergyEntry } from "@/pages/AllergySelector";
 import type { FamilyRow } from "@/pages/MedicalHistorySection";
@@ -119,31 +119,6 @@ export function usePatientProfile(mrn: string): PatientProfileData {
         if ((row as { id?: string }).id) fhMap.set((row as { id?: string }).id!, row);
       }
       for (const dx of snapshot.diagnoses as DiagnosisEntry[]) {
-        if (dx.code) diagnosisMap.set(dx.code, dx);
-      }
-    }
-
-    // 2. Merge in-progress drafts (active consultation shows up before signing)
-    for (const id of entryIds) {
-      const draft = readSoapDraft(id);
-      if (!draft) continue;
-      for (const a of draft.allergies ?? []) {
-        if (a.name) allergyMap.set(a.name.toLowerCase(), a);
-      }
-      for (const m of draft.formulary?.medicines ?? []) {
-        const k = m.medicineId ?? m.uid;
-        if (k) medicineMap.set(k, m);
-      }
-      for (const lo of draft.labOrders ?? []) {
-        if (!lo.voided) labOrderMap.set(lo.id, lo);
-      }
-      for (const io of draft.imaging?.orders ?? []) {
-        if (io.uid) imagingMap.set(io.uid, io);
-      }
-      for (const row of draft.fhRows ?? []) {
-        if (row.id) fhMap.set(row.id, row);
-      }
-      for (const dx of draft.diagnoses ?? []) {
         if (dx.code) diagnosisMap.set(dx.code, dx);
       }
     }
