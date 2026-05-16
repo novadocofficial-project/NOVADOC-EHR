@@ -881,8 +881,8 @@ export function ApptNursingDrawer({ appt, onClose }: {
       <ApptVitalsPanel
         appt={appt}
         initialCategory={activeCategory}
-        onClose={onClose}
-        onSave={onClose}
+        onClose={() => setActiveCategory(null)}
+        onSave={() => setActiveCategory(null)}
       />
     );
   }
