@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Appointment } from "@/hooks/useAppointments";
 import { readSoapDraft, readPatientClinicalSnapshot } from "@/hooks/useSoapNoteDraft";
-import type { VitalEntry } from "@/hooks/useSoapNoteDraft";
+import type { VitalEntry } from "@/types/vitals";
 import type { AllergyEntry } from "@/pages/AllergySelector";
 import type { FamilyRow } from "@/pages/MedicalHistorySection";
 import type { MedicineEntry } from "@/pages/FormularySection";

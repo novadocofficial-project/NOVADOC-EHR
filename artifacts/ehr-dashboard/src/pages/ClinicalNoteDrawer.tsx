@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import type { VitalEntry } from "@/types/vitals";
 import { createPortal } from "react-dom";
 import {
   X, Maximize2, Minimize2, FileText,
@@ -84,6 +85,8 @@ export interface NoteState {
   hpiDoneComplaints:  string[];
   peSavedData:        Record<string, Record<string, string>>;
   peDoneSystemIds:    string[];
+  /** Vital signs captured during this consultation (BP, pulse, SpO₂, temp). */
+  vitals?:            VitalEntry[];
 }
 
 export const EMPTY_NOTE: NoteState = {
@@ -94,6 +97,7 @@ export const EMPTY_NOTE: NoteState = {
   planTags: [],
   labOrders: [], labOrderDone: false, diagnoses: [], diagnosisDone: false,
   hpiSavedData: {}, hpiDoneComplaints: [], peSavedData: {}, peDoneSystemIds: [],
+  vitals: [],
 };
 
 const PLAN_TAGS = [

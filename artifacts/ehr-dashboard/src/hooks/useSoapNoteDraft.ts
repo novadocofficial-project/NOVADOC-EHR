@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { NoteState } from "@/pages/ClinicalNoteDrawer";
 import type { SignedRecord } from "@/pages/SoapNotePage";
 import type { LabOrder as DrawerLabOrder } from "@/pages/LabDrawer";
+import type { VitalEntry } from "@/types/vitals";
+export type { VitalEntry };
 
 const LS_PREFIX = "soap_draft_";
 const SIGNED_PREFIX = "soap_signed_";
@@ -123,15 +125,6 @@ export function clearSignedRecords(entryId: string): void {
 
 const CLINICAL_PFX = "soap_clinical_";
 
-/** Vital measurement recorded at a single signed consultation. */
-export interface VitalEntry {
-  date:        string;
-  bpSystolic?: number;
-  bpDiastolic?: number;
-  pulse?:      number;
-  spo2?:       number;
-  temp?:       number;
-}
 
 /** Aggregated clinical snapshot for a patient across all signed visits. */
 export interface PatientClinicalSnapshot {
@@ -217,9 +210,19 @@ export function savePatientClinicalSnapshot(note: NoteState, mrn: string): void 
       d => d.code,
     );
 
+    // Merge vitals — deduplicate by visitKey (preferred) or date string.
+    const incomingVitals: VitalEntry[] = note.vitals ?? [];
+    const vitalMap = new Map<string, VitalEntry>(
+      (prior?.vitals ?? []).map(v => [v.visitKey ?? v.date, v]),
+    );
+    for (const v of incomingVitals) {
+      const k = v.visitKey ?? v.date;
+      if (k) vitalMap.set(k, v);
+    }
+
     const snapshot: PatientClinicalSnapshot = {
       allergies, medicines, labOrders, imagingOrders, fhRows, diagnoses,
-      vitals: prior?.vitals ?? [],   // vitals preserved; populated when SOAP form gains vitals fields
+      vitals: Array.from(vitalMap.values()),
     };
     localStorage.setItem(`${CLINICAL_PFX}${mrn}`, JSON.stringify(snapshot));
   } catch {
