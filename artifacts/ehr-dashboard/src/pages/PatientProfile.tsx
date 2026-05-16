@@ -655,13 +655,12 @@ export function PatientProfile() {
   const visitCount   = visits.reduce((s, v) => s + v.signedRecords.length, 0) + appointments.length;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <QueueAppHeader />
-
-      <div className="flex-1 px-6 py-5 space-y-5 max-w-7xl mx-auto w-full">
-
+    <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
+      {/* ── Sticky header block ─────────────────────────────────────────────── */}
+      <div className="flex-none bg-slate-50 border-b border-slate-200 shadow-sm z-20">
+        <QueueAppHeader />
         {/* Breadcrumb + Print */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 px-6 py-2.5 max-w-7xl mx-auto w-full">
           <button
             onClick={() => history.back()}
             className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
@@ -682,6 +681,11 @@ export function PatientProfile() {
             <Printer className="h-3.5 w-3.5" /> Print Family Card
           </button>
         </div>
+      </div>
+
+      {/* ── Scrollable content ──────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto">
+      <div className="px-6 py-5 space-y-5 max-w-7xl mx-auto w-full">
 
         {/* Patient info card */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5">
@@ -982,6 +986,7 @@ export function PatientProfile() {
           </div>
         </>
       )}
+      </div>{/* closes flex-1 overflow-y-auto */}
     </div>
   );
 }
