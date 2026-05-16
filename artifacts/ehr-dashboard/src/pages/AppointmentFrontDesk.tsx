@@ -1196,16 +1196,25 @@ interface ChipProps {
 }
 
 function ApptChip({ appt, isPaid, onClick }: ChipProps) {
+  const [, navTo] = useLocation();
   const sc = STATUS_CONFIG[appt.status];
   const pc = PRIORITY_CONFIG[appt.priority];
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={e => onClick(appt, e)}
-      className={`w-full text-left px-3 py-2 rounded-lg border-2 mb-1.5 hover:brightness-95 transition-all ${sc.bg}`}
+      onKeyDown={e => { if (e.key === "Enter") onClick(appt, e as unknown as React.MouseEvent); }}
+      className={`w-full text-left px-3 py-2 rounded-lg border-2 mb-1.5 hover:brightness-95 transition-all cursor-pointer ${sc.bg}`}
     >
       <div className="flex items-center gap-2">
         <span className={`h-2 w-2 rounded-full flex-shrink-0 ${sc.dot}`} />
-        <span className={`text-sm font-bold truncate leading-tight ${sc.text}`}>{appt.patientName}</span>
+        <button
+          onClick={e => { e.stopPropagation(); navTo(`/patients/${appt.patientMrn}`); }}
+          className={`text-sm font-bold truncate leading-tight ${sc.text} hover:underline text-left`}
+        >
+          {appt.patientName}
+        </button>
         {appt.priority !== "normal" && (
           <span className={`ml-auto text-[9px] font-black uppercase px-1.5 py-0.5 rounded flex-shrink-0 ${pc.bg} ${pc.text}`}>
             {appt.priority === "urgent" ? "URG" : "EMR"}
@@ -1222,7 +1231,7 @@ function ApptChip({ appt, isPaid, onClick }: ChipProps) {
         {appt.patientMrn && <span className={`text-xs font-medium ${sc.text} opacity-60`}>{appt.patientMrn}</span>}
         {appt.patientPhone && <span className={`text-xs ${sc.text} opacity-50`}>{appt.patientPhone}</span>}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -1730,6 +1739,7 @@ interface MonthViewProps {
 }
 
 function MonthView({ date, doctor, appointments, filterTypes, selectedDate, onSelectDate, onClickAppt, onBookDate, onClickMore }: MonthViewProps) {
+  const [, navTo] = useLocation();
   const cells = useMemo(() => getMonthDays(date), [date]);
   const [, m] = date.split("-").map(Number);
   const today = todayStr();
@@ -1768,13 +1778,22 @@ function MonthView({ date, doctor, appointments, filterTypes, selectedDate, onSe
               {inMonth && dayAppts.slice(0, 2).map(a => {
                 const sc = STATUS_CONFIG[a.status];
                 return (
-                  <button
+                  <div
                     key={a.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={e => { e.stopPropagation(); onClickAppt(a, e); }}
-                    className={`w-full text-left text-[11px] font-semibold px-1.5 py-0.5 rounded border mb-0.5 truncate leading-tight hover:brightness-95 transition-all ${sc.bg} ${sc.text}`}
+                    onKeyDown={e => { if (e.key === "Enter") { e.stopPropagation(); onClickAppt(a, e as unknown as React.MouseEvent); } }}
+                    className={`w-full text-left text-[11px] font-semibold px-1.5 py-0.5 rounded border mb-0.5 leading-tight hover:brightness-95 transition-all cursor-pointer flex items-center gap-1 ${sc.bg} ${sc.text}`}
                   >
-                    <span className="font-mono opacity-75 mr-1">{a.slotStart}</span>{a.patientName}
-                  </button>
+                    <span className="font-mono opacity-75 flex-shrink-0">{a.slotStart}</span>
+                    <button
+                      onClick={e => { e.stopPropagation(); navTo(`/patients/${a.patientMrn}`); }}
+                      className="truncate hover:underline text-left flex-1"
+                    >
+                      {a.patientName}
+                    </button>
+                  </div>
                 );
               })}
               {inMonth && dayAppts.length > 2 && (

@@ -589,10 +589,12 @@ type DrawerKey =
 export function PatientProfile() {
   const { mrn }       = useParams<{ mrn: string }>();
   const [, navigate]  = useLocation();
-  const { updatePatient } = usePatients();
+  const { patients, updatePatient } = usePatients();
   const { toast }     = useToast();
 
-  const { patient, appointments, invoices, visits } = usePatientProfile(mrn ?? "");
+  const { appointments, invoices, visits }        = usePatientProfile(mrn ?? "");
+
+  const patient = patients.find(p => p.mrn === (mrn ?? "")) ?? null;
 
   const [openDrawer, setOpenDrawer] = useState<DrawerKey>(null);
   const [showEdit,   setShowEdit]   = useState(false);
