@@ -5,8 +5,9 @@ import {
   CheckCircle2, Clock, Edit2, Eye, FileText, Stethoscope,
   Repeat, AlertTriangle, LayoutGrid, Columns2, RefreshCw,
   Hash, Check, ArrowRight, Pencil, CalendarDays, UserPlus,
-  Banknote, Shield, Building2, Heart, FileSignature, Receipt,
+  Banknote, Shield, Building2, Heart, FileSignature, Receipt, Activity,
 } from "lucide-react";
+import { ApptNursingDrawer } from "@/pages/ApptNursingDrawer";
 import { BillingContent, ReceiptInfo, printThermalReceipt } from "@/pages/FrontDeskUser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1229,14 +1230,16 @@ interface CardState {
 interface ApptCardProps {
   state: CardState;
   isPaid: boolean;
+  role: Role;
   onClose: () => void;
   onView: (appt: Appointment) => void;
   onEdit: (appt: Appointment) => void;
   onStatusChange: (id: string, status: ApptStatus) => void;
   onInvoice: (appt: Appointment) => void;
+  onNursing: (appt: Appointment) => void;
 }
 
-function AppointmentCard({ state, isPaid, onClose, onView, onEdit, onStatusChange, onInvoice: onInvoiceRaw }: ApptCardProps) {
+function AppointmentCard({ state, isPaid, role, onClose, onView, onEdit, onStatusChange, onInvoice: onInvoiceRaw, onNursing }: ApptCardProps) {
   function onInvoice() { onInvoiceRaw(state.appt); }
   const { appt, x, y } = state;
   const sc = STATUS_CONFIG[appt.status];
@@ -1316,8 +1319,8 @@ function AppointmentCard({ state, isPaid, onClose, onView, onEdit, onStatusChang
           )}
         </div>
 
-        {/* Status change */}
-        {nextStatuses.length > 0 && (
+        {/* Status change — front desk only */}
+        {role === "frontdesk" && nextStatuses.length > 0 && (
           <div className="px-4 py-3 border-b border-slate-100">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Change Status</p>
             <div className="flex flex-wrap gap-1.5">
@@ -1342,17 +1345,30 @@ function AppointmentCard({ state, isPaid, onClose, onView, onEdit, onStatusChang
           <Button size="sm" variant="outline" onClick={() => { onView(appt); onClose(); }} className="flex-1 h-8 text-xs gap-1.5">
             <Eye className="h-3 w-3" /> View
           </Button>
-          <Button size="sm" variant="outline" onClick={() => { onEdit(appt); onClose(); }} className="flex-1 h-8 text-xs gap-1.5">
-            <Edit2 className="h-3 w-3" /> Edit
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onInvoice}
-            className={`flex-1 h-8 text-xs gap-1.5 ${isPaid ? "border-green-200 text-green-700 hover:bg-green-50" : ""}`}
-          >
-            {isPaid ? <><CheckCircle2 className="h-3 w-3" /> Receipt</> : <><FileText className="h-3 w-3" /> Invoice</>}
-          </Button>
+          {role === "nursing" ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { onNursing(appt); onClose(); }}
+              className="flex-1 h-8 text-xs gap-1.5 border-[#4982CF]/40 text-[#4982CF] hover:bg-blue-50"
+            >
+              <Activity className="h-3 w-3" /> Nursing
+            </Button>
+          ) : (
+            <>
+              <Button size="sm" variant="outline" onClick={() => { onEdit(appt); onClose(); }} className="flex-1 h-8 text-xs gap-1.5">
+                <Edit2 className="h-3 w-3" /> Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onInvoice}
+                className={`flex-1 h-8 text-xs gap-1.5 ${isPaid ? "border-green-200 text-green-700 hover:bg-green-50" : ""}`}
+              >
+                {isPaid ? <><CheckCircle2 className="h-3 w-3" /> Receipt</> : <><FileText className="h-3 w-3" /> Invoice</>}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </>
@@ -2021,6 +2037,9 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
   // View drawer (read-only)
   const [viewAppt, setViewAppt] = useState<Appointment | null>(null);
 
+  // Nursing drawer (nursing role only)
+  const [nursingAppt, setNursingAppt] = useState<Appointment | null>(null);
+
   // Invoice billing drawer
   const [invoiceAppt, setInvoiceAppt] = useState<Appointment | null>(null);
   const [invoiceFullscreen, setInvoiceFullscreen] = useState(false);
@@ -2430,6 +2449,7 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
         <AppointmentCard
           state={cardState}
           isPaid={paidIds.has(cardState.appt.id)}
+          role={role}
           onClose={() => setCardState(null)}
           onView={appt => setViewAppt(appt)}
           onEdit={appt => openBooking({}, appt)}
@@ -2449,6 +2469,15 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
               setInvoiceReceipt(null);
             }
           }}
+          onNursing={appt => setNursingAppt(appt)}
+        />
+      )}
+
+      {/* Nursing Drawer (nursing role only) */}
+      {role === "nursing" && nursingAppt && (
+        <ApptNursingDrawer
+          appt={nursingAppt}
+          onClose={() => setNursingAppt(null)}
         />
       )}
 
