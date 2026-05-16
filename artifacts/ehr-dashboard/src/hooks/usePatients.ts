@@ -7,10 +7,11 @@ function loadPatients(): Patient[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      const parsed  = JSON.parse(stored) as Patient[];
-      const seedIds = new Set(SEED_PATIENTS.map(p => p.id));
-      const newOnes = parsed.filter(p => !seedIds.has(p.id));
-      return [...SEED_PATIENTS, ...newOnes];
+      const parsed    = JSON.parse(stored) as Patient[];
+      const storedIds = new Set(parsed.map(p => p.id));
+      // Append any seed patients added after the user's first run (code updates).
+      const missing   = SEED_PATIENTS.filter(p => !storedIds.has(p.id));
+      return missing.length > 0 ? [...parsed, ...missing] : parsed;
     }
   } catch { /* ignore */ }
   return [...SEED_PATIENTS];
@@ -36,9 +37,8 @@ export function usePatients() {
   const addPatient = useCallback((patient: Patient) => {
     setPatients(prev => {
       if (prev.find(p => p.id === patient.id)) return prev;
-      const next    = [...prev, patient];
-      const toStore = next.filter(p => !SEED_PATIENTS.find(s => s.id === p.id));
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore)); } catch { /* ignore */ }
+      const next = [...prev, patient];
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
   }, []);
@@ -46,7 +46,7 @@ export function usePatients() {
   const updatePatient = useCallback((id: string, patch: Partial<Patient>) => {
     setPatients(prev => {
       const next = prev.map(p => p.id === id ? { ...p, ...patch } : p);
-      // Persist the full updated list; seed patients are stored when first edited.
+      // Persist the full list (including edited seed patients) so edits survive refresh.
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });

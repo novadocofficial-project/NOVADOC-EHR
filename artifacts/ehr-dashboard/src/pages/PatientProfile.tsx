@@ -12,6 +12,7 @@ import {
   Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import { usePatientProfile } from "@/hooks/usePatientProfile";
+import type { VitalEntry } from "@/hooks/usePatientProfile";
 import type { AllergyEntry } from "@/pages/AllergySelector";
 import type { FamilyRow } from "@/pages/MedicalHistorySection";
 import type { MedicineEntry } from "@/pages/FormularySection";
@@ -320,16 +321,79 @@ function InvoicesContent({
   );
 }
 
-function VitalsContent() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3">
-      <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center">
-        <Activity className="h-5 w-5 text-slate-300" />
+function VitalsContent({ vitals }: { vitals: VitalEntry[] }) {
+  if (vitals.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center">
+          <Activity className="h-5 w-5 text-slate-300" />
+        </div>
+        <p className="text-sm font-semibold text-slate-500">No vital trends recorded yet.</p>
+        <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed">
+          BP, pulse, SpO₂, and temperature will appear here as trend charts after consultations are signed.
+        </p>
       </div>
-      <p className="text-sm font-semibold text-slate-500">No vital trends recorded.</p>
-      <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed">
-        Vital signs (BP, pulse, SpO₂) recorded during consultations will appear here as trend charts.
-      </p>
+    );
+  }
+
+  const chartData = vitals.map(v => ({
+    date:       v.date,
+    Systolic:   v.bpSystolic,
+    Diastolic:  v.bpDiastolic,
+    Pulse:      v.pulse,
+    "SpO₂":    v.spo2,
+    Temp:       v.temp,
+  }));
+
+  return (
+    <div className="space-y-6 py-2">
+      {/* BP Trend */}
+      <div>
+        <p className="text-xs font-bold text-slate-600 mb-2">Blood Pressure (mmHg)</p>
+        <ResponsiveContainer width="100%" height={160}>
+          <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#94a3b8" }} />
+            <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} domain={[50, 200]} />
+            <Tooltip contentStyle={{ fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="Systolic"  stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+            <Line type="monotone" dataKey="Diastolic" stroke="#f97316" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Pulse & SpO₂ */}
+      <div>
+        <p className="text-xs font-bold text-slate-600 mb-2">Pulse (bpm) &amp; SpO₂ (%)</p>
+        <ResponsiveContainer width="100%" height={160}>
+          <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#94a3b8" }} />
+            <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} />
+            <Tooltip contentStyle={{ fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="Pulse" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+            <Line type="monotone" dataKey="SpO₂"  stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Temperature */}
+      {vitals.some(v => v.temp !== undefined) && (
+        <div>
+          <p className="text-xs font-bold text-slate-600 mb-2">Temperature (°C)</p>
+          <ResponsiveContainer width="100%" height={120}>
+            <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#94a3b8" }} />
+              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} domain={[35, 42]} />
+              <Tooltip contentStyle={{ fontSize: 11 }} />
+              <Line type="monotone" dataKey="Temp" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
@@ -533,7 +597,7 @@ export function PatientProfile() {
 
   const {
     appointments, invoices, visits,
-    allergies, medicines, labOrders, imagingOrders, fhRows,
+    allergies, medicines, labOrders, imagingOrders, fhRows, vitals,
   } = usePatientProfile(patient?.mrn ?? "");
 
   const [openDrawer, setOpenDrawer] = useState<DrawerKey>(null);
@@ -754,8 +818,17 @@ export function PatientProfile() {
           </SectionCard>
 
           {/* 8. Vital Trends */}
-          <SectionCard title="Vital Trends" icon={Activity} color="#8b5cf6" onViewAll={() => setOpenDrawer("vitals")}>
-            <p className="text-xs text-slate-400 text-center py-3">Record vitals during consultations</p>
+          <SectionCard title="Vital Trends" icon={Activity} color="#8b5cf6" count={vitals.length || undefined} onViewAll={() => setOpenDrawer("vitals")}>
+            {vitals.length === 0
+              ? <p className="text-xs text-slate-400 text-center py-3">No vitals recorded yet</p>
+              : vitals.slice(-3).reverse().map((v, i) => (
+                <div key={i} className="flex items-center gap-2 py-0.5 text-xs">
+                  <span className="text-slate-400 w-16 flex-shrink-0">{v.date}</span>
+                  {v.bpSystolic && <span className="text-red-600 font-semibold">{v.bpSystolic}/{v.bpDiastolic} mmHg</span>}
+                  {v.pulse     && <span className="text-purple-600 font-semibold ml-1">{v.pulse} bpm</span>}
+                </div>
+              ))
+            }
           </SectionCard>
 
           {/* 9. Medications */}
@@ -812,7 +885,7 @@ export function PatientProfile() {
       )}
       {openDrawer === "vitals" && (
         <SectionDrawer title="Vital Trends" icon={Activity} color="#8b5cf6" onClose={() => setOpenDrawer(null)}>
-          <VitalsContent />
+          <VitalsContent vitals={vitals} />
         </SectionDrawer>
       )}
       {openDrawer === "meds" && (

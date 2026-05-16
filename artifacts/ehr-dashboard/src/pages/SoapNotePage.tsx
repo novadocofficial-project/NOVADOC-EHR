@@ -11,7 +11,7 @@ import {
   Printer, FilePenLine, GitBranch,
 } from "lucide-react";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
-import { useSoapNoteDraft, saveRoutingSnapshot, savePendingLabOrders } from "@/hooks/useSoapNoteDraft";
+import { useSoapNoteDraft, saveRoutingSnapshot, savePendingLabOrders, savePatientClinicalSnapshot } from "@/hooks/useSoapNoteDraft";
 import { Button } from "@/components/ui/button";
 import { View360Drawer } from "@/pages/View360Drawer";
 import { LabsDrawer } from "@/pages/LabsDrawer";
@@ -1054,6 +1054,12 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
             // Persist unsent lab orders BEFORE clearDraft() erases them — the Lab Panel
             // reads from ehr_pending_lab_orders_{id} since the draft is gone by then.
             if (unsentOrders.length > 0) savePendingLabOrders(entry.id, unsentOrders);
+            // Persist clinical snapshot per-patient BEFORE clearing the draft.
+            // This accumulates allergies/medicines/labs/imaging/fhRows/diagnoses
+            // across signed visits so Patient Profile can read from signed history.
+            if (draft && entry.patient?.mrn) {
+              savePatientClinicalSnapshot(draft, entry.patient.mrn);
+            }
             clearDraft();
             onDoctorSign?.();
             setShowNoteDrawer(false);

@@ -1,12 +1,15 @@
 import { useMemo } from "react";
 import type { Appointment } from "@/hooks/useAppointments";
-import { readSoapDraft } from "@/hooks/useSoapNoteDraft";
+import { readSoapDraft, readPatientClinicalSnapshot } from "@/hooks/useSoapNoteDraft";
+import type { VitalEntry } from "@/hooks/useSoapNoteDraft";
 import type { AllergyEntry } from "@/pages/AllergySelector";
 import type { FamilyRow } from "@/pages/MedicalHistorySection";
 import type { MedicineEntry } from "@/pages/FormularySection";
 import type { LabOrder } from "@/pages/LabDrawer";
 import type { ImagingOrder } from "@/pages/ImagingSection";
 import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
+
+export type { VitalEntry };
 
 const QUEUE_KEY    = "ehr-queue-v2";
 const APPTS_KEY    = "ehr-appointments-v1";
@@ -22,17 +25,32 @@ export interface PatientProfileData {
   appointments:  Appointment[];
   invoices:      Record<string, unknown>;
   visits:        VisitRecord[];
-  // Clinical aggregates read from in-progress SOAP drafts (soap_draft_[entryId])
+  /**
+   * Clinical data sourced from the per-patient signed-note snapshot
+   * (soap_clinical_{mrn}) written at sign time, with in-progress SOAP drafts
+   * merged on top so active consultations are reflected immediately.
+   */
   allergies:     AllergyEntry[];
   medicines:     MedicineEntry[];
   labOrders:     LabOrder[];
   imagingOrders: ImagingOrder[];
   fhRows:        FamilyRow[];
   diagnoses:     DiagnosisEntry[];
+  /** Vital readings accumulated across signed consultations. */
+  vitals:        VitalEntry[];
 }
 
 export function usePatientProfile(mrn: string): PatientProfileData {
   return useMemo(() => {
+    if (!mrn) {
+      return {
+        appointments: [], invoices: {}, visits: [],
+        allergies: [], medicines: [], labOrders: [],
+        imagingOrders: [], fhRows: [], diagnoses: [], vitals: [],
+      };
+    }
+
+    // ── Appointments ──────────────────────────────────────────────────────────
     let appointments: Appointment[] = [];
     try {
       const raw = localStorage.getItem(APPTS_KEY);
@@ -43,12 +61,14 @@ export function usePatientProfile(mrn: string): PatientProfileData {
       }
     } catch { /* ignore */ }
 
+    // ── Invoices ──────────────────────────────────────────────────────────────
     let invoices: Record<string, unknown> = {};
     try {
       const raw = localStorage.getItem(INVOICES_KEY);
       if (raw) invoices = JSON.parse(raw);
     } catch { /* ignore */ }
 
+    // ── Queue visits + signed records ─────────────────────────────────────────
     let visits: VisitRecord[] = [];
     const entryIds: string[] = [];
     try {
@@ -69,26 +89,50 @@ export function usePatientProfile(mrn: string): PatientProfileData {
       }
     } catch { /* ignore */ }
 
-    // Aggregate clinical data from SOAP drafts (soap_draft_[entryId]).
-    // Drafts contain the full NoteState with allergies, formulary, lab orders,
-    // imaging, family history, and diagnoses — the real clinical content
-    // entered during a consultation.
-    const allergyMap    = new Map<string, AllergyEntry>();
-    const medicineMap   = new Map<string, MedicineEntry>();
-    const labOrderMap   = new Map<string, LabOrder>();
-    const imagingMap    = new Map<string, ImagingOrder>();
-    const fhMap         = new Map<string, FamilyRow>();
-    const diagnosisMap  = new Map<string, DiagnosisEntry>();
+    // ── Clinical aggregation ──────────────────────────────────────────────────
+    // Primary: signed-note clinical snapshot (soap_clinical_{mrn})
+    // Secondary: in-progress drafts (soap_draft_{entryId}) merged on top
+    const allergyMap   = new Map<string, AllergyEntry>();
+    const medicineMap  = new Map<string, MedicineEntry>();
+    const labOrderMap  = new Map<string, LabOrder>();
+    const imagingMap   = new Map<string, ImagingOrder>();
+    const fhMap        = new Map<string, FamilyRow>();
+    const diagnosisMap = new Map<string, DiagnosisEntry>();
 
+    // 1. Seed from signed-note clinical snapshot (accumulated across all signed visits)
+    const snapshot = readPatientClinicalSnapshot(mrn);
+    if (snapshot) {
+      for (const a of snapshot.allergies as AllergyEntry[]) {
+        if (a.name) allergyMap.set(a.name.toLowerCase(), a);
+      }
+      for (const m of snapshot.medicines as MedicineEntry[]) {
+        const k = m.medicineId ?? m.uid;
+        if (k) medicineMap.set(k, m);
+      }
+      for (const lo of snapshot.labOrders as LabOrder[]) {
+        if (lo.id) labOrderMap.set(lo.id, lo);
+      }
+      for (const io of snapshot.imagingOrders as ImagingOrder[]) {
+        if (io.uid) imagingMap.set(io.uid, io);
+      }
+      for (const row of snapshot.fhRows as FamilyRow[]) {
+        if ((row as { id?: string }).id) fhMap.set((row as { id?: string }).id!, row);
+      }
+      for (const dx of snapshot.diagnoses as DiagnosisEntry[]) {
+        if (dx.code) diagnosisMap.set(dx.code, dx);
+      }
+    }
+
+    // 2. Merge in-progress drafts (active consultation shows up before signing)
     for (const id of entryIds) {
       const draft = readSoapDraft(id);
       if (!draft) continue;
-
       for (const a of draft.allergies ?? []) {
         if (a.name) allergyMap.set(a.name.toLowerCase(), a);
       }
       for (const m of draft.formulary?.medicines ?? []) {
-        if (m.uid) medicineMap.set(m.medicineId ?? m.uid, m);
+        const k = m.medicineId ?? m.uid;
+        if (k) medicineMap.set(k, m);
       }
       for (const lo of draft.labOrders ?? []) {
         if (!lo.voided) labOrderMap.set(lo.id, lo);
@@ -114,6 +158,7 @@ export function usePatientProfile(mrn: string): PatientProfileData {
       imagingOrders: Array.from(imagingMap.values()),
       fhRows:        Array.from(fhMap.values()),
       diagnoses:     Array.from(diagnosisMap.values()),
+      vitals:        snapshot?.vitals ?? [],
     };
   }, [mrn]);
 }

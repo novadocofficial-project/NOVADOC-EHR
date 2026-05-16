@@ -117,6 +117,116 @@ export function clearSignedRecords(entryId: string): void {
   }
 }
 
+// ─── Per-patient clinical snapshot ────────────────────────────────────────────
+// Saved at sign time (before clearDraft) so clinical history accumulates across
+// signed visits even after individual drafts are cleared.
+
+const CLINICAL_PFX = "soap_clinical_";
+
+/** Vital measurement recorded at a single signed consultation. */
+export interface VitalEntry {
+  date:        string;
+  bpSystolic?: number;
+  bpDiastolic?: number;
+  pulse?:      number;
+  spo2?:       number;
+  temp?:       number;
+}
+
+/** Aggregated clinical snapshot for a patient across all signed visits. */
+export interface PatientClinicalSnapshot {
+  allergies:     unknown[];
+  medicines:     unknown[];
+  labOrders:     unknown[];
+  imagingOrders: unknown[];
+  fhRows:        unknown[];
+  diagnoses:     unknown[];
+  vitals:        VitalEntry[];
+}
+
+export function readPatientClinicalSnapshot(mrn: string): PatientClinicalSnapshot | null {
+  try {
+    const raw = localStorage.getItem(`${CLINICAL_PFX}${mrn}`);
+    return raw ? (JSON.parse(raw) as PatientClinicalSnapshot) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Merge NoteState clinical data into the per-patient snapshot saved at sign time.
+ * Allergies/medicines/labs/imaging/family history/diagnoses are deduplicated and
+ * accumulated. Vitals are an empty array until the SOAP form collects them.
+ */
+export function savePatientClinicalSnapshot(note: NoteState, mrn: string): void {
+  if (!mrn) return;
+  try {
+    const prior = readPatientClinicalSnapshot(mrn);
+
+    type AnyRecord = Record<string, unknown>;
+
+    // Helper: merge two arrays, deduplicating by a key extractor.
+    function merge<T extends AnyRecord>(
+      existing: T[], incoming: T[], key: (item: T) => string | undefined,
+    ): T[] {
+      const map = new Map<string, T>(
+        existing.map(x => [key(x) ?? Math.random().toString(), x]),
+      );
+      for (const x of incoming) {
+        const k = key(x);
+        if (k) map.set(k, x);
+      }
+      return Array.from(map.values());
+    }
+
+    type Allergy     = { name?: string };
+    type Medicine    = { uid?: string; medicineId?: string };
+    type LabOrd      = { id?: string; voided?: boolean };
+    type ImagingOrd  = { uid?: string };
+    type FHRow       = { id?: string };
+    type Diagnosis   = { code?: string };
+
+    const allergies    = merge<Allergy>(
+      (prior?.allergies ?? []) as Allergy[],
+      (note.allergies ?? []) as Allergy[],
+      a => a.name?.toLowerCase(),
+    );
+    const medicines    = merge<Medicine>(
+      (prior?.medicines ?? []) as Medicine[],
+      (note.formulary?.medicines ?? []) as Medicine[],
+      m => m.medicineId ?? m.uid,
+    );
+    const labOrders    = merge<LabOrd>(
+      (prior?.labOrders ?? []) as LabOrd[],
+      ((note.labOrders ?? []) as LabOrd[]).filter(lo => !lo.voided),
+      lo => lo.id,
+    );
+    const imagingOrders = merge<ImagingOrd>(
+      (prior?.imagingOrders ?? []) as ImagingOrd[],
+      (note.imaging?.orders ?? []) as ImagingOrd[],
+      io => io.uid,
+    );
+    const fhRows       = merge<FHRow>(
+      (prior?.fhRows ?? []) as FHRow[],
+      (note.fhRows ?? []) as FHRow[],
+      row => row.id,
+    );
+    const diagnoses    = merge<Diagnosis>(
+      (prior?.diagnoses ?? []) as Diagnosis[],
+      (note.diagnoses ?? []) as Diagnosis[],
+      d => d.code,
+    );
+
+    const snapshot: PatientClinicalSnapshot = {
+      allergies, medicines, labOrders, imagingOrders, fhRows, diagnoses,
+      vitals: prior?.vitals ?? [],   // vitals preserved; populated when SOAP form gains vitals fields
+    };
+    localStorage.setItem(`${CLINICAL_PFX}${mrn}`, JSON.stringify(snapshot));
+  } catch {
+    // storage quota — silently ignore
+  }
+}
+
 // ─── Active lab order persistence ─────────────────────────────────────────────
 
 function activeLabKey(entryId: string) {
