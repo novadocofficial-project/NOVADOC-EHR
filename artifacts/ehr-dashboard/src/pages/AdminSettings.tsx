@@ -170,6 +170,18 @@ const INITIAL_DATA: Department[] = [
       { id: "sp3-2", name: "Epilepsy", description: "Diagnosis and management of seizure disorders using EEG, medications, and surgical options.", active: false },
     ],
   },
+  {
+    id: "d-immuno",
+    name: "Immunology",
+    active: true,
+    subDepartments: [
+      { id: "sd-immuno-1", name: "Outpatient", active: true, specialties: [] },
+    ],
+    specialties: [
+      { id: "sp-immuno-1", name: "General Immunology", description: "Diagnosis and management of immune system disorders, allergies, and autoimmune conditions.", active: true },
+      { id: "sp-immuno-2", name: "Clinical Allergy", description: "Evaluation and treatment of allergic diseases including asthma, rhinitis, and anaphylaxis.", active: true },
+    ],
+  },
 ];
 
 type ActiveModule =

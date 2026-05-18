@@ -116,6 +116,23 @@ export const INITIAL_DOCTORS: Doctor[] = [
     timings: [{ id: "t4", day: "Thursday", startTime: "10:00", endTime: "15:00", slotDuration: 45, allowMultiple: false }],
     faqs: [], status: "inactive",
   },
+  {
+    id: "doc-asif", name: "Dr. Asif Imam", gender: "Male",
+    phone: "03001239424", email: "", shift: "Morning",
+    departments: ["d-immuno"], subDepartments: { "d-immuno": ["sd-immuno-1"] },
+    specialties: ["General Immunology"], doctorType: "appointment",
+    hasProfessionalDetails: false, professional: {},
+    qualifications: [],
+    services: ["Consultation", "FollowUp", "Tele-consultation", "Procedures"],
+    timings: [
+      { id: "asif-t1", day: "Monday",    startTime: "10:00", endTime: "18:00", slotDuration: 30, allowMultiple: false },
+      { id: "asif-t2", day: "Tuesday",   startTime: "10:00", endTime: "18:00", slotDuration: 30, allowMultiple: false },
+      { id: "asif-t3", day: "Wednesday", startTime: "10:00", endTime: "18:00", slotDuration: 30, allowMultiple: false },
+      { id: "asif-t4", day: "Thursday",  startTime: "10:00", endTime: "18:00", slotDuration: 30, allowMultiple: false },
+      { id: "asif-t5", day: "Saturday",  startTime: "10:00", endTime: "16:00", slotDuration: 30, allowMultiple: false },
+    ],
+    faqs: [], status: "active",
+  },
 ];
 
 function calcSlots(startTime: string, endTime: string, slotDuration: number): number {
