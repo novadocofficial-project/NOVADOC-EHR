@@ -2047,15 +2047,16 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
   const { toast } = useToast();
 
   const initialUi = loadUiState(role, appointmentDoctors[0]?.id ?? "");
+  // When a doctor is locked, always start from that ID — skip the persisted selection
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>(
-    lockedDoctorId ?? initialUi.selectedDoctorId
+    lockedDoctorId !== undefined ? lockedDoctorId : initialUi.selectedDoctorId
   );
   const [selectedDate, setSelectedDate] = useState<string>(initialUi.selectedDate);
   const [viewMode, setViewMode] = useState<ViewMode>(initialUi.viewMode);
 
-  // Keep locked doctor in sync if doctors list loads after initial render
+  // Re-lock if lockedDoctorId reference changes (e.g. route swap)
   useEffect(() => {
-    if (lockedDoctorId) setSelectedDoctorId(lockedDoctorId);
+    if (lockedDoctorId !== undefined) setSelectedDoctorId(lockedDoctorId);
   }, [lockedDoctorId]);
 
   useEffect(() => {
