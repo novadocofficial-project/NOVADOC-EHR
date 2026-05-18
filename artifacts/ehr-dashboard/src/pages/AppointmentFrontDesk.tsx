@@ -2078,7 +2078,7 @@ function CounsellingView({ appointments }: { appointments: Appointment[] }) {
                   )}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
-                  {appt.referralProvider ?? <span className="text-slate-300">—</span>}
+                  {appt.referralProvider?.trim() || <span className="text-slate-300">—</span>}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {appt.type || <span className="text-slate-300">—</span>}
@@ -2229,11 +2229,12 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
     });
   }, [appointmentDoctors]);
 
-  // Stats
+  // Stats — in counselling mode always count against today (the view is today-locked)
   const stats = useMemo(() => {
+    const statsDate = layoutMode === "counselling" ? todayStr() : selectedDate;
     const dayAppts = appointments.filter(a =>
-      (layoutMode === "counselling" || a.doctorId === selectedDoctorId) &&
-      a.date === selectedDate
+      a.doctorId === selectedDoctorId &&
+      a.date === statsDate
     );
     const counts: Record<ApptStatus, number> = {
       booked: 0, confirmed: 0, checked_in: 0, cancelled: 0,
