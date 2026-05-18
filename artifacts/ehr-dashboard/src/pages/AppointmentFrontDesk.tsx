@@ -2426,7 +2426,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
 
         {/* Layout mode + Print + Quick Add — pushed to far right */}
         <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-          {/* Calendar / Doctor toggle */}
+          {/* Calendar / Counselling View toggle — Counselling View only available for doctor role */}
           <div className="flex rounded-lg border border-slate-200 overflow-hidden">
             <button
               onClick={() => setLayoutMode("calendar")}
@@ -2434,12 +2434,14 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
             >
               <Calendar className="h-3.5 w-3.5" /> Calendar
             </button>
-            <button
-              onClick={() => setLayoutMode("counselling")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors ${layoutMode === "counselling" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
-            >
-              <ClipboardList className="h-3.5 w-3.5" /> Counselling View
-            </button>
+            {role === "doctor" && (
+              <button
+                onClick={() => setLayoutMode("counselling")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors ${layoutMode === "counselling" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                <ClipboardList className="h-3.5 w-3.5" /> Counselling View
+              </button>
+            )}
           </div>
 
           <Button
@@ -2532,7 +2534,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
             <p className="text-lg font-bold text-slate-400">No appointment doctors configured</p>
             <p className="text-sm text-slate-300 mt-1">Go to Admin → Doctors and add doctors with type "Appointment".</p>
           </div>
-        ) : layoutMode === "counselling" ? (
+        ) : layoutMode === "counselling" && role === "doctor" ? (
           <CounsellingView
             appointments={appointments.filter(a =>
               a.date === todayStr() && a.doctorId === selectedDoctorId
