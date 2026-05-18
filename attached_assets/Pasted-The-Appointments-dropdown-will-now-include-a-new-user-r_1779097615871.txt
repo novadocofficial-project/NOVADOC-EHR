@@ -1,0 +1,27 @@
+The Appointments dropdown will now include a new user role: Doctor.
+When a doctor opens the appointment module, they will see the same appointment calendar interface and functionality currently available on the Front Desk appointment page. All existing features, views, and interactions will remain consistent.
+The key purpose of this page is to support the patient flow across modules:
+Front Desk → Nursing → Doctor
+This means the same appointment and patient data created at the Front Desk level will continue flowing through the Nursing module and finally into the Doctor module.
+At this stage, we are only creating the Doctor Appointment page UI and workflow visibility. The doctor should be able to view only the appointments booked for them.
+Important Changes for Doctor View
+* The Select Doctor dropdown should either:
+    1. Be completely removed from the Doctor view, since a doctor should not be able to switch between other doctors’ schedules.
+* OR
+    1. Remain visible but in a disabled/read-only state showing the logged-in doctor’s name only.
+* The calendar should automatically load appointments assigned to the currently logged-in doctor.
+* All appointment-related actions and statuses should behave the same as the Front Desk appointment page unless specifically restricted later.
+
+Under the Appointments section in the header navigation bar, we will create two separate doctor appointment pages:
+1. Doctor Emily Wong
+2. Dr. Asif Imam
+Each doctor page will have its own dedicated appointment calendar view while maintaining the same layout, functionality, and workflow behavior as the Front Desk appointment page.
+Doctor Appointment Page Behavior
+* Each doctor page will display only the appointments assigned to that specific doctor.
+* The appointment data flow will remain connected across modules: Front Desk → Nursing → Doctor
+* Both doctor pages will use the same appointment management features, statuses, and calendar interactions already implemented in the Front Desk module.
+Doctor Selection Logic
+Since these are dedicated doctor-specific pages:
+* The Select Doctor dropdown should either be:
+    * completely removed, or
+    * displayed in a disabled/read-only state with the respective doctor preselected.
