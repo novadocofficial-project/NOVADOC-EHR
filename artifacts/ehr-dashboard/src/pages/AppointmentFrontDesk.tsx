@@ -2114,7 +2114,7 @@ function CounsellingView({ appointments }: { appointments: Appointment[] }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 type ViewMode = "day" | "week" | "month";
-type LayoutMode = "calendar" | "counselling";
+type LayoutMode = "calendar" | "doctor" | "counselling";
 type Role = "frontdesk" | "nursing" | "doctor";
 
 interface ApptUiState {
@@ -2196,10 +2196,10 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
   const selectedDoctor = appointmentDoctors.find(d => d.id === selectedDoctorId) ?? appointmentDoctors[0] ?? null;
 
   // Appointment type filter chips — scoped to the active doctor in calendar mode,
-  // or the union of all doctors' services in counselling-layout mode.
+  // or the union of all doctors' services in doctor-layout mode.
   const allTypes = useMemo(() => {
     const types = new Set<string>();
-    if (layoutMode === "counselling") {
+    if (layoutMode === "doctor") {
       appointmentDoctors.forEach(d => d.services.forEach(s => types.add(s)));
     } else {
       const activeDoc = appointmentDoctors.find(d => d.id === selectedDoctorId);
@@ -2229,11 +2229,11 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
     });
   }, [appointmentDoctors]);
 
-  // Stats — in counselling mode always count against today (the view is today-locked)
+  // Stats — counselling mode is today-locked; doctor mode shows all doctors for selected date
   const stats = useMemo(() => {
     const statsDate = layoutMode === "counselling" ? todayStr() : selectedDate;
     const dayAppts = appointments.filter(a =>
-      a.doctorId === selectedDoctorId &&
+      (layoutMode === "doctor" || a.doctorId === selectedDoctorId) &&
       a.date === statsDate
     );
     const counts: Record<ApptStatus, number> = {
@@ -2427,7 +2427,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
 
         {/* Layout mode + Print + Quick Add — pushed to far right */}
         <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-          {/* Calendar / Counselling View toggle — Counselling View only available for doctor role */}
+          {/* Calendar / Doctor / Counselling View toggle */}
           <div className="flex rounded-lg border border-slate-200 overflow-hidden">
             <button
               onClick={() => setLayoutMode("calendar")}
@@ -2435,6 +2435,14 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
             >
               <Calendar className="h-3.5 w-3.5" /> Calendar
             </button>
+            {role !== "doctor" && (
+              <button
+                onClick={() => setLayoutMode("doctor")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors border-r border-slate-200 ${layoutMode === "doctor" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                <Columns2 className="h-3.5 w-3.5" /> Doctor
+              </button>
+            )}
             {role === "doctor" && (
               <button
                 onClick={() => setLayoutMode("counselling")}
@@ -2535,6 +2543,16 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
             <p className="text-lg font-bold text-slate-400">No appointment doctors configured</p>
             <p className="text-sm text-slate-300 mt-1">Go to Admin → Doctors and add doctors with type "Appointment".</p>
           </div>
+        ) : layoutMode === "doctor" ? (
+          <DoctorViewPanel
+            doctors={lockedDoctorId ? appointmentDoctors.filter(d => d.id === lockedDoctorId) : appointmentDoctors}
+            date={selectedDate}
+            appointments={appointments}
+            filterTypes={filterTypes}
+            paidIds={paidIds}
+            onClickSlot={(doctorId, slot) => openBooking({ doctorId, date: selectedDate, slotStart: slot.start, slotEnd: slot.end })}
+            onClickAppt={handleApptClick}
+          />
         ) : layoutMode === "counselling" && role === "doctor" ? (
           <CounsellingView
             appointments={appointments.filter(a =>
