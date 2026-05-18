@@ -27,6 +27,7 @@ export interface Appointment {
   repeatType: "daily" | "weekly" | "monthly" | "custom";
   repeatNote: string;
   comments: string;
+  referralProvider?: string;
   status: ApptStatus;
   createdAt: string;
 }

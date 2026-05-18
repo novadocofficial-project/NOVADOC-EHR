@@ -7,6 +7,7 @@ import {
   Repeat, AlertTriangle, LayoutGrid, Columns2, RefreshCw,
   Hash, Check, ArrowRight, Pencil, CalendarDays, UserPlus,
   Banknote, Shield, Building2, Heart, FileSignature, Receipt, Activity,
+  ClipboardList,
 } from "lucide-react";
 import { ApptNursingDrawer } from "@/pages/ApptNursingDrawer";
 import { BillingContent, ReceiptInfo, printThermalReceipt } from "@/pages/FrontDeskUser";
@@ -185,6 +186,7 @@ interface BookingForm {
   repeatType: "daily" | "weekly" | "monthly" | "custom";
   repeatNote: string;
   comments: string;
+  referralProvider?: string;
 }
 
 function emptyForm(init?: Partial<BookingForm>): BookingForm {
@@ -2009,10 +2011,110 @@ function DoctorViewPanel({ doctors, date, appointments, filterTypes, paidIds, on
   );
 }
 
+// ─── Counselling View ─────────────────────────────────────────────────────────
+
+const COUNSELLING_STATUS_CONFIG: Record<ApptStatus, { label: string; cls: string }> = {
+  booked:      { label: "Booked",      cls: "bg-blue-50    text-blue-700    border-blue-200"    },
+  confirmed:   { label: "Confirmed",   cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  checked_in:  { label: "Checked In",  cls: "bg-teal-50    text-teal-700    border-teal-200"    },
+  cancelled:   { label: "Cancelled",   cls: "bg-slate-100  text-slate-500   border-slate-200"   },
+  no_show:     { label: "No Show",     cls: "bg-red-50     text-red-600     border-red-200"     },
+  rescheduled: { label: "Rescheduled", cls: "bg-amber-50   text-amber-700   border-amber-200"   },
+  checked_out: { label: "Checked Out", cls: "bg-violet-50  text-violet-700  border-violet-200"  },
+};
+
+const COUNSELLING_PRIORITY_CONFIG: Record<"normal" | "urgent" | "emergency", { label: string; cls: string }> = {
+  normal:    { label: "Normal",    cls: "bg-slate-100 text-slate-500 border-slate-200" },
+  urgent:    { label: "Urgent",    cls: "bg-amber-50  text-amber-700 border-amber-200" },
+  emergency: { label: "Emergency", cls: "bg-red-50    text-red-600   border-red-200"   },
+};
+
+function CounsellingView({ appointments }: { appointments: Appointment[] }) {
+  const sorted = [...appointments].sort((a, b) => a.slotStart.localeCompare(b.slotStart));
+
+  if (sorted.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center py-20">
+        <ClipboardList className="h-12 w-12 text-slate-200 mb-4" />
+        <p className="text-lg font-bold text-slate-400">No appointments today</p>
+        <p className="text-sm text-slate-300 mt-1">No patients are scheduled for today's consultations.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-auto rounded-lg border border-slate-200 bg-white">
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Slot / Time</th>
+            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Patient Name</th>
+            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Referral Provider</th>
+            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Appointment Type</th>
+            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Priority</th>
+            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Waiting Time</th>
+            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Patient Status</th>
+            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((appt, idx) => {
+            const statusCfg   = COUNSELLING_STATUS_CONFIG[appt.status];
+            const priorityCfg = COUNSELLING_PRIORITY_CONFIG[appt.priority];
+            return (
+              <tr
+                key={appt.id}
+                className={`border-b border-slate-100 transition-colors hover:bg-slate-50/60 ${idx % 2 !== 0 ? "bg-slate-50/30" : ""}`}
+              >
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <span className="font-semibold text-slate-700">{appt.slotStart}</span>
+                  <span className="text-slate-400 mx-1">–</span>
+                  <span className="text-slate-500">{appt.slotEnd}</span>
+                </td>
+                <td className="px-4 py-3">
+                  <p className="font-semibold text-slate-800 leading-tight">{appt.patientName}</p>
+                  {appt.patientMrn && (
+                    <p className="text-xs text-slate-400 mt-0.5 font-mono">{appt.patientMrn}</p>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-slate-600">
+                  {appt.referralProvider ?? <span className="text-slate-300">—</span>}
+                </td>
+                <td className="px-4 py-3 text-slate-600">
+                  {appt.type || <span className="text-slate-300">—</span>}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${priorityCfg.cls}`}>
+                    {priorityCfg.label}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-slate-300 select-none">—</td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${statusCfg.cls}`}>
+                    {statusCfg.label}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    className="h-8 w-8 rounded-md border border-slate-200 bg-white hover:bg-slate-50 hover:border-[#4982CF] flex items-center justify-center transition-colors"
+                    title="View patient profile"
+                  >
+                    <User className="h-3.5 w-3.5 text-slate-500" />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 type ViewMode = "day" | "week" | "month";
-type LayoutMode = "calendar" | "doctor";
+type LayoutMode = "calendar" | "counselling";
 type Role = "frontdesk" | "nursing" | "doctor";
 
 interface ApptUiState {
@@ -2094,10 +2196,10 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
   const selectedDoctor = appointmentDoctors.find(d => d.id === selectedDoctorId) ?? appointmentDoctors[0] ?? null;
 
   // Appointment type filter chips — scoped to the active doctor in calendar mode,
-  // or the union of all doctors' services in doctor-layout mode.
+  // or the union of all doctors' services in counselling-layout mode.
   const allTypes = useMemo(() => {
     const types = new Set<string>();
-    if (layoutMode === "doctor") {
+    if (layoutMode === "counselling") {
       appointmentDoctors.forEach(d => d.services.forEach(s => types.add(s)));
     } else {
       const activeDoc = appointmentDoctors.find(d => d.id === selectedDoctorId);
@@ -2130,7 +2232,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
   // Stats
   const stats = useMemo(() => {
     const dayAppts = appointments.filter(a =>
-      (layoutMode === "doctor" || a.doctorId === selectedDoctorId) &&
+      (layoutMode === "counselling" || a.doctorId === selectedDoctorId) &&
       a.date === selectedDate
     );
     const counts: Record<ApptStatus, number> = {
@@ -2333,10 +2435,10 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
               <Calendar className="h-3.5 w-3.5" /> Calendar
             </button>
             <button
-              onClick={() => setLayoutMode("doctor")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors ${layoutMode === "doctor" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
+              onClick={() => setLayoutMode("counselling")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors ${layoutMode === "counselling" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
             >
-              <Columns2 className="h-3.5 w-3.5" /> Doctor
+              <ClipboardList className="h-3.5 w-3.5" /> Counselling View
             </button>
           </div>
 
@@ -2357,8 +2459,8 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
         </div>
       </div>
 
-      {/* Sub-bar: Type filters (left) + Date/View nav (right) */}
-      <div className="bg-white border-b border-slate-100 px-5 py-0 flex items-center gap-2 min-h-[40px]">
+      {/* Sub-bar: Type filters (left) + Date/View nav (right) — hidden in Counselling View */}
+      {layoutMode !== "counselling" && <div className="bg-white border-b border-slate-100 px-5 py-0 flex items-center gap-2 min-h-[40px]">
         {/* Type filter chips — left side */}
         {allTypes.length > 0 ? (
           <div className="flex items-center gap-1.5 py-2 flex-shrink-0">
@@ -2408,24 +2510,19 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
 
           {/* Day / Week / Month toggle */}
           <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-            {(["day", "week", "month"] as ViewMode[]).map(v => {
-              const doctorOnly = layoutMode === "doctor" && v !== "day";
-              return (
-                <button
-                  key={v}
-                  onClick={() => !doctorOnly && setViewMode(v)}
-                  disabled={doctorOnly}
-                  title={doctorOnly ? "Doctor view is day-only" : undefined}
-                  className={`px-3 py-1 text-xs font-bold capitalize transition-colors border-r border-slate-200 last:border-0
-                    ${doctorOnly ? "text-slate-300 bg-slate-50 cursor-not-allowed" : viewMode === v ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
-                >
-                  {v}
-                </button>
-              );
-            })}
+            {(["day", "week", "month"] as ViewMode[]).map(v => (
+              <button
+                key={v}
+                onClick={() => setViewMode(v)}
+                className={`px-3 py-1 text-xs font-bold capitalize transition-colors border-r border-slate-200 last:border-0
+                  ${viewMode === v ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                {v}
+              </button>
+            ))}
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Calendar Content */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0 px-4 pt-3 pb-3">
@@ -2435,15 +2532,11 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
             <p className="text-lg font-bold text-slate-400">No appointment doctors configured</p>
             <p className="text-sm text-slate-300 mt-1">Go to Admin → Doctors and add doctors with type "Appointment".</p>
           </div>
-        ) : layoutMode === "doctor" ? (
-          <DoctorViewPanel
-            doctors={lockedDoctorId ? appointmentDoctors.filter(d => d.id === lockedDoctorId) : appointmentDoctors}
-            date={selectedDate}
-            appointments={appointments}
-            filterTypes={filterTypes}
-            paidIds={paidIds}
-            onClickSlot={(doctorId, slot) => openBooking({ doctorId, date: selectedDate, slotStart: slot.start, slotEnd: slot.end })}
-            onClickAppt={handleApptClick}
+        ) : layoutMode === "counselling" ? (
+          <CounsellingView
+            appointments={appointments.filter(a =>
+              a.date === todayStr() && a.doctorId === selectedDoctorId
+            )}
           />
         ) : !selectedDoctor ? (
           <div className="text-center py-20 text-slate-400">Select a doctor to view their calendar.</div>
