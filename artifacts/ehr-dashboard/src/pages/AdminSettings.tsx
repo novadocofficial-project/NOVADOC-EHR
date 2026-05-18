@@ -106,6 +106,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export type Specialty = {
   id: string;
@@ -443,6 +453,33 @@ export function AdminSettings() {
     }
     setAddingDept(false);
     setAddValue("");
+  };
+
+  const [showReset, setShowReset] = useState(false);
+
+  const resetAppData = () => {
+    const STATIC_KEYS = [
+      "ehr-doctors-v1", "ehr-doctor-fees-v1",
+      "ehr-lab-sections-v1", "ehr-lab-providers-v1", "ehr-lab-result-templates",
+      "ehr-procedure-sections-v1", "ehr-procedure-partners-v1",
+      "ehr-imaging-catalogue-v1", "ehr-imaging-reasons-v1", "ehr-imaging-partners-v1",
+      "ehr-consumables-catalogue-v1", "ehr-consumables-providers-v1",
+      "ehr-formulary-catalogue-v1", "ehr-formulary-defaults-v1", "ehr-formulary-partners-v1",
+      "ehr-packages-v1", "ehr-nursing-config-v1", "ehr-triage-algorithms", "ehr-reg-config-v1",
+      "ehr-billing-counters", "ehr-billing-reg", "ehr-fifo-lock", "ehr-visit-types",
+      "ehr-queue-v2", "ehr-queue-nums-v2", "ehr-queue-ver",
+      "ehr-triage-sessions", "ehr-nursing-task-exec-v1", "ehr-careplan-bridge-v1",
+      "ehr-nursing-history-template-sel", "ehr-nursing-proc-template-sel",
+      "ehr-patients-v1", "ehr-appointments-v1", "ehr-appt-invoices", "ehr-appt-nursing-v1",
+      "ehr-reg-form-draft",
+    ];
+    STATIC_KEYS.forEach(k => localStorage.removeItem(k));
+    // Dynamic prefix keys
+    const dynamicPrefixes = ["soap_draft_", "soap_clinical_"];
+    Object.keys(localStorage).forEach(k => {
+      if (dynamicPrefixes.some(p => k.startsWith(p))) localStorage.removeItem(k);
+    });
+    window.location.reload();
   };
 
   const subNavItem = (module: ActiveModule, icon: React.ReactNode, label: string) => (
@@ -793,7 +830,50 @@ export function AdminSettings() {
               </div>
             )}
           </nav>
+
+          {/* ── Danger Zone ─────────────────────────────────────────────────── */}
+          <div className="flex-none border-t border-rose-100 bg-rose-50/60 px-3 py-3">
+            <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-widest text-rose-400">Danger Zone</p>
+            <button
+              type="button"
+              onClick={() => setShowReset(true)}
+              className="flex w-full items-center gap-2 rounded-md border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50 hover:border-rose-300"
+            >
+              <Trash2 className="h-3.5 w-3.5 flex-shrink-0" />
+              Reset All App Data
+            </button>
+          </div>
         </aside>
+
+        <AlertDialog open={showReset} onOpenChange={setShowReset}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-rose-600">
+                <Trash2 className="h-5 w-5" />
+                Reset All Application Data?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <span className="block">
+                  This will permanently erase <strong>all</strong> data stored in this browser —
+                  doctors, patients, appointments, queue state, lab &amp; imaging catalogs, billing,
+                  SOAP notes, and every other setting.
+                </span>
+                <span className="block font-semibold text-rose-600">
+                  This action cannot be undone. The page will reload and return to factory defaults.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={resetAppData}
+                className="bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-500"
+              >
+                Yes, reset everything
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Right Content */}
         <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","care-plan-library","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","formulary-partners","imaging-tests","imaging-reasons","imaging-partners","consumables-master","consumables-providers","lab-order-sets","imaging-order-sets","nursing-triage"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
