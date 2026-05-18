@@ -117,6 +117,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+const ALL_EHR_KEYS = [
+  "ehr-doctors-v1", "ehr-doctor-fees-v1",
+  "ehr-lab-sections-v1", "ehr-lab-providers-v1", "ehr-lab-result-templates",
+  "ehr-procedure-sections-v1", "ehr-procedure-partners-v1",
+  "ehr-imaging-catalogue-v1", "ehr-imaging-reasons-v1", "ehr-imaging-partners-v1",
+  "ehr-consumables-catalogue-v1", "ehr-consumables-providers-v1",
+  "ehr-formulary-catalogue-v1", "ehr-formulary-defaults-v1", "ehr-formulary-partners-v1",
+  "ehr-packages-v1", "ehr-nursing-config-v1", "ehr-triage-algorithms", "ehr-reg-config-v1",
+  "ehr-billing-counters", "ehr-billing-reg", "ehr-fifo-lock", "ehr-visit-types",
+  "ehr-queue-v2", "ehr-queue-nums-v2", "ehr-queue-ver",
+  "ehr-triage-sessions", "ehr-nursing-task-exec-v1", "ehr-careplan-bridge-v1",
+  "ehr-nursing-history-template-sel", "ehr-nursing-proc-template-sel",
+  "ehr-patients-v1", "ehr-appointments-v1", "ehr-appt-invoices", "ehr-appt-nursing-v1",
+  "ehr-reg-form-draft",
+] as const;
+
 export type Specialty = {
   id: string;
   name: string;
@@ -458,27 +474,16 @@ export function AdminSettings() {
   const [showReset, setShowReset] = useState(false);
 
   const resetAppData = () => {
-    const STATIC_KEYS = [
-      "ehr-doctors-v1", "ehr-doctor-fees-v1",
-      "ehr-lab-sections-v1", "ehr-lab-providers-v1", "ehr-lab-result-templates",
-      "ehr-procedure-sections-v1", "ehr-procedure-partners-v1",
-      "ehr-imaging-catalogue-v1", "ehr-imaging-reasons-v1", "ehr-imaging-partners-v1",
-      "ehr-consumables-catalogue-v1", "ehr-consumables-providers-v1",
-      "ehr-formulary-catalogue-v1", "ehr-formulary-defaults-v1", "ehr-formulary-partners-v1",
-      "ehr-packages-v1", "ehr-nursing-config-v1", "ehr-triage-algorithms", "ehr-reg-config-v1",
-      "ehr-billing-counters", "ehr-billing-reg", "ehr-fifo-lock", "ehr-visit-types",
-      "ehr-queue-v2", "ehr-queue-nums-v2", "ehr-queue-ver",
-      "ehr-triage-sessions", "ehr-nursing-task-exec-v1", "ehr-careplan-bridge-v1",
-      "ehr-nursing-history-template-sel", "ehr-nursing-proc-template-sel",
-      "ehr-patients-v1", "ehr-appointments-v1", "ehr-appt-invoices", "ehr-appt-nursing-v1",
-      "ehr-reg-form-draft",
-    ];
-    STATIC_KEYS.forEach(k => localStorage.removeItem(k));
+    ALL_EHR_KEYS.forEach(k => localStorage.removeItem(k));
     // Dynamic prefix keys
     const dynamicPrefixes = ["soap_draft_", "soap_clinical_"];
-    Object.keys(localStorage).forEach(k => {
-      if (dynamicPrefixes.some(p => k.startsWith(p))) localStorage.removeItem(k);
-    });
+    const len = localStorage.length;
+    const toRemove: string[] = [];
+    for (let i = 0; i < len; i++) {
+      const k = localStorage.key(i);
+      if (k && dynamicPrefixes.some(p => k.startsWith(p))) toRemove.push(k);
+    }
+    toRemove.forEach(k => localStorage.removeItem(k));
     window.location.reload();
   };
 
