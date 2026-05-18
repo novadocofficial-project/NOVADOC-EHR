@@ -2323,21 +2323,23 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
 
         {/* Layout mode + Print + Quick Add — pushed to far right */}
         <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-          {/* Calendar / Doctor toggle */}
-          <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-            <button
-              onClick={() => setLayoutMode("calendar")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border-r border-slate-200 transition-colors ${layoutMode === "calendar" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
-            >
-              <Calendar className="h-3.5 w-3.5" /> Calendar
-            </button>
-            <button
-              onClick={() => setLayoutMode("doctor")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors ${layoutMode === "doctor" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
-            >
-              <Columns2 className="h-3.5 w-3.5" /> Doctor
-            </button>
-          </div>
+          {/* Calendar / Doctor toggle — hidden for locked doctor role */}
+          {role !== "doctor" && (
+            <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+              <button
+                onClick={() => setLayoutMode("calendar")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border-r border-slate-200 transition-colors ${layoutMode === "calendar" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                <Calendar className="h-3.5 w-3.5" /> Calendar
+              </button>
+              <button
+                onClick={() => setLayoutMode("doctor")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors ${layoutMode === "doctor" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                <Columns2 className="h-3.5 w-3.5" /> Doctor
+              </button>
+            </div>
+          )}
 
           <Button
             variant="ghost"
@@ -2436,7 +2438,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
           </div>
         ) : layoutMode === "doctor" ? (
           <DoctorViewPanel
-            doctors={appointmentDoctors}
+            doctors={lockedDoctorId ? appointmentDoctors.filter(d => d.id === lockedDoctorId) : appointmentDoctors}
             date={selectedDate}
             appointments={appointments}
             filterTypes={filterTypes}
