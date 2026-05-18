@@ -443,6 +443,35 @@ export function AppointmentsNavDropdown() {
             <p className="text-[10px] text-slate-400 leading-tight">View & track appointments</p>
           </div>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-2">
+          Doctors
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => setLocation("/appointments/doctor/doc-1")}
+          className={`gap-3 cursor-pointer py-2.5 ${location === "/appointments/doctor/doc-1" ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
+        >
+          <span className="h-7 w-7 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0">
+            <Stethoscope className="h-3.5 w-3.5 text-teal-600" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold leading-tight">Dr. Emily Wong</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Cardiology · Orthopedics</p>
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setLocation("/appointments/doctor/doc-asif")}
+          className={`gap-3 cursor-pointer py-2.5 ${location === "/appointments/doctor/doc-asif" ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
+        >
+          <span className="h-7 w-7 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0">
+            <Stethoscope className="h-3.5 w-3.5 text-teal-600" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold leading-tight">Dr. Asif Imam</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Immunology · Outpatient</p>
+          </div>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

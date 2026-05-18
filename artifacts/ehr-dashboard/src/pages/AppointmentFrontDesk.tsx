@@ -2013,7 +2013,7 @@ function DoctorViewPanel({ doctors, date, appointments, filterTypes, paidIds, on
 
 type ViewMode = "day" | "week" | "month";
 type LayoutMode = "calendar" | "doctor";
-type Role = "frontdesk" | "nursing";
+type Role = "frontdesk" | "nursing" | "doctor";
 
 interface ApptUiState {
   selectedDoctorId: string;
@@ -2040,16 +2040,23 @@ function saveUiState(role: Role, state: ApptUiState) {
   try { localStorage.setItem(`ehr-appt-ui-${role}`, JSON.stringify(state)); } catch {}
 }
 
-export function AppointmentFrontDesk({ role }: { role: Role }) {
+export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; lockedDoctorId?: string }) {
   const { appointmentDoctors } = useAppointmentDoctors();
   const { appointments, addAppointment, updateAppointment } = useAppointments();
   const { invoices, saveInvoice, paidIds } = useApptInvoices();
   const { toast } = useToast();
 
   const initialUi = loadUiState(role, appointmentDoctors[0]?.id ?? "");
-  const [selectedDoctorId, setSelectedDoctorId] = useState<string>(initialUi.selectedDoctorId);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>(
+    lockedDoctorId ?? initialUi.selectedDoctorId
+  );
   const [selectedDate, setSelectedDate] = useState<string>(initialUi.selectedDate);
   const [viewMode, setViewMode] = useState<ViewMode>(initialUi.viewMode);
+
+  // Keep locked doctor in sync if doctors list loads after initial render
+  useEffect(() => {
+    if (lockedDoctorId) setSelectedDoctorId(lockedDoctorId);
+  }, [lockedDoctorId]);
 
   useEffect(() => {
     saveUiState(role, { selectedDoctorId, selectedDate, viewMode });
@@ -2237,45 +2244,57 @@ export function AppointmentFrontDesk({ role }: { role: Role }) {
             <Calendar className="h-3 w-3" />
             Front Desk
           </span>
-        ) : (
+        ) : role === "nursing" ? (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-100 text-rose-600 text-xs font-semibold flex-shrink-0 select-none">
             <Heart className="h-3 w-3" />
             Nursing
           </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-100 text-teal-700 text-xs font-semibold flex-shrink-0 select-none">
+            <Stethoscope className="h-3 w-3" />
+            Doctor
+          </span>
         )}
         {/* Doctor selector (only in calendar mode) */}
         {layoutMode === "calendar" && (
-          <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
-            <SelectTrigger className="h-9 w-60 text-sm border-slate-200 flex-shrink-0">
-              <Stethoscope className="h-3.5 w-3.5 text-[#4982CF] mr-1.5 flex-shrink-0" />
-              <SelectValue placeholder="Select doctor..." />
-            </SelectTrigger>
-            <SelectContent>
-              {appointmentDoctors.length === 0 && (
-                <SelectItem value="__none" disabled>No appointment doctors</SelectItem>
-              )}
-              {doctorsByPrimarySpecialty.map(([specialty, docs], idx) => (
-                <React.Fragment key={specialty}>
-                  {idx > 0 && <SelectSeparator />}
-                  <SelectGroup>
-                    <SelectLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-2 py-1.5">
-                      {specialty}
-                    </SelectLabel>
-                    {docs.map(d => (
-                      <SelectItem
-                        key={d.id}
-                        value={d.id}
-                        textValue={d.name}
-                        subtitle={d.specialties.length > 1 ? d.specialties.slice(1).join(" · ") : undefined}
-                      >
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </React.Fragment>
-              ))}
-            </SelectContent>
-          </Select>
+          role === "doctor" ? (
+            <span className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-slate-200 bg-white text-sm text-slate-700 font-medium flex-shrink-0 select-none">
+              <Stethoscope className="h-3.5 w-3.5 text-teal-600 flex-shrink-0" />
+              {appointmentDoctors.find(d => d.id === selectedDoctorId)?.name ?? selectedDoctorId}
+            </span>
+          ) : (
+            <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
+              <SelectTrigger className="h-9 w-60 text-sm border-slate-200 flex-shrink-0">
+                <Stethoscope className="h-3.5 w-3.5 text-[#4982CF] mr-1.5 flex-shrink-0" />
+                <SelectValue placeholder="Select doctor..." />
+              </SelectTrigger>
+              <SelectContent>
+                {appointmentDoctors.length === 0 && (
+                  <SelectItem value="__none" disabled>No appointment doctors</SelectItem>
+                )}
+                {doctorsByPrimarySpecialty.map(([specialty, docs], idx) => (
+                  <React.Fragment key={specialty}>
+                    {idx > 0 && <SelectSeparator />}
+                    <SelectGroup>
+                      <SelectLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-2 py-1.5">
+                        {specialty}
+                      </SelectLabel>
+                      {docs.map(d => (
+                        <SelectItem
+                          key={d.id}
+                          value={d.id}
+                          textValue={d.name}
+                          subtitle={d.specialties.length > 1 ? d.specialties.slice(1).join(" · ") : undefined}
+                        >
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </React.Fragment>
+                ))}
+              </SelectContent>
+            </Select>
+          )
         )}
 
         {/* Status badges — right of Doctor selector */}
