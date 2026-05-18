@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import {
   Calendar, ChevronLeft, ChevronRight, ChevronDown, Plus, Printer,
   Maximize2, Minimize2, X, Search, User, Phone, AlertCircle,
-  CheckCircle2, Clock, Edit2, Eye, FileText, Stethoscope,
+  BookOpen, CheckCircle2, Clock, Edit2, Eye, FileText, Stethoscope,
   Repeat, AlertTriangle, LayoutGrid, Columns2, RefreshCw,
   Hash, Check, ArrowRight, Pencil, CalendarDays, UserPlus,
   Banknote, Shield, Building2, Heart, FileSignature, Receipt, Activity,
@@ -1084,11 +1084,12 @@ const CONTAGIOUS_OPTIONS = [
 interface ViewDrawerProps {
   appt: Appointment;
   doctorName: string;
+  role: Role;
   onClose: () => void;
   onEdit: () => void;
 }
 
-function ViewDrawer({ appt, doctorName, onClose, onEdit }: ViewDrawerProps) {
+function ViewDrawer({ appt, doctorName, role, onClose, onEdit }: ViewDrawerProps) {
   const [, navTo] = useLocation();
   const sc = STATUS_CONFIG[appt.status];
   const pc = PRIORITY_CONFIG[appt.priority];
@@ -1108,12 +1109,14 @@ function ViewDrawer({ appt, doctorName, onClose, onEdit }: ViewDrawerProps) {
       subtitle={`${appt.patientName} — ${formatDateShort(appt.date)}`}
       onClose={onClose}
       footer={
-        <Button
-          onClick={onEdit}
-          className="w-full h-9 bg-[#4982CF] hover:bg-[#3D73BC] text-white gap-2"
-        >
-          <Edit2 className="h-4 w-4" /> Edit Appointment
-        </Button>
+        role === "frontdesk" ? (
+          <Button
+            onClick={onEdit}
+            className="w-full h-9 bg-[#4982CF] hover:bg-[#3D73BC] text-white gap-2"
+          >
+            <Edit2 className="h-4 w-4" /> Edit Appointment
+          </Button>
+        ) : undefined
       }
     >
       <div className="px-5 py-4">
@@ -1369,7 +1372,16 @@ function AppointmentCard({ state, isPaid, role, onClose, onView, onEdit, onStatu
           <Button size="sm" variant="outline" onClick={() => { onView(appt); onClose(); }} className="flex-1 h-8 text-xs gap-1.5">
             <Eye className="h-3 w-3" /> View
           </Button>
-          {role === "nursing" ? (
+          {role === "doctor" ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { navTo(`/patients/${getPatientIdByMrn(appt.patientMrn)}`); onClose(); }}
+              className="flex-1 h-8 text-xs gap-1.5 border-[#4982CF]/40 text-[#4982CF] hover:bg-blue-50"
+            >
+              <BookOpen className="h-3 w-3" /> Open Facesheet
+            </Button>
+          ) : role === "nursing" ? (
             <Button
               size="sm"
               variant="outline"
@@ -2739,6 +2751,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
         <ViewDrawer
           appt={viewAppt}
           doctorName={appointmentDoctors.find(d => d.id === viewAppt.doctorId)?.name ?? "Unknown Doctor"}
+          role={role}
           onClose={() => setViewAppt(null)}
           onEdit={() => { openBooking({}, viewAppt); setViewAppt(null); }}
         />
