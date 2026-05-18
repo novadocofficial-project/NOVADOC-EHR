@@ -330,6 +330,10 @@ export function AdminSettings() {
       "doc-3": [
         fee("d3", "sd3-1", "2500", "percentage", "65", "1200", "percentage", "65", "3500", "percentage", "55", "1500", "percentage", "65"),
       ],
+      // Dr. Asif Imam — Immunology (Outpatient)
+      "doc-asif": [
+        fee("d-immuno", "sd-immuno-1", "2500", "percentage", "70", "1200", "percentage", "70", "3500", "percentage", "60", "1800", "percentage", "70"),
+      ],
     };
   });
 
