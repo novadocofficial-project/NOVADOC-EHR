@@ -703,7 +703,7 @@ export function PeChipsPanel({ systems, doneSystemIds = [], savedDataMap = {}, o
       <div className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
         <Stethoscope className="h-4 w-4 text-slate-300 flex-shrink-0" />
         <p className="text-xs text-slate-400">
-          Select systems in Review of Systems above — each will appear here for examination.
+          Select examination systems using the selector above — each will appear here for assessment.
         </p>
       </div>
     );

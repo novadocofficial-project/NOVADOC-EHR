@@ -286,6 +286,7 @@ export function DoctorUser() {
   function handleDoctorSign(id: string) {
     const now = new Date();
     const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const draft = readSoapDraft(id);
     const record: SignedRecord = {
       date: now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
       day:  days[now.getDay()],
@@ -293,6 +294,7 @@ export function DoctorUser() {
       type: "Consultation Note",
       doctor: "Dr. Emily Wong",
       signed: true,
+      ...(draft ? { noteState: draft } : {}),
     };
     setSignedRecordsMap(prev => {
       const next = new Map(prev);

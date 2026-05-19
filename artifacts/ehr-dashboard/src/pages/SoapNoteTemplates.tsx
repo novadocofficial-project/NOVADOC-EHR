@@ -180,6 +180,17 @@ function mergeStringArr(existing: string[], incoming: string[]): string[] {
   return result;
 }
 
+function mergeRosRecord(
+  existing: Record<string, string[]>,
+  incoming: Record<string, string[]>,
+): Record<string, string[]> {
+  const result: Record<string, string[]> = { ...existing };
+  for (const [sys, symptoms] of Object.entries(incoming)) {
+    result[sys] = mergeStringArr(result[sys] ?? [], symptoms);
+  }
+  return result;
+}
+
 function mergeText(existing: string, incoming: string): string {
   if (!incoming.trim()) return existing;
   if (!existing.trim()) return incoming;
@@ -246,8 +257,9 @@ export function applyTemplate(
     // merge
     switch (key) {
       case "chiefComplaints":
-      case "ros":
         (result as any)[key] = mergeStringArr((current as any)[key], tVal); break;
+      case "ros":
+        result.ros = mergeRosRecord(current.ros, tVal as Record<string, string[]>); break;
       case "hpi":
       case "otherOrders":
       case "visitNote":

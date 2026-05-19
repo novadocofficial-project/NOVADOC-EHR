@@ -28,6 +28,7 @@ import { EMPTY_SOCIAL_HISTORY } from "@/pages/MedicalHistorySection";
 import { SoapDummyNote, SOAP_DUMMY } from "@/data/soapDummy";
 export type { SoapDummyNote } from "@/data/soapDummy";
 export { SOAP_DUMMY } from "@/data/soapDummy";
+import { ROS_SYSTEMS, BODY_SYSTEMS } from "@/pages/RosPeSection";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -91,6 +92,107 @@ export interface SignedRecord {
   type: string;
   doctor: string;
   signed: true;
+  noteState?: NoteState;
+}
+
+function LiveNotePreview({ note }: { note: NoteState }) {
+  const Section = ({ icon, title, color, children }: { icon: React.ReactNode; title: string; color: string; children: React.ReactNode }) => (
+    <div className="mb-5">
+      <div className="flex items-center gap-2 mb-2.5">
+        <span style={{ color }}>{icon}</span>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{title}</p>
+      </div>
+      {children}
+    </div>
+  );
+
+  const rosEntries = ROS_SYSTEMS.filter(s => (note.ros[s.id] ?? []).length > 0);
+  const peSystemObjs = BODY_SYSTEMS.filter(s => note.peSystems.includes(s.id));
+
+  return (
+    <div className="px-6 py-5 bg-slate-50 border-t border-slate-100">
+      <div className="grid grid-cols-2 gap-x-8">
+
+        {/* ══ LEFT ══ */}
+        <div>
+          {note.chiefComplaints.length > 0 && (
+            <Section icon={<ClipboardList className="h-3.5 w-3.5" />} title="Chief Complaint" color="#4982CF">
+              <div className="flex flex-wrap gap-1.5">
+                {note.chiefComplaints.map(c => (
+                  <span key={c} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">{c}</span>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {note.hpi.trim() && (
+            <Section icon={<FileText className="h-3.5 w-3.5" />} title="History of Present Illness" color="#6366f1">
+              <p className="text-[11px] leading-relaxed text-slate-600 bg-white border border-slate-200 rounded-lg px-3.5 py-2.5">{note.hpi}</p>
+            </Section>
+          )}
+
+          <Section icon={<Activity className="h-3.5 w-3.5" />} title="Review of Systems" color="#0ea5e9">
+            {rosEntries.length > 0 ? (
+              <div className="space-y-2">
+                {rosEntries.map(sys => (
+                  <div key={sys.id} className="bg-white border border-slate-100 rounded-lg px-3 py-2">
+                    <p className="text-[10px] font-black text-sky-700 mb-1.5 uppercase tracking-wide">{sys.label}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {(note.ros[sys.id] ?? []).map(symptom => (
+                        <span key={symptom} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">{symptom}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-400 italic">Not reviewed</p>
+            )}
+          </Section>
+        </div>
+
+        {/* ══ RIGHT ══ */}
+        <div>
+          <Section icon={<Stethoscope className="h-3.5 w-3.5" />} title="Physical Examination" color="#8b5cf6">
+            {peSystemObjs.length > 0 ? (
+              <div className="space-y-2">
+                {peSystemObjs.map(sys => {
+                  const saved = (note.peSavedData ?? {})[sys.id];
+                  return (
+                    <div key={sys.id} className="bg-white border border-slate-100 rounded-lg px-3 py-2">
+                      <p className="text-[10px] font-black text-violet-700 mb-1 uppercase tracking-wide">{sys.label}</p>
+                      {saved?.narrative ? (
+                        <p className="text-[11px] text-slate-600 leading-relaxed">{saved.narrative}</p>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 italic">No findings recorded</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-400 italic">No systems examined</p>
+            )}
+          </Section>
+
+          {note.visitNote?.trim() && (
+            <Section icon={<FileText className="h-3.5 w-3.5" />} title="Visit Note" color="#6366f1">
+              <p className="text-[11px] leading-relaxed text-slate-600 bg-white border border-slate-200 rounded-lg px-3.5 py-2.5">{note.visitNote}</p>
+            </Section>
+          )}
+        </div>
+
+      </div>
+
+      {/* Signature footer */}
+      <div className="mt-4 pt-4 border-t border-slate-200 flex items-center gap-2">
+        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+        <p className="text-[10px] text-slate-500">
+          Electronically signed and added to the patient record.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export interface AddendumRow {
@@ -1005,6 +1107,8 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
                       {isOpen && (
                         dummy
                           ? <SoapNotePreview note={dummy} />
+                          : (note as unknown as { noteState?: NoteState }).noteState
+                          ? <LiveNotePreview note={(note as unknown as { noteState: NoteState }).noteState} />
                           : (
                             <div className="px-6 py-5 bg-slate-50 border-t border-slate-100 flex flex-col items-center gap-3 text-center">
                               <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center">
