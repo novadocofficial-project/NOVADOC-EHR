@@ -8,7 +8,7 @@ import {
   Microscope, Eye, BookOpen, Target,
   ShieldAlert, Scissors, Send, BookMarked, ListChecks, MessageSquare,
   TestTube, HeartPulse, UserCheck, Home,
-  Printer, FilePenLine, GitBranch,
+  Printer, FilePenLine, GitBranch, Layers,
 } from "lucide-react";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useSoapNoteDraft, saveRoutingSnapshot, savePendingLabOrders, savePatientClinicalSnapshot } from "@/hooks/useSoapNoteDraft";
@@ -29,6 +29,8 @@ import { SoapDummyNote, SOAP_DUMMY } from "@/data/soapDummy";
 export type { SoapDummyNote } from "@/data/soapDummy";
 export { SOAP_DUMMY } from "@/data/soapDummy";
 import { ROS_SYSTEMS, BODY_SYSTEMS, PeSummary } from "@/pages/RosPeSection";
+import { loadForms } from "@/pages/SpecialtyFormsModule";
+import type { SpecialtyForm } from "@/pages/SpecialtyFormsModule";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -95,7 +97,60 @@ export interface SignedRecord {
   noteState?: NoteState;
 }
 
+function SpecialtyNotePreview({ form, data }: { form: SpecialtyForm; data: Record<string, unknown> }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
+        <Layers className="h-3.5 w-3.5 flex-shrink-0" style={{ color: ACCENT }} />
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{form.name}</p>
+      </div>
+      {form.sections.map(section => {
+        const filledFields = section.fields.filter(field => {
+          const v = data[field.id];
+          return v !== undefined && v !== "" && (!Array.isArray(v) || (v as string[]).length > 0);
+        });
+        if (filledFields.length === 0) return null;
+        return (
+          <div key={section.id}>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{section.title}</p>
+            <div className="grid grid-cols-2 gap-3">
+              {filledFields.map(field => {
+                const value = data[field.id];
+                return (
+                  <div key={field.id} className="bg-white border border-slate-100 rounded-lg px-3.5 py-2.5">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{field.label}</p>
+                    {Array.isArray(value) ? (
+                      <div className="flex flex-wrap gap-1">
+                        {(value as string[]).map(v => (
+                          <span key={v} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">{v}</span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-700 leading-relaxed whitespace-pre-wrap">{String(value)}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function LiveNotePreview({ note }: { note: NoteState }) {
+  const hasSpecialtyData = !!(
+    note.specialtyFormId &&
+    note.specialtyFormData &&
+    Object.values(note.specialtyFormData).some(
+      v => v !== undefined && v !== "" && (!Array.isArray(v) || (v as string[]).length > 0)
+    )
+  );
+  const specialtyForm: SpecialtyForm | null = hasSpecialtyData
+    ? loadForms().find(f => f.id === note.specialtyFormId) ?? null
+    : null;
+
   const Section = ({ icon, title, color, children }: { icon: React.ReactNode; title: string; color: string; children: React.ReactNode }) => (
     <div className="mb-5">
       <div className="flex items-center gap-2 mb-2.5">
@@ -111,6 +166,9 @@ function LiveNotePreview({ note }: { note: NoteState }) {
 
   return (
     <div className="px-6 py-5 bg-slate-50 border-t border-slate-100">
+      {specialtyForm ? (
+        <SpecialtyNotePreview form={specialtyForm} data={note.specialtyFormData!} />
+      ) : (
       <div className="grid grid-cols-2 gap-x-8">
 
         {/* ══ LEFT ══ */}
@@ -183,6 +241,7 @@ function LiveNotePreview({ note }: { note: NoteState }) {
         </div>
 
       </div>
+      )}
 
       {/* Signature footer */}
       <div className="mt-4 pt-4 border-t border-slate-200 flex items-center gap-2">

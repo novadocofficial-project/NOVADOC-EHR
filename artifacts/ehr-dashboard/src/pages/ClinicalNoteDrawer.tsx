@@ -92,6 +92,8 @@ export interface NoteState {
   vitals?:            VitalEntry[];
   /** Field responses when documenting via a Specialty Form. Keyed by FormField.id. */
   specialtyFormData?: Record<string, unknown>;
+  /** ID of the SpecialtyForm used for this note — stamped when activeMode is "specialty". */
+  specialtyFormId?: string;
 }
 
 export const EMPTY_NOTE: NoteState = {
@@ -102,7 +104,7 @@ export const EMPTY_NOTE: NoteState = {
   planTags: [],
   labOrders: [], labOrderDone: false, diagnoses: [], diagnosisDone: false,
   hpiSavedData: {}, hpiDoneComplaints: [], peSavedData: {}, peDoneSystemIds: [],
-  vitals: [],
+  vitals: [], specialtyFormData: {}, specialtyFormId: undefined,
 };
 
 const PLAN_TAGS = [
@@ -790,6 +792,18 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
   useEffect(() => {
     onNoteChangeRef.current?.(note);
   }, [note]);
+
+  // Stamp the specialty form ID onto the note so the signed-visit summary can
+  // look up the form structure (sections/field labels) from the form registry.
+  useEffect(() => {
+    if (assignedForm && activeMode === "specialty") {
+      setNote(prev =>
+        prev.specialtyFormId === assignedForm.id
+          ? prev
+          : { ...prev, specialtyFormId: assignedForm.id }
+      );
+    }
+  }, [assignedForm, activeMode]);
 
   function togglePlanTag(tag: string) {
     set("planTags", note.planTags.includes(tag)
