@@ -272,12 +272,25 @@ export interface RosConfigSystem {
 
 export const ROS_CONFIG_KEY = "ehr-ros-config-v1";
 
+function isValidRosConfig(v: unknown): v is RosConfigSystem[] {
+  if (!Array.isArray(v) || v.length === 0) return false;
+  return v.every(s =>
+    s !== null && typeof s === "object" &&
+    typeof (s as RosConfigSystem).id === "string" && (s as RosConfigSystem).id.length > 0 &&
+    typeof (s as RosConfigSystem).name === "string" &&
+    typeof (s as RosConfigSystem).abbr === "string" &&
+    typeof (s as RosConfigSystem).active === "boolean" &&
+    Array.isArray((s as RosConfigSystem).symptoms) &&
+    ((s as RosConfigSystem).symptoms as unknown[]).every(x => typeof x === "string")
+  );
+}
+
 export function loadRosConfig(): RosConfigSystem[] {
   try {
     const raw = localStorage.getItem(ROS_CONFIG_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as RosConfigSystem[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      const parsed: unknown = JSON.parse(raw);
+      if (isValidRosConfig(parsed)) return parsed;
     }
   } catch { /**/ }
   return ROS_SYSTEMS.map(s => ({
@@ -294,10 +307,11 @@ export function loadRosConfig(): RosConfigSystem[] {
 interface RosSymptomChecklistProps {
   checked:  Record<string, string[]>;
   onChange: (v: Record<string, string[]>) => void;
+  systems?: RosConfigSystem[];
 }
 
-export function RosSymptomChecklist({ checked, onChange }: RosSymptomChecklistProps) {
-  const [activeSystems] = useState<RosConfigSystem[]>(() => loadRosConfig().filter(s => s.active));
+export function RosSymptomChecklist({ checked, onChange, systems: systemsProp }: RosSymptomChecklistProps) {
+  const [activeSystems] = useState<RosConfigSystem[]>(() => systemsProp ?? loadRosConfig().filter(s => s.active));
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   function toggleSystem(id: string) {
@@ -411,12 +425,13 @@ export function RosSymptomChecklist({ checked, onChange }: RosSymptomChecklistPr
 // ─── ROS Summary (compact view for main drawer) ───────────────────────────────
 
 interface RosSummaryProps {
-  checked: Record<string, string[]>;
-  onEdit:  () => void;
+  checked:  Record<string, string[]>;
+  onEdit:   () => void;
+  systems?: RosConfigSystem[];
 }
 
-export function RosSummary({ checked, onEdit }: RosSummaryProps) {
-  const allSystems = loadRosConfig();
+export function RosSummary({ checked, onEdit, systems: systemsProp }: RosSummaryProps) {
+  const allSystems = systemsProp ?? loadRosConfig();
   const filledSystems = allSystems.filter(sys => sys.active && (checked[sys.id]?.length ?? 0) > 0);
 
   if (filledSystems.length === 0) {
@@ -477,9 +492,10 @@ interface RosDrawerProps {
   checked:  Record<string, string[]>;
   onChange: (v: Record<string, string[]>) => void;
   onClose:  () => void;
+  systems?: RosConfigSystem[];
 }
 
-export function RosDrawer({ checked, onChange, onClose }: RosDrawerProps) {
+export function RosDrawer({ checked, onChange, onClose, systems }: RosDrawerProps) {
   const totalChecked = Object.values(checked).reduce((acc, arr) => acc + (arr?.length ?? 0), 0);
   const systemsWithSymptoms = Object.keys(checked).filter(k => (checked[k]?.length ?? 0) > 0).length;
 
@@ -519,7 +535,7 @@ export function RosDrawer({ checked, onChange, onClose }: RosDrawerProps) {
 
       {/* Scrollable checklist */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        <RosSymptomChecklist checked={checked} onChange={onChange} />
+        <RosSymptomChecklist checked={checked} onChange={onChange} systems={systems} />
       </div>
     </div>
   );

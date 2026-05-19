@@ -437,6 +437,8 @@ function RosConfig() {
   const [saved, setSaved] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dropIdx, setDropIdx] = useState<number | null>(null);
+  const [symDrag, setSymDrag] = useState<{ sysId: string; idx: number } | null>(null);
+  const [symDrop, setSymDrop] = useState<{ sysId: string; idx: number } | null>(null);
 
   function toggleExpand(id: string) {
     setExpanded(prev => {
@@ -479,6 +481,11 @@ function RosConfig() {
     setSystems(ss => ss.map(s => s.id === sysId
       ? { ...s, symptoms: s.symptoms.filter((_, i) => i !== idx) }
       : s));
+    setSaved(false);
+  }
+
+  function reorderSymptoms(sysId: string, from: number, to: number) {
+    setSystems(ss => ss.map(s => s.id === sysId ? { ...s, symptoms: reorder(s.symptoms, from, to) } : s));
     setSaved(false);
   }
 
@@ -572,23 +579,38 @@ function RosConfig() {
                   {sys.symptoms.length === 0 && (
                     <p className="text-[11px] text-slate-400 italic mb-2">No symptoms yet — add one below.</p>
                   )}
-                  {sys.symptoms.map((symptom, si) => (
-                    <div key={si} className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-slate-300 w-5 text-right flex-shrink-0">{si + 1}</span>
-                      <input
-                        type="text"
-                        value={symptom}
-                        placeholder="Symptom…"
-                        onChange={e => updateSymptom(sys.id, si, e.target.value)}
-                        className="flex-1 text-[11px] text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1 focus:outline-none focus:border-[#4982CF] transition-colors"
-                      />
-                      <button
-                        onClick={() => deleteSymptom(sys.id, si)}
-                        className="p-1 rounded text-slate-300 hover:text-rose-400 transition-colors flex-shrink-0">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
+                  {sys.symptoms.map((symptom, si) => {
+                    const isSymOver = symDrop?.sysId === sys.id && symDrop.idx === si && symDrag?.idx !== si;
+                    return (
+                      <div
+                        key={si}
+                        draggable
+                        onDragStart={() => setSymDrag({ sysId: sys.id, idx: si })}
+                        onDragOver={e => { e.preventDefault(); setSymDrop({ sysId: sys.id, idx: si }); }}
+                        onDrop={() => {
+                          if (symDrag && symDrag.sysId === sys.id && symDrag.idx !== si) {
+                            reorderSymptoms(sys.id, symDrag.idx, si);
+                          }
+                          setSymDrag(null); setSymDrop(null);
+                        }}
+                        onDragEnd={() => { setSymDrag(null); setSymDrop(null); }}
+                        className={`flex items-center gap-2 rounded-lg px-0.5 transition-all ${isSymOver ? "ring-1 ring-[#4982CF] ring-dashed bg-[#4982CF]/5" : ""} ${symDrag?.sysId === sys.id && symDrag.idx === si ? "opacity-40" : ""}`}>
+                        <GripVertical className="h-3.5 w-3.5 text-slate-200 cursor-grab flex-shrink-0" />
+                        <input
+                          type="text"
+                          value={symptom}
+                          placeholder="Symptom…"
+                          onChange={e => updateSymptom(sys.id, si, e.target.value)}
+                          className="flex-1 text-[11px] text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1 focus:outline-none focus:border-[#4982CF] transition-colors"
+                        />
+                        <button
+                          onClick={() => deleteSymptom(sys.id, si)}
+                          className="p-1 rounded text-slate-300 hover:text-rose-400 transition-colors flex-shrink-0">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
                   <button
                     onClick={() => addSymptom(sys.id)}
                     className="flex items-center gap-1.5 text-[11px] font-bold text-[#4982CF] hover:text-[#3b6bb5] transition-colors mt-1 px-1">
