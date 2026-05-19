@@ -283,10 +283,9 @@ export function DoctorUser() {
     clearPendingLabOrders(id); // patient returned to doctor — lab panel no longer needs these
   }
 
-  function handleDoctorSign(id: string) {
+  function handleDoctorSign(id: string, noteState?: import("@/pages/ClinicalNoteDrawer").NoteState | null) {
     const now = new Date();
     const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-    const draft = readSoapDraft(id);
     const record: SignedRecord = {
       date: now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
       day:  days[now.getDay()],
@@ -294,7 +293,7 @@ export function DoctorUser() {
       type: "Consultation Note",
       doctor: "Dr. Emily Wong",
       signed: true,
-      ...(draft ? { noteState: draft } : {}),
+      ...(noteState ? { noteState } : {}),
     };
     setSignedRecordsMap(prev => {
       const next = new Map(prev);
@@ -334,7 +333,7 @@ export function DoctorUser() {
         onSaveAndClose={() => setFaceSheetEntry(null)}
         doctorSigned={isSigned}
         signedRecords={signedRecordsMap.get(liveEntry.id) ?? []}
-        onDoctorSign={() => handleDoctorSign(liveEntry.id)}
+        onDoctorSign={(noteState) => handleDoctorSign(liveEntry.id, noteState)}
       />
     );
   }

@@ -695,7 +695,7 @@ interface SoapNotePageProps {
   onSendToLab?: () => void;
   onDiscardLab?: () => void;
   onSaveAndClose?: () => void;
-  onDoctorSign?: () => void;
+  onDoctorSign?: (noteState: NoteState | null) => void;
   signedRecords?: SignedRecord[];
 }
 
@@ -1107,8 +1107,8 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
                       {isOpen && (
                         dummy
                           ? <SoapNotePreview note={dummy} />
-                          : (note as unknown as { noteState?: NoteState }).noteState
-                          ? <LiveNotePreview note={(note as unknown as { noteState: NoteState }).noteState} />
+                          : (!isAddendum && note.isNew && "noteState" in note && note.noteState)
+                          ? <LiveNotePreview note={(note as SignedRecord & { isNew: true; isAddendum: false }).noteState as NoteState} />
                           : (
                             <div className="px-6 py-5 bg-slate-50 border-t border-slate-100 flex flex-col items-center gap-3 text-center">
                               <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center">
@@ -1165,8 +1165,9 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
             if (draft && entry.patient?.mrn) {
               savePatientClinicalSnapshot(draft, entry.patient.mrn);
             }
+            const noteStateToPersist = draft;
             clearDraft();
-            onDoctorSign?.();
+            onDoctorSign?.(noteStateToPersist);
             setShowNoteDrawer(false);
           }}
           onClose={() => setShowNoteDrawer(false)}

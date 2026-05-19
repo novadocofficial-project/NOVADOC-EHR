@@ -495,7 +495,7 @@ interface PatientFaceSheetProps {
   onDiscardLab?: (id: string) => void;
   onSaveAndClose?: () => void;
   doctorSigned?: boolean;
-  onDoctorSign?: () => void;
+  onDoctorSign?: (noteState: import("@/pages/ClinicalNoteDrawer").NoteState | null) => void;
   signedRecords?: import("@/pages/SoapNotePage").SignedRecord[];
 }
 

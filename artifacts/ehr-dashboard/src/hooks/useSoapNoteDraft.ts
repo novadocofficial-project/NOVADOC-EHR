@@ -14,10 +14,21 @@ function draftKey(entryId: string) {
   return `${LS_PREFIX}${entryId}`;
 }
 
+function normalizeNoteState(raw: NoteState): NoteState {
+  return {
+    ...raw,
+    ros: (raw.ros && typeof raw.ros === "object" && !Array.isArray(raw.ros))
+      ? raw.ros as Record<string, string[]>
+      : {},
+    peSystems: Array.isArray(raw.peSystems) ? raw.peSystems : [],
+  };
+}
+
 function readDraft(key: string): NoteState | null {
   try {
     const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as NoteState) : null;
+    if (!raw) return null;
+    return normalizeNoteState(JSON.parse(raw) as NoteState);
   } catch {
     return null;
   }

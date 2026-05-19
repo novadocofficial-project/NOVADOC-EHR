@@ -315,11 +315,26 @@ function TemplatePreview({ tpl, onBack }: { tpl: SoapTemplate; onBack: () => voi
     const m = SECTION_META[key];
 
     let body: React.ReactNode = null;
-    if (key === "chiefComplaints" || key === "ros") {
+    if (key === "chiefComplaints") {
       body = (
         <ul className="list-disc list-inside space-y-0.5">
           {(v as string[]).map((s, i) => <li key={i} className="text-xs text-slate-700">{s}</li>)}
         </ul>
+      );
+    } else if (key === "ros") {
+      const rosRec = v as Record<string, string[]>;
+      const entries = Object.entries(rosRec).filter(([, symptoms]) => symptoms.length > 0);
+      body = entries.length > 0 ? (
+        <div className="space-y-1">
+          {entries.map(([sys, symptoms]) => (
+            <div key={sys}>
+              <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">{sys}: </span>
+              <span className="text-xs text-slate-700">{symptoms.join(", ")}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-slate-400 italic">No symptoms selected</p>
       );
     } else if (key === "hpi" || key === "otherOrders" || key === "visitNote") {
       body = <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{v as string}</p>;
@@ -807,8 +822,27 @@ function SectionContentEditor({ sectionKey, value, onChange }: {
       placeholder="Add complaint and press Enter…" color={m.color} />;
   }
   if (sectionKey === "ros") {
-    return <StringArrayEditor label="ROS" value={(value as string[]) ?? []} onChange={onChange as (v: string[]) => void}
-      placeholder="Add system finding and press Enter…" color={m.color} />;
+    const rosRec = (value as Record<string, string[]>) ?? {};
+    const hasData = Object.values(rosRec).some(arr => arr.length > 0);
+    return (
+      <div className="px-3 py-2.5 rounded-lg bg-sky-50 border border-sky-100">
+        {hasData ? (
+          <div className="space-y-1">
+            {Object.entries(rosRec).filter(([, s]) => s.length > 0).map(([sys, symptoms]) => (
+              <div key={sys}>
+                <span className="text-[10px] font-black uppercase tracking-wide text-sky-700">{sys}: </span>
+                <span className="text-xs text-slate-700">{symptoms.join(", ")}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[10px] text-sky-600 font-medium">No ROS symptoms selected in this template.</p>
+        )}
+        <p className="text-[10px] text-sky-500 mt-1.5 italic">
+          ROS is a symptom checklist — edit it by applying the template to a note, then modifying the checklist directly.
+        </p>
+      </div>
+    );
   }
   if (sectionKey === "carePlan") {
     return <CarePlanEditor value={(value as CarePlanData) ?? { tasks: [] }} onChange={onChange as (v: CarePlanData) => void} />;
