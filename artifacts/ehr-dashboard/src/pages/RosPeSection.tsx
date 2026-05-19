@@ -118,7 +118,7 @@ export const PE_TEMPLATES: Record<string, { section: string; items: string[] }[]
 
 // ─── PE Summary card ──────────────────────────────────────────────────────────
 
-function PeSummary({ systemId, savedData }: { systemId: string; savedData: Record<string, string> }) {
+export function PeSummary({ systemId, savedData }: { systemId: string; savedData: Record<string, string> }) {
   const template = PE_TEMPLATES[systemId] ?? [];
 
   const filledGroups = template

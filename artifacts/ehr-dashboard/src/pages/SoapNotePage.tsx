@@ -28,7 +28,7 @@ import { EMPTY_SOCIAL_HISTORY } from "@/pages/MedicalHistorySection";
 import { SoapDummyNote, SOAP_DUMMY } from "@/data/soapDummy";
 export type { SoapDummyNote } from "@/data/soapDummy";
 export { SOAP_DUMMY } from "@/data/soapDummy";
-import { ROS_SYSTEMS, BODY_SYSTEMS } from "@/pages/RosPeSection";
+import { ROS_SYSTEMS, BODY_SYSTEMS, PeSummary } from "@/pages/RosPeSection";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -158,14 +158,14 @@ function LiveNotePreview({ note }: { note: NoteState }) {
               <div className="space-y-2">
                 {peSystemObjs.map(sys => {
                   const saved = (note.peSavedData ?? {})[sys.id];
+                  const hasFindings = saved && Object.values(saved).some(v => v.trim());
                   return (
                     <div key={sys.id} className="bg-white border border-slate-100 rounded-lg px-3 py-2">
                       <p className="text-[10px] font-black text-violet-700 mb-1 uppercase tracking-wide">{sys.label}</p>
-                      {saved?.narrative ? (
-                        <p className="text-[11px] text-slate-600 leading-relaxed">{saved.narrative}</p>
-                      ) : (
-                        <p className="text-[10px] text-slate-400 italic">No findings recorded</p>
-                      )}
+                      {hasFindings
+                        ? <PeSummary systemId={sys.id} savedData={saved} />
+                        : <p className="text-[10px] text-slate-400 italic">No findings recorded</p>
+                      }
                     </div>
                   );
                 })}
