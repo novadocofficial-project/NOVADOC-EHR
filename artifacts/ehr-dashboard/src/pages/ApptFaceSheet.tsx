@@ -412,7 +412,6 @@ export function ApptFaceSheet({
         entry={apptToEntry(appt)}
         onBack={() => setSoapNoteOpen(false)}
         signedRecords={apptSignedRecords}
-        onSaveAndClose={() => setSoapNoteOpen(false)}
         onDoctorSign={(noteState) => {
           const now = new Date();
           setApptSignedRecords(prev => [...prev, {
