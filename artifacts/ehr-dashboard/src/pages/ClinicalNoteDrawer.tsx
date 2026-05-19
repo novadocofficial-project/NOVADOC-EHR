@@ -1004,7 +1004,9 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                 ? { backgroundColor: "#4982CF15", borderColor: "#4982CF40", color: "#4982CF" }
                 : { borderColor: "#e2e8f0", color: "#64748b" }}>
               <Layers className="h-3.5 w-3.5" />
-              {activeMode === "specialty" ? "Switch to SOAP" : "Specialty Form"}
+              {activeMode === "specialty"
+                ? "SOAP Note"
+                : assignedForm.name.length > 24 ? assignedForm.name.slice(0, 22) + "…" : assignedForm.name}
             </button>
           )}
           <button
