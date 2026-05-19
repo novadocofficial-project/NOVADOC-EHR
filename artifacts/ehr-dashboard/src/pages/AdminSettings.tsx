@@ -62,6 +62,7 @@ import { PhysicalExamBuilderModule } from "@/pages/PhysicalExamBuilderModule";
 import { TemplateManagerModule } from "@/pages/TemplateManagerModule";
 import { ClinicalLibrariesModule } from "@/pages/ClinicalLibrariesModule";
 import { ClinicalGoalsLibraryModule } from "@/pages/ClinicalGoalsLibraryModule";
+import { SpecialtyFormsModule } from "@/pages/SpecialtyFormsModule";
 import { PermissionsModule } from "@/pages/PermissionsModule";
 import { FormularyManagementModule } from "@/pages/FormularyManagementModule";
 import { FormularyPartnersModule, FORMULARY_SEED_PARTNERS } from "@/pages/FormularyPartnersModule";
@@ -216,7 +217,7 @@ type ActiveModule =
   | "branches"
   | "visit-types" | "workflow-config" | "counter-types" | "counters"
   | "token-settings" | "queue-behavior" | "locking-settings" | "display-settings" | "doctor-partitions" | "routing-rules"
-  | "soap-note-structure" | "soap-vitals-config" | "hpi-templates" | "pe-builder" | "template-manager"
+  | "soap-note-structure" | "soap-vitals-config" | "hpi-templates" | "pe-builder" | "template-manager" | "specialty-forms"
   | "nursing-triage" | "nursing-history" | "nursing-vitals"
   | "nursing-procedures"
   | "clinical-complaints" | "clinical-icd10" | "clinical-poc" | "clinical-ros"
@@ -706,6 +707,7 @@ export function AdminSettings() {
                 {subNavItem("goals-library",         <Target className="h-3.5 w-3.5" />,        "Patient Goals")}
                 {subNavItem("referral-destinations", <MapPin className="h-3.5 w-3.5" />,        "Referral Destinations")}
                 {subNavItem("template-manager",      <FileText className="h-3.5 w-3.5" />,      "Template Manager")}
+                {subNavItem("specialty-forms",       <Layers   className="h-3.5 w-3.5" />,      "Specialty Forms")}
               </div>
             )}
 
@@ -1023,6 +1025,7 @@ export function AdminSettings() {
 
           {activeModule === "pe-builder" && <PhysicalExamBuilderModule />}
           {activeModule === "template-manager" && <TemplateManagerModule />}
+          {activeModule === "specialty-forms" && <SpecialtyFormsModule doctors={doctors} />}
 
           {(activeModule === "care-plan-library"
             || activeModule === "goals-library"
