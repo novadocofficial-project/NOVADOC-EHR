@@ -49,9 +49,9 @@ const MODULES: Mod[] = [
   { id: "patient-queue",    label: "Patient Queue",                  icon: Ticket,       iconColor: "#4982CF", iconBg: "#dbeafe", active: true,  href: "/queue/token/single", desc: "Token management & live queue" },
   { id: "primary-hc",       label: "Primary Healthcare",             icon: Stethoscope,  iconColor: "#059669", iconBg: "#d1fae5", active: true,  href: "/queue/token/multistep", desc: "OPD multi-step visit workflow" },
   { id: "ncd-clinic",       label: "NCD Clinic",                     icon: Activity,     iconColor: "#d97706", iconBg: "#fef3c7", active: false },
-  { id: "specialist-care",  label: "Specialist Care Modules",        icon: ClipboardList,iconColor: "#7c3aed", iconBg: "#ede9fe", active: false },
+  { id: "specialist-care",  label: "Specialist Care Modules",        icon: ClipboardList,iconColor: "#7c3aed", iconBg: "#ede9fe", active: true,  href: "/admin?section=specialty-forms", desc: "Manage specialty consultation forms" },
   { id: "care-manager",     label: "Care Manager",                   icon: UserCheck,    iconColor: "#0891b2", iconBg: "#cffafe", active: false },
-  { id: "social-det",       label: "Social Determinants",            icon: Globe,        iconColor: "#2563eb", iconBg: "#dbeafe", active: false },
+  { id: "social-det",       label: "Social Determinants",            icon: Globe,        iconColor: "#2563eb", iconBg: "#dbeafe", active: true,  href: "/admin?section=reg-demographics", desc: "Patient registration & demographics" },
   { id: "preventive-hp",    label: "Preventive Health Protocol",     icon: ShieldCheck,  iconColor: "#059669", iconBg: "#d1fae5", active: false },
   { id: "home-hc",          label: "Home Healthcare",                icon: HomeIcon,     iconColor: "#ea580c", iconBg: "#ffedd5", active: false },
   { id: "tele-clinic",      label: "Tele-Clinic",                    icon: Video,        iconColor: "#0d9488", iconBg: "#ccfbf1", active: false },
@@ -178,7 +178,7 @@ export function Home() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Available Modules</p>
           <span className="text-[10px] text-slate-300">—</span>
           <p className="text-[10px] text-slate-400">
-            <span className="font-semibold text-emerald-600">3 active</span> · 18 coming soon
+            <span className="font-semibold text-emerald-600">5 active</span> · 16 coming soon
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-3">
