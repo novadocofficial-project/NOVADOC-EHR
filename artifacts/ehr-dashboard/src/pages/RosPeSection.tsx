@@ -475,6 +475,12 @@ export function RosDrawer({ checked, onChange, onClose }: RosDrawerProps) {
         )}
         <button
           onClick={onClose}
+          className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 flex-shrink-0"
+          style={{ backgroundColor: ACCENT_PE }}>
+          <CheckCircle2 className="h-3.5 w-3.5" /> Done
+        </button>
+        <button
+          onClick={onClose}
           className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
           <X className="h-4 w-4" />
         </button>
@@ -483,16 +489,6 @@ export function RosDrawer({ checked, onChange, onClose }: RosDrawerProps) {
       {/* Scrollable checklist */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <RosSymptomChecklist checked={checked} onChange={onChange} />
-      </div>
-
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-slate-100 flex-shrink-0 flex justify-end">
-        <button
-          onClick={onClose}
-          className="flex items-center gap-1.5 text-[11px] font-black px-4 py-2 rounded-lg text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: ACCENT_PE }}>
-          <CheckCircle2 className="h-3.5 w-3.5" /> Done
-        </button>
       </div>
     </div>
   );
