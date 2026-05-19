@@ -886,7 +886,7 @@ export function AdminSettings() {
         <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","care-plan-library","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","formulary-partners","imaging-tests","imaging-reasons","imaging-partners","consumables-master","consumables-providers","lab-order-sets","imaging-order-sets","nursing-triage"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
 
           {activeModule === "doctors" && (
-            <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} />
+            <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} onNavigateToForms={() => setActiveModule("specialty-forms")} />
           )}
           {activeModule === "specialties" && (
             <SpecialtiesModule departments={departments} setDepartments={setDepartments} />

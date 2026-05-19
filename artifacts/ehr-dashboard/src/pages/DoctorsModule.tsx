@@ -13,6 +13,7 @@ import {
   HelpCircle,
   GraduationCap,
   Wrench,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,15 +168,27 @@ function FormField({ label, children, required }: { label: string; children: Rea
   );
 }
 
+type AssignedForm = { id: string; name: string; sections: { id: string }[]; assignedDoctorIds: string[]; status: string };
+
 export function DoctorsModule({
   departments,
   doctors,
   setDoctors,
+  onNavigateToForms,
 }: {
   departments: Dept[];
   doctors: Doctor[];
   setDoctors: React.Dispatch<React.SetStateAction<Doctor[]>>;
+  onNavigateToForms?: () => void;
 }) {
+  const [specialtyForms] = useState<AssignedForm[]>(() => {
+    try {
+      const raw = localStorage.getItem("ehr-specialty-forms-v1");
+      if (raw) return JSON.parse(raw) as AssignedForm[];
+    } catch {}
+    return [];
+  });
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("biography");
@@ -354,6 +367,20 @@ export function DoctorsModule({
                   {doc.specialties.length > 0 && (
                     <p className="mt-1 truncate text-[10px] text-slate-500">{doc.specialties.slice(0, 2).join(", ")}{doc.specialties.length > 2 ? ` +${doc.specialties.length - 2}` : ""}</p>
                   )}
+                  {(() => {
+                    const docForms = specialtyForms.filter(f => f.assignedDoctorIds.includes(doc.id));
+                    if (!docForms.length) return null;
+                    return (
+                      <button
+                        type="button"
+                        onClick={onNavigateToForms}
+                        className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-[#4982CF] hover:underline"
+                      >
+                        <BookOpen className="h-2.5 w-2.5 shrink-0" />
+                        {docForms.length === 1 ? docForms[0].name : `${docForms.length} specialty forms`}
+                      </button>
+                    );
+                  })()}
                 </div>
 
                 <div className="col-span-2">
@@ -624,6 +651,53 @@ export function DoctorsModule({
                       </div>
                     </div>
                   )}
+                </div>
+                <Separator />
+
+                <div>
+                  <SectionLabel>Specialty Forms</SectionLabel>
+                  {(() => {
+                    const docForms = editingId
+                      ? specialtyForms.filter(f => f.assignedDoctorIds.includes(editingId))
+                      : [];
+                    if (!editingId) {
+                      return (
+                        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-center">
+                          <p className="text-xs text-slate-400">Save the doctor first, then assign specialty forms in the Specialty Forms module.</p>
+                        </div>
+                      );
+                    }
+                    if (docForms.length === 0) {
+                      return (
+                        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-center">
+                          <p className="text-xs text-slate-400">No specialty forms assigned to this doctor.</p>
+                          {onNavigateToForms && (
+                            <button type="button" onClick={onNavigateToForms} className="mt-1.5 text-xs font-semibold text-[#4982CF] hover:underline">
+                              Manage in Specialty Forms →
+                            </button>
+                          )}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="space-y-2">
+                        {docForms.map(f => (
+                          <div key={f.id} className="flex items-center gap-3 rounded-lg border border-[#4982CF]/20 bg-[#4982CF]/5 px-4 py-2.5">
+                            <BookOpen className="h-4 w-4 shrink-0 text-[#4982CF]" />
+                            <div className="flex-1 min-w-0">
+                              <p className="truncate text-sm font-semibold text-slate-800">{f.name}</p>
+                              <p className="text-[10px] text-slate-500">{f.sections.length} section{f.sections.length !== 1 ? "s" : ""} · {f.status === "published" ? "Published" : "Draft"}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {onNavigateToForms && (
+                          <button type="button" onClick={onNavigateToForms} className="text-xs font-semibold text-[#4982CF] hover:underline">
+                            Manage in Specialty Forms →
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </TabsContent>
 
