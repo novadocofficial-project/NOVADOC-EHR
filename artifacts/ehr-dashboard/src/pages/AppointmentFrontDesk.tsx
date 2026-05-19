@@ -9,6 +9,7 @@ import {
   Banknote, Shield, Building2, Heart, FileSignature, Receipt, Activity,
   ClipboardList,
 } from "lucide-react";
+import { ApptFaceSheet } from "@/pages/ApptFaceSheet";
 import { ApptNursingDrawer } from "@/pages/ApptNursingDrawer";
 import { BillingContent, ReceiptInfo, printThermalReceipt } from "@/pages/FrontDeskUser";
 import { Button } from "@/components/ui/button";
@@ -2041,7 +2042,7 @@ const COUNSELLING_PRIORITY_CONFIG: Record<"normal" | "urgent" | "emergency", { l
   emergency: { label: "Emergency", cls: "bg-red-50    text-red-600   border-red-200"   },
 };
 
-function CounsellingView({ appointments }: { appointments: Appointment[] }) {
+function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appointment[]; onOpenFacesheet: (appt: Appointment) => void }) {
   const sorted = [...appointments].sort((a, b) => a.slotStart.localeCompare(b.slotStart));
 
   if (sorted.length === 0) {
@@ -2108,10 +2109,10 @@ function CounsellingView({ appointments }: { appointments: Appointment[] }) {
                 </td>
                 <td className="px-4 py-3">
                   <button
-                    className="h-8 w-8 rounded-md border border-slate-200 bg-white hover:bg-slate-50 hover:border-[#4982CF] flex items-center justify-center transition-colors"
-                    title="View patient profile"
+                    onClick={() => onOpenFacesheet(appt)}
+                    className="flex items-center gap-1.5 h-8 px-3 rounded-md border border-[#4982CF]/40 bg-white text-[#4982CF] hover:bg-blue-50 hover:border-[#4982CF] text-xs font-bold transition-colors whitespace-nowrap"
                   >
-                    <User className="h-3.5 w-3.5 text-slate-500" />
+                    <BookOpen className="h-3.5 w-3.5" /> Open Facesheet
                   </button>
                 </td>
               </tr>
@@ -2190,6 +2191,9 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
 
   // View drawer (read-only)
   const [viewAppt, setViewAppt] = useState<Appointment | null>(null);
+
+  // Appointment Facesheet (page-replacement, counselling view only)
+  const [facesheetAppt, setFacesheetAppt] = useState<Appointment | null>(null);
 
   // Nursing drawer (nursing role only)
   const [nursingAppt, setNursingAppt] = useState<Appointment | null>(null);
@@ -2347,6 +2351,18 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
     { key: "no_show",     short: "No Show"     },
     { key: "checked_out", short: "Checked Out" },
   ];
+
+  // ── Facesheet page-replacement (counselling view) ──────────────────────────
+  if (facesheetAppt) {
+    const doctorName = appointmentDoctors.find(d => d.id === facesheetAppt.doctorId)?.name ?? "Doctor";
+    return (
+      <ApptFaceSheet
+        appt={facesheetAppt}
+        doctorName={doctorName}
+        onBack={() => setFacesheetAppt(null)}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
@@ -2570,6 +2586,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
             appointments={appointments.filter(a =>
               a.date === todayStr() && a.doctorId === selectedDoctorId
             )}
+            onOpenFacesheet={setFacesheetAppt}
           />
         ) : !selectedDoctor ? (
           <div className="text-center py-20 text-slate-400">Select a doctor to view their calendar.</div>
