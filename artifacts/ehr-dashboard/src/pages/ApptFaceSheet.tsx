@@ -6,10 +6,13 @@ import {
   CalendarDays, Stethoscope, Pill, FlaskConical, FileText,
   FolderOpen, ClipboardList, CheckCircle2, Syringe, Zap,
   ArrowUpRight, Scissors, ShieldCheck, ExternalLink, Clock,
-  Maximize2, Minimize2, ChevronDown,
+  Maximize2, Minimize2, ChevronDown, FilePlus,
 } from "lucide-react";
 import { SOAP_DUMMY } from "@/data/soapDummy";
 import type { Appointment } from "@/hooks/useAppointments";
+import { SoapNotePage } from "@/pages/SoapNotePage";
+import type { SignedRecord } from "@/pages/SoapNotePage";
+import type { MultiEntry } from "@/hooks/useMultiStepQueue";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, RadialBarChart, RadialBar,
@@ -350,6 +353,40 @@ function VitalsTooltip({ active, payload, label }: { active?: boolean; payload?:
   );
 }
 
+// ─── Appointment → MultiEntry adapter ────────────────────────────────────────
+
+function apptToEntry(appt: Appointment): MultiEntry {
+  return {
+    id:               appt.id,
+    tokenNumber:      appt.id,
+    displayNum:       0,
+    patientName:      appt.patientName,
+    patientMrn:       appt.patientMrn,
+    patient: {
+      id:     appt.id,
+      mrn:    appt.patientMrn,
+      name:   appt.patientName,
+      phone:  appt.patientPhone,
+      dob:    "",
+      gender: "M",
+    },
+    status:           "called",
+    step:             1,
+    totalSteps:       1,
+    createdAt:        new Date(appt.createdAt),
+    visitTypeId:      "",
+    callCount:        0,
+    skipped:          false,
+    billingCompleted: false,
+    callTimestamp:    null,
+    pendingLab:       false,
+    pendingPharmacy:  false,
+    labResultsReady:  false,
+    labRoundCount:    0,
+    labSamplesCollected: false,
+  };
+}
+
 // ─── Appointment Facesheet ────────────────────────────────────────────────────
 
 export function ApptFaceSheet({
@@ -362,10 +399,36 @@ export function ApptFaceSheet({
   onBack: () => void;
 }) {
   const [showComplaintsDrawer, setShowComplaintsDrawer] = useState(false);
+  const [soapNoteOpen,        setSoapNoteOpen]         = useState(false);
+  const [apptSignedRecords,   setApptSignedRecords]    = useState<SignedRecord[]>([]);
 
   const name    = appt.patientName || "Patient";
   const mrn     = appt.patientMrn  || "—";
   const phone   = appt.patientPhone || "—";
+
+  if (soapNoteOpen) {
+    return (
+      <SoapNotePage
+        entry={apptToEntry(appt)}
+        onBack={() => setSoapNoteOpen(false)}
+        signedRecords={apptSignedRecords}
+        onSaveAndClose={() => setSoapNoteOpen(false)}
+        onDoctorSign={(noteState) => {
+          const now = new Date();
+          setApptSignedRecords(prev => [...prev, {
+            date:   now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+            day:    now.toLocaleDateString("en-US", { weekday: "long" }),
+            time:   now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+            type:   "Consultation Note",
+            doctor: doctorName,
+            signed: true,
+            noteState: noteState ?? undefined,
+          }]);
+          setSoapNoteOpen(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="flex h-screen flex-col bg-slate-50 overflow-hidden">
@@ -396,6 +459,14 @@ export function ApptFaceSheet({
                 </span>
               </>
             )}
+            <div className="w-px h-4 bg-slate-200 mx-1" />
+            <button
+              onClick={() => setSoapNoteOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-[11px] font-bold transition-opacity hover:opacity-90"
+              style={{ backgroundColor: ACCENT }}>
+              <FilePlus className="h-3.5 w-3.5" />
+              Add Health Record
+            </button>
           </div>
         </div>
 
