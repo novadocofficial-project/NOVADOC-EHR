@@ -131,7 +131,7 @@ const ALL_EHR_KEYS = [
   "ehr-triage-sessions", "ehr-nursing-task-exec-v1", "ehr-careplan-bridge-v1",
   "ehr-nursing-history-template-sel", "ehr-nursing-proc-template-sel",
   "ehr-patients-v1", "ehr-appointments-v1", "ehr-appt-invoices", "ehr-appt-nursing-v1",
-  "ehr-reg-form-draft", "ehr-specialty-forms-v1",
+  "ehr-reg-form-draft", "ehr-specialty-forms-v1", "ehr-ros-config-v1",
 ] as const;
 
 export type Specialty = {

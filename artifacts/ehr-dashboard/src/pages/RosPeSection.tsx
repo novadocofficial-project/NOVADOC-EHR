@@ -260,6 +260,35 @@ export const ROS_SYSTEMS: RosSystem[] = [
   },
 ];
 
+// ─── ROS Config (admin-configurable) ─────────────────────────────────────────
+
+export interface RosConfigSystem {
+  id:       string;
+  name:     string;
+  abbr:     string;
+  active:   boolean;
+  symptoms: string[];
+}
+
+export const ROS_CONFIG_KEY = "ehr-ros-config-v1";
+
+export function loadRosConfig(): RosConfigSystem[] {
+  try {
+    const raw = localStorage.getItem(ROS_CONFIG_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as RosConfigSystem[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /**/ }
+  return ROS_SYSTEMS.map(s => ({
+    id:       s.id,
+    name:     s.label,
+    abbr:     s.id.toUpperCase().replace(/_/g, "").slice(0, 6),
+    active:   true,
+    symptoms: s.symptoms,
+  }));
+}
+
 // ─── ROS Symptom Checklist ─────────────────────────────────────────────────────
 
 interface RosSymptomChecklistProps {
@@ -268,6 +297,7 @@ interface RosSymptomChecklistProps {
 }
 
 export function RosSymptomChecklist({ checked, onChange }: RosSymptomChecklistProps) {
+  const [activeSystems] = useState<RosConfigSystem[]>(() => loadRosConfig().filter(s => s.active));
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   function toggleSystem(id: string) {
@@ -297,7 +327,7 @@ export function RosSymptomChecklist({ checked, onChange }: RosSymptomChecklistPr
           {totalChecked} symptom{totalChecked !== 1 ? "s" : ""} reported across {Object.keys(checked).filter(k => (checked[k]?.length ?? 0) > 0).length} system{Object.keys(checked).filter(k => (checked[k]?.length ?? 0) > 0).length !== 1 ? "s" : ""}
         </p>
       )}
-      {ROS_SYSTEMS.map(sys => {
+      {activeSystems.map(sys => {
         const checkedSymptoms = checked[sys.id] ?? [];
         const count = checkedSymptoms.length;
         const isExpanded = expanded[sys.id] ?? false;
@@ -320,7 +350,7 @@ export function RosSymptomChecklist({ checked, onChange }: RosSymptomChecklistPr
               }
               {/* System name */}
               <span className={`text-xs font-bold flex-1 ${count > 0 ? "text-sky-700" : "text-slate-600"}`}>
-                {sys.label}
+                {sys.name}
               </span>
               {/* Count badge */}
               {count > 0 && (
@@ -386,7 +416,8 @@ interface RosSummaryProps {
 }
 
 export function RosSummary({ checked, onEdit }: RosSummaryProps) {
-  const filledSystems = ROS_SYSTEMS.filter(sys => (checked[sys.id]?.length ?? 0) > 0);
+  const allSystems = loadRosConfig();
+  const filledSystems = allSystems.filter(sys => sys.active && (checked[sys.id]?.length ?? 0) > 0);
 
   if (filledSystems.length === 0) {
     return (
@@ -421,7 +452,7 @@ export function RosSummary({ checked, onEdit }: RosSummaryProps) {
           const symptoms = checked[sys.id] ?? [];
           return (
             <div key={sys.id} className="rounded-lg bg-sky-50/60 border border-sky-100 px-3 py-2">
-              <p className="text-[9px] font-black uppercase tracking-wider text-sky-500 mb-1.5">{sys.label}</p>
+              <p className="text-[9px] font-black uppercase tracking-wider text-sky-500 mb-1.5">{sys.name}</p>
               <div className="flex flex-wrap gap-1">
                 {symptoms.map(s => (
                   <span

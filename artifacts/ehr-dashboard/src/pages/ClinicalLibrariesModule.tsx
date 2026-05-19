@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { loadRosConfig, RosConfigSystem, ROS_CONFIG_KEY } from "@/pages/RosPeSection";
 import {
   Plus, Trash2, Edit2, Save, X, GripVertical, Search, Star,
   ChevronDown, CheckCircle2, AlertCircle, Eye,
@@ -430,94 +431,188 @@ function PocTestConfig() {
 
 // ─── ④ ROS System Configuration ──────────────────────────────────────────────
 
-interface RosSystem { id: string; name: string; abbr: string; active: boolean; }
-
-const SEED_ROS: RosSystem[] = [
-  { id: "r1",  name: "General",              abbr: "GEN",   active: true  },
-  { id: "r2",  name: "Head, Eyes, Ears, Nose & Throat", abbr: "HEENT", active: true  },
-  { id: "r3",  name: "Cardiovascular System",abbr: "CVS",   active: true  },
-  { id: "r4",  name: "Respiratory System",   abbr: "RESP",  active: true  },
-  { id: "r5",  name: "Gastrointestinal",     abbr: "GIT",   active: true  },
-  { id: "r6",  name: "Genitourinary",        abbr: "GU",    active: true  },
-  { id: "r7",  name: "Musculoskeletal",      abbr: "MSK",   active: true  },
-  { id: "r8",  name: "Neurological",         abbr: "NEURO", active: true  },
-  { id: "r9",  name: "Psychiatric",          abbr: "PSY",   active: true  },
-  { id: "r10", name: "Integumentary (Skin)", abbr: "SKIN",  active: true  },
-  { id: "r11", name: "Endocrine",            abbr: "ENDO",  active: false },
-  { id: "r12", name: "Haematologic/Lymphatic",abbr: "HAEM", active: true  },
-  { id: "r13", name: "Allergic / Immunologic",abbr: "ALLG", active: false },
-];
-
-function autoAbbr(name: string) {
-  const words = name.trim().split(/\s+/);
-  return words.slice(0, 4).map(w => w[0] || "").join("").toUpperCase().slice(0, 6);
-}
-
 function RosConfig() {
-  const [systems, setSystems] = useState<RosSystem[]>(SEED_ROS);
-  const [adding, setAdding]   = useState(false);
-  const [draft, setDraft]     = useState<{ name: string; abbr: string }>({ name: "", abbr: "" });
-  const [editId, setEditId]   = useState<string | null>(null);
+  const [systems, setSystems] = useState<RosConfigSystem[]>(() => loadRosConfig());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [saved, setSaved] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dropIdx, setDropIdx] = useState<number | null>(null);
 
-  function startAdd() { setDraft({ name: "", abbr: "" }); setAdding(true); setEditId(null); }
-  function saveAdd() {
-    if (!draft.name.trim()) return;
-    const abbr = draft.abbr.trim() || autoAbbr(draft.name);
-    setSystems(ss => [...ss, { id: uid(), name: draft.name.trim(), abbr, active: true }]);
-    setAdding(false);
+  function toggleExpand(id: string) {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   }
-  function saveEdit(id: string) {
-    const abbr = draft.abbr.trim() || autoAbbr(draft.name);
-    setSystems(ss => ss.map(s => s.id === id ? { ...s, name: draft.name.trim(), abbr } : s));
-    setEditId(null);
+
+  function updateSystem(id: string, patch: Partial<RosConfigSystem>) {
+    setSystems(ss => ss.map(s => s.id === id ? { ...s, ...patch } : s));
+    setSaved(false);
+  }
+
+  function deleteSystem(id: string) {
+    setSystems(ss => ss.filter(s => s.id !== id));
+    setSaved(false);
+  }
+
+  function addSystem() {
+    const id = uid();
+    setSystems(ss => [...ss, { id, name: "New System", abbr: "SYS", active: true, symptoms: [] }]);
+    setSaved(false);
+    setExpanded(prev => new Set([...prev, id]));
+  }
+
+  function addSymptom(sysId: string) {
+    setSystems(ss => ss.map(s => s.id === sysId ? { ...s, symptoms: [...s.symptoms, ""] } : s));
+    setSaved(false);
+  }
+
+  function updateSymptom(sysId: string, idx: number, val: string) {
+    setSystems(ss => ss.map(s => s.id === sysId
+      ? { ...s, symptoms: s.symptoms.map((sym, i) => i === idx ? val : sym) }
+      : s));
+    setSaved(false);
+  }
+
+  function deleteSymptom(sysId: string, idx: number) {
+    setSystems(ss => ss.map(s => s.id === sysId
+      ? { ...s, symptoms: s.symptoms.filter((_, i) => i !== idx) }
+      : s));
+    setSaved(false);
+  }
+
+  function handleSave() {
+    try { localStorage.setItem(ROS_CONFIG_KEY, JSON.stringify(systems)); } catch { /**/ }
+    setSaved(true);
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={startAdd} className="bg-[#4982CF] hover:bg-[#3b6bb5] text-white h-8 text-xs gap-1.5"><Plus className="h-3.5 w-3.5" /> Add System</Button>
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Configure which systems appear in the ROS drawer and manage their symptom checklists.
+          Inactive systems are hidden from doctors.
+        </p>
+        <Button onClick={addSystem} className="bg-[#4982CF] hover:bg-[#3b6bb5] text-white h-8 text-xs gap-1.5 flex-shrink-0">
+          <Plus className="h-3.5 w-3.5" /> Add System
+        </Button>
       </div>
 
-      {adding && (
-        <div className="bg-blue-50/60 border border-[#4982CF]/30 rounded-xl p-3 flex items-center gap-3">
-          <Input value={draft.name} onChange={e => { const n = e.target.value; setDraft(d => ({ name: n, abbr: d.abbr || autoAbbr(n) })); }} placeholder="System name…" className="h-8 text-xs flex-1" autoFocus />
-          <Input value={draft.abbr} onChange={e => setDraft(d => ({ ...d, abbr: e.target.value.slice(0, 6).toUpperCase() }))} placeholder="ABBR" className="h-8 text-xs w-24 font-mono" />
-          <Button onClick={saveAdd} className="h-8 text-xs bg-[#4982CF] text-white px-3">Save</Button>
-          <Button variant="outline" onClick={() => setAdding(false)} className="h-8 text-xs px-3">Cancel</Button>
-        </div>
-      )}
-
       <div className="space-y-1.5">
-        {systems.map((s, i) => (
-          <div key={s.id} draggable
-            onDragStart={() => setDragIdx(i)}
-            onDragOver={e => { e.preventDefault(); setDropIdx(i); }}
-            onDrop={() => { if (dragIdx !== null && dragIdx !== i) setSystems(ss => reorder(ss, dragIdx, i)); setDragIdx(null); setDropIdx(null); }}
-            onDragEnd={() => { setDragIdx(null); setDropIdx(null); }}
-            className={`flex items-center gap-3 bg-white border rounded-xl px-3 py-2 shadow-sm transition-all group ${dropIdx === i && dragIdx !== i ? "border-[#4982CF] border-dashed" : "border-slate-100"}`}>
-            <GripVertical className="h-4 w-4 text-slate-300 cursor-grab flex-shrink-0" />
-            {editId === s.id ? (
-              <>
-                <Input value={draft.name} onChange={e => { const n = e.target.value; setDraft(d => ({ name: n, abbr: d.abbr || autoAbbr(n) })); }} className="h-7 text-xs flex-1" autoFocus />
-                <Input value={draft.abbr} onChange={e => setDraft(d => ({ ...d, abbr: e.target.value.slice(0, 6).toUpperCase() }))} className="h-7 text-xs w-20 font-mono" />
-                <Button onClick={() => saveEdit(s.id)} className="h-7 text-xs bg-[#4982CF] text-white px-2">Save</Button>
-                <Button variant="outline" onClick={() => setEditId(null)} className="h-7 text-xs px-2">Cancel</Button>
-              </>
-            ) : (
-              <>
-                <span className="flex-1 text-xs font-semibold text-slate-800">{s.name}</span>
-                <span className="font-mono text-[10px] font-bold text-[#4982CF] bg-[#4982CF]/8 px-2 py-0.5 rounded">{s.abbr}</span>
-                <Switch checked={s.active} onCheckedChange={v => setSystems(ss => ss.map(x => x.id === s.id ? { ...x, active: v } : x))} className="data-[state=checked]:bg-[#4982CF]" />
-                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => { setDraft({ name: s.name, abbr: s.abbr }); setEditId(s.id); }} className="p-1 rounded hover:bg-slate-100 text-slate-300 hover:text-[#4982CF]"><Edit2 className="h-3 w-3" /></button>
-                  <button onClick={() => setSystems(ss => ss.filter(x => x.id !== s.id))} className="p-1 rounded hover:bg-rose-50 text-slate-300 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button>
+        {systems.map((sys, i) => {
+          const isExpanded = expanded.has(sys.id);
+          const isDragOver = dropIdx === i && dragIdx !== i;
+          return (
+            <div
+              key={sys.id}
+              draggable
+              onDragStart={() => setDragIdx(i)}
+              onDragOver={e => { e.preventDefault(); setDropIdx(i); }}
+              onDrop={() => {
+                if (dragIdx !== null && dragIdx !== i) {
+                  setSystems(ss => reorder(ss, dragIdx, i));
+                  setSaved(false);
+                }
+                setDragIdx(null); setDropIdx(null);
+              }}
+              onDragEnd={() => { setDragIdx(null); setDropIdx(null); }}
+              className={`bg-white border rounded-xl shadow-sm transition-all ${isDragOver ? "border-[#4982CF] border-dashed" : "border-slate-100"} ${dragIdx === i ? "opacity-40" : ""}`}
+            >
+              {/* System header row */}
+              <div className="flex items-center gap-2.5 px-3 py-2.5">
+                <GripVertical className="h-4 w-4 text-slate-300 cursor-grab flex-shrink-0" />
+
+                {/* System name — inline editable */}
+                <input
+                  type="text"
+                  value={sys.name}
+                  onChange={e => updateSystem(sys.id, { name: e.target.value })}
+                  className="flex-1 text-xs font-semibold text-slate-800 bg-transparent border-b border-transparent hover:border-slate-200 focus:border-[#4982CF] focus:outline-none py-0.5 min-w-0 transition-colors"
+                />
+
+                {/* Abbreviation — inline editable */}
+                <input
+                  type="text"
+                  value={sys.abbr}
+                  onChange={e => updateSystem(sys.id, { abbr: e.target.value.toUpperCase().slice(0, 6) })}
+                  className="font-mono text-[10px] font-bold text-[#4982CF] bg-[#4982CF]/8 px-2 py-0.5 rounded border border-transparent focus:border-[#4982CF]/30 focus:outline-none w-16 text-center"
+                />
+
+                {/* Symptom count */}
+                <span className="text-[10px] text-slate-400 flex-shrink-0 w-20 text-right">
+                  {sys.symptoms.length} symptom{sys.symptoms.length !== 1 ? "s" : ""}
+                </span>
+
+                {/* Active toggle */}
+                <Switch
+                  checked={sys.active}
+                  onCheckedChange={v => updateSystem(sys.id, { active: v })}
+                  className="data-[state=checked]:bg-[#4982CF] flex-shrink-0"
+                />
+
+                {/* Expand chevron */}
+                <button
+                  onClick={() => toggleExpand(sys.id)}
+                  className="p-1 rounded text-slate-300 hover:text-[#4982CF] hover:bg-[#4982CF]/5 transition-colors flex-shrink-0">
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
+                </button>
+
+                {/* Delete */}
+                <button
+                  onClick={() => deleteSystem(sys.id)}
+                  className="p-1 rounded text-slate-300 hover:text-rose-400 hover:bg-rose-50 transition-colors flex-shrink-0">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {/* Symptom list (expanded) */}
+              {isExpanded && (
+                <div className="border-t border-slate-100 px-4 py-3 bg-slate-50/50 space-y-1.5 rounded-b-xl">
+                  {sys.symptoms.length === 0 && (
+                    <p className="text-[11px] text-slate-400 italic mb-2">No symptoms yet — add one below.</p>
+                  )}
+                  {sys.symptoms.map((symptom, si) => (
+                    <div key={si} className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-slate-300 w-5 text-right flex-shrink-0">{si + 1}</span>
+                      <input
+                        type="text"
+                        value={symptom}
+                        placeholder="Symptom…"
+                        onChange={e => updateSymptom(sys.id, si, e.target.value)}
+                        className="flex-1 text-[11px] text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1 focus:outline-none focus:border-[#4982CF] transition-colors"
+                      />
+                      <button
+                        onClick={() => deleteSymptom(sys.id, si)}
+                        className="p-1 rounded text-slate-300 hover:text-rose-400 transition-colors flex-shrink-0">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addSymptom(sys.id)}
+                    className="flex items-center gap-1.5 text-[11px] font-bold text-[#4982CF] hover:text-[#3b6bb5] transition-colors mt-1 px-1">
+                    <Plus className="h-3.5 w-3.5" /> Add symptom
+                  </button>
                 </div>
-              </>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Save bar */}
+      <div className="flex items-center justify-between pt-2">
+        {saved ? (
+          <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Configuration saved
+          </span>
+        ) : <span />}
+        <Button
+          onClick={handleSave}
+          className="flex items-center gap-1.5 bg-[#4982CF] hover:bg-[#3b6bb5] text-white text-sm">
+          <Save className="h-3.5 w-3.5" /> Save Configuration
+        </Button>
       </div>
     </div>
   );
