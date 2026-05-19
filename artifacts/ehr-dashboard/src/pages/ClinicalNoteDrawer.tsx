@@ -16,7 +16,7 @@ import { CoughHistoryTemplate, CoughSummary, COUGH_EMPTY } from "@/pages/CoughHi
 import type { CoughState } from "@/pages/CoughHistoryTemplate";
 import { AllergySelector } from "@/pages/AllergySelector";
 import type { AllergyEntry } from "@/pages/AllergySelector";
-import { RosSymptomChecklist, PeSystemSelector, PeChipsPanel, PeSystemDrawer } from "@/pages/RosPeSection";
+import { RosSummary, RosDrawer, PeSystemSelector, PeChipsPanel, PeSystemDrawer } from "@/pages/RosPeSection";
 import { DiagnosisDrawer, DiagnosisChipsPanel } from "@/pages/DiagnosisDrawer";
 import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
 import { LabDrawer, LabChipsPanel } from "@/pages/LabDrawer";
@@ -616,6 +616,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
   const [hpiDoneComplaints, setHpiDoneComplaints] = useState<string[]>(() => initialNote?.hpiDoneComplaints ?? []);
   const [hpiSavedData,      setHpiSavedData]      = useState<Record<string, CoughState>>(() => initialNote?.hpiSavedData ?? {});
+  const [rosDrawerOpen,     setRosDrawerOpen]     = useState(false);
   const [peOpenSystem,      setPeOpenSystem]      = useState<string | null>(null);
   const [peDoneSystemIds,   setPeDoneSystemIds]   = useState<string[]>(() => initialNote?.peDoneSystemIds ?? []);
   const [peSavedData,       setPeSavedData]       = useState<Record<string, Record<string, string>>>(() => initialNote?.peSavedData ?? {});
@@ -1096,9 +1097,9 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
             title="Review of Systems"
             icon={Stethoscope} color="#0ea5e9"
             filled={Object.values(note.ros).some(arr => (arr?.length ?? 0) > 0)}>
-            <RosSymptomChecklist
+            <RosSummary
               checked={note.ros}
-              onChange={v => set("ros", v)}
+              onEdit={() => setRosDrawerOpen(true)}
             />
           </Section>
 
@@ -1545,6 +1546,15 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
             savedData={hpiSavedData[hpiOpenComplaint]}
             onSave={state => handleHpiSave(hpiOpenComplaint, state)}
             onClose={() => setHpiOpenComplaint(null)}
+          />
+        )}
+
+        {/* ── ROS Drawer (slides in from right within the panel) ── */}
+        {rosDrawerOpen && (
+          <RosDrawer
+            checked={note.ros}
+            onChange={v => set("ros", v)}
+            onClose={() => setRosDrawerOpen(false)}
           />
         )}
 

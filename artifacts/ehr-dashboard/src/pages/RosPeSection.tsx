@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
-  Search, Plus, X, ChevronDown, ChevronLeft,
+  Search, Plus, X, ChevronDown, ChevronLeft, PenLine,
   Stethoscope, CheckCircle2, ClipboardCheck, ShieldCheck,
 } from "lucide-react";
 
@@ -374,6 +374,126 @@ export function RosSymptomChecklist({ checked, onChange }: RosSymptomChecklistPr
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── ROS Summary (compact view for main drawer) ───────────────────────────────
+
+interface RosSummaryProps {
+  checked: Record<string, string[]>;
+  onEdit:  () => void;
+}
+
+export function RosSummary({ checked, onEdit }: RosSummaryProps) {
+  const filledSystems = ROS_SYSTEMS.filter(sys => (checked[sys.id]?.length ?? 0) > 0);
+
+  if (filledSystems.length === 0) {
+    return (
+      <button
+        onClick={onEdit}
+        className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl bg-slate-50 border border-dashed border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 transition-all group">
+        <Stethoscope className="h-4 w-4 text-slate-300 group-hover:text-sky-400 flex-shrink-0 transition-colors" />
+        <p className="text-xs text-slate-400 group-hover:text-sky-500 transition-colors text-left">
+          Tap to review systems and record reported symptoms…
+        </p>
+        <Plus className="h-3.5 w-3.5 text-slate-300 group-hover:text-sky-400 ml-auto flex-shrink-0 transition-colors" />
+      </button>
+    );
+  }
+
+  const totalSymptoms = filledSystems.reduce((acc, sys) => acc + (checked[sys.id]?.length ?? 0), 0);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold text-sky-600">
+          {totalSymptoms} symptom{totalSymptoms !== 1 ? "s" : ""} across {filledSystems.length} system{filledSystems.length !== 1 ? "s" : ""}
+        </p>
+        <button
+          onClick={onEdit}
+          className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-sky-200 text-sky-600 bg-sky-50 hover:bg-sky-100 transition-colors">
+          <PenLine className="h-3 w-3" /> Edit ROS
+        </button>
+      </div>
+      <div className="space-y-1.5">
+        {filledSystems.map(sys => {
+          const symptoms = checked[sys.id] ?? [];
+          return (
+            <div key={sys.id} className="rounded-lg bg-sky-50/60 border border-sky-100 px-3 py-2">
+              <p className="text-[9px] font-black uppercase tracking-wider text-sky-500 mb-1.5">{sys.label}</p>
+              <div className="flex flex-wrap gap-1">
+                {symptoms.map(s => (
+                  <span
+                    key={s}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: `${ACCENT_PE}18`, color: ACCENT_PE }}>
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── ROS Drawer (full checklist in sub-drawer) ────────────────────────────────
+
+interface RosDrawerProps {
+  checked:  Record<string, string[]>;
+  onChange: (v: Record<string, string[]>) => void;
+  onClose:  () => void;
+}
+
+export function RosDrawer({ checked, onChange, onClose }: RosDrawerProps) {
+  const totalChecked = Object.values(checked).reduce((acc, arr) => acc + (arr?.length ?? 0), 0);
+  const systemsWithSymptoms = Object.keys(checked).filter(k => (checked[k]?.length ?? 0) > 0).length;
+
+  return (
+    <div className="absolute inset-y-0 right-0 w-[88%] bg-white shadow-2xl border-l border-slate-200 flex flex-col z-20">
+
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
+        <button
+          onClick={onClose}
+          className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0">
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">SOAP Note</p>
+          <p className="text-sm font-black text-slate-800">Review of Systems</p>
+        </div>
+        {totalChecked > 0 && (
+          <span
+            className="text-[10px] font-black px-2.5 py-1 rounded-full flex-shrink-0"
+            style={{ backgroundColor: `${ACCENT_PE}18`, color: ACCENT_PE }}>
+            {totalChecked} symptom{totalChecked !== 1 ? "s" : ""} · {systemsWithSymptoms} system{systemsWithSymptoms !== 1 ? "s" : ""}
+          </span>
+        )}
+        <button
+          onClick={onClose}
+          className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Scrollable checklist */}
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <RosSymptomChecklist checked={checked} onChange={onChange} />
+      </div>
+
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-slate-100 flex-shrink-0 flex justify-end">
+        <button
+          onClick={onClose}
+          className="flex items-center gap-1.5 text-[11px] font-black px-4 py-2 rounded-lg text-white transition-opacity hover:opacity-90"
+          style={{ backgroundColor: ACCENT_PE }}>
+          <CheckCircle2 className="h-3.5 w-3.5" /> Done
+        </button>
+      </div>
     </div>
   );
 }
