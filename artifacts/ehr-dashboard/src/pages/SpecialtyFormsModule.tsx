@@ -56,7 +56,7 @@ export type SpecialtyForm = {
 
 // ── Storage helpers ───────────────────────────────────────────────────────────
 
-function loadForms(): SpecialtyForm[] {
+export function loadForms(): SpecialtyForm[] {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) return JSON.parse(raw) as SpecialtyForm[];

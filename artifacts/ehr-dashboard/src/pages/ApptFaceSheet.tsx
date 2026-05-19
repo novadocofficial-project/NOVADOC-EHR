@@ -410,6 +410,7 @@ export function ApptFaceSheet({
     return (
       <SoapNotePage
         entry={apptToEntry(appt)}
+        doctorId={appt.doctorId}
         onBack={() => setSoapNoteOpen(false)}
         signedRecords={apptSignedRecords}
         onDoctorSign={(noteState) => {

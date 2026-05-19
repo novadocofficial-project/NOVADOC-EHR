@@ -9,9 +9,11 @@ import {
   CheckCircle2, AlertCircle, Printer, Trash2, Tag,
   GripVertical, Check, Search, Plus, Send,
   ArrowRight, ClipboardCheck, ChevronLeft, Pill, ScanLine,
-  BookmarkPlus, RotateCcw, AlertTriangle,
+  BookmarkPlus, RotateCcw, AlertTriangle, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { loadForms } from "@/pages/SpecialtyFormsModule";
+import type { SpecialtyForm } from "@/pages/SpecialtyFormsModule";
 import { CoughHistoryTemplate, CoughSummary, COUGH_EMPTY } from "@/pages/CoughHistoryTemplate";
 import type { CoughState } from "@/pages/CoughHistoryTemplate";
 import { AllergySelector } from "@/pages/AllergySelector";
@@ -88,6 +90,8 @@ export interface NoteState {
   peDoneSystemIds:    string[];
   /** Vital signs captured during this consultation (BP, pulse, SpO₂, temp). */
   vitals?:            VitalEntry[];
+  /** Field responses when documenting via a Specialty Form. Keyed by FormField.id. */
+  specialtyFormData?: Record<string, unknown>;
 }
 
 export const EMPTY_NOTE: NoteState = {
@@ -591,9 +595,109 @@ function TimerPill({ label, timer }: { label: string; timer: ReturnType<typeof u
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
+// ─── Specialty Form Renderer ──────────────────────────────────────────────────
+
+function SpecialtyFormPanel({
+  form,
+  data,
+  onChange,
+}: {
+  form: SpecialtyForm;
+  data: Record<string, unknown>;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  function update(fieldId: string, value: unknown) {
+    onChange({ ...data, [fieldId]: value });
+  }
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+        <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#4982CF18" }}>
+          <FileText className="h-4 w-4" style={{ color: "#4982CF" }} />
+        </div>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Specialty Form</p>
+          <p className="text-sm font-black text-slate-800 leading-tight">{form.name}</p>
+        </div>
+      </div>
+      {form.sections.map(section => (
+        <div key={section.id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
+            <p className="text-xs font-black text-slate-700">{section.title}</p>
+            {section.description && (
+              <p className="text-[11px] text-slate-500 mt-0.5">{section.description}</p>
+            )}
+          </div>
+          <div className="px-4 py-3 space-y-3">
+            {section.fields.map(field => (
+              <div key={field.id}>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">{field.label}</p>
+                {field.type === "textarea" && (
+                  <textarea
+                    value={(data[field.id] as string) ?? ""}
+                    onChange={e => update(field.id, e.target.value)}
+                    placeholder={field.placeholder}
+                    rows={3}
+                    className="w-full text-xs text-slate-700 border border-slate-200 rounded-lg px-3 py-2.5 bg-slate-50 focus:outline-none focus:border-[#4982CF] focus:bg-white resize-none transition-colors"
+                  />
+                )}
+                {(field.type === "text" || field.type === "number" || field.type === "date") && (
+                  <input
+                    type={field.type}
+                    value={(data[field.id] as string) ?? ""}
+                    onChange={e => update(field.id, e.target.value)}
+                    placeholder={field.type !== "date" ? field.placeholder : undefined}
+                    className="w-full text-xs text-slate-700 border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:outline-none focus:border-[#4982CF] focus:bg-white transition-colors"
+                  />
+                )}
+                {field.type === "checkbox-group" && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    {field.options.map(opt => {
+                      const checked = ((data[field.id] as string[]) ?? []).includes(opt);
+                      return (
+                        <label key={opt} className="flex items-center gap-2 cursor-pointer" onClick={() => {
+                          const current = (data[field.id] as string[]) ?? [];
+                          update(field.id, checked ? current.filter(x => x !== opt) : [...current, opt]);
+                        }}>
+                          <div className={`h-3.5 w-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${checked ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300 hover:border-[#4982CF]"}`}>
+                            {checked && <Check className="h-2.5 w-2.5 text-white" />}
+                          </div>
+                          <span className={`text-[11px] select-none ${checked ? "font-semibold text-[#4982CF]" : "text-slate-600"}`}>{opt}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                {field.type === "radio-group" && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    {field.options.map(opt => {
+                      const selected = (data[field.id] as string) === opt;
+                      return (
+                        <label key={opt} className="flex items-center gap-2 cursor-pointer" onClick={() => update(field.id, opt)}>
+                          <div className={`h-3.5 w-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${selected ? "border-[#4982CF]" : "border-slate-300 hover:border-[#4982CF]"}`}>
+                            {selected && <div className="h-2 w-2 rounded-full bg-[#4982CF]" />}
+                          </div>
+                          <span className={`text-[11px] select-none ${selected ? "font-semibold text-[#4982CF]" : "text-slate-600"}`}>{opt}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface ClinicalNoteDrawerProps {
   entryId?: string;
   patientName: string;
+  doctorId?: string;
   faceSheetOpenedAt?: number;
   awaitingLab?: boolean;
   labResultsReady?: boolean;
@@ -610,9 +714,16 @@ interface ClinicalNoteDrawerProps {
   onCancel?: () => void;
 }
 
-export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, awaitingLab = false, labResultsReady = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, onNoteChange, isAddendumMode = false, onAddendum, onCancel }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOpenedAt, awaitingLab = false, labResultsReady = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, onNoteChange, isAddendumMode = false, onAddendum, onCancel }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(() => initialNote ?? EMPTY_NOTE);
+  const [_sfInit] = useState<{ form: SpecialtyForm | null; mode: "soap" | "specialty" }>(() => {
+    if (!doctorId) return { form: null, mode: "soap" };
+    const form = loadForms().find(f => f.status === "published" && f.assignedDoctorIds.includes(doctorId)) ?? null;
+    return { form, mode: form ? "specialty" : "soap" };
+  });
+  const assignedForm = _sfInit.form;
+  const [activeMode,        setActiveMode]        = useState<"soap" | "specialty">(_sfInit.mode);
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
   const [hpiDoneComplaints, setHpiDoneComplaints] = useState<string[]>(() => initialNote?.hpiDoneComplaints ?? []);
   const [hpiSavedData,      setHpiSavedData]      = useState<Record<string, CoughState>>(() => initialNote?.hpiSavedData ?? {});
@@ -883,7 +994,19 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
             <TimerPill label="Time Documenting"    timer={documentTimer} />
           </div>
 
-          {/* Right: Fullscreen + Close */}
+          {/* Right: Switch Form (when specialty form assigned) + Fullscreen + Close */}
+          {assignedForm && (
+            <button
+              onClick={() => setActiveMode(m => m === "soap" ? "specialty" : "soap")}
+              title={activeMode === "specialty" ? "Switch to SOAP Note" : "Switch to Specialty Form"}
+              className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border transition-all flex-shrink-0"
+              style={activeMode === "specialty"
+                ? { backgroundColor: "#4982CF15", borderColor: "#4982CF40", color: "#4982CF" }
+                : { borderColor: "#e2e8f0", color: "#64748b" }}>
+              <Layers className="h-3.5 w-3.5" />
+              {activeMode === "specialty" ? "Switch to SOAP" : "Specialty Form"}
+            </button>
+          )}
           <button
             onClick={() => setFullscreen(f => !f)}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors flex-shrink-0"
@@ -920,6 +1043,15 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
         {/* ── Scrollable content ────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
 
+          {activeMode === "specialty" && assignedForm && (
+            <SpecialtyFormPanel
+              form={assignedForm}
+              data={note.specialtyFormData ?? {}}
+              onChange={data => set("specialtyFormData", data)}
+            />
+          )}
+
+          <div className={activeMode === "specialty" && assignedForm ? "hidden" : ""}>
           {/* 1. Chief Complaint */}
           <Section title="Chief Complaint" icon={PenLine} color="#4982CF" required filled={note.chiefComplaints.length > 0}>
             <ChiefComplaintSelector
@@ -1469,6 +1601,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
               style={{ "--tw-ring-color": "#ec4899" } as React.CSSProperties}
             />
           </Section>
+
+          </div>{/* ─ end SOAP sections ─ */}
 
         </div>
 

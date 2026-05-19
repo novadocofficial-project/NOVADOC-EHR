@@ -691,6 +691,7 @@ function ModuleDrawer({ label, Icon, fullscreen, onToggleFullscreen, onClose }: 
 interface SoapNotePageProps {
   entry: MultiEntry;
   onBack: () => void;
+  doctorId?: string;
   faceSheetOpenedAt?: number;
   onSendToLab?: () => void;
   onDiscardLab?: () => void;
@@ -699,7 +700,7 @@ interface SoapNotePageProps {
   signedRecords?: SignedRecord[];
 }
 
-export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, onDiscardLab, onSaveAndClose, onDoctorSign, signedRecords = [] }: SoapNotePageProps) {
+export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSendToLab, onDiscardLab, onSaveAndClose, onDoctorSign, signedRecords = [] }: SoapNotePageProps) {
   const { draft, saveDraft, clearDraft } = useSoapNoteDraft(entry.id);
 
   const [openDrawer, setOpenDrawer]             = useState<string | null>(null);
@@ -1140,6 +1141,7 @@ export function SoapNotePage({ entry, onBack, faceSheetOpenedAt, onSendToLab, on
         <ClinicalNoteDrawer
           entryId={entry.id}
           patientName={name}
+          doctorId={doctorId}
           faceSheetOpenedAt={faceSheetOpenedAt}
           awaitingLab={entry.pendingLab}
           labResultsReady={entry.labResultsReady}
