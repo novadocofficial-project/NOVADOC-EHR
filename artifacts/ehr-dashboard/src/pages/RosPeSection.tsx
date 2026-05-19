@@ -151,16 +151,243 @@ function PeSummary({ systemId, savedData }: { systemId: string; savedData: Recor
   );
 }
 
-// ─── ROS System Selector ──────────────────────────────────────────────────────
+// ─── ROS Symptom Data ─────────────────────────────────────────────────────────
 
-interface RosSelectorProps {
+interface RosSystem {
+  id:       string;
+  label:    string;
+  symptoms: string[];
+}
+
+export const ROS_SYSTEMS: RosSystem[] = [
+  {
+    id: "skin", label: "Skin",
+    symptoms: ["Rashes", "Itching", "Change in hair or nails"],
+  },
+  {
+    id: "head", label: "Head",
+    symptoms: ["Headaches", "Head injury"],
+  },
+  {
+    id: "eyes", label: "Eyes",
+    symptoms: ["Glasses or contacts", "Change in vision", "Eye pain", "Double vision", "Flashing lights", "Glaucoma/Cataracts", "Last eye exam"],
+  },
+  {
+    id: "ears", label: "Ears",
+    symptoms: ["Change in hearing", "Ear pain", "Ear discharge", "Ringing", "Dizziness"],
+  },
+  {
+    id: "nose_sinuses", label: "Nose/Sinuses",
+    symptoms: ["Nose bleeds", "Nasal stuffiness", "Frequent colds"],
+  },
+  {
+    id: "allergies_ros", label: "Allergies",
+    symptoms: ["Hives", "Swelling of lips or tongue", "Hay fever", "Asthma", "Eczema/Sensitive", "Sensitivity to drugs, food, pollens, or dander"],
+  },
+  {
+    id: "mouth_throat", label: "Mouth/Throat",
+    symptoms: ["Bleeding gums", "Sore tongue", "Sore throat", "Hoarseness"],
+  },
+  {
+    id: "neck", label: "Neck",
+    symptoms: ["Lumps", "Swollen glands", "Goiter", "Stiffness"],
+  },
+  {
+    id: "breast", label: "Breast",
+    symptoms: ["Lumps", "Pain", "Nipple discharge", "BSE"],
+  },
+  {
+    id: "respiratory_cardiac", label: "Respiratory/Cardiac",
+    symptoms: [
+      "Shortness of breath", "Cough", "Production of phlegm, color", "Wheezing",
+      "Coughing up blood", "Chest pain", "Fever", "Night sweats",
+      "Swelling in hands/feet", "Blue fingers/toes", "High blood pressure",
+      "Skipping heart beats", "Heart murmur", "HX of heart medication",
+      "Bronchitis/emphysema", "Rheumatic heart disease",
+    ],
+  },
+  {
+    id: "gastrointestinal", label: "Gastrointestinal",
+    symptoms: [
+      "Change of appetite or weight", "Problems swallowing", "Nausea", "Heartburn",
+      "Vomiting", "Vomiting blood", "Constipation", "Diarrhea", "Change in bowel habits",
+      "Abdominal pain", "Excessive belching", "Excessive flatus",
+      "Yellow color of skin (jaundice/hepatitis)", "Food intolerance", "Rectal bleeding/Hemorrhoids",
+    ],
+  },
+  {
+    id: "urinary", label: "Urinary",
+    symptoms: [
+      "Difficulty in urination", "Pain or burning on urination", "Frequent urination at night",
+      "Urgent need to urinate", "Incontinence of urine", "Dribbling",
+      "Decreased urine stream", "Blood in urine", "UTI/stones/prostate infection",
+    ],
+  },
+  {
+    id: "peripheral_vascular", label: "Peripheral Vascular",
+    symptoms: ["Leg cramps", "Varicose veins", "Clots in veins"],
+  },
+  {
+    id: "musculoskeletal", label: "Musculoskeletal",
+    symptoms: ["Pain", "Swelling", "Stiffness", "Decreased joint motion", "Broken bone", "Serious sprains", "Arthritis", "Gout"],
+  },
+  {
+    id: "neurologic", label: "Neurologic",
+    symptoms: [
+      "Headaches", "Seizures", "Loss of consciousness/fainting", "Paralysis", "Weakness",
+      "Loss of muscle size", "Muscle spasm", "Tremor", "Involuntary movement",
+      "Incoordination", "Numbness", "Feeling of pins and needles/tingles",
+    ],
+  },
+  {
+    id: "hematologic", label: "Hematologic",
+    symptoms: ["Anemia", "Easy bruising/bleeding", "Past transfusions"],
+  },
+  {
+    id: "endocrine", label: "Endocrine",
+    symptoms: [
+      "Abnormal growth", "Increased appetite", "Increased thirst", "Increased urine production",
+      "Thyroid trouble", "Heat/cold intolerance", "Excessive sweating", "Diabetes",
+    ],
+  },
+  {
+    id: "psychiatric", label: "Psychiatric",
+    symptoms: [
+      "Tension/Anxiety", "Depression/suicide ideation", "Memory problems", "Unusual problems",
+      "Sleep problems", "Past treatment with psychiatrist",
+      "Change in mood/change in attitude towards family/friends",
+    ],
+  },
+];
+
+// ─── ROS Symptom Checklist ─────────────────────────────────────────────────────
+
+interface RosSymptomChecklistProps {
+  checked:  Record<string, string[]>;
+  onChange: (v: Record<string, string[]>) => void;
+}
+
+export function RosSymptomChecklist({ checked, onChange }: RosSymptomChecklistProps) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  function toggleSystem(id: string) {
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  }
+
+  function toggleSymptom(sysId: string, symptom: string) {
+    const current = checked[sysId] ?? [];
+    const next = current.includes(symptom)
+      ? current.filter(s => s !== symptom)
+      : [...current, symptom];
+    onChange({ ...checked, [sysId]: next });
+  }
+
+  function clearSystem(sysId: string) {
+    const next = { ...checked };
+    delete next[sysId];
+    onChange(next);
+  }
+
+  const totalChecked = Object.values(checked).reduce((acc, arr) => acc + (arr?.length ?? 0), 0);
+
+  return (
+    <div className="space-y-1">
+      {totalChecked > 0 && (
+        <p className="text-[10px] font-bold text-sky-600 mb-2">
+          {totalChecked} symptom{totalChecked !== 1 ? "s" : ""} reported across {Object.keys(checked).filter(k => (checked[k]?.length ?? 0) > 0).length} system{Object.keys(checked).filter(k => (checked[k]?.length ?? 0) > 0).length !== 1 ? "s" : ""}
+        </p>
+      )}
+      {ROS_SYSTEMS.map(sys => {
+        const checkedSymptoms = checked[sys.id] ?? [];
+        const count = checkedSymptoms.length;
+        const isExpanded = expanded[sys.id] ?? false;
+
+        return (
+          <div key={sys.id} className="rounded-xl border border-slate-100 overflow-hidden">
+            {/* System header row */}
+            <button
+              onClick={() => toggleSystem(sys.id)}
+              className={[
+                "w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors",
+                count > 0
+                  ? "bg-sky-50 hover:bg-sky-100/70"
+                  : "bg-white hover:bg-slate-50",
+              ].join(" ")}>
+              {/* Chevron */}
+              {isExpanded
+                ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                : <ChevronDown className="h-3.5 w-3.5 text-slate-300 flex-shrink-0 -rotate-90" />
+              }
+              {/* System name */}
+              <span className={`text-xs font-bold flex-1 ${count > 0 ? "text-sky-700" : "text-slate-600"}`}>
+                {sys.label}
+              </span>
+              {/* Count badge */}
+              {count > 0 && (
+                <>
+                  <span
+                    className="text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: `${ACCENT_PE}18`, color: ACCENT_PE }}>
+                    {count} reported
+                  </span>
+                  <button
+                    onClick={e => { e.stopPropagation(); clearSystem(sys.id); }}
+                    className="ml-0.5 p-0.5 rounded text-sky-400 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0">
+                    <X className="h-3 w-3" />
+                  </button>
+                </>
+              )}
+              <span className="text-[9px] text-slate-300 flex-shrink-0">{sys.symptoms.length} items</span>
+            </button>
+
+            {/* Symptom grid (expanded) */}
+            {isExpanded && (
+              <div className="px-3 py-3 bg-slate-50/60 border-t border-slate-100">
+                <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+                  {sys.symptoms.map(symptom => {
+                    const isChecked = checkedSymptoms.includes(symptom);
+                    return (
+                      <label
+                        key={symptom}
+                        className="flex items-center gap-1.5 cursor-pointer group min-w-[140px]">
+                        <div
+                          onClick={() => toggleSymptom(sys.id, symptom)}
+                          className={[
+                            "h-3.5 w-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer",
+                            isChecked
+                              ? "border-sky-500 bg-sky-500"
+                              : "border-slate-300 group-hover:border-sky-400",
+                          ].join(" ")}>
+                          {isChecked && <CheckCircle2 className="h-2.5 w-2.5 text-white" />}
+                        </div>
+                        <span
+                          onClick={() => toggleSymptom(sys.id, symptom)}
+                          className={`text-[11px] leading-tight select-none ${isChecked ? "text-sky-700 font-semibold" : "text-slate-600"}`}>
+                          {symptom}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── PE System Selector (independent — not linked to ROS) ─────────────────────
+
+interface PeSelectorProps {
   selected: string[];
   onChange: (systems: string[]) => void;
 }
 
-export function RosSystemSelector({ selected, onChange }: RosSelectorProps) {
-  const [open,   setOpen]   = useState(false);
-  const [search, setSearch] = useState("");
+export function PeSystemSelector({ selected, onChange }: PeSelectorProps) {
+  const [open,    setOpen]    = useState(false);
+  const [search,  setSearch]  = useState("");
   const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -187,20 +414,17 @@ export function RosSystemSelector({ selected, onChange }: RosSelectorProps) {
 
   return (
     <div className="space-y-2">
-
-      {/* Selected system chips */}
+      {/* Selected chips */}
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {BODY_SYSTEMS.filter(s => selected.includes(s.id)).map(sys => (
             <div
               key={sys.id}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold"
               style={{ backgroundColor: `${ACCENT_PE}12`, borderColor: `${ACCENT_PE}35`, color: ACCENT_PE }}>
               <span className="text-[9px] font-black px-1 py-0.5 rounded bg-sky-100 text-sky-600">{sys.abbr}</span>
               {sys.label}
-              <button
-                onClick={() => remove(sys.id)}
-                className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity">
+              <button onClick={() => remove(sys.id)} className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity">
                 <X className="h-3 w-3" />
               </button>
             </div>
@@ -215,7 +439,7 @@ export function RosSystemSelector({ selected, onChange }: RosSelectorProps) {
         className="flex items-center justify-between gap-2 w-full text-xs font-bold px-3 py-2.5 rounded-xl border-2 border-dashed border-sky-200 text-sky-500 hover:border-sky-400 hover:bg-sky-50/60 transition-all">
         <div className="flex items-center gap-2">
           <Plus className="h-3.5 w-3.5" />
-          {selected.length === 0 ? "Select systems to review…" : `${selected.length} system${selected.length > 1 ? "s" : ""} selected — add more`}
+          {selected.length === 0 ? "Select systems to examine…" : `${selected.length} system${selected.length > 1 ? "s" : ""} selected — add more`}
         </div>
         <ChevronDown className="h-3.5 w-3.5 opacity-60" />
       </button>
@@ -227,8 +451,6 @@ export function RosSystemSelector({ selected, onChange }: RosSelectorProps) {
           <div
             className="fixed z-[999] bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
             style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width, maxHeight: 320 }}>
-
-            {/* Search */}
             <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100 flex-shrink-0">
               <Search className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
               <input
@@ -239,8 +461,6 @@ export function RosSystemSelector({ selected, onChange }: RosSelectorProps) {
                 className="flex-1 text-xs outline-none text-slate-700 placeholder-slate-300"
               />
             </div>
-
-            {/* System list */}
             <div className="overflow-y-auto flex-1">
               {filtered.map(sys => {
                 const isSelected = selected.includes(sys.id);
@@ -264,8 +484,6 @@ export function RosSystemSelector({ selected, onChange }: RosSelectorProps) {
                 );
               })}
             </div>
-
-            {/* Footer */}
             <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 flex-shrink-0">
               <span className="text-[10px] text-slate-400">{selected.length} selected</span>
               <button

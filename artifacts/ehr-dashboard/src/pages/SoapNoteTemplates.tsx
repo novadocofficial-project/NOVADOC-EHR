@@ -67,11 +67,7 @@ const SYSTEM_TEMPLATES: SoapTemplate[] = [
     data: {
       chiefComplaints: ["Sore Throat", "Cough", "Fever"],
       hpi: "Patient presents with sore throat, productive cough, and fever for [X] days. Onset was gradual. No known sick contacts reported. Symptoms not improving with home remedies. No difficulty breathing or swallowing.",
-      ros: [
-        "Sore throat — present", "Cough (productive) — present", "Fever / chills — present",
-        "Nasal congestion — present", "Loss of appetite — present",
-        "Shortness of breath — absent", "Ear pain — absent",
-      ],
+      ros: {},
       carePlan: {
         tasks: [
           { uid: "sys-urti-cp1", taskId: "med-adherence",   title: "Medication adherence counseling",         assignee: "", dueDate: "", priority: "Normal", notes: "Explain antibiotic course completion." },
@@ -91,12 +87,7 @@ const SYSTEM_TEMPLATES: SoapTemplate[] = [
     data: {
       chiefComplaints: ["Headache", "Dizziness"],
       hpi: "Patient presents for routine hypertension follow-up. Blood pressure has been [controlled / uncontrolled] on current medication. Reports [headache / dizziness / no symptoms]. Compliance with antihypertensive medication and dietary salt restriction discussed at last visit.",
-      ros: [
-        "Headache — [present/absent]", "Dizziness — [present/absent]",
-        "Palpitations — absent", "Chest pain — absent",
-        "Shortness of breath — absent", "Visual disturbance — absent",
-        "Ankle swelling — [present/absent]",
-      ],
+      ros: {},
       carePlan: {
         tasks: [
           { uid: "sys-htn-cp1", taskId: "bp-monitoring",  title: "Home blood pressure monitoring guidance",  assignee: "", dueDate: "", priority: "Normal", notes: "Target: <130/80 mmHg" },
@@ -116,12 +107,7 @@ const SYSTEM_TEMPLATES: SoapTemplate[] = [
     data: {
       chiefComplaints: ["Fatigue", "Diabetes review"],
       hpi: "Patient presents for routine diabetes review. Blood glucose levels have been [well / poorly] controlled. Last HbA1c: [result]. Reports [fatigue / polyuria / polydipsia / blurred vision / no symptoms]. Dietary compliance and exercise habits assessed.",
-      ros: [
-        "Fatigue — present", "Excessive thirst (polydipsia) — [present/absent]",
-        "Frequent urination (polyuria) — [present/absent]",
-        "Blurred vision — absent", "Foot numbness or tingling — [present/absent]",
-        "Slow wound healing — absent",
-      ],
+      ros: {},
       carePlan: {
         tasks: [
           { uid: "sys-dm-cp1", taskId: "glucose-monitoring",title: "Blood glucose monitoring schedule",       assignee: "", dueDate: "", priority: "Normal", notes: "Fasting + post-meal readings" },
@@ -142,12 +128,7 @@ const SYSTEM_TEMPLATES: SoapTemplate[] = [
     data: {
       chiefComplaints: ["Fever", "Fatigue", "Muscle Aches"],
       hpi: "Patient presents with fever and malaise for [X] days. Temperature recorded at [X]°C. Associated symptoms include fatigue and body aches. No localising signs of infection identified on initial assessment. No recent travel or sick contacts reported.",
-      ros: [
-        "Fever / chills — present", "Fatigue / malaise — present",
-        "Muscle aches — present", "Headache — [present/absent]",
-        "Loss of appetite — present", "Nausea — [present/absent]",
-        "Cough — absent", "Rash — absent", "Joint pain — absent",
-      ],
+      ros: {},
     },
   },
   {
@@ -160,12 +141,7 @@ const SYSTEM_TEMPLATES: SoapTemplate[] = [
     data: {
       chiefComplaints: ["Shortness of Breath", "Cough"],
       hpi: "Patient presents with acute shortness of breath and wheeze. Episode onset [X hours / days] ago. Known asthmatic on [medication]. Trigger identified: [exercise / allergen / URTI / cold air / unknown]. Peak flow reading: [value] L/min ([%] predicted).",
-      ros: [
-        "Shortness of breath — present", "Wheeze — present",
-        "Cough — present", "Chest tightness — present",
-        "Exercise intolerance — [present/absent]",
-        "Fever — absent", "Sputum production — [present/absent]",
-      ],
+      ros: {},
       carePlan: {
         tasks: [
           { uid: "sys-ast-cp1", taskId: "inhaler-technique",   title: "Inhaler technique demonstration",      assignee: "", dueDate: "", priority: "Normal", notes: "Check spacer use" },

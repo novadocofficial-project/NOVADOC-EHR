@@ -16,7 +16,7 @@ import { CoughHistoryTemplate, CoughSummary, COUGH_EMPTY } from "@/pages/CoughHi
 import type { CoughState } from "@/pages/CoughHistoryTemplate";
 import { AllergySelector } from "@/pages/AllergySelector";
 import type { AllergyEntry } from "@/pages/AllergySelector";
-import { RosSystemSelector, PeChipsPanel, PeSystemDrawer } from "@/pages/RosPeSection";
+import { RosSymptomChecklist, PeSystemSelector, PeChipsPanel, PeSystemDrawer } from "@/pages/RosPeSection";
 import { DiagnosisDrawer, DiagnosisChipsPanel } from "@/pages/DiagnosisDrawer";
 import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
 import { LabDrawer, LabChipsPanel } from "@/pages/LabDrawer";
@@ -62,7 +62,8 @@ export interface NoteState {
   fhRows:          FamilyRow[];
   fhGenetic:       string[];
   socialHistory:   SocialHistory;
-  ros:             string[];
+  ros:             Record<string, string[]>;
+  peSystems:       string[];
   pocTests:        PocTestResult[];
   formulary:       FormularyData;
   imaging:         ImagingData;
@@ -92,7 +93,7 @@ export interface NoteState {
 export const EMPTY_NOTE: NoteState = {
   chiefComplaints: [], hpi: "", allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [], fhGenetic: [], socialHistory: EMPTY_SOCIAL_HISTORY,
-  ros: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING, carePlan: EMPTY_CARE_PLAN, healthEd: EMPTY_HEALTH_ED, referrals: EMPTY_REFERRAL_DATA, procedureOrders: EMPTY_PROCEDURE_ORDERS, patientGoals: EMPTY_PATIENT_GOALS,
+  ros: {}, peSystems: [], pocTests: [], formulary: EMPTY_FORMULARY, imaging: EMPTY_IMAGING, carePlan: EMPTY_CARE_PLAN, healthEd: EMPTY_HEALTH_ED, referrals: EMPTY_REFERRAL_DATA, procedureOrders: EMPTY_PROCEDURE_ORDERS, patientGoals: EMPTY_PATIENT_GOALS,
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
   labOrders: [], labOrderDone: false, diagnoses: [], diagnosisDone: false,
@@ -489,11 +490,13 @@ function useTimer(initialSeconds = 0) {
 function calcProgress(note: NoteState): number {
   const fields: (string | string[] | AllergyEntry[] | FamilyRow[])[] = [
     note.chiefComplaints, note.hpi, note.allergies,
-    note.pmhActive, note.ros,
+    note.pmhActive,
     note.planTags, note.visitNote, note.followUpDate,
   ];
-  const filled = fields.filter(f => (Array.isArray(f) ? f.length > 0 : (f ?? "").trim() !== "")).length;
-  return Math.round((filled / fields.length) * 100);
+  const rosHasData = Object.values(note.ros).some(arr => (arr?.length ?? 0) > 0);
+  const filled = fields.filter(f => (Array.isArray(f) ? f.length > 0 : (f ?? "").trim() !== "")).length
+    + (rosHasData ? 1 : 0);
+  return Math.round((filled / (fields.length + 1)) * 100);
 }
 
 // ─── Collapsible section ──────────────────────────────────────────────────────
@@ -1092,28 +1095,31 @@ export function ClinicalNoteDrawer({ entryId, patientName, faceSheetOpenedAt, aw
           <Section
             title="Review of Systems"
             icon={Stethoscope} color="#0ea5e9"
-            filled={note.ros.length > 0}>
-            <RosSystemSelector
-              selected={note.ros}
-              onChange={systems => {
-                set("ros", systems);
-                if (peOpenSystem && !systems.includes(peOpenSystem)) setPeOpenSystem(null);
-              }}
+            filled={Object.values(note.ros).some(arr => (arr?.length ?? 0) > 0)}>
+            <RosSymptomChecklist
+              checked={note.ros}
+              onChange={v => set("ros", v)}
             />
           </Section>
 
-          {/* 5b. Physical Examination (auto-synced from ROS) */}
+          {/* 5b. Physical Examination (independent from ROS) */}
           <Section
             title="Physical Examination"
             icon={Stethoscope} color="#06b6d4"
             filled={peDoneSystemIds.length > 0}>
-            <PeChipsPanel
-              systems={note.ros}
-              doneSystemIds={peDoneSystemIds}
-              savedDataMap={peSavedData}
-              onOpenSystem={id => setPeOpenSystem(prev => prev === id ? null : id)}
-              openSystemId={peOpenSystem}
+            <PeSystemSelector
+              selected={note.peSystems}
+              onChange={systems => set("peSystems", systems)}
             />
+            <div className="mt-3">
+              <PeChipsPanel
+                systems={note.peSystems}
+                doneSystemIds={peDoneSystemIds}
+                savedDataMap={peSavedData}
+                onOpenSystem={id => setPeOpenSystem(prev => prev === id ? null : id)}
+                openSystemId={peOpenSystem}
+              />
+            </div>
           </Section>
 
           {/* 6. Point of Care Labs */}
