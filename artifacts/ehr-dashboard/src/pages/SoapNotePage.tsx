@@ -757,11 +757,13 @@ interface SoapNotePageProps {
   onSaveAndClose?: () => void;
   onDoctorSign?: (noteState: NoteState | null) => void;
   signedRecords?: SignedRecord[];
+  /** Past-session signed records shown in All Records but NOT used for the signed/locked state check. */
+  historicalRecords?: SignedRecord[];
   /** Forwarded to ClinicalNoteDrawer to show a session badge, e.g. "Note #2". */
   noteLabel?: string;
 }
 
-export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSendToLab, onDiscardLab, onSaveAndClose, onDoctorSign, signedRecords = [], noteLabel }: SoapNotePageProps) {
+export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSendToLab, onDiscardLab, onSaveAndClose, onDoctorSign, signedRecords = [], historicalRecords = [], noteLabel }: SoapNotePageProps) {
   const { draft, saveDraft, clearDraft } = useSoapNoteDraft(entry.id);
 
   const [openDrawer, setOpenDrawer]             = useState<string | null>(null);
@@ -1040,6 +1042,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
             const allRows = [
               ...addendumRows,
               ...signedRecords.map(r => ({ ...r, selected: false, isNew: true, isAddendum: false as const })).reverse(),
+              ...historicalRecords.map(r => ({ ...r, selected: false, isNew: true, isAddendum: false as const })).reverse(),
               ...NOTE_HISTORY.map(r => ({ ...r, isNew: false, isAddendum: false as const })),
             ];
             return (

@@ -452,6 +452,7 @@ export function ApptFaceSheet({
         doctorId={appt.doctorId}
         onBack={() => { setSessionSignedRecord(null); setSoapNoteOpen(false); }}
         signedRecords={sessionSignedRecord ? [sessionSignedRecord] : []}
+        historicalRecords={apptSignedRecords.filter(r => r !== sessionSignedRecord)}
         noteLabel={noteSessionIdx > 0 ? `Note #${noteSessionIdx + 1}` : undefined}
         onDoctorSign={(noteState) => {
           const now = new Date();
