@@ -1,0 +1,109 @@
+The same workflow and functionality implemented in the Triage, History, and Vital Signs sections will now also be applied to the Care Plan section.
+
+Care Plan Section Layout
+
+The Care Plan module is already divided into two equal panels (50% each).
+
+Now the left panel functionality will be updated to include:
+
+Required Actions
+All Records
+
+The right panel will remain the active Care Plan workspace where staff can review, update, and document progress against care plans.
+
+Remove Patient Information Section
+
+The separate Patient Information section should be removed from the Care Plan module because patient context is already globally available within the encounter workflow.
+
+This will:
+
+Reduce UI duplication
+Improve workspace usability
+Keep the Care Plan screen focused only on actionable items
+Care Plan Source Logic
+
+Nurses or staff do not create care plans manually from scratch.
+
+The Care Plan section mainly works as a review and action area for care plans that are generated inside Doctor SOAP Notes.
+
+Data Sources
+
+Care Plans should be fetched from:
+
+Seed Data
+Currently, there are 3 pre-saved comprehensive SOAP Notes available in seed data
+Any Care Plans inside those SOAP Notes should automatically appear inside the Required Actions section
+Local Storage
+Newly saved comprehensive SOAP Notes stored in local storage should also be scanned
+Any Care Plans found inside those notes should dynamically appear in Required Actions as well
+
+This should happen automatically whenever:
+
+A new SOAP Note is saved
+The Care Plan section loads
+Local storage data changes
+Required Actions Section
+
+The Required Actions section will function as a draft and active-care-plan management area.
+
+Functionality
+Care Plans fetched from SOAP Notes will appear here automatically
+Staff can open multiple Care Plans simultaneously
+Multiple Care Plans may exist:
+From different doctors
+From the same doctor
+Across multiple SOAP Notes
+
+Each Care Plan draft should:
+
+Auto-save continuously into local storage
+Preserve progress and staff notes
+Support switching between multiple active Care Plans without data loss
+Multi-Draft Workflow
+
+Staff should be able to review and work on multiple Care Plan drafts at the same time.
+
+Example Workflow
+A doctor completes a SOAP Note containing a Care Plan
+That Care Plan automatically appears in Required Actions
+Staff opens the Care Plan and starts documenting notes/actions
+Before completing it, staff opens another Care Plan
+The first Care Plan remains saved as a draft in Required Actions
+The second Care Plan becomes active on the right side
+
+Later:
+
+Clicking any draft restores its exact previous state
+Staff can continue working without losing progress
+Staff Notes & Updates
+
+Inside each Care Plan draft, staff should be able to:
+
+Add progress notes
+Add follow-up observations
+Document completed actions
+Review doctor instructions
+Update implementation status
+
+All entered data should auto-save into local storage.
+
+Completing a Care Plan
+
+Once staff completes and saves a Care Plan:
+
+It will move from Required Actions to All Records
+The completed Care Plan record will remain persisted in local storage
+Users can review completed Care Plans anytime
+All Records Section
+
+The All Records section will contain completed Care Plan records.
+
+Features
+Expand/collapse record view
+Review of:
+Original doctor care plan
+Staff updates and notes
+Completion details
+Timeline/history of actions
+
+This allows historical tracking of Care Plan execution and follow-up activities.
