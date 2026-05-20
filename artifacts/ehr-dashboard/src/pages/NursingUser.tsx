@@ -499,8 +499,9 @@ function scanCarePlanSources(patientMrn: string | null): CarePlanSource[] {
     for (const key of signedKeys) {
       const entryId = key.slice(SOAP_SIGNED_PREFIX.length);
       const mrnForEntry = entryMrnMap[entryId] ?? "";
-      // If we know the current patient, filter to their records only
-      if (patientMrn && mrnForEntry && mrnForEntry !== patientMrn) continue;
+      // When patient is known: exclude records whose MRN differs OR is unknown.
+      // Unknown MRN (empty string) means we cannot confirm patient ownership — exclude to prevent leakage.
+      if (patientMrn && mrnForEntry !== patientMrn) continue;
 
       const raw = localStorage.getItem(key);
       if (!raw) continue;
@@ -554,11 +555,10 @@ function CareLeftPanel({ sources, draftNotes, records, openIds, patientMrn, onTo
   const completedIds = new Set(records.map(r => r.source.id));
   const pendingSources = sources.filter(s => !completedIds.has(s.id));
 
-  // All Records: seed records always shown; patient-specific records filtered by MRN
+  // All Records: seed records always shown; non-seed records require exact MRN match when patient is known.
   const visibleRecords = records.filter(r =>
     r.source.patientRef === "seed" ||
     !patientMrn ||
-    !r.source.patientRef ||
     r.source.patientRef === patientMrn
   );
 
@@ -750,6 +750,11 @@ function CarePlanLeftPanelContainer({ patientMrn }: { patientMrn: string | null 
   const [draftNotes, setDraftNotes] = useState<CarePlanDraftStore>(loadCarePlanDraftNotes);
   const [records, setRecords]     = useState<CarePlanRecord[]>(loadCarePlanRecords);
   const [openIds, setOpenIds]     = useState<Set<string>>(new Set());
+
+  // Re-scan whenever the active patient changes
+  useEffect(() => {
+    setSources(scanCarePlanSources(patientMrn));
+  }, [patientMrn]);
 
   // Re-scan when another tab signs a new SOAP note
   useEffect(() => {
