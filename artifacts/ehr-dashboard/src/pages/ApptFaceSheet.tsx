@@ -402,14 +402,28 @@ export function ApptFaceSheet({
   const [showComplaintsDrawer, setShowComplaintsDrawer] = useState(false);
   const [soapNoteOpen,        setSoapNoteOpen]         = useState(false);
   const [apptSignedRecords,   setApptSignedRecords]    = useState<SignedRecord[]>(() => readSignedRecords(appt.id));
-  const [hasDraft,            setHasDraft]             = useState(() => hasSoapDraft(appt.id));
+
+  // Each signed note increments this counter, giving every new note a unique
+  // draft key so drafts never bleed across note sessions.
+  const [noteSessionIdx, setNoteSessionIdx] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(`appt_note_session_${appt.id}`);
+      if (stored !== null) return parseInt(stored, 10);
+    } catch { /**/ }
+    return readSignedRecords(appt.id).length;
+  });
+
+  // Session-scoped entry ID: each note gets its own localStorage draft key.
+  const sessionEntryId = `${appt.id}_n${noteSessionIdx}`;
+
+  const [hasDraft, setHasDraft] = useState(() => hasSoapDraft(sessionEntryId));
 
   // Refresh draft status whenever we return from the SoapNotePage.
   useEffect(() => {
     if (!soapNoteOpen) {
-      setHasDraft(hasSoapDraft(appt.id));
+      setHasDraft(hasSoapDraft(sessionEntryId));
     }
-  }, [soapNoteOpen, appt.id]);
+  }, [soapNoteOpen, sessionEntryId]);
 
   const name    = appt.patientName || "Patient";
   const mrn     = appt.patientMrn  || "—";
@@ -418,10 +432,10 @@ export function ApptFaceSheet({
   if (soapNoteOpen) {
     return (
       <SoapNotePage
-        entry={apptToEntry(appt)}
+        entry={{ ...apptToEntry(appt), id: sessionEntryId }}
         doctorId={appt.doctorId}
         onBack={() => setSoapNoteOpen(false)}
-        signedRecords={apptSignedRecords}
+        signedRecords={[]}
         onDoctorSign={(noteState) => {
           const now = new Date();
           const newRecord: SignedRecord = {
@@ -437,6 +451,13 @@ export function ApptFaceSheet({
             const updated = [...prev, newRecord];
             saveSignedRecords(appt.id, updated);
             return updated;
+          });
+          // Advance the session so the next "Add Health Record" gets a fresh
+          // draft key and opens with signed=false.
+          setNoteSessionIdx(prev => {
+            const next = prev + 1;
+            try { localStorage.setItem(`appt_note_session_${appt.id}`, String(next)); } catch { /**/ }
+            return next;
           });
           setSoapNoteOpen(false);
         }}
