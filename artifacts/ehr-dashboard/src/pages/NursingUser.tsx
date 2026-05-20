@@ -2543,29 +2543,21 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                  {activeDraftId && (
-                    <button
-                      onClick={() => {
-                        setActiveDraftId(null);
-                        setVitalValues(blankVitalValues());
-                        setPainScore(-1);
-                        setMentalAnswers([0, 0, 0, 0]);
-                        setVitalsTab("vitals");
-                        creatingDraftRef.current = false;
-                      }}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors"
-                    >
-                      <Plus className="h-3 w-3" /> New Vitals Entry
-                    </button>
-                  )}
+                {activeDraftId && (
                   <button
-                    onClick={handleVitalsComplete}
-                    className="flex items-center gap-1.5 h-7 px-3 text-xs font-bold rounded-lg bg-[#4982CF] hover:bg-[#3a6fb8] text-white transition-colors"
+                    onClick={() => {
+                      setActiveDraftId(null);
+                      setVitalValues(blankVitalValues());
+                      setPainScore(-1);
+                      setMentalAnswers([0, 0, 0, 0]);
+                      setVitalsTab("vitals");
+                      creatingDraftRef.current = false;
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors flex-shrink-0 ml-2"
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Save &amp; Complete
+                    <Plus className="h-3 w-3" /> New Vitals Entry
                   </button>
-                </div>
+                )}
               </div>
               {vitalsTab === "vitals" && showTrends && <VitalsTrends />}
               {vitalsTab === "vitals" && !showTrends && (
@@ -2588,6 +2580,15 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
                   setMentalAnswers={setMentalAnswers}
                 />
               )}
+              {/* Bottom action bar */}
+              <div className="flex-shrink-0 border-t border-slate-200 px-5 py-3 bg-white">
+                <button
+                  onClick={handleVitalsComplete}
+                  className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-[#4982CF] hover:bg-[#3a6fb8] text-white text-sm font-bold transition-colors"
+                >
+                  <CheckCircle2 className="h-4 w-4" /> Save &amp; Complete
+                </button>
+              </div>
             </div>
           </div>
         ) : activeCategory === "history" ? (
