@@ -419,6 +419,11 @@ export function ApptFaceSheet({
   // Session-scoped entry ID: each note gets its own localStorage draft key.
   const sessionEntryId = `${appt.id}_n${noteSessionIdx}`;
 
+  // Tracks the record signed in the current SoapNotePage session.
+  // While set, SoapNotePage stays mounted and shows the signed/completed view.
+  // Reset to null when the doctor navigates back to the facesheet.
+  const [sessionSignedRecord, setSessionSignedRecord] = useState<SignedRecord | null>(null);
+
   const [hasDraft, setHasDraft] = useState(() => hasSoapDraft(sessionEntryId));
 
   // Refresh draft status whenever we return from the SoapNotePage.
@@ -445,8 +450,8 @@ export function ApptFaceSheet({
       <SoapNotePage
         entry={{ ...apptToEntry(appt), id: sessionEntryId }}
         doctorId={appt.doctorId}
-        onBack={() => setSoapNoteOpen(false)}
-        signedRecords={[]}
+        onBack={() => { setSessionSignedRecord(null); setSoapNoteOpen(false); }}
+        signedRecords={sessionSignedRecord ? [sessionSignedRecord] : []}
         noteLabel={noteSessionIdx > 0 ? `Note #${noteSessionIdx + 1}` : undefined}
         onDoctorSign={(noteState) => {
           const now = new Date();
@@ -471,7 +476,9 @@ export function ApptFaceSheet({
             try { localStorage.setItem(`appt_note_session_${appt.id}`, String(next)); } catch { /**/ }
             return next;
           });
-          setSoapNoteOpen(false);
+          // Stay on SoapNotePage — show signed/completed view.
+          // Doctor navigates back via the back arrow; onBack resets sessionSignedRecord.
+          setSessionSignedRecord(newRecord);
         }}
       />
     );
