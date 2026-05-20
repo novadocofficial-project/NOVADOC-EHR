@@ -123,133 +123,183 @@ function Collapsible({ title, badge, defaultOpen = true, accent, children }:
 
 // ─── Left panel (vitals section) ─────────────────────────────────────────────
 
-function VitalsLeftPanel({ entry, vitalValues, configuredVitals, painScore, mentalAnswers }:
-  { entry: MultiEntry; vitalValues: Record<string, string>; configuredVitals: VitalConfig[]; painScore: number; mentalAnswers: number[] }) {
-  const p = entry.patient;
-  const [recordExpanded, setRecordExpanded] = useState(false);
-  const mockRecord = { date: "21 Feb 2025", status: "In progress", type: "Vitals Sign", doctor: "Dr. Asif Imam" };
+function VitalsLeftPanel({ drafts, records, activeDraftId, configuredVitals, onResumeDraft, onDiscardDraft }: {
+  drafts: VitalsDraft[];
+  records: VitalsRecord[];
+  activeDraftId: string | null;
+  configuredVitals: VitalConfig[];
+  onResumeDraft: (draftId: string) => void;
+  onDiscardDraft: (draftId: string) => void;
+}) {
+  const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
 
-  const mentalTotal = mentalAnswers.reduce((s, v) => s + v, 0);
-
-  const vitalsRows: [string, string][] = configuredVitals
-    .filter(v => v.opd !== "skip")
-    .flatMap(v => {
-      if (v.id === "bp") {
-        const sys = vitalValues["bp_sys"] ?? "";
-        const dia = vitalValues["bp_dia"] ?? "";
-        if (!sys && !dia) return [];
-        return [[v.name, `${sys || "—"}/${dia || "—"} ${v.unit}`]] as [string, string][];
-      }
-      const val = vitalValues[v.id] ?? "";
-      if (!val.trim()) return [];
-      return [[`${v.name}${v.unit ? ` (${v.unit})` : ""}`, val]] as [string, string][];
-    });
-
-  const hasData = vitalsRows.length > 0 || painScore >= 0 || mentalTotal > 0;
+  function vitalsRowsFromValues(vitalValues: Record<string, string>): [string, string][] {
+    return configuredVitals
+      .filter(v => v.opd !== "skip")
+      .flatMap(v => {
+        if (v.id === "bp") {
+          const sys = vitalValues["bp_sys"] ?? "";
+          const dia = vitalValues["bp_dia"] ?? "";
+          if (!sys && !dia) return [];
+          return [[v.name, `${sys || "—"}/${dia || "—"} ${v.unit}`]] as [string, string][];
+        }
+        const val = vitalValues[v.id] ?? "";
+        if (!val.trim()) return [];
+        return [[`${v.name}${v.unit ? ` (${v.unit})` : ""}`, val]] as [string, string][];
+      });
+  }
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Record</p>
+    <div className="h-full flex flex-col overflow-y-auto bg-white">
+
+      {/* Required Actions header */}
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-2">
+        <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+        <span className="text-xs font-bold text-slate-700 flex-1">Required Actions</span>
+        {drafts.length > 0 && (
+          <span className="text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 rounded-full px-2 py-0.5 leading-none">
+            {drafts.length}
+          </span>
+        )}
       </div>
-      <div className="flex-1 overflow-y-auto px-4 py-3">
-      <Collapsible title="Patient Info" defaultOpen={false}>
-        {p ? (
-          <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-1.5 text-xs">
-            {[["Name", p.name], ["MRN", p.mrn], ["Gender", p.gender === "M" ? "Male" : "Female"], ["DOB", p.dob], ["Phone", p.phone]].map(([l, v]) => (
-              <div key={l} className="flex justify-between">
-                <span className="text-slate-400">{l}</span>
-                <span className="font-semibold text-slate-800">{v}</span>
-              </div>
-            ))}
-          </div>
-        ) : <p className="text-xs text-slate-400 italic">No patient on file</p>}
-      </Collapsible>
 
-      <Collapsible title="Required Actions" badge={1} accent defaultOpen>
-        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 space-y-1.5 text-xs mb-2">
-          <p className="font-semibold text-slate-800 leading-tight">Vitals: Normal, Pain Score: 5, Mental Score: 4</p>
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-            <span>{mockRecord.date}</span>
-            <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 inline-block" />{mockRecord.status}</span>
-            <span className="flex items-center gap-1"><Activity className="h-3 w-3" />{mockRecord.type}</span>
-            <span className="flex items-center gap-1"><User className="h-3 w-3" />{mockRecord.doctor}</span>
+      <div className="px-3 py-3 space-y-2">
+        {drafts.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+            <Activity className="h-4 w-4 text-slate-300" />
+            <p className="text-xs text-slate-400">No active vitals entries</p>
           </div>
-        </div>
-      </Collapsible>
-
-      <Collapsible title="All Records" badge={1} defaultOpen>
-        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs mb-2">
-          {/* Record header row */}
-          <div className="flex items-start justify-between gap-2">
-            <p className="font-semibold text-slate-800 leading-tight flex-1">
-              {hasData
-                ? [vitalsRows.length > 0 && "Vitals recorded", painScore >= 0 && `Pain: ${painScore}`, mentalTotal > 0 && `Mental: ${mentalTotal}`].filter(Boolean).join(" · ")
-                : "Vitals: Normal, Pain Score: 5, Mental Score: 4"}
-            </p>
-            <button
-              onClick={() => setRecordExpanded(e => !e)}
-              className="text-[10px] font-bold text-[#4982CF] hover:underline flex-shrink-0 flex items-center gap-1">
-              {recordExpanded ? <><ChevronUp className="h-3 w-3" /> Collapse</> : <><Maximize2 className="h-3 w-3" /> Expand</>}
-            </button>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 justify-between mt-1.5">
-            <span>{mockRecord.date} · Tuesday, 26 Feb 2025</span>
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1"><Activity className="h-3 w-3" />{mockRecord.type}</span>
-              <span className="flex items-center gap-1"><User className="h-3 w-3" />{mockRecord.doctor}</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">Active</span>
+        ) : drafts.map(d => {
+          const active = activeDraftId === d.draftId;
+          const age = Date.now() - d.updatedAt;
+          const ageLabel = age < 60_000
+            ? "just now"
+            : age < 3_600_000
+              ? `${Math.floor(age / 60_000)}m ago`
+              : `${Math.floor(age / 3_600_000)}h ago`;
+          return (
+            <div
+              key={d.draftId}
+              className={`rounded-xl border transition-all ${
+                active
+                  ? "bg-amber-50/60 border-amber-300/60 shadow-sm ring-1 ring-amber-200/60"
+                  : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
+              }`}
+            >
+              <button onClick={() => onResumeDraft(d.draftId)} className="w-full text-left p-3.5 pr-2">
+                <div className="flex items-start gap-3">
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? "bg-blue-100" : "bg-blue-50"}`}>
+                    <Activity className={`h-4 w-4 ${active ? "text-[#4982CF]" : "text-blue-400"}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-800 leading-snug truncate">
+                      {d.patientName ?? "Walk-in"} — Vital Signs
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{d.patientRef ?? "No MRN"}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{ageLabel}</p>
+                  </div>
+                  <button
+                    onClick={e => { e.stopPropagation(); onDiscardDraft(d.draftId); }}
+                    className="h-6 w-6 rounded-md flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0 mt-0.5"
+                    title="Discard draft"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </button>
             </div>
-          </div>
+          );
+        })}
+      </div>
 
-          {/* Expanded detail */}
-          {recordExpanded && (
-            <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
-              {vitalsRows.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Patient Vitals</p>
-                  <div className="rounded-lg overflow-hidden border border-slate-100">
-                    {vitalsRows.map(([label, value], i) => (
-                      <div key={label} className={`flex items-center justify-between px-2.5 py-1.5 ${i % 2 === 0 ? "bg-blue-50" : "bg-white"}`}>
-                        <span className="text-slate-500">{label}</span>
-                        <span className="font-semibold text-slate-800">{value}</span>
+      {/* All Records header */}
+      <div className="sticky top-0 z-10 bg-white border-t border-b border-slate-100 px-4 py-3 flex items-center gap-2 mt-1">
+        <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+        <span className="text-xs font-bold text-slate-700 flex-1">All Records</span>
+        {records.length > 0 && (
+          <span className="text-[10px] font-bold bg-green-50 text-green-600 border border-green-100 rounded-full px-2 py-0.5 leading-none">
+            {records.length}
+          </span>
+        )}
+      </div>
+
+      <div className="px-3 py-3 space-y-2">
+        {records.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+            <CheckCircle2 className="h-4 w-4 text-slate-300" />
+            <p className="text-xs text-slate-400">No completed records</p>
+          </div>
+        ) : [...records].reverse().map(r => {
+          const expanded = expandedRecord === r.recordId;
+          const vitalsRows = vitalsRowsFromValues(r.vitalValues);
+          const mentalTotal = r.mentalAnswers.reduce((s, v) => s + v, 0);
+          return (
+            <div key={r.recordId} className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+              <button
+                onClick={() => setExpandedRecord(expanded ? null : r.recordId)}
+                className="w-full text-left p-3.5 flex items-start gap-3 hover:bg-white transition-colors"
+              >
+                <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-slate-800 leading-snug truncate">
+                    {r.patientName ?? "Walk-in"} — Vital Signs
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{r.patientRef ?? "No MRN"}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {new Date(r.completedAt).toLocaleDateString()} · {vitalsRows.length} reading{vitalsRows.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-1 transition-transform ${expanded ? "rotate-180" : ""}`} />
+              </button>
+              {expanded && (
+                <div className="border-t border-slate-200 bg-white px-4 py-3 space-y-3">
+                  {vitalsRows.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Vital Signs</p>
+                      <div className="rounded-lg overflow-hidden border border-slate-100">
+                        {vitalsRows.map(([label, value], i) => (
+                          <div key={label} className={`flex items-center justify-between px-2.5 py-1.5 ${i % 2 === 0 ? "bg-blue-50" : "bg-white"}`}>
+                            <span className="text-xs text-slate-500">{label}</span>
+                            <span className="text-xs font-semibold text-slate-800">{value}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
+                  {r.painScore >= 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Pain Score</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Level {r.painScore}/10</span>
+                        <span className="text-xs font-bold text-slate-800">{PAIN_LEVELS[r.painScore]?.label ?? "—"}</span>
+                      </div>
+                      <div className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${(r.painScore / 10) * 100}%`, backgroundColor: r.painScore <= 3 ? "#22c55e" : r.painScore <= 6 ? "#f59e0b" : "#ef4444" }} />
+                      </div>
+                    </div>
+                  )}
+                  {mentalTotal > 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Mental Health (PHQ-4)</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Total Score</span>
+                        <span className={`text-xs font-bold ${mentalTotal <= 2 ? "text-green-600" : mentalTotal <= 5 ? "text-amber-600" : "text-red-600"}`}>{mentalTotal} / 16</span>
+                      </div>
+                      <div className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${(mentalTotal / 16) * 100}%`, backgroundColor: mentalTotal <= 2 ? "#22c55e" : mentalTotal <= 5 ? "#f59e0b" : "#ef4444" }} />
+                      </div>
+                    </div>
+                  )}
+                  {vitalsRows.length === 0 && r.painScore < 0 && mentalTotal === 0 && (
+                    <p className="text-xs text-slate-400 italic">No data recorded.</p>
+                  )}
                 </div>
-              )}
-              {painScore >= 0 && (
-                <div className="pt-2 border-t border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Pain Score</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500">Level {painScore}/10</span>
-                    <span className="font-bold text-slate-800">{PAIN_LEVELS[painScore]?.label ?? "—"}</span>
-                  </div>
-                  <div className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${(painScore / 10) * 100}%`, backgroundColor: painScore <= 3 ? "#22c55e" : painScore <= 6 ? "#f59e0b" : "#ef4444" }} />
-                  </div>
-                </div>
-              )}
-              {mentalTotal > 0 && (
-                <div className="pt-2 border-t border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Mental Health (PHQ-4)</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500">Total Score</span>
-                    <span className={`font-bold text-sm ${mentalTotal <= 2 ? "text-green-600" : mentalTotal <= 5 ? "text-amber-600" : "text-red-600"}`}>{mentalTotal} / 16</span>
-                  </div>
-                  <div className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${(mentalTotal / 16) * 100}%`, backgroundColor: mentalTotal <= 2 ? "#22c55e" : mentalTotal <= 5 ? "#f59e0b" : "#ef4444" }} />
-                  </div>
-                </div>
-              )}
-              {!hasData && (
-                <p className="text-[11px] text-slate-400 italic text-center py-2">No data entered yet. Fill the form on the right to see it here.</p>
               )}
             </div>
-          )}
-        </div>
-      </Collapsible>
-
+          );
+        })}
       </div>
     </div>
   );
@@ -2224,22 +2274,180 @@ function HistorySplitPanel({ patient, visitTypeId }: { patient: Patient | null; 
   );
 }
 
+// ─── Vitals draft / record persistence ────────────────────────────────────────
+
+interface VitalsDraft {
+  draftId: string;
+  vitalValues: Record<string, string>;
+  painScore: number;
+  mentalAnswers: number[];
+  vitalsTab: "vitals" | "pain" | "mental";
+  patientRef: string | null;
+  patientName: string | null;
+  startedAt: number;
+  updatedAt: number;
+}
+
+interface VitalsRecord {
+  recordId: string;
+  vitalValues: Record<string, string>;
+  painScore: number;
+  mentalAnswers: number[];
+  patientRef: string | null;
+  patientName: string | null;
+  completedAt: number;
+}
+
+function blankVitalValues(): Record<string, string> {
+  return { _date: new Date().toISOString().slice(0, 10) };
+}
+
+function isVitalsDraftBlank(d: VitalsDraft): boolean {
+  const vals = { ...d.vitalValues };
+  delete vals._date;
+  return Object.values(vals).every(v => !v.trim()) && d.painScore < 0 && d.mentalAnswers.every(a => a === 0);
+}
+
+function loadVitalsDrafts(): VitalsDraft[] {
+  try { const raw = localStorage.getItem("ehr-vitals-drafts"); if (raw) return JSON.parse(raw) as VitalsDraft[]; } catch { /**/ }
+  return [];
+}
+function persistVitalsDrafts(drafts: VitalsDraft[]): void {
+  try { localStorage.setItem("ehr-vitals-drafts", JSON.stringify(drafts)); } catch { /**/ }
+}
+function loadVitalsRecords(): VitalsRecord[] {
+  try { const raw = localStorage.getItem("ehr-vitals-records"); if (raw) return JSON.parse(raw) as VitalsRecord[]; } catch { /**/ }
+  return [];
+}
+function persistVitalsRecords(records: VitalsRecord[]): void {
+  try { localStorage.setItem("ehr-vitals-records", JSON.stringify(records)); } catch { /**/ }
+}
+function genVitalsDraftId(): string { return `vd-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`; }
+
 // ─── Vitals split panel (fullscreen drawer) ───────────────────────────────────
 
 function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { entry: MultiEntry; onClose: () => void; onSave: () => void; initialCategory?: NurseCategory }) {
   const [showTrends, setShowTrends] = useState(false);
-  const [vitalsTab, setVitalsTab] = useState<"vitals" | "pain" | "mental">("vitals");
   const configuredVitals = useMemo(() => loadVitalsConfig(), []);
-  const [vitalValues, setVitalValues] = useState<Record<string, string>>({
-    bp_sys: "121", bp_dia: "77", bp_pos: "sitting", bp_orth: "no",
-    pulse: "76", temp: "37.0", spo2: "97", weight: "72", height: "168", bmi: "25.5",
-    _date: new Date().toISOString().slice(0, 10),
-  });
-  const [painScore, setPainScore]         = useState(5);
-  const [mentalAnswers, setMentalAnswers] = useState([1, 1, 2, 1]);
   const [fullscreen, setFullscreen]       = useState(false);
   const [activeCategory, setActiveCategory] = useState<NurseCategory>(initialCategory);
   const [showConfirm, setShowConfirm]     = useState(false);
+
+  // ── Vitals draft state ──────────────────────────────────────────────────────
+  const [vitalsDrafts, setVitalsDrafts] = useState<VitalsDraft[]>(() => {
+    const all = loadVitalsDrafts();
+    const real = all.filter(d => !isVitalsDraftBlank(d));
+    if (real.length !== all.length) persistVitalsDrafts(real);
+    return real;
+  });
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(() => {
+    const real = loadVitalsDrafts().filter(d => !isVitalsDraftBlank(d));
+    if (real.length === 0) return null;
+    return [...real].sort((a, b) => b.updatedAt - a.updatedAt)[0].draftId;
+  });
+  const [vitalsRecords, setVitalsRecords] = useState<VitalsRecord[]>(loadVitalsRecords);
+
+  const activeDraft = vitalsDrafts.find(d => d.draftId === activeDraftId) ?? null;
+
+  // Form state — initialised from most-recent draft on mount, or blank
+  const [vitalsTab, setVitalsTab]         = useState<"vitals" | "pain" | "mental">(activeDraft?.vitalsTab ?? "vitals");
+  const [vitalValues, setVitalValues]     = useState<Record<string, string>>(activeDraft?.vitalValues ?? blankVitalValues());
+  const [painScore, setPainScore]         = useState<number>(activeDraft?.painScore ?? -1);
+  const [mentalAnswers, setMentalAnswers] = useState<number[]>(activeDraft?.mentalAnswers ?? [0, 0, 0, 0]);
+
+  // Keep a ref so the auto-save effect always sees the current activeDraftId
+  const activeDraftIdRef = useRef<string | null>(activeDraftId);
+  activeDraftIdRef.current = activeDraftId;
+  const creatingDraftRef = useRef(false);
+
+  useEffect(() => {
+    if (activeDraftId) creatingDraftRef.current = false;
+  }, [activeDraftId]);
+
+  function mutateDrafts(fn: (prev: VitalsDraft[]) => VitalsDraft[]) {
+    setVitalsDrafts(prev => {
+      const next = fn(prev);
+      persistVitalsDrafts(next);
+      return next;
+    });
+  }
+
+  // Auto-save: create or update the active draft whenever any form value changes
+  useEffect(() => {
+    const draftId = activeDraftIdRef.current;
+    if (!draftId) {
+      // Only create a draft once there is at least one filled value
+      const vals = { ...vitalValues };
+      delete vals._date;
+      const hasFilled = Object.values(vals).some(v => v.trim() !== "") || painScore >= 0 || mentalAnswers.some(a => a > 0);
+      if (!hasFilled) return;
+      if (creatingDraftRef.current) return;
+      creatingDraftRef.current = true;
+      const id = genVitalsDraftId();
+      const draft: VitalsDraft = {
+        draftId: id, vitalValues, painScore, mentalAnswers, vitalsTab,
+        patientRef: entry.patient?.mrn ?? null,
+        patientName: entry.patient?.name ?? null,
+        startedAt: Date.now(), updatedAt: Date.now(),
+      };
+      mutateDrafts(prev => [...prev, draft]);
+      setActiveDraftId(id);
+      return;
+    }
+    mutateDrafts(prev => prev.map(d =>
+      d.draftId === draftId
+        ? { ...d, vitalValues, painScore, mentalAnswers, vitalsTab, updatedAt: Date.now() }
+        : d
+    ));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vitalValues, painScore, mentalAnswers, vitalsTab]);
+
+  function resumeDraft(draftId: string) {
+    const draft = vitalsDrafts.find(d => d.draftId === draftId);
+    if (!draft) return;
+    setActiveDraftId(draftId);
+    setVitalValues(draft.vitalValues);
+    setPainScore(draft.painScore);
+    setMentalAnswers(draft.mentalAnswers);
+    setVitalsTab(draft.vitalsTab);
+  }
+
+  function discardVitalsDraft(draftId: string) {
+    mutateDrafts(prev => prev.filter(d => d.draftId !== draftId));
+    if (activeDraftId === draftId) {
+      setActiveDraftId(null);
+      setVitalValues(blankVitalValues());
+      setPainScore(-1);
+      setMentalAnswers([0, 0, 0, 0]);
+      setVitalsTab("vitals");
+      creatingDraftRef.current = false;
+    }
+  }
+
+  function handleVitalsComplete() {
+    const record: VitalsRecord = {
+      recordId: `vr-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      vitalValues, painScore, mentalAnswers,
+      patientRef: entry.patient?.mrn ?? null,
+      patientName: entry.patient?.name ?? null,
+      completedAt: Date.now(),
+    };
+    setVitalsRecords(prev => {
+      const next = [...prev, record];
+      persistVitalsRecords(next);
+      return next;
+    });
+    if (activeDraftId) {
+      mutateDrafts(prev => prev.filter(d => d.draftId !== activeDraftId));
+    }
+    setActiveDraftId(null);
+    setVitalValues(blankVitalValues());
+    setPainScore(-1);
+    setMentalAnswers([0, 0, 0, 0]);
+    setVitalsTab("vitals");
+    creatingDraftRef.current = false;
+  }
+  // ── End vitals draft state ──────────────────────────────────────────────────
 
   const {
     tasks, goals, execState,
@@ -2287,39 +2495,71 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
           <div className="flex-1 flex overflow-hidden">
             {/* Left panel */}
             <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
-              <VitalsLeftPanel entry={entry} vitalValues={vitalValues} configuredVitals={configuredVitals} painScore={painScore} mentalAnswers={mentalAnswers} />
+              <VitalsLeftPanel
+                drafts={vitalsDrafts}
+                records={vitalsRecords}
+                activeDraftId={activeDraftId}
+                configuredVitals={configuredVitals}
+                onResumeDraft={resumeDraft}
+                onDiscardDraft={discardVitalsDraft}
+              />
             </div>
             {/* Right panel */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Right panel toolbar */}
               <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
-                <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm">
-                  {(["vitals", "pain", "mental"] as const).map((tab, i) => {
-                    const labels = { vitals: "Vitals", pain: "Pain Score", mental: "Mental Health" };
-                    return (
-                      <button
-                        key={tab}
-                        onClick={() => { setVitalsTab(tab); if (tab !== "vitals") setShowTrends(false); }}
-                        className={`px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${i > 0 ? "border-l border-slate-200" : ""} ${vitalsTab === tab ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-                        {labels[tab]}
-                      </button>
-                    );
-                  })}
-                </div>
-                {vitalsTab === "vitals" && (
-                  <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm">
-                    <button
-                      onClick={() => setShowTrends(false)}
-                      className={`px-4 py-1.5 text-xs font-semibold transition-colors ${!showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-                      Form
-                    </button>
-                    <button
-                      onClick={() => setShowTrends(true)}
-                      className={`px-4 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-                      <TrendingUp className="h-3 w-3" /> Trends
-                    </button>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm flex-shrink-0">
+                    {(["vitals", "pain", "mental"] as const).map((tab, i) => {
+                      const labels = { vitals: "Vitals", pain: "Pain Score", mental: "Mental Health" };
+                      return (
+                        <button
+                          key={tab}
+                          onClick={() => { setVitalsTab(tab); if (tab !== "vitals") setShowTrends(false); }}
+                          className={`px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${i > 0 ? "border-l border-slate-200" : ""} ${vitalsTab === tab ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                          {labels[tab]}
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
+                  {vitalsTab === "vitals" && (
+                    <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm flex-shrink-0">
+                      <button
+                        onClick={() => setShowTrends(false)}
+                        className={`px-3 py-1.5 text-xs font-semibold transition-colors ${!showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                        Form
+                      </button>
+                      <button
+                        onClick={() => setShowTrends(true)}
+                        className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                        <TrendingUp className="h-3 w-3" /> Trends
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                  {activeDraftId && (
+                    <button
+                      onClick={() => {
+                        setActiveDraftId(null);
+                        setVitalValues(blankVitalValues());
+                        setPainScore(-1);
+                        setMentalAnswers([0, 0, 0, 0]);
+                        setVitalsTab("vitals");
+                        creatingDraftRef.current = false;
+                      }}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors"
+                    >
+                      <Plus className="h-3 w-3" /> New Entry
+                    </button>
+                  )}
+                  <button
+                    onClick={handleVitalsComplete}
+                    className="flex items-center gap-1.5 h-7 px-3 text-xs font-bold rounded-lg bg-[#4982CF] hover:bg-[#3a6fb8] text-white transition-colors"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Save &amp; Complete
+                  </button>
+                </div>
               </div>
               {vitalsTab === "vitals" && showTrends && <VitalsTrends />}
               {vitalsTab === "vitals" && !showTrends && (
