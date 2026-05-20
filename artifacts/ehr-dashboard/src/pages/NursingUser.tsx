@@ -1642,7 +1642,7 @@ function TriageSplitPanel({ patient }: { patient: Patient | null }) {
   return (
     <div className="flex-1 flex overflow-hidden">
       {/* Left panel */}
-      <div className="w-64 flex-shrink-0 border-r border-slate-100 flex flex-col overflow-y-auto bg-slate-50/40">
+      <div className="w-1/2 flex-shrink-0 border-r border-slate-100 flex flex-col overflow-y-auto bg-slate-50/40">
         <Collapsible title="Required Actions" badge={drafts.length} defaultOpen>
           {drafts.length === 0 ? (
             <p className="text-xs text-slate-400 px-4 pb-4">No active triage sessions.</p>
@@ -1716,7 +1716,7 @@ function TriageSplitPanel({ patient }: { patient: Patient | null }) {
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="w-1/2 flex flex-col overflow-hidden">
         {activeDraftId && (
           <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
             <span className="text-xs text-slate-500 font-medium truncate">{activeDraft?.algoName}</span>
