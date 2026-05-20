@@ -609,6 +609,7 @@ function CareLeftPanel({ sources, records, selectedId, cpExecStore, patientMrn, 
             const isSelected = src.id === selectedId;
             const tasks      = cpExecStore[src.id] ?? [];
             const done       = tasks.filter(t => t.status === "done").length;
+            const skippedC   = tasks.filter(t => t.status === "skipped").length;
             const total      = tasks.length || src.carePlanItems.length;
             const badge      = getStatusBadge(src.id);
 
@@ -633,7 +634,9 @@ function CareLeftPanel({ sources, records, selectedId, cpExecStore, patientMrn, 
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${badge.cls}`}>
                         {badge.label}
                       </span>
-                      <span className="text-[10px] text-slate-400">{done}/{total} tasks done</span>
+                      <span className="text-[10px] text-slate-400">
+                        {done + skippedC}/{total} done{skippedC > 0 ? ` · ${skippedC} skipped` : ""}
+                      </span>
                     </div>
                   </div>
                   <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 mt-1 transition-transform ${isSelected ? "rotate-90 text-[#4982CF]" : "text-slate-300"}`} />
@@ -663,7 +666,8 @@ function CareLeftPanel({ sources, records, selectedId, cpExecStore, patientMrn, 
           ) : [...visibleRecords].reverse().map(r => {
             const exp       = expandedRecord === r.recordId;
             const taskExecs = r.taskExecs ?? [];
-            const doneCount = taskExecs.filter(t => t.status === "done").length;
+            const doneCount    = taskExecs.filter(t => t.status === "done").length;
+            const skippedCount = taskExecs.filter(t => t.status === "skipped").length;
             return (
               <div key={r.recordId} className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
                 <button
@@ -679,7 +683,7 @@ function CareLeftPanel({ sources, records, selectedId, cpExecStore, patientMrn, 
                     <p className="text-[10px] text-slate-400 mt-0.5">
                       Completed {new Date(r.completedAt).toLocaleDateString()}
                       {taskExecs.length > 0
-                        ? ` · ${doneCount}/${taskExecs.length} tasks done`
+                        ? ` · ${doneCount + skippedCount}/${taskExecs.length} done${skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}`
                         : ` · ${r.source.carePlanItems.length} item${r.source.carePlanItems.length !== 1 ? "s" : ""}`}
                     </p>
                   </div>
