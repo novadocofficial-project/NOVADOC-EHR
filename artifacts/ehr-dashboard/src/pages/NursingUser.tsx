@@ -575,6 +575,9 @@ function CareLeftPanel({ sources, records, selectedId, cpExecStore, patientMrn, 
   function getStatusBadge(srcId: string) {
     const tasks = cpExecStore[srcId] ?? [];
     if (tasks.length === 0) return { label: "Pending", cls: "bg-slate-100 text-slate-500 border-slate-200" };
+    if (tasks.every(t => t.status === "done")) {
+      return { label: "Completed", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+    }
     if (tasks.some(t => t.status === "in-progress" || t.status === "done")) {
       return { label: "In Progress", cls: "bg-amber-50 text-amber-700 border-amber-200" };
     }
