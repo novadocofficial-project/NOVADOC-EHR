@@ -9,7 +9,7 @@ import {
   Maximize2, Minimize2, ChevronDown, FilePlus,
 } from "lucide-react";
 import { SOAP_DUMMY } from "@/data/soapDummy";
-import { hasSoapDraft, readSignedRecords, saveSignedRecords } from "@/hooks/useSoapNoteDraft";
+import { hasSoapDraft, clearSoapDraft, readSignedRecords, saveSignedRecords } from "@/hooks/useSoapNoteDraft";
 import type { Appointment } from "@/hooks/useAppointments";
 import { SoapNotePage } from "@/pages/SoapNotePage";
 import type { SignedRecord } from "@/pages/SoapNotePage";
@@ -427,6 +427,14 @@ export function ApptFaceSheet({
       setHasDraft(hasSoapDraft(sessionEntryId));
     }
   }, [soapNoteOpen, sessionEntryId]);
+
+  // One-time cleanup: remove the legacy bare draft key (soap_draft_{appt.id})
+  // written before session-scoped IDs were introduced. Safe to delete because
+  // signed records are stored separately under soap_signed_{appt.id}.
+  useEffect(() => {
+    clearSoapDraft(appt.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const name    = appt.patientName || "Patient";
   const mrn     = appt.patientMrn  || "—";
