@@ -575,7 +575,7 @@ function CareLeftPanel({ sources, records, selectedId, cpExecStore, patientMrn, 
   function getStatusBadge(srcId: string) {
     const tasks = cpExecStore[srcId] ?? [];
     if (tasks.length === 0) return { label: "Pending", cls: "bg-slate-100 text-slate-500 border-slate-200" };
-    if (tasks.every(t => t.status === "done")) {
+    if (tasks.every(t => t.status === "done" || t.status === "skipped")) {
       return { label: "Completed", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
     }
     if (tasks.some(t => t.status === "in-progress" || t.status === "done")) {
@@ -701,18 +701,22 @@ function CareLeftPanel({ sources, records, selectedId, cpExecStore, patientMrn, 
                           t.status === "done" ? "bg-emerald-500" :
                           t.status === "skipped" ? "bg-rose-400" : "bg-slate-300"
                         }`} />
-                        <span className={`flex-1 ${t.status === "skipped" ? "line-through text-slate-400" : "text-slate-600"}`}>
-                          {t.title}
-                        </span>
-                        <span className="text-[10px] text-slate-400 flex-shrink-0 capitalize">{t.status}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start gap-1">
+                            <span className={`flex-1 ${t.status === "skipped" ? "line-through text-slate-400" : "text-slate-600"}`}>
+                              {t.title}
+                            </span>
+                            <span className="text-[10px] text-slate-400 flex-shrink-0 capitalize ml-1">{t.status}</span>
+                          </div>
+                          {t.status === "skipped" && t.skipReason && (
+                            <p className="text-[10px] text-rose-400 italic mt-0.5">Reason: {t.skipReason}</p>
+                          )}
+                          {t.nurseNote && (
+                            <p className="text-[10px] text-slate-400 italic mt-0.5">{t.nurseNote}</p>
+                          )}
+                        </div>
                       </div>
                     ))}
-                    {r.staffNotes && (
-                      <div className="mt-2 pt-2 border-t border-slate-100">
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Staff Notes</p>
-                        <p className="text-[11px] text-slate-600 whitespace-pre-wrap">{r.staffNotes}</p>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -875,8 +879,8 @@ function CarePlanWorkspace({
   const done       = tasks.filter(t => t.status === "done").length;
   const inProgress = tasks.filter(t => t.status === "in-progress").length;
   const skipped    = tasks.filter(t => t.status === "skipped").length;
-  const pct        = total ? Math.round((done / total) * 100) : 0;
-  const canComplete = total > 0 && tasks.every(t => t.status === "done");
+  const pct        = total ? Math.round(((done + skipped) / total) * 100) : 0;
+  const canComplete = total > 0 && tasks.every(t => t.status === "done" || t.status === "skipped");
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -934,9 +938,7 @@ function CarePlanWorkspace({
           <CheckCircle2 className="h-4 w-4" />
           {canComplete
             ? "Save & Complete"
-            : skipped > 0
-              ? `${skipped} skipped task${skipped !== 1 ? "s" : ""} — cannot complete`
-              : `${total - done} task${total - done !== 1 ? "s" : ""} remaining`}
+            : `${total - done - skipped} task${total - done - skipped !== 1 ? "s" : ""} remaining`}
         </button>
       </div>
     </div>
