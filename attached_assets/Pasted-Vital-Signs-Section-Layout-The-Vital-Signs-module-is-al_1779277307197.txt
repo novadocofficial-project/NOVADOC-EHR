@@ -1,0 +1,83 @@
+Vital Signs Section Layout
+
+The Vital Signs module is already divided into two equal panels (50% each).
+Now the left panel functionality will be updated to include:
+
+Required Actions
+All Records
+
+The right panel will remain the active workspace where vital signs are captured and edited.
+
+Remove Patient Information Section
+
+The separate Patient Information section should be removed from the Vital Signs module because patient context is already available globally within the encounter/workflow.
+
+This will:
+
+Reduce unnecessary duplication
+Increase available working space
+Simplify the UI for nursing staff
+Required Actions Section
+
+The Required Actions section will work as a draft management system for Vital Signs entries.
+
+Functionality
+Any in-progress vital signs entry will auto-save as a draft
+Drafts will persist in local storage
+Users can switch between multiple vital sign recordings without losing progress
+Clicking a draft restores the exact state from where it was left
+Multiple Vital Signs Support
+
+The system should support capturing multiple vital sign records simultaneously during the same workflow.
+
+Example Scenario
+Nurse starts recording Vital Signs Entry #1
+Data auto-saves continuously into local storage
+Before completing it, nurse starts another vital signs entry
+The first entry moves into Required Actions
+The second entry becomes active on the right side
+
+Later:
+
+Clicking any draft from Required Actions restores the exact saved state
+Users can continue editing from where they stopped
+
+This allows smooth handling of:
+
+Repeated measurements
+Re-check vitals
+Multi-stage observations
+Interrupted workflows
+Completing a Vital Signs Entry
+
+Once a vital signs record is completed:
+
+It will move from Required Actions to All Records
+The completed record will remain stored in local storage
+Users can review previous vital sign entries anytime
+All Records Section
+
+The All Records section will contain completed vital sign records.
+
+Features
+Expand/collapse record view
+Historical review of recorded values
+Ability to inspect previously captured observations
+
+Example data visible inside expanded records:
+
+Blood Pressure
+Pulse
+Temperature
+Respiratory Rate
+Oxygen Saturation
+Height / Weight
+BMI
+Notes or observations
+Core Objective
+
+This workflow ensures:
+
+Consistent UX across Triage, History, and Vital Signs
+Continuous draft protection
+Easy switching between multiple in-progress entries
