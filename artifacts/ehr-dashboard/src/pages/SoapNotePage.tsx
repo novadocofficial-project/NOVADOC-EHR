@@ -15,7 +15,7 @@ import { useSoapNoteDraft, saveRoutingSnapshot, savePendingLabOrders, savePatien
 import { Button } from "@/components/ui/button";
 import { View360Drawer } from "@/pages/View360Drawer";
 import { LabsDrawer } from "@/pages/LabsDrawer";
-import { ClinicalNoteDrawer } from "@/pages/ClinicalNoteDrawer";
+import { ClinicalNoteDrawer, EMPTY_NOTE } from "@/pages/ClinicalNoteDrawer";
 import type { NoteState } from "@/pages/ClinicalNoteDrawer";
 import { EMPTY_FORMULARY } from "@/pages/FormularySection";
 import { EMPTY_IMAGING } from "@/pages/ImagingSection";
@@ -771,6 +771,15 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
   const [showAddendumDrawer, setShowAddendumDrawer] = useState(false);
   const [addendumRows, setAddendumRows]         = useState<AddendumRow[]>([]);
   const menuRef                                 = useRef<HTMLDivElement | null>(null);
+
+  // Stamp an initial draft immediately on mount so hasSoapDraft() returns true
+  // as soon as the doctor closes the note — even without editing anything.
+  // saveDraft sets pendingRef; the useSoapNoteDraft unmount flush writes it to
+  // localStorage synchronously when SoapNotePage unmounts.
+  useEffect(() => {
+    saveDraft(draft ?? EMPTY_NOTE);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (openMenuIdx === null) return;
