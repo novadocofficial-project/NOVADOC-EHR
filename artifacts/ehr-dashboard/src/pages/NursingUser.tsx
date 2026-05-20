@@ -642,13 +642,32 @@ function VitalsFormVitalsOnly({ vitalValues, setVitalValues, configuredVitals }:
 
 // ─── Pain Score tab ────────────────────────────────────────────────────────────
 
-function VitalsPainTab({ painScore, setPainScore, painConfig }:
-  { painScore: number; setPainScore: (n: number) => void; painConfig: VitalConfig | undefined }) {
+function VitalsPainTab({ painScore, setPainScore, painConfig, showTrends }:
+  { painScore: number; setPainScore: (n: number) => void; painConfig: VitalConfig | undefined; showTrends: boolean }) {
   const hidden = painConfig?.opd === "skip";
   if (hidden) {
     return (
       <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
         Pain Score is not configured for this visit type.
+      </div>
+    );
+  }
+  if (showTrends) {
+    return (
+      <div className="flex-1 overflow-y-auto px-5 py-5 bg-slate-50/40">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <p className="text-sm font-bold text-slate-800 mb-1">Pain Score</p>
+          <p className="text-xs text-slate-400 mb-4">Reported pain level (0 = No Pain, 10 = Worst, last 7 visits)</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={TREND_PAIN} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#94a3b8" }} />
+              <YAxis domain={[0, 10]} tick={{ fontSize: 10, fill: "#94a3b8" }} />
+              <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e2e8f0" }} />
+              <Line type="monotone" dataKey="score" name="Pain Score" stroke="#f97316" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     );
   }
@@ -1635,14 +1654,14 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
                     return (
                       <button
                         key={tab}
-                        onClick={() => { setVitalsTab(tab); if (tab !== "vitals") setShowTrends(false); }}
+                        onClick={() => { setVitalsTab(tab); if (tab === "mental") setShowTrends(false); }}
                         className={`px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${i > 0 ? "border-l border-slate-200" : ""} ${vitalsTab === tab ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
                         {labels[tab]}
                       </button>
                     );
                   })}
                 </div>
-                {vitalsTab === "vitals" && (
+                {(vitalsTab === "vitals" || vitalsTab === "pain") && (
                   <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm">
                     <button
                       onClick={() => setShowTrends(false)}
@@ -1670,6 +1689,7 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
                   painScore={painScore}
                   setPainScore={setPainScore}
                   painConfig={configuredVitals.find(v => v.id === "pain")}
+                  showTrends={showTrends}
                 />
               )}
               {vitalsTab === "mental" && (
