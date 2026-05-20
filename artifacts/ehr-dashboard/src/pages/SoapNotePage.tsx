@@ -757,9 +757,11 @@ interface SoapNotePageProps {
   onSaveAndClose?: () => void;
   onDoctorSign?: (noteState: NoteState | null) => void;
   signedRecords?: SignedRecord[];
+  /** Forwarded to ClinicalNoteDrawer to show a session badge, e.g. "Note #2". */
+  noteLabel?: string;
 }
 
-export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSendToLab, onDiscardLab, onSaveAndClose, onDoctorSign, signedRecords = [] }: SoapNotePageProps) {
+export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSendToLab, onDiscardLab, onSaveAndClose, onDoctorSign, signedRecords = [], noteLabel }: SoapNotePageProps) {
   const { draft, saveDraft, clearDraft } = useSoapNoteDraft(entry.id);
 
   const [openDrawer, setOpenDrawer]             = useState<string | null>(null);
@@ -1211,6 +1213,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
           patientName={name}
           doctorId={doctorId}
           faceSheetOpenedAt={faceSheetOpenedAt}
+          noteLabel={noteLabel}
           awaitingLab={entry.pendingLab}
           labResultsReady={entry.labResultsReady}
           onSendToLab={onSendToLab}

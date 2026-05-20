@@ -714,9 +714,11 @@ interface ClinicalNoteDrawerProps {
   isAddendumMode?: boolean;
   onAddendum?: (note: NoteState) => void;
   onCancel?: () => void;
+  /** Label shown in the header when this is a follow-up note, e.g. "Note #2". */
+  noteLabel?: string;
 }
 
-export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOpenedAt, awaitingLab = false, labResultsReady = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, onNoteChange, isAddendumMode = false, onAddendum, onCancel }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOpenedAt, awaitingLab = false, labResultsReady = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, onNoteChange, isAddendumMode = false, onAddendum, onCancel, noteLabel }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(() => initialNote ?? EMPTY_NOTE);
   const [_sfInit] = useState<{ form: SpecialtyForm | null; mode: "soap" | "specialty" }>(() => {
@@ -1054,6 +1056,11 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
           <span className="text-[10px] text-slate-400 flex-shrink-0 font-medium">
             Consultation Note · {patientName}
           </span>
+          {noteLabel && (
+            <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black text-white" style={{ backgroundColor: "#4982CF" }}>
+              {noteLabel}
+            </span>
+          )}
         </div>
 
         {/* ── Scrollable content ────────────────────────────────────────────── */}
