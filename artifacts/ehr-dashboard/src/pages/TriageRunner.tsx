@@ -444,18 +444,6 @@ export function TriageRunner({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [algoId, stepIndex, answers]);
 
-  // When a single algorithm is enabled, the state initialiser auto-selects it
-  // without going through the picker click path. Notify the parent once on mount
-  // so it can create a draft (mirrors the onAlgoSelected call in the picker).
-  const autoAlgoNotifiedRef = useRef(false);
-  useEffect(() => {
-    if (algoId && !initialAlgoId && !autoAlgoNotifiedRef.current && onAlgoSelected) {
-      autoAlgoNotifiedRef.current = true;
-      const a = enabled.find(x => x.id === algoId);
-      if (a) onAlgoSelected(a.id, a.name, a.steps.length);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentionally runs only once on mount
 
   const algo = enabled.find(a => a.id === algoId) ?? null;
 

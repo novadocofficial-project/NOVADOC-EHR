@@ -1594,8 +1594,18 @@ function genTriageDraftId() { return `td-${Date.now()}-${Math.random().toString(
 // ─── Triage split panel ────────────────────────────────────────────────────────
 
 function TriageSplitPanel({ patient }: { patient: Patient | null }) {
-  const [drafts, setDrafts] = useState<TriageDraft[]>(loadTriageDrafts);
-  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  // On mount: purge blank untouched drafts, then auto-resume the most recent real one
+  const [drafts, setDrafts] = useState<TriageDraft[]>(() => {
+    const all = loadTriageDrafts();
+    const real = all.filter(d => d.stepIndex > 0 || Object.keys(d.answers).length > 0);
+    if (real.length !== all.length) persistTriageDrafts(real);
+    return real;
+  });
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(() => {
+    const all = loadTriageDrafts().filter(d => d.stepIndex > 0 || Object.keys(d.answers).length > 0);
+    if (all.length === 0) return null;
+    return [...all].sort((a, b) => b.updatedAt - a.updatedAt)[0].draftId;
+  });
   const [completedSessions, setCompletedSessions] = useState<TriageSession[]>(loadSessions);
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
 
@@ -1641,81 +1651,116 @@ function TriageSplitPanel({ patient }: { patient: Patient | null }) {
 
   return (
     <div className="flex-1 flex overflow-hidden">
-      {/* Left panel */}
-      <div className="w-1/2 flex-shrink-0 border-r border-slate-100 flex flex-col overflow-y-auto bg-slate-50/40">
-        <Collapsible title="Required Actions" badge={drafts.length} defaultOpen>
+      {/* ── Left panel ── */}
+      <div className="w-1/2 flex-shrink-0 border-r border-slate-200 flex flex-col overflow-y-auto bg-white">
+
+        {/* Required Actions header */}
+        <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-2">
+          <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+          <span className="text-xs font-bold text-slate-700 flex-1">Required Actions</span>
+          {drafts.length > 0 && (
+            <span className="text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 rounded-full px-2 py-0.5 leading-none">
+              {drafts.length}
+            </span>
+          )}
+        </div>
+
+        <div className="px-3 py-3 space-y-2">
           {drafts.length === 0 ? (
-            <p className="text-xs text-slate-400 px-4 pb-4">No active triage sessions.</p>
-          ) : (
-            <div className="space-y-1.5 px-3 pb-3">
-              {drafts.map(d => (
-                <button
-                  key={d.draftId}
-                  onClick={() => setActiveDraftId(d.draftId)}
-                  className={`w-full text-left rounded-xl border px-3.5 py-3 transition-all ${
-                    activeDraftId === d.draftId
-                      ? "bg-[#4982CF]/10 border-[#4982CF]/30 shadow-sm"
-                      : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
-                  }`}
-                >
-                  <div className="flex items-start gap-2.5">
-                    <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-800 leading-tight truncate">{d.algoName}</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
-                        {d.patientName ?? "Walk-in"} · Step {d.stepIndex + 1} of {d.totalSteps}
-                      </p>
+            <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+              <AlertCircle className="h-4 w-4 text-slate-300" />
+              <p className="text-xs text-slate-400">No active triage sessions</p>
+            </div>
+          ) : drafts.map(d => {
+            const pct = d.totalSteps > 1 ? Math.round((d.stepIndex / (d.totalSteps - 1)) * 100) : 0;
+            const active = activeDraftId === d.draftId;
+            return (
+              <button
+                key={d.draftId}
+                onClick={() => setActiveDraftId(d.draftId)}
+                className={`w-full text-left rounded-xl border p-3.5 transition-all ${
+                  active
+                    ? "bg-[#4982CF]/8 border-[#4982CF]/40 shadow-sm ring-1 ring-[#4982CF]/20"
+                    : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? "bg-[#4982CF]/15" : "bg-red-50"}`}>
+                    <AlertCircle className={`h-4 w-4 ${active ? "text-[#4982CF]" : "text-red-500"}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{d.algoName}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{d.patientName ?? "Walk-in"}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex-1 h-1 bg-slate-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#4982CF] rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-[10px] text-slate-400 tabular-nums flex-shrink-0">
+                        Step {d.stepIndex + 1}/{d.totalSteps}
+                      </span>
                     </div>
                   </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </Collapsible>
+                </div>
+              </button>
+            );
+          })}
+        </div>
 
-        <Collapsible title="All Records" badge={completedSessions.length} defaultOpen={false}>
-          {completedSessions.length === 0 ? (
-            <p className="text-xs text-slate-400 px-4 pb-4">No completed sessions.</p>
-          ) : (
-            <div className="space-y-1.5 px-3 pb-3">
-              {[...completedSessions].reverse().map(s => {
-                const cfg = OUTCOME_CFG[s.outcomeType];
-                const expanded = expandedRecord === s.id;
-                return (
-                  <div key={s.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                    <button
-                      onClick={() => setExpandedRecord(expanded ? null : s.id)}
-                      className="w-full text-left px-3.5 py-3 flex items-start gap-2.5"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-800 leading-tight truncate">{s.algoName}</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">{s.patientName ?? "Walk-in"}</p>
-                        <span className={`inline-flex items-center mt-1.5 text-[9px] font-bold rounded-full px-2 py-0.5 ${cfg.bg} ${cfg.color}`}>
-                          {cfg.emoji} {cfg.label}
-                        </span>
-                      </div>
-                      <ChevronDown className={`h-3 w-3 text-slate-400 flex-shrink-0 mt-1 transition-transform ${expanded ? "rotate-180" : ""}`} />
-                    </button>
-                    {expanded && (
-                      <div className="border-t border-slate-100 px-3.5 py-3 space-y-2.5">
-                        {s.stepAnswers.map(sa => (
-                          <div key={sa.stepId}>
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{sa.stepTitle}</p>
-                            <p className="text-xs text-slate-700 mt-0.5">{sa.summary}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+        {/* All Records header */}
+        <div className="sticky top-0 z-10 bg-white border-t border-b border-slate-100 px-4 py-3 flex items-center gap-2 mt-1">
+          <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+          <span className="text-xs font-bold text-slate-700 flex-1">All Records</span>
+          {completedSessions.length > 0 && (
+            <span className="text-[10px] font-bold bg-green-50 text-green-600 border border-green-100 rounded-full px-2 py-0.5 leading-none">
+              {completedSessions.length}
+            </span>
           )}
-        </Collapsible>
+        </div>
+
+        <div className="px-3 py-3 space-y-2">
+          {completedSessions.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+              <CheckCircle2 className="h-4 w-4 text-slate-300" />
+              <p className="text-xs text-slate-400">No completed sessions</p>
+            </div>
+          ) : [...completedSessions].reverse().map(s => {
+            const cfg = OUTCOME_CFG[s.outcomeType];
+            const expanded = expandedRecord === s.id;
+            return (
+              <div key={s.id} className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                <button
+                  onClick={() => setExpandedRecord(expanded ? null : s.id)}
+                  className="w-full text-left p-3.5 flex items-start gap-3 hover:bg-white transition-colors"
+                >
+                  <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{s.algoName}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{s.patientName ?? "Walk-in"}</p>
+                    <span className={`inline-flex items-center gap-1 mt-1.5 text-[10px] font-semibold rounded-full px-2 py-0.5 ${cfg.bg} ${cfg.color}`}>
+                      <span>{cfg.emoji}</span><span>{cfg.label}</span>
+                    </span>
+                  </div>
+                  <ChevronDown className={`h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-1 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                </button>
+                {expanded && (
+                  <div className="border-t border-slate-200 bg-white px-4 py-3 space-y-3">
+                    {s.stepAnswers.map(sa => (
+                      <div key={sa.stepId}>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{sa.stepTitle}</p>
+                        <p className="text-xs text-slate-700 mt-0.5">{sa.summary}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Right panel */}
+      {/* ── Right panel ── */}
       <div className="w-1/2 flex flex-col overflow-hidden">
         {activeDraftId && (
           <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
