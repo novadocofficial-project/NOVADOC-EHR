@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   ArrowLeft, AlertTriangle, Eye,
@@ -9,6 +9,7 @@ import {
   Maximize2, Minimize2, ChevronDown, FilePlus,
 } from "lucide-react";
 import { SOAP_DUMMY } from "@/data/soapDummy";
+import { hasSoapDraft, readSignedRecords, saveSignedRecords } from "@/hooks/useSoapNoteDraft";
 import type { Appointment } from "@/hooks/useAppointments";
 import { SoapNotePage } from "@/pages/SoapNotePage";
 import type { SignedRecord } from "@/pages/SoapNotePage";
@@ -400,7 +401,15 @@ export function ApptFaceSheet({
 }) {
   const [showComplaintsDrawer, setShowComplaintsDrawer] = useState(false);
   const [soapNoteOpen,        setSoapNoteOpen]         = useState(false);
-  const [apptSignedRecords,   setApptSignedRecords]    = useState<SignedRecord[]>([]);
+  const [apptSignedRecords,   setApptSignedRecords]    = useState<SignedRecord[]>(() => readSignedRecords(appt.id));
+  const [hasDraft,            setHasDraft]             = useState(() => hasSoapDraft(appt.id));
+
+  // Refresh draft status whenever we return from the SoapNotePage.
+  useEffect(() => {
+    if (!soapNoteOpen) {
+      setHasDraft(hasSoapDraft(appt.id));
+    }
+  }, [soapNoteOpen, appt.id]);
 
   const name    = appt.patientName || "Patient";
   const mrn     = appt.patientMrn  || "—";
@@ -415,7 +424,7 @@ export function ApptFaceSheet({
         signedRecords={apptSignedRecords}
         onDoctorSign={(noteState) => {
           const now = new Date();
-          setApptSignedRecords(prev => [...prev, {
+          const newRecord: SignedRecord = {
             date:   now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
             day:    now.toLocaleDateString("en-US", { weekday: "long" }),
             time:   now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
@@ -423,7 +432,12 @@ export function ApptFaceSheet({
             doctor: doctorName,
             signed: true,
             noteState: noteState ?? undefined,
-          }]);
+          };
+          setApptSignedRecords(prev => {
+            const updated = [...prev, newRecord];
+            saveSignedRecords(appt.id, updated);
+            return updated;
+          });
           setSoapNoteOpen(false);
         }}
       />
@@ -460,13 +474,37 @@ export function ApptFaceSheet({
               </>
             )}
             <div className="w-px h-4 bg-slate-200 mx-1" />
-            <button
-              onClick={() => setSoapNoteOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-[11px] font-bold transition-opacity hover:opacity-90"
-              style={{ backgroundColor: ACCENT }}>
-              <FilePlus className="h-3.5 w-3.5" />
-              Add Health Record
-            </button>
+            {hasDraft ? (
+              <button
+                onClick={() => setSoapNoteOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-[11px] font-bold transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "#f59e0b" }}>
+                <FilePlus className="h-3.5 w-3.5" />
+                Resume Health Record
+              </button>
+            ) : apptSignedRecords.length > 0 ? (
+              <>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-emerald-700 text-[11px] font-bold bg-emerald-50 border border-emerald-200">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Health Record Completed
+                </span>
+                <button
+                  onClick={() => setSoapNoteOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-[11px] font-bold transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: ACCENT }}>
+                  <FilePlus className="h-3.5 w-3.5" />
+                  Add Health Record
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setSoapNoteOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-[11px] font-bold transition-opacity hover:opacity-90"
+                style={{ backgroundColor: ACCENT }}>
+                <FilePlus className="h-3.5 w-3.5" />
+                Add Health Record
+              </button>
+            )}
           </div>
         </div>
 
