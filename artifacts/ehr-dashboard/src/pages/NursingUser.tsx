@@ -488,6 +488,10 @@ function scanCarePlanSources(patientMrn: string | null): CarePlanSource[] {
     patientRef:    "seed",
   }));
 
+  // If no patient is identified, show only seed sources — never expose signed records from storage
+  // to an unknown/walk-in patient context.
+  if (!patientMrn) return seedSources;
+
   const entryMrnMap = buildEntryMrnMap();
   const lsSources: CarePlanSource[] = [];
   try {
@@ -499,9 +503,8 @@ function scanCarePlanSources(patientMrn: string | null): CarePlanSource[] {
     for (const key of signedKeys) {
       const entryId = key.slice(SOAP_SIGNED_PREFIX.length);
       const mrnForEntry = entryMrnMap[entryId] ?? "";
-      // When patient is known: exclude records whose MRN differs OR is unknown.
-      // Unknown MRN (empty string) means we cannot confirm patient ownership — exclude to prevent leakage.
-      if (patientMrn && mrnForEntry !== patientMrn) continue;
+      // Exclude records whose MRN differs OR is unknown (cannot confirm patient ownership).
+      if (mrnForEntry !== patientMrn) continue;
 
       const raw = localStorage.getItem(key);
       if (!raw) continue;
