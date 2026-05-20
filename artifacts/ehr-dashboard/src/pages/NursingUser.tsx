@@ -2226,9 +2226,9 @@ function genProcDraftId() { return `pd-${Date.now()}-${Math.random().toString(36
 
 function ProcedureWorkspace({
   activeDraft, activeTemplate, templates, showGateway,
-  onStartNew, onSelectTemplate, onCancelGateway,
+  onStartNew, onSelectTemplate,
   onVitalsChange, onMedChange, onConsentChange, onBillingChange,
-  onCustomChange, onAddCustomEntry, onRemoveCustomEntry, onComplete, onBackToDrafts,
+  onCustomChange, onAddCustomEntry, onRemoveCustomEntry, onComplete,
 }: {
   activeDraft:        ProcDraft | null;
   activeTemplate:     NursingProcedureTemplate | null;
@@ -2236,7 +2236,6 @@ function ProcedureWorkspace({
   showGateway:        boolean;
   onStartNew:         () => void;
   onSelectTemplate:   (id: string) => void;
-  onCancelGateway:    () => void;
   onVitalsChange:     (v: Record<string, string>) => void;
   onMedChange:        (r: MedRow[]) => void;
   onConsentChange:    (d: ConsentData) => void;
@@ -2245,33 +2244,46 @@ function ProcedureWorkspace({
   onAddCustomEntry:   (compId: string, limit: number | null) => void;
   onRemoveCustomEntry:(compId: string, idx: number) => void;
   onComplete:         () => void;
-  onBackToDrafts?:    () => void;
 }) {
-  if (templates.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
-        <Stethoscope className="h-10 w-10 opacity-30" />
-        <p className="text-sm font-semibold text-slate-500">No procedure templates configured</p>
-        <p className="text-xs text-center">An admin can set up templates in Admin → Nursing Procedures.</p>
-      </div>
-    );
+  const headerLabel = activeDraft && activeTemplate && !showGateway
+    ? activeTemplate.name
+    : showGateway
+      ? "Select Template"
+      : "Nursing Procedures";
+
+  const draft    = activeDraft;
+  const template = activeTemplate;
+
+  function getEntries(compId: string): Record<string, string>[] {
+    return draft!.customValues[compId] ?? [{}];
   }
 
-  if (showGateway) {
-    return (
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-shrink-0 flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-          <Stethoscope className="h-4 w-4 text-teal-600" />
-          <span className="text-sm font-bold text-slate-700 flex-1">Select Procedure Template</span>
-          {activeDraft && (
-            <button
-              onClick={onCancelGateway}
-              className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Compact sub-header — always visible */}
+      <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex items-center gap-2 min-w-0">
+          <Stethoscope className="h-4 w-4 text-teal-600 flex-shrink-0" />
+          <span className="text-xs text-slate-600 font-medium truncate">{headerLabel}</span>
         </div>
+        <button
+          onClick={onStartNew}
+          className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors flex-shrink-0 ml-3"
+        >
+          <Plus className="h-3 w-3" /> New Record
+        </button>
+      </div>
+
+      {/* Components */}
+      {templates.length === 0 ? (
+        /* ── No templates configured ── */
+        <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+          <Stethoscope className="h-10 w-10 opacity-30" />
+          <p className="text-sm font-semibold text-slate-500">No procedure templates configured</p>
+          <p className="text-xs text-center">An admin can set up templates in Admin → Nursing Procedures.</p>
+        </div>
+      ) : showGateway ? (
+        /* ── Template picker ── */
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-3">
           <p className="text-xs text-slate-400 mb-2">Choose a template to start a new nursing procedure. Progress auto-saves as you work.</p>
           {templates.map(t => (
@@ -2295,142 +2307,92 @@ function ProcedureWorkspace({
             </button>
           ))}
         </div>
-      </div>
-    );
-  }
-
-  if (!activeDraft || !activeTemplate) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center py-20 gap-4">
-        <div className="h-16 w-16 rounded-2xl bg-teal-50 flex items-center justify-center">
-          <Stethoscope className="h-8 w-8 text-teal-300" />
-        </div>
-        <div className="text-center">
-          <p className="text-sm font-semibold text-slate-600">No active procedure</p>
-          <p className="text-xs text-slate-400 mt-1">Start a new procedure or select one from the left panel.</p>
-        </div>
-        <button
-          onClick={onStartNew}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition-colors shadow-sm"
-        >
-          <Plus className="h-4 w-4" />
-          Start New Procedure
-        </button>
-      </div>
-    );
-  }
-
-  const draft    = activeDraft;
-  const template = activeTemplate;
-
-  function getEntries(compId: string): Record<string, string>[] {
-    return draft.customValues[compId] ?? [{}];
-  }
-
-  return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-slate-100 bg-slate-50/50">
-        {onBackToDrafts && (
-          <button
-            onClick={onBackToDrafts}
-            className="flex items-center gap-1 px-5 pt-2 pb-0 text-[11px] font-semibold text-[#4982CF] hover:opacity-70 transition-opacity"
-          >
-            <ChevronDown className="h-3 w-3 rotate-90" />
-            Back to drafts
-          </button>
-        )}
-        <div className="flex items-center gap-3 px-5 py-2.5">
-          <div className="h-8 w-8 rounded-lg bg-teal-50 flex items-center justify-center flex-shrink-0">
-            <Stethoscope className="h-4 w-4 text-teal-600" />
+      ) : !draft || !template ? (
+        /* ── Empty state ── */
+        <div className="flex-1 flex flex-col items-center justify-center py-20 gap-4">
+          <div className="h-16 w-16 rounded-2xl bg-teal-50 flex items-center justify-center">
+            <Stethoscope className="h-8 w-8 text-teal-300" />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-slate-800 truncate">{template.name}</p>
-            <p className="text-[11px] text-slate-400">
-              Started {new Date(draft.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Auto-saving
-            </p>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-slate-600">No active procedure</p>
+            <p className="text-xs text-slate-400 mt-1">Select a draft from the left or click <span className="font-semibold text-[#4982CF]">+ New Record</span> to begin.</p>
           </div>
-          <button
-            onClick={onStartNew}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 text-teal-700 text-xs font-bold hover:bg-teal-100 transition-colors flex-shrink-0"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New
-          </button>
         </div>
-      </div>
-
-      {/* Components */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-        {template.components.map(comp => (
-          <Collapsible key={comp.id} title={comp.name} defaultOpen>
-            {comp.type === "system" ? (
-              <ProcedureSystemComponentView
-                systemKey={comp.systemKey as string}
-                vitalsValues={draft.vitalsValues}  onVitalsChange={onVitalsChange}
-                medRows={draft.medRows}            onMedChange={onMedChange}
-                consentData={draft.consentData}    onConsentChange={onConsentChange}
-                billingRows={draft.billingRows}    onBillingChange={onBillingChange}
-              />
-            ) : (
-              <div className="pb-2">
-                {(() => {
-                  const entries = getEntries(comp.id);
-                  return (
-                    <>
-                      <div className="space-y-4">
-                        {entries.map((entryVals, idx) => (
-                          <div key={idx} className={comp.repeatable && entries.length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
-                            {comp.repeatable && entries.length > 1 && (
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entry {idx + 1}</span>
-                                <button onClick={() => onRemoveCustomEntry(comp.id, idx)} className="text-slate-300 hover:text-rose-500 transition-colors">
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
+      ) : (
+        /* ── Active draft form ── */
+        <>
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+            {template.components.map(comp => (
+              <Collapsible key={comp.id} title={comp.name} defaultOpen>
+                {comp.type === "system" ? (
+                  <ProcedureSystemComponentView
+                    systemKey={comp.systemKey as string}
+                    vitalsValues={draft.vitalsValues}  onVitalsChange={onVitalsChange}
+                    medRows={draft.medRows}            onMedChange={onMedChange}
+                    consentData={draft.consentData}    onConsentChange={onConsentChange}
+                    billingRows={draft.billingRows}    onBillingChange={onBillingChange}
+                  />
+                ) : (
+                  <div className="pb-2">
+                    {(() => {
+                      const entries = getEntries(comp.id);
+                      return (
+                        <>
+                          <div className="space-y-4">
+                            {entries.map((entryVals, idx) => (
+                              <div key={idx} className={comp.repeatable && entries.length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
+                                {comp.repeatable && entries.length > 1 && (
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entry {idx + 1}</span>
+                                    <button onClick={() => onRemoveCustomEntry(comp.id, idx)} className="text-slate-300 hover:text-rose-500 transition-colors">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                                <CustomComponentForm
+                                  component={comp}
+                                  values={entryVals}
+                                  onChange={v => onCustomChange(comp.id, idx, v)}
+                                  entryLayout={comp.entryLayout}
+                                  columns={comp.columns}
+                                />
                               </div>
-                            )}
-                            <CustomComponentForm
-                              component={comp}
-                              values={entryVals}
-                              onChange={v => onCustomChange(comp.id, idx, v)}
-                              entryLayout={comp.entryLayout}
-                              columns={comp.columns}
-                            />
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                      {comp.repeatable && (
-                        <button
-                          onClick={() => onAddCustomEntry(comp.id, comp.repeatLimit)}
-                          disabled={comp.repeatLimit !== null && entries.length >= comp.repeatLimit}
-                          className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-3"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          Add Entry{comp.repeatLimit !== null ? ` (${entries.length}/${comp.repeatLimit})` : ""}
-                        </button>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
+                          {comp.repeatable && (
+                            <button
+                              onClick={() => onAddCustomEntry(comp.id, comp.repeatLimit)}
+                              disabled={comp.repeatLimit !== null && entries.length >= comp.repeatLimit}
+                              className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-3"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              Add Entry{comp.repeatLimit !== null ? ` (${entries.length}/${comp.repeatLimit})` : ""}
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </Collapsible>
+            ))}
+            {template.components.length === 0 && (
+              <p className="text-xs text-slate-400 italic px-1">No components in this template.</p>
             )}
-          </Collapsible>
-        ))}
-        {template.components.length === 0 && (
-          <p className="text-xs text-slate-400 italic px-1">No components in this template.</p>
-        )}
-      </div>
+          </div>
 
-      {/* Save & Complete */}
-      <div className="flex-shrink-0 border-t border-slate-200 px-5 py-3 bg-white">
-        <button
-          onClick={onComplete}
-          className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-sm font-bold transition-colors cursor-pointer"
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          Save &amp; Complete
-        </button>
-      </div>
+          {/* Save & Complete */}
+          <div className="flex-shrink-0 border-t border-slate-200 px-5 py-3 bg-white">
+            <button
+              onClick={onComplete}
+              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-sm font-bold transition-colors cursor-pointer"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Save &amp; Complete
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -2529,7 +2491,6 @@ function ProcedureSection() {
           showGateway={showGateway}
           onStartNew={() => setShowGateway(true)}
           onSelectTemplate={startNewProcedure}
-          onCancelGateway={() => setShowGateway(false)}
           onVitalsChange={v  => activeDraftId && patchDraft(activeDraftId, { vitalsValues: v })}
           onMedChange={r     => activeDraftId && patchDraft(activeDraftId, { medRows: r })}
           onConsentChange={d => activeDraftId && patchDraft(activeDraftId, { consentData: d })}
@@ -2554,7 +2515,6 @@ function ProcedureSection() {
             patchDraft(activeDraftId, { customValues: { ...activeDraft.customValues, [compId]: entries } });
           }}
           onComplete={() => activeDraftId && completeDraft(activeDraftId)}
-          onBackToDrafts={activeDraftId ? () => setActiveDraftId(null) : undefined}
         />
       </div>
     </div>
