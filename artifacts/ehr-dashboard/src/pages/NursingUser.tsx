@@ -547,14 +547,10 @@ function GoalsLeftPanel({ entry }: { entry: MultiEntry }) {
 
 // ─── Config-driven vitals form ────────────────────────────────────────────────
 
-function VitalsForm({ vitalValues, setVitalValues, configuredVitals, painScore, setPainScore, mentalAnswers, setMentalAnswers }:
-  { vitalValues: Record<string, string>; setVitalValues: (v: Record<string, string>) => void; configuredVitals: VitalConfig[]; painScore: number; setPainScore: (n: number) => void; mentalAnswers: number[]; setMentalAnswers: (a: number[]) => void }) {
+function VitalsFormVitalsOnly({ vitalValues, setVitalValues, configuredVitals }:
+  { vitalValues: Record<string, string>; setVitalValues: (v: Record<string, string>) => void; configuredVitals: VitalConfig[] }) {
 
   const displayVitals = configuredVitals.filter(v => v.opd !== "skip" && v.id !== "pain");
-  const painConfig = configuredVitals.find(v => v.id === "pain");
-  const showPainSection = !painConfig || painConfig.opd !== "skip";
-  const mentalTotal = mentalAnswers.reduce((s, v) => s + v, 0);
-  function setMentalAnswer(qi: number, val: number) { const next = [...mentalAnswers]; next[qi] = val; setMentalAnswers(next); }
   function setV(key: string, val: string) { setVitalValues({ ...vitalValues, [key]: val }); }
 
   return (
@@ -639,62 +635,83 @@ function VitalsForm({ vitalValues, setVitalValues, configuredVitals, painScore, 
           </div>
         </Collapsible>
 
-        {showPainSection && (
-          <div className="border-t border-slate-100 pt-4">
-            <Collapsible title={`Pain Score${painConfig?.opd === "required" ? " *" : ""}`} accent defaultOpen>
-              <div className="space-y-0 pb-4">
-                {PAIN_LEVELS.map(pl => (
-                  <label key={pl.level} className="flex items-start gap-3 py-2.5 cursor-pointer hover:bg-slate-50 rounded-lg px-1 -mx-1">
-                    <input type="radio" name="pain" checked={painScore === pl.level} onChange={() => setPainScore(pl.level)} className="mt-0.5 flex-shrink-0 accent-[#4982CF]" />
-                    <span className="text-sm text-slate-700 leading-snug">
-                      <span className="font-semibold text-slate-800">{pl.label}</span> ({pl.desc})
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </Collapsible>
-          </div>
-        )}
+      </div>
+    </div>
+  );
+}
 
-        <div className="border-t border-slate-100 pt-4">
-          <Collapsible title="Mental Health Screen" accent defaultOpen>
-            <div className="pb-4">
-              <p className="text-xs text-slate-600 mb-3">Over the last two weeks, how often have you been bothered by the following problems?</p>
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-slate-50">
-                      <th className="text-right py-2 px-3 font-medium text-slate-500 w-48"></th>
-                      {["Not at All", "Several Days", "More than half the days", "Nearly Every Day"].map(h => (
-                        <th key={h} className="py-2 px-2 font-semibold text-slate-600 text-center w-20 leading-tight">{h}</th>
-                      ))}
-                    </tr>
-                    <tr className="bg-slate-50 border-t border-slate-200">
-                      <td className="text-right py-1.5 px-3 font-bold text-slate-600">Score:</td>
-                      {[1, 2, 3, 4].map(n => <td key={n} className="text-center py-1.5 px-2 font-bold text-slate-700">{n}</td>)}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {MENTAL_QUESTIONS.map((q, qi) => (
-                      <tr key={qi} className="hover:bg-slate-50/70">
-                        <td className="text-right py-3 px-3 text-slate-600 leading-snug">{q}</td>
-                        {[1, 2, 3, 4].map(score => (
-                          <td key={score} className="text-center py-3 px-2">
-                            <input type="radio" name={`mental-${qi}`} checked={mentalAnswers[qi] === score} onChange={() => setMentalAnswer(qi, score)} className="accent-[#4982CF]" />
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                    <tr className="bg-slate-50 border-t border-slate-200">
-                      <td className="text-right py-2 px-3 font-bold text-slate-600">Total:</td>
-                      <td className="text-center py-2 px-2 font-bold text-[#4982CF] text-sm" colSpan={4}>{mentalTotal || "—"}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </Collapsible>
-        </div>
+// ─── Pain Score tab ────────────────────────────────────────────────────────────
+
+function VitalsPainTab({ painScore, setPainScore, painConfig }:
+  { painScore: number; setPainScore: (n: number) => void; painConfig: VitalConfig | undefined }) {
+  const hidden = painConfig?.opd === "skip";
+  if (hidden) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
+        Pain Score is not configured for this visit type.
+      </div>
+    );
+  }
+  return (
+    <div className="flex-1 overflow-y-auto px-5 py-4">
+      <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
+        Pain Score{painConfig?.opd === "required" ? <span className="text-rose-500 ml-0.5 normal-case tracking-normal font-normal"> *</span> : ""}
+      </p>
+      <div className="space-y-0">
+        {PAIN_LEVELS.map(pl => (
+          <label key={pl.level} className="flex items-start gap-3 py-2.5 cursor-pointer hover:bg-slate-50 rounded-lg px-1 -mx-1">
+            <input type="radio" name="pain" checked={painScore === pl.level} onChange={() => setPainScore(pl.level)} className="mt-0.5 flex-shrink-0 accent-[#4982CF]" />
+            <span className="text-sm text-slate-700 leading-snug">
+              <span className="font-semibold text-slate-800">{pl.label}</span> ({pl.desc})
+            </span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Mental Health tab ─────────────────────────────────────────────────────────
+
+function VitalsMentalTab({ mentalAnswers, setMentalAnswers }:
+  { mentalAnswers: number[]; setMentalAnswers: (a: number[]) => void }) {
+  const mentalTotal = mentalAnswers.reduce((s, v) => s + v, 0);
+  function setMentalAnswer(qi: number, val: number) { const next = [...mentalAnswers]; next[qi] = val; setMentalAnswers(next); }
+  return (
+    <div className="flex-1 overflow-y-auto px-5 py-4">
+      <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Mental Health Screen (PHQ-4)</p>
+      <p className="text-xs text-slate-600 mb-3">Over the last two weeks, how often have you been bothered by the following problems?</p>
+      <div className="border border-slate-200 rounded-xl overflow-hidden">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-slate-50">
+              <th className="text-right py-2 px-3 font-medium text-slate-500 w-48"></th>
+              {["Not at All", "Several Days", "More than half the days", "Nearly Every Day"].map(h => (
+                <th key={h} className="py-2 px-2 font-semibold text-slate-600 text-center w-20 leading-tight">{h}</th>
+              ))}
+            </tr>
+            <tr className="bg-slate-50 border-t border-slate-200">
+              <td className="text-right py-1.5 px-3 font-bold text-slate-600">Score:</td>
+              {[1, 2, 3, 4].map(n => <td key={n} className="text-center py-1.5 px-2 font-bold text-slate-700">{n}</td>)}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {MENTAL_QUESTIONS.map((q, qi) => (
+              <tr key={qi} className="hover:bg-slate-50/70">
+                <td className="text-right py-3 px-3 text-slate-600 leading-snug">{q}</td>
+                {[1, 2, 3, 4].map(score => (
+                  <td key={score} className="text-center py-3 px-2">
+                    <input type="radio" name={`mental-${qi}`} checked={mentalAnswers[qi] === score} onChange={() => setMentalAnswer(qi, score)} className="accent-[#4982CF]" />
+                  </td>
+                ))}
+              </tr>
+            ))}
+            <tr className="bg-slate-50 border-t border-slate-200">
+              <td className="text-right py-2 px-3 font-bold text-slate-600">Total:</td>
+              <td className="text-center py-2 px-2 font-bold text-[#4982CF] text-sm" colSpan={4}>{mentalTotal || "—"}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -1547,6 +1564,7 @@ function ProcedureTabContent() {
 
 function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { entry: MultiEntry; onClose: () => void; onSave: () => void; initialCategory?: NurseCategory }) {
   const [showTrends, setShowTrends] = useState(false);
+  const [vitalsTab, setVitalsTab] = useState<"vitals" | "pain" | "mental">("vitals");
   const configuredVitals = useMemo(() => loadVitalsConfig(), []);
   const [vitalValues, setVitalValues] = useState<Record<string, string>>({
     bp_sys: "121", bp_dia: "77", bp_pos: "sitting", bp_orth: "no",
@@ -1611,32 +1629,51 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Right panel toolbar */}
               <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-[#4982CF]" />
-                  <span className="text-sm font-bold text-slate-700">
-                    {showTrends ? "Vitals Trends" : "Vitals Entry"}
-                  </span>
-                </div>
                 <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm">
-                  <button
-                    onClick={() => setShowTrends(false)}
-                    className={`px-4 py-1.5 text-xs font-semibold transition-colors ${!showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-                    Form
-                  </button>
-                  <button
-                    onClick={() => setShowTrends(true)}
-                    className={`px-4 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-                    <TrendingUp className="h-3 w-3" /> Trends
-                  </button>
+                  {(["vitals", "pain", "mental"] as const).map((tab, i) => {
+                    const labels = { vitals: "Vitals", pain: "Pain Score", mental: "Mental Health" };
+                    return (
+                      <button
+                        key={tab}
+                        onClick={() => { setVitalsTab(tab); if (tab !== "vitals") setShowTrends(false); }}
+                        className={`px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${i > 0 ? "border-l border-slate-200" : ""} ${vitalsTab === tab ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                        {labels[tab]}
+                      </button>
+                    );
+                  })}
                 </div>
+                {vitalsTab === "vitals" && (
+                  <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm">
+                    <button
+                      onClick={() => setShowTrends(false)}
+                      className={`px-4 py-1.5 text-xs font-semibold transition-colors ${!showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                      Form
+                    </button>
+                    <button
+                      onClick={() => setShowTrends(true)}
+                      className={`px-4 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                      <TrendingUp className="h-3 w-3" /> Trends
+                    </button>
+                  </div>
+                )}
               </div>
-              {showTrends ? <VitalsTrends /> : (
-                <VitalsForm
+              {vitalsTab === "vitals" && showTrends && <VitalsTrends />}
+              {vitalsTab === "vitals" && !showTrends && (
+                <VitalsFormVitalsOnly
                   vitalValues={vitalValues}
                   setVitalValues={setVitalValues}
                   configuredVitals={configuredVitals}
+                />
+              )}
+              {vitalsTab === "pain" && (
+                <VitalsPainTab
                   painScore={painScore}
                   setPainScore={setPainScore}
+                  painConfig={configuredVitals.find(v => v.id === "pain")}
+                />
+              )}
+              {vitalsTab === "mental" && (
+                <VitalsMentalTab
                   mentalAnswers={mentalAnswers}
                   setMentalAnswers={setMentalAnswers}
                 />
