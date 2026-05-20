@@ -310,94 +310,125 @@ function VitalsLeftPanel({ drafts, records, activeDraftId, configuredVitals, onR
 
 // ─── Left panel — Nursing Procedures ─────────────────────────────────────────
 
-function ProcedureLeftPanel({ entry }: { entry: MultiEntry }) {
-  const p = entry.patient;
-  const [exp0, setExp0] = useState(false);
-  const [exp1, setExp1] = useState(false);
-
-  const mockProc = [
-    {
-      date: "21 Feb 2025", range: "Tuesday, 26 Feb 2025",
-      template: "IV Cannulation", doctor: "Dr. Asif Imam", status: "Completed",
-      components: ["Vital Signs", "Medications Given", "Consent Form"],
-    },
-    {
-      date: "14 Jan 2025", range: "Tuesday, 14 Jan 2025",
-      template: "Wound Care", doctor: "Dr. Fatima Zahra", status: "Completed",
-      components: ["Wound Assessment", "Dressing Change", "Patient Education"],
-    },
-  ];
+function ProcedureLeftPanel({
+  drafts, records, activeDraftId, onSelectDraft,
+}: {
+  drafts:         ProcDraft[];
+  records:        ProcRecord[];
+  activeDraftId:  string | null;
+  onSelectDraft:  (id: string) => void;
+}) {
+  const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Record</p>
+    <div className="h-full flex flex-col overflow-y-auto bg-white">
+
+      {/* ── Required Actions ── */}
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-2 flex-shrink-0">
+        <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+        <span className="text-xs font-bold text-slate-700 flex-1">Required Actions</span>
+        {drafts.length > 0 && (
+          <span className="text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 rounded-full px-2 py-0.5 leading-none">
+            {drafts.length}
+          </span>
+        )}
       </div>
-      <div className="flex-1 overflow-y-auto px-4 py-3">
-        <Collapsible title="Patient Info" defaultOpen={false}>
-          {p ? (
-            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-1.5 text-xs">
-              {[["Name", p.name], ["MRN", p.mrn], ["Gender", p.gender === "M" ? "Male" : "Female"], ["DOB", p.dob], ["Phone", p.phone]].map(([l, v]) => (
-                <div key={l} className="flex justify-between">
-                  <span className="text-slate-400">{l}</span>
-                  <span className="font-semibold text-slate-800">{v}</span>
-                </div>
-              ))}
-            </div>
-          ) : <p className="text-xs text-slate-400 italic">No patient on file</p>}
-        </Collapsible>
 
-        <Collapsible title="Required Actions" badge={1} accent defaultOpen>
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 space-y-1.5 text-xs mb-2">
-            <p className="font-semibold text-slate-800 leading-tight">IV Cannulation procedure pending review</p>
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-              <span>{mockProc[0].date}</span>
-              <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block" />Pending</span>
-              <span className="flex items-center gap-1"><Stethoscope className="h-3 w-3" />{mockProc[0].template}</span>
-              <span className="flex items-center gap-1"><User className="h-3 w-3" />{mockProc[0].doctor}</span>
-            </div>
+      <div className="px-3 py-3 space-y-2">
+        {drafts.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+            <Stethoscope className="h-4 w-4 text-slate-300" />
+            <p className="text-xs text-slate-400">No active procedures</p>
           </div>
-        </Collapsible>
-
-        <Collapsible title="All Records" badge={mockProc.length} defaultOpen>
-          {mockProc.map((rec, idx) => {
-            const expanded = idx === 0 ? exp0 : exp1;
-            const setExpanded = idx === 0 ? setExp0 : setExp1;
-            return (
-              <div key={idx} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs mb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-slate-800 leading-tight flex-1">{rec.template}</p>
-                  <button
-                    onClick={() => setExpanded(e => !e)}
-                    className="text-[10px] font-bold text-[#4982CF] hover:underline flex-shrink-0 flex items-center gap-1">
-                    {expanded ? <><ChevronUp className="h-3 w-3" /> Collapse</> : <><Maximize2 className="h-3 w-3" /> Expand</>}
-                  </button>
+        ) : drafts.map(d => {
+          const active = activeDraftId === d.draftId;
+          const age = Date.now() - d.updatedAt;
+          const ageLabel = age < 60_000 ? "just now"
+            : age < 3_600_000 ? `${Math.floor(age / 60_000)}m ago`
+            : `${Math.floor(age / 3_600_000)}h ago`;
+          return (
+            <button
+              key={d.draftId}
+              onClick={() => onSelectDraft(d.draftId)}
+              className={`w-full text-left rounded-xl border p-3.5 transition-all ${
+                active
+                  ? "bg-teal-50/60 border-teal-300/60 shadow-sm ring-1 ring-teal-200/60"
+                  : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? "bg-teal-100" : "bg-teal-50"}`}>
+                  <Stethoscope className={`h-4 w-4 ${active ? "text-teal-600" : "text-teal-400"}`} />
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 justify-between mt-1.5">
-                  <span>{rec.date} · {rec.range}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1"><Stethoscope className="h-3 w-3" />{rec.template}</span>
-                    <span className="flex items-center gap-1"><User className="h-3 w-3" />{rec.doctor}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">{rec.status}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{d.templateName}</p>
+                  <div className="mt-1 flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">In Progress</span>
+                    <span className="text-[10px] text-slate-400">{ageLabel}</span>
                   </div>
                 </div>
-                {expanded && (
-                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Components Recorded</p>
-                    <div className="rounded-lg overflow-hidden border border-slate-100">
-                      {rec.components.map((comp, i) => (
-                        <div key={comp} className={`flex items-center gap-2 px-2.5 py-1.5 ${i % 2 === 0 ? "bg-violet-50" : "bg-white"}`}>
-                          <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" />
-                          <span className="text-slate-600">{comp}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 mt-1 transition-transform ${active ? "rotate-90 text-teal-600" : "text-slate-300"}`} />
               </div>
-            );
-          })}
-        </Collapsible>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── All Records ── */}
+      <div className="bg-white border-t border-b border-slate-100 px-4 py-3 flex items-center gap-2">
+        <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+        <span className="text-xs font-bold text-slate-700 flex-1">All Records</span>
+        {records.length > 0 && (
+          <span className="text-[10px] font-bold bg-green-50 text-green-600 border border-green-100 rounded-full px-2 py-0.5 leading-none">
+            {records.length}
+          </span>
+        )}
+      </div>
+
+      <div className="px-3 py-3 space-y-2">
+        {records.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+            <CheckCircle2 className="h-4 w-4 text-slate-300" />
+            <p className="text-xs text-slate-400">No completed records</p>
+          </div>
+        ) : [...records].reverse().map(r => {
+          const exp = expandedRecord === r.recordId;
+          return (
+            <div key={r.recordId} className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+              <button
+                onClick={() => setExpandedRecord(exp ? null : r.recordId)}
+                className="w-full text-left p-3.5 flex items-start gap-3 hover:bg-white transition-colors"
+              >
+                <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{r.templateName}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Completed {new Date(r.completedAt).toLocaleDateString()} · {r.componentNames.length} component{r.componentNames.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-1 transition-transform ${exp ? "rotate-180" : ""}`} />
+              </button>
+              {exp && (
+                <div className="border-t border-slate-200 bg-white px-4 py-3">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Components Recorded</p>
+                  <div className="rounded-lg overflow-hidden border border-slate-100">
+                    {r.componentNames.map((name, i) => (
+                      <div key={name} className={`flex items-center gap-2 px-2.5 py-1.5 ${i % 2 === 0 ? "bg-violet-50" : "bg-white"}`}>
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                        <span className="text-[11px] text-slate-600">{name}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-2">
+                    {new Date(r.completedAt).toLocaleString()}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -2019,154 +2050,369 @@ function ProcedureSystemComponentView({
   );
 }
 
-// ─── Procedure Tab Content ────────────────────────────────────────────────────
+// ─── Nursing Procedures — types & localStorage helpers ───────────────────────
 
-const PROC_TEMPLATE_SESSION_KEY = "ehr-nursing-proc-template-sel";
+const PROC_DRAFTS_KEY  = "ehr-proc-drafts-v1";
+const PROC_RECORDS_KEY = "ehr-proc-records-v1";
 
-function ProcedureTabContent() {
-  const { config } = useNursingConfig();
-  const enabledTemplates = useMemo(() => config.procedureTemplates.filter(t => t.enabled), [config.procedureTemplates]);
+interface ProcDraft {
+  draftId:      string;
+  templateId:   string;
+  templateName: string;
+  startedAt:    number;
+  updatedAt:    number;
+  vitalsValues: Record<string, string>;
+  medRows:      MedRow[];
+  consentData:  ConsentData;
+  billingRows:  BillingRow[];
+  customValues: Record<string, Record<string, string>[]>;
+}
 
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(() => {
-    try { return sessionStorage.getItem(PROC_TEMPLATE_SESSION_KEY) ?? null; } catch { return null; }
-  });
+interface ProcRecord {
+  recordId:       string;
+  templateId:     string;
+  templateName:   string;
+  completedAt:    number;
+  componentNames: string[];
+  vitalsValues:   Record<string, string>;
+  medRows:        MedRow[];
+  consentData:    ConsentData;
+  billingRows:    BillingRow[];
+  customValues:   Record<string, Record<string, string>[]>;
+}
 
-  function selectTemplate(id: string) {
-    setSelectedTemplateId(id);
-    try { sessionStorage.setItem(PROC_TEMPLATE_SESSION_KEY, id); } catch { /**/ }
-  }
+function loadProcDrafts(): ProcDraft[] {
+  try { const r = localStorage.getItem(PROC_DRAFTS_KEY); if (r) return JSON.parse(r) as ProcDraft[]; } catch { /**/ }
+  return [];
+}
+function persistProcDrafts(d: ProcDraft[]) {
+  try { localStorage.setItem(PROC_DRAFTS_KEY, JSON.stringify(d)); } catch { /**/ }
+}
+function loadProcRecords(): ProcRecord[] {
+  try { const r = localStorage.getItem(PROC_RECORDS_KEY); if (r) return JSON.parse(r) as ProcRecord[]; } catch { /**/ }
+  return [];
+}
+function persistProcRecords(r: ProcRecord[]) {
+  try { localStorage.setItem(PROC_RECORDS_KEY, JSON.stringify(r)); } catch { /**/ }
+}
+function genProcDraftId() { return `pd-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`; }
 
-  const activeTemplate = useMemo(() => {
-    if (enabledTemplates.length === 0) return null;
-    if (enabledTemplates.length === 1) return enabledTemplates[0];
-    const found = enabledTemplates.find(t => t.id === selectedTemplateId);
-    return found ?? enabledTemplates[0];
-  }, [enabledTemplates, selectedTemplateId]);
+// ─── Procedure Workspace ──────────────────────────────────────────────────────
 
-  const [vitalsValues, setVitalsValues] = useState<Record<string, string>>({ _date: new Date().toISOString().slice(0, 10) });
-  const [medRows, setMedRows] = useState<MedRow[]>([]);
-  const [consentData, setConsentData] = useState<ConsentData>({ status: "", witness: "", date: new Date().toISOString().slice(0, 10), notes: "" });
-  const [billingRows, setBillingRows] = useState<BillingRow[]>([]);
-  const [customValues, setCustomValues] = useState<Record<string, Record<string, string>[]>>({});
-
-  function getEntries(compId: string): Record<string, string>[] {
-    return customValues[compId] ?? [{}];
-  }
-  function setEntry(compId: string, idx: number, values: Record<string, string>) {
-    setCustomValues(prev => { const entries = [...(prev[compId] ?? [{}])]; entries[idx] = values; return { ...prev, [compId]: entries }; });
-  }
-  function addEntry(compId: string, limit: number | null) {
-    setCustomValues(prev => {
-      const entries = prev[compId] ?? [{}];
-      if (limit !== null && entries.length >= limit) return prev;
-      return { ...prev, [compId]: [...entries, {}] };
-    });
-  }
-  function removeEntry(compId: string, idx: number) {
-    setCustomValues(prev => {
-      const entries = [...(prev[compId] ?? [{}])];
-      if (entries.length <= 1) return prev;
-      entries.splice(idx, 1);
-      return { ...prev, [compId]: entries };
-    });
-  }
-
-  if (enabledTemplates.length === 0) {
+function ProcedureWorkspace({
+  activeDraft, activeTemplate, templates, showGateway,
+  onStartNew, onSelectTemplate, onCancelGateway,
+  onVitalsChange, onMedChange, onConsentChange, onBillingChange,
+  onCustomChange, onAddCustomEntry, onRemoveCustomEntry, onComplete,
+}: {
+  activeDraft:        ProcDraft | null;
+  activeTemplate:     NursingProcedureTemplate | null;
+  templates:          NursingProcedureTemplate[];
+  showGateway:        boolean;
+  onStartNew:         () => void;
+  onSelectTemplate:   (id: string) => void;
+  onCancelGateway:    () => void;
+  onVitalsChange:     (v: Record<string, string>) => void;
+  onMedChange:        (r: MedRow[]) => void;
+  onConsentChange:    (d: ConsentData) => void;
+  onBillingChange:    (r: BillingRow[]) => void;
+  onCustomChange:     (compId: string, idx: number, vals: Record<string, string>) => void;
+  onAddCustomEntry:   (compId: string, limit: number | null) => void;
+  onRemoveCustomEntry:(compId: string, idx: number) => void;
+  onComplete:         () => void;
+}) {
+  if (templates.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 py-20 text-slate-400 gap-3">
+      <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
         <Stethoscope className="h-10 w-10 opacity-30" />
-        <p className="text-sm font-semibold">No procedure templates configured</p>
-        <p className="text-xs">An admin can set up templates in Admin → Nursing Procedures.</p>
+        <p className="text-sm font-semibold text-slate-500">No procedure templates configured</p>
+        <p className="text-xs text-center">An admin can set up templates in Admin → Nursing Procedures.</p>
       </div>
     );
   }
 
-  const currentId = activeTemplate?.id ?? "";
-
-  return (
-    <div className="flex-1 overflow-y-auto px-5 py-5">
-      {enabledTemplates.length > 1 && (
-        <div className="mb-5 pb-4 border-b border-slate-100">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5">Select Template</p>
-          <div className="flex flex-wrap gap-2">
-            {enabledTemplates.map(t => (
-              <button
-                key={t.id}
-                onClick={() => selectTemplate(t.id)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                  currentId === t.id
-                    ? "bg-[#4982CF] border-[#4982CF] text-white shadow-sm"
-                    : "bg-white border-slate-200 text-slate-600 hover:border-[#4982CF] hover:text-[#4982CF]"
-                }`}
-              >
-                {t.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {activeTemplate && (
-        <div className="space-y-3">
-          {activeTemplate.components.map(comp => (
-            <Collapsible key={comp.id} title={comp.name} defaultOpen>
-              {comp.type === "system" ? (
-                <ProcedureSystemComponentView
-                  systemKey={comp.systemKey as string}
-                  vitalsValues={vitalsValues}     onVitalsChange={setVitalsValues}
-                  medRows={medRows}               onMedChange={setMedRows}
-                  consentData={consentData}       onConsentChange={setConsentData}
-                  billingRows={billingRows}        onBillingChange={setBillingRows}
-                />
-              ) : (
-                <div className="pb-2">
-                  {(() => {
-                    const entries = getEntries(comp.id);
-                    return (
-                      <>
-                        <div className="space-y-4">
-                          {entries.map((entryVals, idx) => (
-                            <div key={idx} className={comp.repeatable && entries.length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
-                              {comp.repeatable && entries.length > 1 && (
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entry {idx + 1}</span>
-                                  <button onClick={() => removeEntry(comp.id, idx)} className="text-slate-300 hover:text-rose-500 transition-colors">
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              )}
-                              <CustomComponentForm
-                                component={comp}
-                                values={entryVals}
-                                onChange={v => setEntry(comp.id, idx, v)}
-                                entryLayout={comp.entryLayout}
-                                columns={comp.columns}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                        {comp.repeatable && (
-                          <button
-                            onClick={() => addEntry(comp.id, comp.repeatLimit)}
-                            disabled={comp.repeatLimit !== null && entries.length >= comp.repeatLimit}
-                            className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-3"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                            Add Entry{comp.repeatLimit !== null ? ` (${entries.length}/${comp.repeatLimit})` : ""}
-                          </button>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
-            </Collapsible>
-          ))}
-          {activeTemplate.components.length === 0 && (
-            <p className="text-xs text-slate-400 italic px-1">No components in this template.</p>
+  if (showGateway) {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-shrink-0 flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
+          <Stethoscope className="h-4 w-4 text-teal-600" />
+          <span className="text-sm font-bold text-slate-700 flex-1">Select Procedure Template</span>
+          {activeDraft && (
+            <button
+              onClick={onCancelGateway}
+              className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
           )}
         </div>
-      )}
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-3">
+          <p className="text-xs text-slate-400 mb-2">Choose a template to start a new nursing procedure. Progress auto-saves as you work.</p>
+          {templates.map(t => (
+            <button
+              key={t.id}
+              onClick={() => onSelectTemplate(t.id)}
+              className="w-full text-left rounded-xl border border-slate-200 bg-white hover:border-teal-300 hover:bg-teal-50/30 hover:shadow-sm transition-all p-4 group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-teal-50 flex items-center justify-center flex-shrink-0 group-hover:bg-teal-100 transition-colors">
+                  <Stethoscope className="h-5 w-5 text-teal-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800">{t.name}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {t.components.length} component{t.components.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-teal-500 transition-colors flex-shrink-0" />
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!activeDraft || !activeTemplate) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center py-20 gap-4">
+        <div className="h-16 w-16 rounded-2xl bg-teal-50 flex items-center justify-center">
+          <Stethoscope className="h-8 w-8 text-teal-300" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-slate-600">No active procedure</p>
+          <p className="text-xs text-slate-400 mt-1">Start a new procedure or select one from the left panel.</p>
+        </div>
+        <button
+          onClick={onStartNew}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition-colors shadow-sm"
+        >
+          <Plus className="h-4 w-4" />
+          Start New Procedure
+        </button>
+      </div>
+    );
+  }
+
+  const draft    = activeDraft;
+  const template = activeTemplate;
+
+  function getEntries(compId: string): Record<string, string>[] {
+    return draft.customValues[compId] ?? [{}];
+  }
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
+        <div className="h-8 w-8 rounded-lg bg-teal-50 flex items-center justify-center flex-shrink-0">
+          <Stethoscope className="h-4 w-4 text-teal-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-800 truncate">{template.name}</p>
+          <p className="text-[11px] text-slate-400">
+            Started {new Date(draft.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Auto-saving
+          </p>
+        </div>
+        <button
+          onClick={onStartNew}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 text-teal-700 text-xs font-bold hover:bg-teal-100 transition-colors flex-shrink-0"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          New
+        </button>
+      </div>
+
+      {/* Components */}
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        {template.components.map(comp => (
+          <Collapsible key={comp.id} title={comp.name} defaultOpen>
+            {comp.type === "system" ? (
+              <ProcedureSystemComponentView
+                systemKey={comp.systemKey as string}
+                vitalsValues={draft.vitalsValues}  onVitalsChange={onVitalsChange}
+                medRows={draft.medRows}            onMedChange={onMedChange}
+                consentData={draft.consentData}    onConsentChange={onConsentChange}
+                billingRows={draft.billingRows}    onBillingChange={onBillingChange}
+              />
+            ) : (
+              <div className="pb-2">
+                {(() => {
+                  const entries = getEntries(comp.id);
+                  return (
+                    <>
+                      <div className="space-y-4">
+                        {entries.map((entryVals, idx) => (
+                          <div key={idx} className={comp.repeatable && entries.length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
+                            {comp.repeatable && entries.length > 1 && (
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entry {idx + 1}</span>
+                                <button onClick={() => onRemoveCustomEntry(comp.id, idx)} className="text-slate-300 hover:text-rose-500 transition-colors">
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            )}
+                            <CustomComponentForm
+                              component={comp}
+                              values={entryVals}
+                              onChange={v => onCustomChange(comp.id, idx, v)}
+                              entryLayout={comp.entryLayout}
+                              columns={comp.columns}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      {comp.repeatable && (
+                        <button
+                          onClick={() => onAddCustomEntry(comp.id, comp.repeatLimit)}
+                          disabled={comp.repeatLimit !== null && entries.length >= comp.repeatLimit}
+                          className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-3"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Add Entry{comp.repeatLimit !== null ? ` (${entries.length}/${comp.repeatLimit})` : ""}
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </Collapsible>
+        ))}
+        {template.components.length === 0 && (
+          <p className="text-xs text-slate-400 italic px-1">No components in this template.</p>
+        )}
+      </div>
+
+      {/* Save & Complete */}
+      <div className="flex-shrink-0 border-t border-slate-200 px-5 py-3 bg-white">
+        <button
+          onClick={onComplete}
+          className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-sm font-bold transition-colors cursor-pointer"
+        >
+          <CheckCircle2 className="h-4 w-4" />
+          Save &amp; Complete
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Procedure Section — owns state, composes left + right ────────────────────
+
+function ProcedureSection() {
+  const { config } = useNursingConfig();
+  const enabledTemplates = useMemo(
+    () => config.procedureTemplates.filter(t => t.enabled),
+    [config.procedureTemplates],
+  );
+
+  const [drafts,        setDrafts]        = useState<ProcDraft[]>(loadProcDrafts);
+  const [records,       setRecords]       = useState<ProcRecord[]>(loadProcRecords);
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  const [showGateway,   setShowGateway]   = useState(false);
+
+  const activeDraft    = drafts.find(d => d.draftId === activeDraftId) ?? null;
+  const activeTemplate = activeDraft
+    ? (enabledTemplates.find(t => t.id === activeDraft.templateId) ?? null)
+    : null;
+
+  function patchDraft(draftId: string, patches: Partial<ProcDraft>) {
+    setDrafts(prev => {
+      const next = prev.map(d =>
+        d.draftId === draftId ? { ...d, ...patches, updatedAt: Date.now() } : d,
+      );
+      persistProcDrafts(next);
+      return next;
+    });
+  }
+
+  function startNewProcedure(templateId: string) {
+    const tmpl = enabledTemplates.find(t => t.id === templateId);
+    if (!tmpl) return;
+    const draft: ProcDraft = {
+      draftId:      genProcDraftId(),
+      templateId,
+      templateName: tmpl.name,
+      startedAt:    Date.now(),
+      updatedAt:    Date.now(),
+      vitalsValues: { _date: new Date().toISOString().slice(0, 10) },
+      medRows:      [],
+      consentData:  { status: "", witness: "", date: new Date().toISOString().slice(0, 10), notes: "" },
+      billingRows:  [],
+      customValues: {},
+    };
+    setDrafts(prev => { const next = [...prev, draft]; persistProcDrafts(next); return next; });
+    setActiveDraftId(draft.draftId);
+    setShowGateway(false);
+  }
+
+  function completeDraft(draftId: string) {
+    const draft = drafts.find(d => d.draftId === draftId);
+    if (!draft) return;
+    const tmpl = enabledTemplates.find(t => t.id === draft.templateId);
+    const record: ProcRecord = {
+      recordId:       `pr-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      templateId:     draft.templateId,
+      templateName:   draft.templateName,
+      completedAt:    Date.now(),
+      componentNames: tmpl?.components.map(c => c.name) ?? [],
+      vitalsValues:   draft.vitalsValues,
+      medRows:        draft.medRows,
+      consentData:    draft.consentData,
+      billingRows:    draft.billingRows,
+      customValues:   draft.customValues,
+    };
+    setDrafts(prev  => { const next = prev.filter(d => d.draftId !== draftId); persistProcDrafts(next);  return next; });
+    setRecords(prev => { const next = [...prev, record];                        persistProcRecords(next); return next; });
+    setActiveDraftId(null);
+  }
+
+  return (
+    <div className="flex-1 flex overflow-hidden">
+      <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
+        <ProcedureLeftPanel
+          drafts={drafts}
+          records={records}
+          activeDraftId={activeDraftId}
+          onSelectDraft={id => { setActiveDraftId(id); setShowGateway(false); }}
+        />
+      </div>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <ProcedureWorkspace
+          activeDraft={activeDraft}
+          activeTemplate={activeTemplate}
+          templates={enabledTemplates}
+          showGateway={showGateway}
+          onStartNew={() => setShowGateway(true)}
+          onSelectTemplate={startNewProcedure}
+          onCancelGateway={() => setShowGateway(false)}
+          onVitalsChange={v  => activeDraftId && patchDraft(activeDraftId, { vitalsValues: v })}
+          onMedChange={r     => activeDraftId && patchDraft(activeDraftId, { medRows: r })}
+          onConsentChange={d => activeDraftId && patchDraft(activeDraftId, { consentData: d })}
+          onBillingChange={r => activeDraftId && patchDraft(activeDraftId, { billingRows: r })}
+          onCustomChange={(compId, idx, vals) => {
+            if (!activeDraftId || !activeDraft) return;
+            const entries = [...(activeDraft.customValues[compId] ?? [{}])];
+            entries[idx] = vals;
+            patchDraft(activeDraftId, { customValues: { ...activeDraft.customValues, [compId]: entries } });
+          }}
+          onAddCustomEntry={(compId, limit) => {
+            if (!activeDraftId || !activeDraft) return;
+            const entries = activeDraft.customValues[compId] ?? [{}];
+            if (limit !== null && entries.length >= limit) return;
+            patchDraft(activeDraftId, { customValues: { ...activeDraft.customValues, [compId]: [...entries, {}] } });
+          }}
+          onRemoveCustomEntry={(compId, idx) => {
+            if (!activeDraftId || !activeDraft) return;
+            const entries = [...(activeDraft.customValues[compId] ?? [{}])];
+            if (entries.length <= 1) return;
+            entries.splice(idx, 1);
+            patchDraft(activeDraftId, { customValues: { ...activeDraft.customValues, [compId]: entries } });
+          }}
+          onComplete={() => activeDraftId && completeDraft(activeDraftId)}
+        />
+      </div>
     </div>
   );
 }
@@ -3158,18 +3404,7 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
         ) : activeCategory === "history" ? (
           <HistorySplitPanel patient={entry.patient} visitTypeId={entry.visitTypeId} />
         ) : activeCategory === "procedures" ? (
-          <div className="flex-1 flex overflow-hidden">
-            <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
-              <ProcedureLeftPanel entry={entry} />
-            </div>
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
-                <Stethoscope className="h-4 w-4 text-violet-600" />
-                <span className="text-sm font-bold text-slate-700">Nursing Procedures</span>
-              </div>
-              <ProcedureTabContent />
-            </div>
-          </div>
+          <ProcedureSection />
         ) : activeCategory === "care-plan" ? (
           <CarePlanSection patientMrn={entry.patient?.mrn ?? null} />
         ) : activeCategory === "goals" ? (
