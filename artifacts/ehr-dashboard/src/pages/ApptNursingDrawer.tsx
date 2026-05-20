@@ -16,7 +16,7 @@ import { loadVitalsConfig, type VitalConfig } from "@/pages/SoapConfigModule";
 import { useNursingConfig } from "@/hooks/useNursingConfig";
 import { useNursingCareTasks } from "@/hooks/useNursingCareTasks";
 import { useApptNursingData } from "@/hooks/useApptNursingData";
-import { CareTasksTab, PatientGoalsTab } from "@/pages/NursingCareTasksTab";
+import { PatientGoalsTab } from "@/pages/NursingCareTasksTab";
 import { useToast } from "@/hooks/use-toast";
 
 // ─── Category types ───────────────────────────────────────────────────────────
@@ -202,16 +202,7 @@ function ApptVitalsLeftPanel({ appt, vitalValues, configuredVitals, painScore, m
 
 // ─── Left panel — Care Plan ───────────────────────────────────────────────────
 
-function ApptCareLeftPanel({ appt, tasks, execs }: {
-  appt: Appointment;
-  tasks: import("@/hooks/useNursingCareTasks").CarePlanTaskRef[];
-  execs: import("@/hooks/useNursingCareTasks").TaskExec[];
-}) {
-  const urgentPending = tasks.filter(t => {
-    const exec = execs.find(e => e.uid === t.uid);
-    return t.priority === "Urgent" && (!exec || exec.status === "pending");
-  }).length;
-
+function ApptCareLeftPanel({ appt }: { appt: Appointment }) {
   return (
     <div className="h-full flex flex-col bg-white">
       <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
@@ -228,24 +219,9 @@ function ApptCareLeftPanel({ appt, tasks, execs }: {
             ))}
           </div>
         </Collapsible>
-        <Collapsible title="Required Actions" badge={urgentPending} accent defaultOpen>
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 space-y-1.5 text-xs mb-2">
-            {urgentPending > 0 ? (
-              <>
-                <p className="font-semibold text-slate-800 leading-tight">
-                  {urgentPending} urgent task{urgentPending !== 1 ? "s" : ""} pending — action required
-                </p>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                  <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500 inline-block" />Urgent</span>
-                  <span className="flex items-center gap-1"><Heart className="h-3 w-3" />Care Plan</span>
-                  <span className="flex items-center gap-1"><User className="h-3 w-3" />{appt.patientName}</span>
-                </div>
-              </>
-            ) : (
-              <p className="text-slate-400 italic text-[11px]">No urgent actions — all tasks on track.</p>
-            )}
-          </div>
-        </Collapsible>
+        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs mt-2">
+          <p className="text-slate-400 italic">Care plans are managed in the Queue visit view.</p>
+        </div>
       </div>
     </div>
   );
@@ -672,10 +648,7 @@ export function ApptVitalsPanel({ appt, initialCategory = "vitals", onClose, onS
   const [activeCategory, setActiveCategory] = useState<NurseCategory>(initialCategory);
   const [showConfirm, setShowConfirm]     = useState(false);
 
-  const {
-    tasks, goals, execState,
-    advanceTask, skipTask, resetTask, updateTaskNote, updateGoalNote,
-  } = useNursingCareTasks(appt.id);
+  const { goals, execState, updateGoalNote } = useNursingCareTasks(appt.id);
 
   function handleSave() {
     save({ vitalValues, painScore, mentalAnswers });
@@ -779,21 +752,18 @@ export function ApptVitalsPanel({ appt, initialCategory = "vitals", onClose, onS
         ) : activeCategory === "care-plan" ? (
           <div className="flex-1 flex overflow-hidden">
             <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
-              <ApptCareLeftPanel appt={appt} tasks={tasks} execs={execState.tasks} />
+              <ApptCareLeftPanel appt={appt} />
             </div>
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
-                <Heart className="h-4 w-4 text-rose-500" />
-                <span className="text-sm font-bold text-slate-700">Care Plan</span>
+            <div className="flex-1 flex items-center justify-center text-center p-10">
+              <div>
+                <div className="h-16 w-16 rounded-2xl bg-rose-50 flex items-center justify-center mx-auto mb-4">
+                  <Heart className="h-8 w-8 text-rose-300" />
+                </div>
+                <p className="text-sm font-semibold text-slate-600">Care Plan workspace</p>
+                <p className="text-xs text-slate-400 mt-1 max-w-xs">
+                  Full care plan execution is available in the Queue visit view for admitted patients.
+                </p>
               </div>
-              <CareTasksTab
-                tasks={tasks}
-                execs={execState.tasks}
-                onAdvance={advanceTask}
-                onSkip={skipTask}
-                onReset={resetTask}
-                onNoteChange={updateTaskNote}
-              />
             </div>
           </div>
         ) : activeCategory === "goals" ? (

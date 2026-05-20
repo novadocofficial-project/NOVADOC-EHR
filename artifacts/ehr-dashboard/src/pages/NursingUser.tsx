@@ -4,7 +4,7 @@ import {
   Maximize2, Minimize2, Clock, User, AlertCircle, Heart,
   SkipForward, RotateCcw, Activity, ClipboardList,
   Stethoscope, Target, TrendingUp, CheckCircle2, Plus,
-  Layers, Trash2, Pill, Receipt, ShieldCheck, DollarSign,
+  Layers, Trash2, Pill, Receipt, ShieldCheck, DollarSign, Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ import {
 } from "@/hooks/useNursingConfig";
 import { loadVitalsConfig, type VitalConfig } from "@/pages/SoapConfigModule";
 import { useNursingCareTasks } from "@/hooks/useNursingCareTasks";
-import { CareTasksTab, PatientGoalsTab } from "@/pages/NursingCareTasksTab";
+import { PatientGoalsTab } from "@/pages/NursingCareTasksTab";
 import { TriageRunner, loadSessions, OUTCOME_CFG, type StepAnswer, type TriageSession } from "@/pages/TriageRunner";
 import { SOAP_DUMMY } from "@/data/soapDummy";
 import type { CarePlanData } from "@/pages/CarePlanSection";
@@ -405,9 +405,9 @@ function ProcedureLeftPanel({ entry }: { entry: MultiEntry }) {
 
 // ─── Care Plan — types, localStorage helpers, scanner ────────────────────────
 
-const CAREPLAN_DRAFTS_KEY   = "ehr-careplan-drafts";
 const CAREPLAN_RECORDS_KEY  = "ehr-careplan-records";
 const SOAP_SIGNED_PREFIX    = "soap_signed_";
+const CP_EXEC_KEY           = "ehr-cp-exec-v2";
 
 interface CarePlanSource {
   id:            string;
@@ -418,30 +418,52 @@ interface CarePlanSource {
   patientRef:    string;
 }
 
-interface CarePlanDraftEntry {
-  notes:     string;
-  updatedAt: number;
+// ── Per-task execution state for the Care Plan workspace ──────────────────────
+
+type CpTaskStatus = "pending" | "in-progress" | "done" | "skipped";
+
+interface CpTaskExec {
+  uid:         string;
+  title:       string;
+  status:      CpTaskStatus;
+  nurseNote:   string;
+  startedAt:   number | null;
+  completedAt: number | null;
+  skipReason:  string;
 }
-type CarePlanDraftStore = Record<string, CarePlanDraftEntry>;
+
+type CpExecStore = Record<string, CpTaskExec[]>; // sourceId → tasks
 
 interface CarePlanRecord {
   recordId:    string;
   source:      CarePlanSource;
   staffNotes:  string;
   completedAt: number;
+  taskExecs?:  CpTaskExec[];
 }
 
-function loadCarePlanDraftNotes(): CarePlanDraftStore {
-  try { return JSON.parse(localStorage.getItem(CAREPLAN_DRAFTS_KEY) ?? "{}") as CarePlanDraftStore; } catch { return {}; }
-}
-function saveCarePlanDraftNotes(store: CarePlanDraftStore): void {
-  try { localStorage.setItem(CAREPLAN_DRAFTS_KEY, JSON.stringify(store)); } catch { /**/ }
-}
 function loadCarePlanRecords(): CarePlanRecord[] {
   try { const raw = localStorage.getItem(CAREPLAN_RECORDS_KEY); return raw ? JSON.parse(raw) as CarePlanRecord[] : []; } catch { return []; }
 }
 function saveCarePlanRecords(recs: CarePlanRecord[]): void {
   try { localStorage.setItem(CAREPLAN_RECORDS_KEY, JSON.stringify(recs)); } catch { /**/ }
+}
+function loadCpExecStore(): CpExecStore {
+  try { return JSON.parse(localStorage.getItem(CP_EXEC_KEY) ?? "{}") as CpExecStore; } catch { return {}; }
+}
+function saveCpExecStore(store: CpExecStore): void {
+  try { localStorage.setItem(CP_EXEC_KEY, JSON.stringify(store)); } catch { /**/ }
+}
+function buildCpTasks(sourceId: string, items: string[]): CpTaskExec[] {
+  return items.map((title, i) => ({
+    uid:         `${sourceId}-${i}`,
+    title,
+    status:      "pending" as CpTaskStatus,
+    nurseNote:   "",
+    startedAt:   null,
+    completedAt: null,
+    skipReason:  "",
+  }));
 }
 
 /** Build a map of queue-entry-id → patient MRN by reading the persisted queue state. */
@@ -530,40 +552,34 @@ function scanCarePlanSources(patientMrn: string | null): CarePlanSource[] {
 // ─── Left panel — Care Plan ───────────────────────────────────────────────────
 
 interface CareLeftPanelProps {
-  sources:       CarePlanSource[];
-  draftNotes:    CarePlanDraftStore;
-  records:       CarePlanRecord[];
-  openIds:       Set<string>;
-  patientMrn:    string | null;
-  onToggleOpen:  (id: string) => void;
-  onNotesChange: (id: string, notes: string) => void;
-  onComplete:    (source: CarePlanSource) => void;
+  sources:     CarePlanSource[];
+  records:     CarePlanRecord[];
+  selectedId:  string | null;
+  cpExecStore: CpExecStore;
+  patientMrn:  string | null;
+  onSelect:    (id: string) => void;
 }
 
-function CareLeftPanel({ sources, draftNotes, records, openIds, patientMrn, onToggleOpen, onNotesChange, onComplete }: CareLeftPanelProps) {
+function CareLeftPanel({ sources, records, selectedId, cpExecStore, patientMrn, onSelect }: CareLeftPanelProps) {
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
 
-  // Most-recently-updated open draft id (for amber highlight)
-  const newestOpenId = useMemo(() => {
-    let best: string | null = null;
-    let bestTs = 0;
-    for (const id of openIds) {
-      const ts = draftNotes[id]?.updatedAt ?? 0;
-      if (ts > bestTs) { bestTs = ts; best = id; }
-    }
-    return best;
-  }, [openIds, draftNotes]);
-
-  // Sources not yet completed
   const completedIds = new Set(records.map(r => r.source.id));
   const pendingSources = sources.filter(s => !completedIds.has(s.id));
 
-  // All Records: seed records always shown; non-seed records require exact MRN match when patient is known.
   const visibleRecords = records.filter(r =>
     r.source.patientRef === "seed" ||
     !patientMrn ||
     r.source.patientRef === patientMrn
   );
+
+  function getStatusBadge(srcId: string) {
+    const tasks = cpExecStore[srcId] ?? [];
+    if (tasks.length === 0) return { label: "Pending", cls: "bg-slate-100 text-slate-500 border-slate-200" };
+    if (tasks.some(t => t.status === "in-progress" || t.status === "done")) {
+      return { label: "In Progress", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+    }
+    return { label: "Pending", cls: "bg-slate-100 text-slate-500 border-slate-200" };
+  }
 
   return (
     <div className="h-full flex flex-col bg-white overflow-hidden">
@@ -587,100 +603,45 @@ function CareLeftPanel({ sources, draftNotes, records, openIds, patientMrn, onTo
               <p className="text-xs text-slate-400">No pending care plans</p>
             </div>
           ) : pendingSources.map(src => {
-            const isOpen   = openIds.has(src.id);
-            const isNewest = src.id === newestOpenId;
-            const draft    = draftNotes[src.id];
-            const preview  = src.carePlanItems.slice(0, 2);
+            const isSelected = src.id === selectedId;
+            const tasks      = cpExecStore[src.id] ?? [];
+            const done       = tasks.filter(t => t.status === "done").length;
+            const total      = tasks.length || src.carePlanItems.length;
+            const badge      = getStatusBadge(src.id);
 
             return (
-              <div
+              <button
                 key={src.id}
-                className={`rounded-xl border transition-all ${
-                  isNewest
-                    ? "bg-amber-50/60 border-amber-300/60 shadow-sm ring-1 ring-amber-200/60"
-                    : isOpen
-                      ? "bg-amber-50/30 border-amber-200/50"
-                      : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
+                onClick={() => onSelect(src.id)}
+                className={`w-full text-left rounded-xl border p-3.5 transition-all ${
+                  isSelected
+                    ? "bg-blue-50/60 border-[#4982CF]/60 shadow-sm ring-1 ring-[#4982CF]/30"
+                    : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
                 }`}
               >
-                {/* Card header — click to toggle */}
-                <button
-                  onClick={() => onToggleOpen(src.id)}
-                  className="w-full text-left p-3.5"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isOpen ? "bg-amber-100" : "bg-amber-50"}`}>
-                      <Heart className={`h-4 w-4 ${isOpen ? "text-amber-600" : "text-amber-500"}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 leading-snug">{src.doctorName}</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">{src.signedAt}</p>
-                      <div className="mt-1.5 space-y-0.5">
-                        {preview.map((item, i) => (
-                          <p key={i} className="text-[10px] text-slate-500 truncate flex items-start gap-1">
-                            <span className="text-slate-300 flex-shrink-0">·</span>
-                            {item}
-                          </p>
-                        ))}
-                        {src.carePlanItems.length > 2 && (
-                          <p className="text-[10px] text-slate-400 italic">+{src.carePlanItems.length - 2} more</p>
-                        )}
-                      </div>
-                    </div>
-                    <ChevronDown className={`h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-1 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                <div className="flex items-start gap-3">
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-blue-100" : "bg-rose-50"}`}>
+                    <Heart className={`h-4 w-4 ${isSelected ? "text-[#4982CF]" : "text-rose-500"}`} />
                   </div>
-                </button>
-
-                {/* Inline notes area */}
-                {isOpen && (
-                  <div className="border-t border-amber-100 px-3.5 pb-3.5 pt-3 space-y-3">
-                    {/* Full care plan items */}
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Care Plan Instructions</p>
-                      <div className="space-y-1">
-                        {src.carePlanItems.map((item, i) => (
-                          <div key={i} className="flex items-start gap-2 text-[11px] text-slate-700">
-                            <span className="text-[#4982CF] font-bold flex-shrink-0 mt-0.5">{i + 1}.</span>
-                            {item}
-                          </div>
-                        ))}
-                      </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-800 leading-snug">{src.doctorName}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{src.signedAt}</p>
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                      <span className="text-[10px] text-slate-400">{done}/{total} tasks done</span>
                     </div>
-
-                    {/* Staff notes textarea */}
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Staff Progress Notes</p>
-                      <textarea
-                        value={draft?.notes ?? ""}
-                        onChange={e => onNotesChange(src.id, e.target.value)}
-                        placeholder="Document progress, observations, or updates…"
-                        rows={3}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 placeholder-slate-400 resize-none focus:outline-none focus:ring-1 focus:ring-[#4982CF] focus:border-[#4982CF] transition"
-                      />
-                      {draft?.updatedAt && (
-                        <p className="text-[10px] text-slate-400 mt-1">
-                          Auto-saved {new Date(draft.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Save & Complete button */}
-                    <button
-                      onClick={() => onComplete(src)}
-                      className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-xs font-bold py-2 transition-colors"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Save &amp; Complete
-                    </button>
                   </div>
-                )}
-              </div>
+                  <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 mt-1 transition-transform ${isSelected ? "rotate-90 text-[#4982CF]" : "text-slate-300"}`} />
+                </div>
+              </button>
             );
           })}
         </div>
 
         {/* ── All Records ── */}
-        <div className="sticky top-0 z-10 bg-white border-t border-b border-slate-100 px-4 py-3 flex items-center gap-2">
+        <div className="bg-white border-t border-b border-slate-100 px-4 py-3 flex items-center gap-2">
           <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
           <span className="text-xs font-bold text-slate-700 flex-1">All Records</span>
           {visibleRecords.length > 0 && (
@@ -697,7 +658,9 @@ function CareLeftPanel({ sources, draftNotes, records, openIds, patientMrn, onTo
               <p className="text-xs text-slate-400">No completed records</p>
             </div>
           ) : [...visibleRecords].reverse().map(r => {
-            const exp = expandedRecord === r.recordId;
+            const exp       = expandedRecord === r.recordId;
+            const taskExecs = r.taskExecs ?? [];
+            const doneCount = taskExecs.filter(t => t.status === "done").length;
             return (
               <div key={r.recordId} className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
                 <button
@@ -711,28 +674,40 @@ function CareLeftPanel({ sources, draftNotes, records, openIds, patientMrn, onTo
                     <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{r.source.doctorName}</p>
                     <p className="text-[11px] text-slate-500 mt-0.5">{r.source.signedAt}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      Completed {new Date(r.completedAt).toLocaleDateString()} · {r.source.carePlanItems.length} item{r.source.carePlanItems.length !== 1 ? "s" : ""}
+                      Completed {new Date(r.completedAt).toLocaleDateString()}
+                      {taskExecs.length > 0
+                        ? ` · ${doneCount}/${taskExecs.length} tasks done`
+                        : ` · ${r.source.carePlanItems.length} item${r.source.carePlanItems.length !== 1 ? "s" : ""}`}
                     </p>
                   </div>
                   <ChevronDown className={`h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-1 transition-transform ${exp ? "rotate-180" : ""}`} />
                 </button>
                 {exp && (
-                  <div className="border-t border-slate-200 bg-white px-4 py-3 space-y-3">
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Care Plan Instructions</p>
-                      <div className="space-y-1">
-                        {r.source.carePlanItems.map((item, i) => (
-                          <div key={i} className="flex items-start gap-2 text-[11px] text-slate-700">
-                            <span className="text-emerald-500 font-bold flex-shrink-0 mt-0.5">{i + 1}.</span>
-                            {item}
-                          </div>
-                        ))}
+                  <div className="border-t border-slate-200 bg-white px-4 py-3 space-y-1.5">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Tasks</p>
+                    {(taskExecs.length > 0
+                      ? taskExecs
+                      : r.source.carePlanItems.map((title, i) => ({
+                          uid: `${r.source.id}-${i}`, title,
+                          status: "done" as CpTaskStatus,
+                          nurseNote: "", startedAt: null, completedAt: null, skipReason: "",
+                        }))
+                    ).map((t, i) => (
+                      <div key={t.uid ?? i} className="flex items-start gap-2 text-[11px]">
+                        <span className={`mt-0.5 h-2 w-2 rounded-full flex-shrink-0 ${
+                          t.status === "done" ? "bg-emerald-500" :
+                          t.status === "skipped" ? "bg-rose-400" : "bg-slate-300"
+                        }`} />
+                        <span className={`flex-1 ${t.status === "skipped" ? "line-through text-slate-400" : "text-slate-600"}`}>
+                          {t.title}
+                        </span>
+                        <span className="text-[10px] text-slate-400 flex-shrink-0 capitalize">{t.status}</span>
                       </div>
-                    </div>
+                    ))}
                     {r.staffNotes && (
-                      <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Staff Notes</p>
-                        <p className="text-xs text-slate-700 whitespace-pre-wrap">{r.staffNotes}</p>
+                      <div className="mt-2 pt-2 border-t border-slate-100">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Staff Notes</p>
+                        <p className="text-[11px] text-slate-600 whitespace-pre-wrap">{r.staffNotes}</p>
                       </div>
                     )}
                   </div>
@@ -746,80 +721,347 @@ function CareLeftPanel({ sources, draftNotes, records, openIds, patientMrn, onTo
   );
 }
 
-// ─── Care Plan left panel state container ─────────────────────────────────────
+// ─── Care Plan workspace task card ────────────────────────────────────────────
 
-function CarePlanLeftPanelContainer({ patientMrn }: { patientMrn: string | null }) {
-  const [sources, setSources]     = useState<CarePlanSource[]>(() => scanCarePlanSources(patientMrn));
-  const [draftNotes, setDraftNotes] = useState<CarePlanDraftStore>(loadCarePlanDraftNotes);
-  const [records, setRecords]     = useState<CarePlanRecord[]>(loadCarePlanRecords);
-  const [openIds, setOpenIds]     = useState<Set<string>>(new Set());
+function CpWorkspaceTaskCard({
+  task, onAdvance, onSkip, onReset, onNoteChange,
+}: {
+  task:         CpTaskExec;
+  onAdvance:    () => void;
+  onSkip:       (reason: string) => void;
+  onReset:      () => void;
+  onNoteChange: (note: string) => void;
+}) {
+  const [expanded,   setExpanded]   = useState(false);
+  const [skipMode,   setSkipMode]   = useState(false);
+  const [skipReason, setSkipReason] = useState("");
 
-  // Re-scan whenever the active patient changes
+  const STATUS_STYLES: Record<CpTaskStatus, { dot: string; chip: string; label: string }> = {
+    "pending":     { dot: "bg-slate-300",   chip: "bg-slate-100 text-slate-500 border-slate-200",        label: "Pending"     },
+    "in-progress": { dot: "bg-amber-400",   chip: "bg-amber-50 text-amber-700 border-amber-200",          label: "In Progress" },
+    "done":        { dot: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 border-emerald-200",    label: "Done"        },
+    "skipped":     { dot: "bg-rose-400",    chip: "bg-rose-50 text-rose-600 border-rose-200",             label: "Skipped"     },
+  };
+
+  const s     = STATUS_STYLES[task.status];
+  const isDone = task.status === "done" || task.status === "skipped";
+
+  return (
+    <div className={`rounded-xl border bg-white transition-all ${
+      task.status === "done"        ? "border-emerald-200 opacity-80" :
+      task.status === "skipped"     ? "border-rose-200 opacity-70"    :
+      task.status === "in-progress" ? "border-amber-300 shadow-sm ring-1 ring-amber-200/50" :
+      "border-slate-200"
+    }`}>
+      <div className="flex items-start gap-3 px-4 py-3">
+        <span className={`mt-1.5 h-2.5 w-2.5 rounded-full flex-shrink-0 ${s.dot}`} />
+        <div className="flex-1 min-w-0">
+          <p className={`text-[12px] font-semibold leading-snug ${isDone ? "line-through text-slate-400" : "text-slate-800"}`}>
+            {task.title}
+          </p>
+          <span className={`inline-flex items-center text-[9px] font-bold border rounded-full px-1.5 py-0.5 mt-1 ${s.chip}`}>
+            {s.label}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+          {task.status === "pending" && !skipMode && (
+            <button onClick={onAdvance}
+              className="flex items-center gap-1 text-[10px] font-black px-2.5 py-1.5 rounded-lg border bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 transition-all">
+              <Play className="h-3 w-3" /> Start
+            </button>
+          )}
+          {task.status === "in-progress" && !skipMode && (
+            <button onClick={onAdvance}
+              className="flex items-center gap-1 text-[10px] font-black px-2.5 py-1.5 rounded-lg border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 transition-all">
+              <CheckCircle2 className="h-3 w-3" /> Mark Done
+            </button>
+          )}
+          {task.status === "pending" && !skipMode && (
+            <button onClick={() => setSkipMode(true)}
+              className="flex items-center gap-1 text-[10px] font-bold px-2 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:border-rose-300 hover:text-rose-500 transition-all">
+              <SkipForward className="h-3 w-3" />
+            </button>
+          )}
+          {isDone && (
+            <button onClick={onReset} title="Reset to pending"
+              className="flex items-center gap-1 text-[10px] font-bold px-2 py-1.5 rounded-lg border border-slate-200 text-slate-300 hover:text-slate-500 hover:border-slate-300 transition-all">
+              <RotateCcw className="h-3 w-3" />
+            </button>
+          )}
+          <button onClick={() => setExpanded(v => !v)}
+            className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+            {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+      </div>
+
+      {skipMode && (
+        <div className="px-4 pb-3 pt-0">
+          <div className="flex items-center gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl">
+            <input
+              value={skipReason}
+              onChange={e => setSkipReason(e.target.value)}
+              placeholder="Reason for skipping (optional)…"
+              className="flex-1 text-xs text-slate-700 bg-transparent outline-none placeholder:text-rose-300"
+              autoFocus
+            />
+            <button
+              onClick={() => { onSkip(skipReason.trim() || "No reason given"); setSkipMode(false); setSkipReason(""); }}
+              className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-rose-500 text-white hover:bg-rose-400 transition-colors flex-shrink-0">
+              Confirm Skip
+            </button>
+            <button onClick={() => setSkipMode(false)}
+              className="text-[10px] font-bold px-2 py-1 rounded-lg border border-rose-200 text-rose-500 hover:bg-rose-100 transition-colors flex-shrink-0">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {expanded && (
+        <div className="px-4 pb-4 pt-3 space-y-3 border-t border-slate-100">
+          {task.status === "skipped" && task.skipReason && (
+            <p className="text-[11px] text-rose-500 italic">Skipped: {task.skipReason}</p>
+          )}
+          <div>
+            <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+              Nurse Notes
+            </label>
+            <textarea
+              value={task.nurseNote}
+              onChange={e => onNoteChange(e.target.value)}
+              rows={2}
+              placeholder="Add observations, patient response…"
+              className="w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#4982CF]/50 focus:ring-1 focus:ring-[#4982CF]/20 resize-none transition-all placeholder:text-slate-300"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Care Plan right panel workspace ─────────────────────────────────────────
+
+function CarePlanWorkspace({
+  source, tasks, onAdvance, onSkip, onReset, onNoteChange, onSaveComplete,
+}: {
+  source:         CarePlanSource | null;
+  tasks:          CpTaskExec[];
+  onAdvance:      (uid: string) => void;
+  onSkip:         (uid: string, reason: string) => void;
+  onReset:        (uid: string) => void;
+  onNoteChange:   (uid: string, note: string) => void;
+  onSaveComplete: () => void;
+}) {
+  if (!source) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-center p-10">
+        <div>
+          <div className="h-16 w-16 rounded-2xl bg-rose-50 flex items-center justify-center mx-auto mb-4">
+            <Heart className="h-8 w-8 text-rose-300" />
+          </div>
+          <p className="text-sm font-semibold text-slate-600">Select a Care Plan to begin</p>
+          <p className="text-xs text-slate-400 mt-1">Choose a plan from the left panel to start working on it.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const total      = tasks.length;
+  const done       = tasks.filter(t => t.status === "done").length;
+  const inProgress = tasks.filter(t => t.status === "in-progress").length;
+  const skipped    = tasks.filter(t => t.status === "skipped").length;
+  const pct        = total ? Math.round((done / total) * 100) : 0;
+  const canComplete = total > 0 && tasks.every(t => t.status === "done");
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex-shrink-0 bg-slate-50/50 border-b border-slate-100 px-5 py-3 space-y-2">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-rose-50 flex items-center justify-center flex-shrink-0">
+            <Heart className="h-4 w-4 text-rose-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-slate-800 truncate">{source.doctorName}</p>
+            <p className="text-[11px] text-slate-500">{source.signedAt}</p>
+          </div>
+          <div className="flex-shrink-0 text-right">
+            <p className="text-xs font-bold text-slate-700">{done}/{total} done</p>
+            <p className="text-[10px] text-slate-400">
+              {inProgress > 0 && <span className="text-amber-600 mr-1">{inProgress} active</span>}
+              {skipped > 0 && <span className="text-rose-400">{skipped} skipped</span>}
+            </p>
+          </div>
+        </div>
+        <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${pct}%`, background: pct === 100 ? "#10b981" : "#4982CF" }}
+          />
+        </div>
+      </div>
+
+      {/* Task list */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
+        {tasks.map(task => (
+          <CpWorkspaceTaskCard
+            key={task.uid}
+            task={task}
+            onAdvance={() => onAdvance(task.uid)}
+            onSkip={reason => onSkip(task.uid, reason)}
+            onReset={() => onReset(task.uid)}
+            onNoteChange={note => onNoteChange(task.uid, note)}
+          />
+        ))}
+      </div>
+
+      {/* Save & Complete */}
+      <div className="flex-shrink-0 border-t border-slate-200 px-5 py-3 bg-white">
+        <button
+          onClick={onSaveComplete}
+          disabled={!canComplete}
+          className={`w-full flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-bold transition-colors ${
+            canComplete
+              ? "bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white cursor-pointer"
+              : "bg-slate-100 text-slate-400 cursor-not-allowed"
+          }`}
+        >
+          <CheckCircle2 className="h-4 w-4" />
+          {canComplete
+            ? "Save & Complete"
+            : skipped > 0
+              ? `${skipped} skipped task${skipped !== 1 ? "s" : ""} — cannot complete`
+              : `${total - done} task${total - done !== 1 ? "s" : ""} remaining`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Care Plan section — owns both left list and right workspace ───────────────
+
+function CarePlanSection({ patientMrn }: { patientMrn: string | null }) {
+  const [sources,     setSources]     = useState<CarePlanSource[]>(() => scanCarePlanSources(patientMrn));
+  const [records,     setRecords]     = useState<CarePlanRecord[]>(loadCarePlanRecords);
+  const [selectedId,  setSelectedId]  = useState<string | null>(null);
+  const [cpExecStore, setCpExecStore] = useState<CpExecStore>(loadCpExecStore);
+
   useEffect(() => {
     setSources(scanCarePlanSources(patientMrn));
+    setSelectedId(null);
   }, [patientMrn]);
 
-  // Re-scan when another tab signs a new SOAP note
   useEffect(() => {
     function onStorage(e: StorageEvent) {
-      if (e.key?.startsWith(SOAP_SIGNED_PREFIX)) {
-        setSources(scanCarePlanSources(patientMrn));
-      }
+      if (e.key?.startsWith(SOAP_SIGNED_PREFIX)) setSources(scanCarePlanSources(patientMrn));
     }
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, [patientMrn]);
 
-  function handleToggleOpen(id: string) {
-    setOpenIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+  function handleSelect(id: string) {
+    setSelectedId(id);
+    setCpExecStore(prev => {
+      if (prev[id]) return prev;
+      const src = sources.find(s => s.id === id);
+      if (!src) return prev;
+      const next = { ...prev, [id]: buildCpTasks(id, src.carePlanItems) };
+      saveCpExecStore(next);
       return next;
     });
   }
 
-  function handleNotesChange(id: string, notes: string) {
-    setDraftNotes(prev => {
-      const next = { ...prev, [id]: { notes, updatedAt: Date.now() } };
-      saveCarePlanDraftNotes(next);
+  function patchTask(uid: string, patch: Partial<CpTaskExec>) {
+    if (!selectedId) return;
+    setCpExecStore(prev => {
+      const tasks = (prev[selectedId] ?? []).map(t => t.uid === uid ? { ...t, ...patch } : t);
+      const next  = { ...prev, [selectedId]: tasks };
+      saveCpExecStore(next);
       return next;
     });
   }
 
-  function handleComplete(source: CarePlanSource) {
+  function handleAdvance(uid: string) {
+    if (!selectedId) return;
+    setCpExecStore(prev => {
+      const tasks = (prev[selectedId] ?? []).map(t => {
+        if (t.uid !== uid) return t;
+        const now = Date.now();
+        if (t.status === "pending")          return { ...t, status: "in-progress" as CpTaskStatus, startedAt: now };
+        if (t.status === "in-progress")      return { ...t, status: "done" as CpTaskStatus, completedAt: now };
+        return t;
+      });
+      const next = { ...prev, [selectedId]: tasks };
+      saveCpExecStore(next);
+      return next;
+    });
+  }
+
+  function handleSkip(uid: string, reason: string) {
+    patchTask(uid, { status: "skipped", skipReason: reason, completedAt: Date.now() });
+  }
+
+  function handleReset(uid: string) {
+    patchTask(uid, { status: "pending", nurseNote: "", skipReason: "", startedAt: null, completedAt: null });
+  }
+
+  function handleNoteChange(uid: string, note: string) {
+    patchTask(uid, { nurseNote: note });
+  }
+
+  function handleSaveComplete() {
+    if (!selectedId) return;
+    const src = sources.find(s => s.id === selectedId);
+    if (!src) return;
+    const taskExecs  = cpExecStore[selectedId] ?? [];
+    const staffNotes = taskExecs.map(t => t.nurseNote).filter(Boolean).join("\n");
     const record: CarePlanRecord = {
       recordId:    `cp-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-      source,
-      staffNotes:  draftNotes[source.id]?.notes ?? "",
+      source:      src,
+      staffNotes,
       completedAt: Date.now(),
+      taskExecs,
     };
-    setRecords(prev => {
-      const next = [...prev, record];
-      saveCarePlanRecords(next);
-      return next;
-    });
-    // Remove from draft store
-    setDraftNotes(prev => {
+    setRecords(prev => { const next = [...prev, record]; saveCarePlanRecords(next); return next; });
+    setCpExecStore(prev => {
       const next = { ...prev };
-      delete next[source.id];
-      saveCarePlanDraftNotes(next);
+      delete next[selectedId];
+      saveCpExecStore(next);
       return next;
     });
-    // Close the card
-    setOpenIds(prev => { const next = new Set(prev); next.delete(source.id); return next; });
+    setSelectedId(null);
   }
 
+  const completedIds    = new Set(records.map(r => r.source.id));
+  const selectedSource  = (selectedId && !completedIds.has(selectedId))
+    ? (sources.find(s => s.id === selectedId) ?? null)
+    : null;
+  const selectedTasks   = selectedId ? (cpExecStore[selectedId] ?? []) : [];
+
   return (
-    <CareLeftPanel
-      sources={sources}
-      draftNotes={draftNotes}
-      records={records}
-      openIds={openIds}
-      patientMrn={patientMrn}
-      onToggleOpen={handleToggleOpen}
-      onNotesChange={handleNotesChange}
-      onComplete={handleComplete}
-    />
+    <div className="flex-1 flex overflow-hidden">
+      <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
+        <CareLeftPanel
+          sources={sources}
+          records={records}
+          selectedId={selectedId}
+          cpExecStore={cpExecStore}
+          patientMrn={patientMrn}
+          onSelect={handleSelect}
+        />
+      </div>
+      <CarePlanWorkspace
+        source={selectedSource}
+        tasks={selectedTasks}
+        onAdvance={handleAdvance}
+        onSkip={handleSkip}
+        onReset={handleReset}
+        onNoteChange={handleNoteChange}
+        onSaveComplete={handleSaveComplete}
+      />
+    </div>
   );
 }
 
@@ -2766,10 +3008,7 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
   }
   // ── End vitals draft state ──────────────────────────────────────────────────
 
-  const {
-    tasks, goals, execState,
-    advanceTask, skipTask, resetTask, updateTaskNote, updateGoalNote,
-  } = useNursingCareTasks(entry.id);
+  const { goals, execState, updateGoalNote } = useNursingCareTasks(entry.id);
 
   return (
     <>
@@ -2923,25 +3162,7 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
             </div>
           </div>
         ) : activeCategory === "care-plan" ? (
-          <div className="flex-1 flex overflow-hidden">
-            <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
-              <CarePlanLeftPanelContainer patientMrn={entry.patient?.mrn ?? null} />
-            </div>
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
-                <Heart className="h-4 w-4 text-rose-500" />
-                <span className="text-sm font-bold text-slate-700">Care Plan</span>
-              </div>
-              <CareTasksTab
-                tasks={tasks}
-                execs={execState.tasks}
-                onAdvance={advanceTask}
-                onSkip={skipTask}
-                onReset={resetTask}
-                onNoteChange={updateTaskNote}
-              />
-            </div>
-          </div>
+          <CarePlanSection patientMrn={entry.patient?.mrn ?? null} />
         ) : activeCategory === "goals" ? (
           <div className="flex-1 flex overflow-hidden">
             <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
