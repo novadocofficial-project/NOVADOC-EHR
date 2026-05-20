@@ -1233,34 +1233,30 @@ function CarePlanSection({ patientMrn }: { patientMrn: string | null }) {
 // ─── Goal data types & helpers ────────────────────────────────────────────────
 
 interface GoalItem {
-  goalUid:    string;
-  title:      string;
-  priority:   "Low" | "Normal" | "High";
-  targetDate: string;
-  actions:    string[];
-  doctorName: string;
-  noteDate:   string;
+  goalUid:          string;
+  title:            string;
+  priority:         "Low" | "Normal" | "High";
+  targetDate:       string;
+  diagnoses:        { code: string; name: string; severity: string }[];
+  carePlanSteps:    string[];
+  visitDescription: string;
 }
 
 interface GoalDraft {
   draftId:   string;
   goalUid:   string;
   nurseNote: string;
+  status:    "in-progress" | "partially-completed" | "completed";
   startedAt: number;
   updatedAt: number;
 }
 
-interface GoalRecord {
-  recordId:    string;
-  goalUid:     string;
-  goalTitle:   string;
-  priority:    "Low" | "Normal" | "High";
-  targetDate:  string;
-  actions:     string[];
-  doctorName:  string;
-  noteDate:    string;
-  nurseNote:   string;
-  completedAt: number;
+interface SoapNoteGroup {
+  groupId:        string;
+  doctorName:     string;
+  noteDate:       string;
+  firstDiagnosis: string;
+  goals:          GoalItem[];
 }
 
 const GOAL_DRAFTS_KEY  = "ehr-goal-drafts-v1";
@@ -1272,29 +1268,31 @@ function loadGoalDrafts(): GoalDraft[] {
 function persistGoalDrafts(d: GoalDraft[]): void {
   try { localStorage.setItem(GOAL_DRAFTS_KEY, JSON.stringify(d)); } catch { /**/ }
 }
-function loadGoalRecords(): GoalRecord[] {
-  try { return JSON.parse(localStorage.getItem(GOAL_RECORDS_KEY) ?? "[]"); } catch { return []; }
-}
-function persistGoalRecords(r: GoalRecord[]): void {
-  try { localStorage.setItem(GOAL_RECORDS_KEY, JSON.stringify(r)); } catch { /**/ }
-}
 
-function loadGoalItems(completedUids: Set<string>): GoalItem[] {
-  const items: GoalItem[] = [];
-  const seen  = new Set<string>();
+function loadGoalGroups(): SoapNoteGroup[] {
+  const groups: SoapNoteGroup[] = [];
 
-  // 1. Seed data from SOAP_DUMMY
+  // 1. SOAP_DUMMY seed notes
   SOAP_DUMMY.forEach((note, ni) => {
-    note.patientGoals.forEach((title, gi) => {
-      const uid = `seed-${ni}-${gi}`;
-      if (!seen.has(uid) && !completedUids.has(uid)) {
-        seen.add(uid);
-        items.push({ goalUid: uid, title, priority: "Normal", targetDate: "", actions: [], doctorName: note.signedBy, noteDate: note.signedAt });
-      }
+    if (note.patientGoals.length === 0) return;
+    groups.push({
+      groupId:        `seed-${ni}`,
+      doctorName:     note.signedBy,
+      noteDate:       note.signedAt,
+      firstDiagnosis: note.diagnoses[0]?.name ?? "",
+      goals:          note.patientGoals.map((title, gi) => ({
+        goalUid:          `seed-${ni}-${gi}`,
+        title,
+        priority:         "Normal" as const,
+        targetDate:       "",
+        diagnoses:        note.diagnoses,
+        carePlanSteps:    note.carePlan,
+        visitDescription: note.visitDescription,
+      })),
     });
   });
 
-  // 2. Scan localStorage for live soap drafts (soap_draft_<entryId>)
+  // 2. Live localStorage soap_draft_* keys
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -1302,17 +1300,33 @@ function loadGoalItems(completedUids: Set<string>): GoalItem[] {
       const entryId = key.replace("soap_draft_", "");
       const raw = localStorage.getItem(key);
       if (!raw) continue;
-      const ns = JSON.parse(raw) as { patientGoals?: { goals?: Array<{ uid: string; title: string; priority?: "Low" | "Normal" | "High"; targetDate?: string; actions?: string[] }> } };
-      (ns?.patientGoals?.goals ?? []).forEach(g => {
-        if (!seen.has(g.uid) && !completedUids.has(g.uid)) {
-          seen.add(g.uid);
-          items.push({ goalUid: g.uid, title: g.title, priority: g.priority ?? "Normal", targetDate: g.targetDate ?? "", actions: g.actions ?? [], doctorName: entryId, noteDate: "" });
-        }
+      const ns = JSON.parse(raw) as {
+        patientGoals?: { goals?: Array<{ uid: string; title: string; priority?: "Low" | "Normal" | "High"; targetDate?: string }> };
+        diagnoses?: { code: string; name: string; severity: string }[];
+        carePlan?: string[];
+        visitDescription?: string;
+      };
+      const goals = ns?.patientGoals?.goals ?? [];
+      if (goals.length === 0) continue;
+      groups.push({
+        groupId:        `draft-${entryId}`,
+        doctorName:     entryId,
+        noteDate:       "",
+        firstDiagnosis: ns.diagnoses?.[0]?.name ?? "",
+        goals:          goals.map(g => ({
+          goalUid:          g.uid,
+          title:            g.title,
+          priority:         g.priority ?? "Normal",
+          targetDate:       g.targetDate ?? "",
+          diagnoses:        ns.diagnoses ?? [],
+          carePlanSteps:    ns.carePlan ?? [],
+          visitDescription: ns.visitDescription ?? "",
+        })),
       });
     }
   } catch { /**/ }
 
-  return items;
+  return groups;
 }
 
 function goalPriCls(priority: "Low" | "Normal" | "High"): string {
@@ -1321,182 +1335,214 @@ function goalPriCls(priority: "Low" | "Normal" | "High"): string {
     : "bg-blue-50 text-blue-600 border-blue-200";
 }
 
+function goalStatusChip(status: GoalDraft["status"] | "pending") {
+  if (status === "completed")
+    return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-200">Completed</span>;
+  if (status === "partially-completed")
+    return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-orange-50 text-orange-700 border-orange-200">Partially Done</span>;
+  if (status === "in-progress")
+    return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">In Progress</span>;
+  return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-slate-100 text-slate-500 border-slate-200">Pending</span>;
+}
+
 // ─── Left panel — Goals ───────────────────────────────────────────────────────
 
 function GoalsLeftPanel({
-  goalItems, goalDrafts, goalRecords, activeGoalUid, onSelectGoal, onDiscardDraft,
+  requiredGroups, recordGroups, drafts, activeGoalUid, onSelectGoal, onDiscardDraft,
 }: {
-  goalItems:      GoalItem[];
-  goalDrafts:     GoalDraft[];
-  goalRecords:    GoalRecord[];
-  activeGoalUid:  string | null;
-  onSelectGoal:   (uid: string) => void;
-  onDiscardDraft: (uid: string) => void;
+  requiredGroups:  SoapNoteGroup[];
+  recordGroups:    SoapNoteGroup[];
+  drafts:          GoalDraft[];
+  activeGoalUid:   string | null;
+  onSelectGoal:    (uid: string) => void;
+  onDiscardDraft:  (uid: string) => void;
 }) {
-  const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
+  const [collapsedRequired, setCollapsedRequired] = useState<Set<string>>(new Set());
+  const [openRecords,       setOpenRecords]       = useState<Set<string>>(new Set());
+
+  function getDraft(uid: string) { return drafts.find(d => d.goalUid === uid); }
+  function getStatus(uid: string): GoalDraft["status"] | "pending" { return getDraft(uid)?.status ?? "pending"; }
+
+  function pendingCount(group: SoapNoteGroup) {
+    return group.goals.filter(g => { const s = getStatus(g.goalUid); return s === "pending" || s === "in-progress"; }).length;
+  }
+
+  function GroupHeader({ group, isOpen, onToggle, badge }: { group: SoapNoteGroup; isOpen: boolean; onToggle: () => void; badge?: number }) {
+    return (
+      <div
+        className="px-3 py-2.5 bg-slate-50/80 border-b border-slate-100 cursor-pointer hover:bg-slate-100/60 transition-colors flex items-center gap-2"
+        onClick={onToggle}
+      >
+        <div className="h-6 w-6 rounded-md bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
+          <ChevronRight className={`h-3 w-3 text-slate-500 transition-transform ${isOpen ? "rotate-90" : ""}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-bold text-slate-700 truncate">{group.doctorName}{group.noteDate ? ` · ${group.noteDate}` : ""}</p>
+          {group.firstDiagnosis && <p className="text-[9px] text-slate-400 truncate">{group.firstDiagnosis}</p>}
+        </div>
+        {badge !== undefined && badge > 0 && (
+          <span className="text-[9px] font-bold bg-red-50 text-red-600 border border-red-100 rounded-full px-1.5 py-0.5 leading-none flex-shrink-0">
+            {badge}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  function GoalRow({ goal, isFinalized }: { goal: GoalItem; isFinalized: boolean }) {
+    const active = activeGoalUid === goal.goalUid;
+    const draft  = getDraft(goal.goalUid);
+    const status = getStatus(goal.goalUid);
+    return (
+      <div
+        className={`mx-3 mb-1.5 rounded-xl border transition-all ${isFinalized ? "opacity-55" : ""} ${
+          active
+            ? "bg-green-50/70 border-green-300/60 shadow-sm ring-1 ring-green-200/60"
+            : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
+        }`}
+      >
+        <div className="flex items-center">
+          <button onClick={() => onSelectGoal(goal.goalUid)} className="flex-1 text-left px-3 py-2.5 min-w-0">
+            <div className="flex items-start gap-2">
+              <div className={`h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 ${active ? "bg-green-100" : "bg-green-50"}`}>
+                <Target className={`h-3 w-3 ${active ? "text-green-600" : "text-green-400"}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-semibold text-slate-800 leading-snug">{goal.title}</p>
+                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${goalPriCls(goal.priority)}`}>{goal.priority}</span>
+                  {goalStatusChip(status)}
+                </div>
+              </div>
+            </div>
+          </button>
+          {draft && (
+            <button
+              onClick={() => onDiscardDraft(goal.goalUid)}
+              className="h-6 w-6 mr-2 rounded-md flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0"
+              title="Reset to pending"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const totalPending = requiredGroups.reduce((s, g) => s + pendingCount(g), 0);
 
   return (
     <div className="h-full flex flex-col overflow-y-auto bg-white">
 
-      {/* ── Required Actions ── */}
+      {/* ── Required Actions header ── */}
       <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-2 flex-shrink-0">
         <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
         <span className="text-xs font-bold text-slate-700 flex-1">Required Actions</span>
-        {goalItems.length > 0 && (
+        {totalPending > 0 && (
           <span className="text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 rounded-full px-2 py-0.5 leading-none">
-            {goalItems.length}
+            {totalPending}
           </span>
         )}
       </div>
 
-      <div className="px-3 py-3 space-y-2">
-        {goalItems.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
-            <Target className="h-4 w-4 text-slate-300" />
-            <p className="text-xs text-slate-400">No pending goals</p>
+      {requiredGroups.length === 0 ? (
+        <div className="px-3 py-6 flex flex-col items-center gap-1.5 text-center">
+          <Target className="h-4 w-4 text-slate-300" />
+          <p className="text-xs text-slate-400">No pending goals</p>
+        </div>
+      ) : requiredGroups.map(group => {
+        const isOpen = !collapsedRequired.has(group.groupId);
+        return (
+          <div key={group.groupId} className="border-b border-slate-100">
+            <GroupHeader
+              group={group}
+              isOpen={isOpen}
+              onToggle={() => setCollapsedRequired(prev => { const n = new Set(prev); isOpen ? n.add(group.groupId) : n.delete(group.groupId); return n; })}
+              badge={pendingCount(group)}
+            />
+            {isOpen && (
+              <div className="pt-2 pb-1">
+                {group.goals.map(goal => {
+                  const s = getStatus(goal.goalUid);
+                  return <GoalRow key={goal.goalUid} goal={goal} isFinalized={s === "completed" || s === "partially-completed"} />;
+                })}
+              </div>
+            )}
           </div>
-        ) : goalItems.map(item => {
-          const active = activeGoalUid === item.goalUid;
-          const draft  = goalDrafts.find(d => d.goalUid === item.goalUid);
-          const age    = draft ? Date.now() - draft.updatedAt : 0;
-          const ageLabel = age < 60_000 ? "just now" : age < 3_600_000 ? `${Math.floor(age / 60_000)}m ago` : `${Math.floor(age / 3_600_000)}h ago`;
-          return (
-            <div
-              key={item.goalUid}
-              className={`rounded-xl border transition-all ${
-                active
-                  ? "bg-green-50/60 border-green-300/60 shadow-sm ring-1 ring-green-200/60"
-                  : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
-              }`}
-            >
-              <button onClick={() => onSelectGoal(item.goalUid)} className="w-full text-left p-3.5 pr-2">
-                <div className="flex items-start gap-3">
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? "bg-green-100" : "bg-green-50"}`}>
-                    <Target className={`h-4 w-4 ${active ? "text-green-600" : "text-green-400"}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                      <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{item.title}</p>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${goalPriCls(item.priority)}`}>
-                        {item.priority}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 truncate">{item.doctorName}{item.noteDate ? ` · ${item.noteDate}` : ""}</p>
-                    <div className="mt-1 flex items-center gap-2 flex-wrap">
-                      {draft ? (
-                        <>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">In Progress</span>
-                          <span className="text-[10px] text-slate-400">saved {ageLabel}</span>
-                        </>
-                      ) : (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-slate-100 text-slate-500 border-slate-200">Pending</span>
-                      )}
-                    </div>
-                  </div>
-                  {draft && (
-                    <button
-                      onClick={e => { e.stopPropagation(); onDiscardDraft(item.goalUid); }}
-                      className="h-6 w-6 rounded-md flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0 mt-0.5"
-                      title="Discard draft note"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </button>
-            </div>
-          );
-        })}
-      </div>
+        );
+      })}
 
-      {/* ── All Records ── */}
+      {/* ── All Records header ── */}
       <div className="bg-white border-y border-slate-100 px-4 py-3 flex items-center gap-2 flex-shrink-0 mt-2">
         <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
         <span className="text-xs font-bold text-slate-700 flex-1">All Records</span>
-        {goalRecords.length > 0 && (
+        {recordGroups.length > 0 && (
           <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full px-2 py-0.5 leading-none">
-            {goalRecords.length}
+            {recordGroups.length}
           </span>
         )}
       </div>
 
-      <div className="px-3 py-3 space-y-2 pb-6">
-        {goalRecords.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 py-5 flex flex-col items-center gap-1.5 text-center">
-            <CheckCircle2 className="h-4 w-4 text-slate-300" />
-            <p className="text-xs text-slate-400">No completed records yet</p>
-          </div>
-        ) : [...goalRecords].reverse().map(rec => {
-          const expanded = expandedRecord === rec.recordId;
-          return (
-            <div key={rec.recordId} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-              <div className="px-3 py-2.5 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setExpandedRecord(expanded ? null : rec.recordId)}>
-                <div className="flex items-start gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+      {recordGroups.length === 0 ? (
+        <div className="px-3 py-5 pb-6 flex flex-col items-center gap-1.5 text-center">
+          <CheckCircle2 className="h-4 w-4 text-slate-300" />
+          <p className="text-xs text-slate-400">Groups move here when all goals are finalized</p>
+        </div>
+      ) : (
+        <div className="pb-6">
+          {recordGroups.map(group => {
+            const isOpen = openRecords.has(group.groupId);
+            return (
+              <div key={group.groupId} className="border-b border-slate-100">
+                <GroupHeader
+                  group={group}
+                  isOpen={isOpen}
+                  onToggle={() => setOpenRecords(prev => { const n = new Set(prev); isOpen ? n.delete(group.groupId) : n.add(group.groupId); return n; })}
+                />
+                {isOpen && (
+                  <div className="pt-2 pb-1">
+                    {group.goals.map(goal => <GoalRow key={goal.goalUid} goal={goal} isFinalized={false} />)}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{rec.goalTitle}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      {new Date(rec.completedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                      {" · "}{rec.doctorName}
-                    </p>
-                  </div>
-                  <ChevronDown className={`h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-1 transition-transform ${expanded ? "rotate-180" : ""}`} />
-                </div>
+                )}
               </div>
-              {expanded && (
-                <div className="border-t border-slate-100 px-3 py-3 space-y-2.5 bg-slate-50/50">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${goalPriCls(rec.priority)}`}>{rec.priority}</span>
-                    {rec.targetDate && <span className="text-[10px] text-slate-500">Target: {rec.targetDate}</span>}
-                  </div>
-                  {rec.actions.length > 0 && (
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Recommended Actions</p>
-                      <ul className="space-y-1">
-                        {rec.actions.map((a, i) => (
-                          <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-600">
-                            <span className="h-3.5 w-3.5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-[8px] font-bold flex-shrink-0 mt-0.5">{i + 1}</span>
-                            {a}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {rec.nurseNote && (
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Nurse Progress Note</p>
-                      <p className="text-[10px] text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 leading-relaxed whitespace-pre-wrap">{rec.nurseNote}</p>
-                    </div>
-                  )}
-                  <p className="text-[9px] text-slate-400">
-                    Completed {new Date(rec.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    {rec.noteDate ? ` · SOAP: ${rec.noteDate}` : ""}
-                  </p>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Goals Workspace (right panel) ───────────────────────────────────────────
 
+const GOAL_STATUS_OPTIONS: { value: GoalDraft["status"]; label: string; activeCls: string }[] = [
+  { value: "in-progress",         label: "In Progress",  activeCls: "bg-amber-50 text-amber-700 border-amber-300" },
+  { value: "partially-completed", label: "Partial",      activeCls: "bg-orange-50 text-orange-700 border-orange-300" },
+  { value: "completed",           label: "Completed",    activeCls: "bg-emerald-50 text-emerald-700 border-emerald-300" },
+];
+
 function GoalsWorkspace({
-  goalItem, goalDraft, onNoteChange, onComplete,
+  goalItem, goalDraft, onSave, onDiscard,
 }: {
-  goalItem:     GoalItem | null;
-  goalDraft:    GoalDraft | null;
-  onNoteChange: (note: string) => void;
-  onComplete:   () => void;
+  goalItem:  GoalItem | null;
+  goalDraft: GoalDraft | null;
+  onSave:    (goalUid: string, note: string, status: GoalDraft["status"]) => void;
+  onDiscard: () => void;
 }) {
+  const [noteText,       setNoteText]       = useState(goalDraft?.nurseNote ?? "");
+  const [selectedStatus, setSelectedStatus] = useState<GoalDraft["status"]>(goalDraft?.status ?? "in-progress");
+  const [soapOpen,       setSoapOpen]       = useState(false);
+
+  useEffect(() => {
+    setNoteText(goalDraft?.nurseNote ?? "");
+    setSelectedStatus(goalDraft?.status ?? "in-progress");
+    setSoapOpen(false);
+  }, [goalItem?.goalUid]);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Compact sub-header */}
+      {/* Sub-header */}
       <div className="flex-shrink-0 flex items-center px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
         <Target className="h-4 w-4 text-green-600 flex-shrink-0" />
         <span className="text-xs text-slate-600 font-medium truncate ml-2">
@@ -1505,75 +1551,128 @@ function GoalsWorkspace({
       </div>
 
       {!goalItem ? (
-        /* Idle state */
         <div className="flex-1 flex flex-col items-center justify-center py-20 gap-4">
           <div className="h-16 w-16 rounded-2xl bg-green-50 flex items-center justify-center">
             <Target className="h-8 w-8 text-green-300" />
           </div>
           <div className="text-center">
-            <p className="text-sm font-semibold text-slate-600">No goal selected</p>
-            <p className="text-xs text-slate-400 mt-1">Select a goal from Required Actions to review.</p>
+            <p className="text-sm font-semibold text-slate-600">Select a goal to begin</p>
+            <p className="text-xs text-slate-400 mt-1">Click any goal from the list to review and document.</p>
           </div>
         </div>
       ) : (
         <>
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-            {/* Goal metadata (read-only) */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+
+            {/* SOAP Note Context — collapsible */}
+            <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <button
+                onClick={() => setSoapOpen(o => !o)}
+                className="w-full flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100/60 transition-colors text-left"
+              >
+                <ClipboardList className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex-1">SOAP Note Context</span>
+                <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition-transform ${soapOpen ? "rotate-90" : ""}`} />
+              </button>
+              {soapOpen && (
+                <div className="px-4 py-3 space-y-3 bg-white border-t border-slate-100">
+                  {goalItem.diagnoses.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Diagnoses</p>
+                      <div className="space-y-1.5">
+                        {goalItem.diagnoses.map((d, i) => (
+                          <div key={i} className="flex items-start gap-2 text-[10px]">
+                            <span className="font-mono text-slate-400 flex-shrink-0 mt-px">{d.code}</span>
+                            <span className="text-slate-700 flex-1 leading-snug">{d.name}</span>
+                            <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex-shrink-0 ${d.severity === "High" ? "bg-red-50 text-red-600" : d.severity === "Moderate" ? "bg-orange-50 text-orange-600" : "bg-green-50 text-green-600"}`}>
+                              {d.severity}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {goalItem.carePlanSteps.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Care Plan</p>
+                      <ul className="space-y-1">
+                        {goalItem.carePlanSteps.map((s, i) => (
+                          <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-600">
+                            <span className="h-3.5 w-3.5 rounded-full bg-[#4982CF]/10 text-[#4982CF] flex items-center justify-center text-[8px] font-bold flex-shrink-0 mt-0.5">{i + 1}</span>
+                            {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {goalItem.visitDescription && (
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Visit Summary</p>
+                      <p className="text-[10px] text-slate-600 leading-relaxed">{goalItem.visitDescription}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Goal title + priority (read-only) */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5">
               <div className="flex items-start gap-2 flex-wrap">
                 <p className="text-sm font-bold text-slate-800 flex-1 leading-snug">{goalItem.title}</p>
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${goalPriCls(goalItem.priority)}`}>
                   {goalItem.priority}
                 </span>
               </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500">
-                {goalItem.targetDate && <span>Target: <span className="font-semibold text-slate-700">{goalItem.targetDate}</span></span>}
-                <span>Doctor: <span className="font-semibold text-slate-700">{goalItem.doctorName}</span></span>
-                {goalItem.noteDate && <span>SOAP: <span className="font-semibold text-slate-700">{goalItem.noteDate}</span></span>}
-              </div>
-              {goalItem.actions.length > 0 && (
-                <div>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Recommended Actions</p>
-                  <ul className="space-y-1">
-                    {goalItem.actions.map((a, i) => (
-                      <li key={i} className="flex items-start gap-2 text-[11px] text-slate-600">
-                        <span className="h-4 w-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-[8px] font-bold flex-shrink-0 mt-px">{i + 1}</span>
-                        {a}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              {goalItem.targetDate && (
+                <p className="text-[10px] text-slate-500 mt-1.5">Target: <span className="font-semibold text-slate-700">{goalItem.targetDate}</span></p>
               )}
             </div>
 
-            {/* Nurse progress note */}
+            {/* Progress Note */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                Progress Note
-              </label>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Progress Note</label>
               <textarea
-                value={goalDraft?.nurseNote ?? ""}
-                onChange={e => onNoteChange(e.target.value)}
+                value={noteText}
+                onChange={e => setNoteText(e.target.value)}
                 rows={5}
                 placeholder="Add progress observations for this goal…"
                 className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-[#4982CF]/50 focus:ring-1 focus:ring-[#4982CF]/20 resize-none transition-all placeholder:text-slate-300"
               />
-              {goalDraft && goalDraft.updatedAt > 0 && (
-                <p className="text-[9px] text-slate-400 mt-1">
-                  Auto-saved · {new Date(goalDraft.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </p>
-              )}
+            </div>
+
+            {/* Status selector */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Status</label>
+              <div className="flex rounded-xl border border-slate-200 overflow-hidden">
+                {GOAL_STATUS_OPTIONS.map((opt, i) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSelectedStatus(opt.value)}
+                    className={`flex-1 text-[10px] font-bold py-2.5 transition-all cursor-pointer ${
+                      selectedStatus === opt.value ? opt.activeCls : "bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                    } ${i > 0 ? "border-l border-slate-200" : ""}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Save & Complete */}
-          <div className="flex-shrink-0 border-t border-slate-200 px-5 py-3 bg-white">
+          {/* Footer */}
+          <div className="flex-shrink-0 border-t border-slate-200 px-5 py-3 bg-white flex gap-3">
             <button
-              onClick={onComplete}
-              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-sm font-bold transition-colors cursor-pointer"
+              onClick={onDiscard}
+              className="flex-1 h-9 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer"
             >
-              <CheckCircle2 className="h-4 w-4" />
-              Save &amp; Complete
+              Discard
+            </button>
+            <button
+              onClick={() => goalItem && onSave(goalItem.goalUid, noteText, selectedStatus)}
+              className="flex-[2] flex items-center justify-center gap-2 h-9 rounded-xl bg-[#4982CF] hover:bg-[#3a6eb5] text-white text-xs font-bold transition-colors cursor-pointer"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Save
             </button>
           </div>
         </>
@@ -1585,32 +1684,44 @@ function GoalsWorkspace({
 // ─── Goals Section — owns state, composes left + right ────────────────────────
 
 function GoalsSection() {
-  const [records,       setRecords]       = useState<GoalRecord[]>(loadGoalRecords);
   const [drafts,        setDrafts]        = useState<GoalDraft[]>(loadGoalDrafts);
   const [activeGoalUid, setActiveGoalUid] = useState<string | null>(null);
 
-  const completedUids = useMemo(() => new Set(records.map(r => r.goalUid)), [records]);
-  const goalItems     = useMemo(() => loadGoalItems(completedUids), [completedUids]);
+  const groups = useMemo(() => loadGoalGroups(), []);
 
+  function getStatus(goalUid: string): GoalDraft["status"] | "pending" {
+    return drafts.find(d => d.goalUid === goalUid)?.status ?? "pending";
+  }
+  function isGroupFinalized(group: SoapNoteGroup): boolean {
+    return group.goals.every(g => { const s = getStatus(g.goalUid); return s === "completed" || s === "partially-completed"; });
+  }
+
+  const requiredGroups = groups.filter(g => !isGroupFinalized(g));
+  const recordGroups   = groups.filter(g  => isGroupFinalized(g));
+
+  const activeItem  = groups.flatMap(g => g.goals).find(g => g.goalUid === activeGoalUid) ?? null;
   const activeDraft = drafts.find(d => d.goalUid === activeGoalUid) ?? null;
-  const activeItem  = goalItems.find(g => g.goalUid === activeGoalUid) ?? null;
 
   function selectGoal(goalUid: string) {
     setActiveGoalUid(goalUid);
     setDrafts(prev => {
       if (prev.find(d => d.goalUid === goalUid)) return prev;
-      const next = [...prev, { draftId: goalUid, goalUid, nurseNote: "", startedAt: Date.now(), updatedAt: Date.now() }];
+      const next = [...prev, { draftId: goalUid, goalUid, nurseNote: "", status: "in-progress" as const, startedAt: Date.now(), updatedAt: Date.now() }];
       persistGoalDrafts(next);
       return next;
     });
   }
 
-  function patchNote(goalUid: string, nurseNote: string) {
+  function saveGoal(goalUid: string, nurseNote: string, status: GoalDraft["status"]) {
     setDrafts(prev => {
-      const next = prev.map(d => d.goalUid === goalUid ? { ...d, nurseNote, updatedAt: Date.now() } : d);
+      const exists = prev.find(d => d.goalUid === goalUid);
+      const next = exists
+        ? prev.map(d => d.goalUid === goalUid ? { ...d, nurseNote, status, updatedAt: Date.now() } : d)
+        : [...prev, { draftId: goalUid, goalUid, nurseNote, status, startedAt: Date.now(), updatedAt: Date.now() }];
       persistGoalDrafts(next);
       return next;
     });
+    setActiveGoalUid(null);
   }
 
   function discardDraft(goalUid: string) {
@@ -1618,34 +1729,13 @@ function GoalsSection() {
     if (activeGoalUid === goalUid) setActiveGoalUid(null);
   }
 
-  function completeDraft(goalUid: string) {
-    const item  = goalItems.find(g => g.goalUid === goalUid);
-    const draft = drafts.find(d => d.goalUid === goalUid);
-    if (!item) return;
-    const record: GoalRecord = {
-      recordId:    `gr-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-      goalUid:     item.goalUid,
-      goalTitle:   item.title,
-      priority:    item.priority,
-      targetDate:  item.targetDate,
-      actions:     item.actions,
-      doctorName:  item.doctorName,
-      noteDate:    item.noteDate,
-      nurseNote:   draft?.nurseNote ?? "",
-      completedAt: Date.now(),
-    };
-    setRecords(prev => { const next = [...prev, record]; persistGoalRecords(next); return next; });
-    setDrafts(prev => { const next = prev.filter(d => d.goalUid !== goalUid); persistGoalDrafts(next); return next; });
-    setActiveGoalUid(null);
-  }
-
   return (
     <div className="flex-1 flex overflow-hidden">
       <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
         <GoalsLeftPanel
-          goalItems={goalItems}
-          goalDrafts={drafts}
-          goalRecords={records}
+          requiredGroups={requiredGroups}
+          recordGroups={recordGroups}
+          drafts={drafts}
           activeGoalUid={activeGoalUid}
           onSelectGoal={selectGoal}
           onDiscardDraft={discardDraft}
@@ -1654,8 +1744,8 @@ function GoalsSection() {
       <GoalsWorkspace
         goalItem={activeItem}
         goalDraft={activeDraft}
-        onNoteChange={note => activeGoalUid && patchNote(activeGoalUid, note)}
-        onComplete={() => activeGoalUid && completeDraft(activeGoalUid)}
+        onSave={saveGoal}
+        onDiscard={() => activeGoalUid && discardDraft(activeGoalUid)}
       />
     </div>
   );
