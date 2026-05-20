@@ -2409,7 +2409,7 @@ function ProcedureSection() {
   const [drafts,        setDrafts]        = useState<ProcDraft[]>(loadProcDrafts);
   const [records,       setRecords]       = useState<ProcRecord[]>(loadProcRecords);
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
-  const [showGateway,   setShowGateway]   = useState(false);
+  const [showGateway,   setShowGateway]   = useState(true);
 
   const activeDraft    = drafts.find(d => d.draftId === activeDraftId) ?? null;
   const activeTemplate = activeDraft
