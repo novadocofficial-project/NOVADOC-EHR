@@ -2528,8 +2528,10 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
                       );
                     })}
                   </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {vitalsTab === "vitals" && (
-                    <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm flex-shrink-0">
+                    <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm">
                       <button
                         onClick={() => setShowTrends(false)}
                         className={`px-3 py-1.5 text-xs font-semibold transition-colors ${!showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
@@ -2542,22 +2544,22 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
                       </button>
                     </div>
                   )}
+                  {activeDraftId && (
+                    <button
+                      onClick={() => {
+                        setActiveDraftId(null);
+                        setVitalValues(blankVitalValues());
+                        setPainScore(-1);
+                        setMentalAnswers([0, 0, 0, 0]);
+                        setVitalsTab("vitals");
+                        creatingDraftRef.current = false;
+                      }}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors"
+                    >
+                      <Plus className="h-3 w-3" /> New Vitals Entry
+                    </button>
+                  )}
                 </div>
-                {activeDraftId && (
-                  <button
-                    onClick={() => {
-                      setActiveDraftId(null);
-                      setVitalValues(blankVitalValues());
-                      setPainScore(-1);
-                      setMentalAnswers([0, 0, 0, 0]);
-                      setVitalsTab("vitals");
-                      creatingDraftRef.current = false;
-                    }}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors flex-shrink-0 ml-2"
-                  >
-                    <Plus className="h-3 w-3" /> New Vitals Entry
-                  </button>
-                )}
               </div>
               {vitalsTab === "vitals" && showTrends && <VitalsTrends />}
               {vitalsTab === "vitals" && !showTrends && (
