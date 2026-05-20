@@ -1969,14 +1969,16 @@ function HistorySplitPanel({ patient, visitTypeId }: { patient: Patient | null; 
     data: HistoryEntryMap,
     systemValues: Record<string, string>,
   ) {
-    const dataFilled = Object.values(data).some(entries =>
-      entries.some(entry => Object.values(entry).some(v => v.trim() !== ""))
-    );
-    const sysFilled = Object.values(systemValues).some(v => v.trim() !== "");
-    if (!dataFilled && !sysFilled) return;
-
     const currentId = activeDraftId;
+
     if (!currentId) {
+      // Only create a new draft when at least one field has content
+      const dataFilled = Object.values(data).some(entries =>
+        entries.some(entry => Object.values(entry).some(v => v.trim() !== ""))
+      );
+      const sysFilled = Object.values(systemValues).some(v => v.trim() !== "");
+      if (!dataFilled && !sysFilled) return;
+
       if (creatingDraftRef.current) return;
       creatingDraftRef.current = true;
       const draftId = genHistoryDraftId();
@@ -1991,6 +1993,8 @@ function HistorySplitPanel({ patient, visitTypeId }: { patient: Patient | null; 
       setActiveDraftId(draftId);
       return;
     }
+
+    // Always persist every change to an existing draft, even if fields are cleared
     mutateDrafts(prev => prev.map(d =>
       d.draftId === currentId
         ? { ...d, templateId, templateName, data, systemValues, updatedAt: Date.now() }
