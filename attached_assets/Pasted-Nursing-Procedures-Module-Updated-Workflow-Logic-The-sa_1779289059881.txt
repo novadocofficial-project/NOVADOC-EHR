@@ -1,0 +1,114 @@
+Nursing Procedures Module – Updated Workflow & Logic
+
+The same workflow and functionality implemented in the Triage, History, Vital Signs, and Care Plan sections will now also be applied to the Nursing Procedures section.
+
+The Nursing Procedures module is already divided into two equal panels (50% each).
+Now the workflow and UI behavior will be updated as follows.
+
+Layout Structure
+Left Panel
+
+The left panel will contain:
+
+Required Actions
+All Records
+Right Panel
+
+The right panel will act as the active Nursing Procedure workspace where users can:
+
+Open procedures
+Perform documentation
+Complete workflows
+Continue saved drafts
+Remove Patient Information Section
+
+The separate Patient Information section should be removed from the Nursing Procedures module because patient context is already globally available within the encounter workflow.
+
+This helps:
+
+Reduce UI clutter
+Increase usable workspace
+Keep focus on procedure execution
+Required Actions Section
+
+The Required Actions section will function as the draft and active-procedure management area.
+
+Functionality
+Any Nursing Procedure currently in progress should auto-save continuously
+Drafts should persist in local storage
+Users should be able to switch between multiple procedures without losing progress
+Clicking a procedure card restores the exact previous state
+Multiple Nursing Procedures Support
+
+The system should support handling multiple Nursing Procedures simultaneously.
+
+Example Workflow
+User starts Nursing Procedure #1
+Progress auto-saves into local storage
+Before completing it, the user opens Nursing Procedure #2
+Procedure #1 remains saved inside Required Actions
+Procedure #2 becomes active on the right side
+
+Later:
+
+Clicking any procedure from Required Actions restores its saved state
+Users can continue documentation exactly from where they stopped
+
+This supports:
+
+Multi-task workflows
+Interrupted procedures
+Parallel nursing activities
+Repeated procedures during the same encounter
+All Records Section
+
+Once a Nursing Procedure is completed:
+
+It moves from Required Actions to All Records
+The completed procedure remains stored in local storage
+Users can expand and review completed procedure documentation anytime
+Expandable Record Review
+
+Completed Nursing Procedure records inside All Records should support expand/collapse functionality for reviewing:
+
+Procedure details
+Steps performed
+Nursing notes
+Observations
+Completion information
+Timestamps
+Assigned staff
+Nursing Templates Workflow Update
+
+Currently, Nursing Templates are selected from the top bar.
+
+This behavior should now change.
+
+New Template Workflow
+
+Nursing Templates should work as a gateway/entry point rather than a persistent top-bar option.
+
+Updated Behavior
+
+When starting a new Nursing Procedure:
+
+User first selects a Nursing Template
+The selected template initializes the procedure workflow
+The generated procedure then appears as a draft/work item
+The top bar template selector should be removed
+Benefits of Template-as-Gate Approach
+
+This creates a cleaner workflow because:
+
+Template selection happens only at initialization
+The active workspace stays focused on execution
+Users are not distracted by template switching during documentation
+Workflow becomes more structured and task-oriented
+Draft Persistence Logic
+
+While working on Nursing Procedures:
+
+All progress should auto-save continuously
+Notes and selections should persist
+Switching between procedures should never lose data
+Reopening a procedure restores the exact saved state

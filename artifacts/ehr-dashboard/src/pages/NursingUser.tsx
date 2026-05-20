@@ -899,7 +899,7 @@ function CarePlanWorkspace({
             <p className="text-[11px] text-slate-500">{source.signedAt}</p>
           </div>
           <div className="flex-shrink-0 text-right">
-            <p className="text-xs font-bold text-slate-700">{done}/{total} done</p>
+            <p className="text-xs font-bold text-slate-700">{done + skipped}/{total} done</p>
             <p className="text-[10px] text-slate-400">
               {inProgress > 0 && <span className="text-amber-600 mr-1">{inProgress} active</span>}
               {skipped > 0 && <span className="text-rose-400">{skipped} skipped</span>}
