@@ -516,7 +516,7 @@ export function ApptFaceSheet({
             <div className="w-px h-4 bg-slate-200 mx-1" />
             {hasDraft ? (
               <button
-                onClick={() => setSoapNoteOpen(true)}
+                onClick={() => { setSessionSignedRecord(null); setSoapNoteOpen(true); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-[11px] font-bold transition-opacity hover:opacity-90"
                 style={{ backgroundColor: "#f59e0b" }}>
                 <FilePlus className="h-3.5 w-3.5" />
@@ -529,7 +529,7 @@ export function ApptFaceSheet({
                   Health Record Completed
                 </span>
                 <button
-                  onClick={() => setSoapNoteOpen(true)}
+                  onClick={() => { setSessionSignedRecord(null); setSoapNoteOpen(true); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-[11px] font-bold transition-opacity hover:opacity-90"
                   style={{ backgroundColor: ACCENT }}>
                   <FilePlus className="h-3.5 w-3.5" />
@@ -538,7 +538,7 @@ export function ApptFaceSheet({
               </>
             ) : (
               <button
-                onClick={() => setSoapNoteOpen(true)}
+                onClick={() => { setSessionSignedRecord(null); setSoapNoteOpen(true); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-[11px] font-bold transition-opacity hover:opacity-90"
                 style={{ backgroundColor: ACCENT }}>
                 <FilePlus className="h-3.5 w-3.5" />
