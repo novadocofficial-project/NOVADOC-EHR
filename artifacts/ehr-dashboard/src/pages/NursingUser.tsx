@@ -1641,6 +1641,11 @@ function TriageSplitPanel({ patient }: { patient: Patient | null }) {
     ));
   }
 
+  function discardDraft(draftId: string) {
+    mutateDrafts(prev => prev.filter(d => d.draftId !== draftId));
+    if (activeDraftId === draftId) setActiveDraftId(null);
+  }
+
   function handleFinishTriage() {
     if (activeDraftId) {
       mutateDrafts(prev => prev.filter(d => d.draftId !== activeDraftId));
@@ -1675,33 +1680,44 @@ function TriageSplitPanel({ patient }: { patient: Patient | null }) {
             const pct = d.totalSteps > 1 ? Math.round((d.stepIndex / (d.totalSteps - 1)) * 100) : 0;
             const active = activeDraftId === d.draftId;
             return (
-              <button
+              <div
                 key={d.draftId}
-                onClick={() => setActiveDraftId(d.draftId)}
-                className={`w-full text-left rounded-xl border p-3.5 transition-all ${
+                className={`rounded-xl border transition-all ${
                   active
                     ? "bg-[#4982CF]/8 border-[#4982CF]/40 shadow-sm ring-1 ring-[#4982CF]/20"
                     : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
                 }`}
               >
-                <div className="flex items-start gap-3">
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? "bg-[#4982CF]/15" : "bg-red-50"}`}>
-                    <AlertCircle className={`h-4 w-4 ${active ? "text-[#4982CF]" : "text-red-500"}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{d.algoName}</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{d.patientName ?? "Walk-in"}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <div className="flex-1 h-1 bg-slate-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#4982CF] rounded-full" style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className="text-[10px] text-slate-400 tabular-nums flex-shrink-0">
-                        Step {d.stepIndex + 1}/{d.totalSteps}
-                      </span>
+                <button
+                  onClick={() => setActiveDraftId(d.draftId)}
+                  className="w-full text-left p-3.5 pr-2"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? "bg-[#4982CF]/15" : "bg-red-50"}`}>
+                      <AlertCircle className={`h-4 w-4 ${active ? "text-[#4982CF]" : "text-red-500"}`} />
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{d.algoName}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{d.patientName ?? "Walk-in"}</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="flex-1 h-1 bg-slate-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-[#4982CF] rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-slate-400 tabular-nums flex-shrink-0">
+                          Step {d.stepIndex + 1}/{d.totalSteps}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); discardDraft(d.draftId); }}
+                      className="h-6 w-6 rounded-md flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0 mt-0.5"
+                      title="Discard draft"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                </div>
-              </button>
+                </button>
+              </div>
             );
           })}
         </div>
