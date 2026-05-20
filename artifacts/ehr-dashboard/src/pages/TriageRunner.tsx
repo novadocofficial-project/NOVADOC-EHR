@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   AlertCircle, ChevronRight, RotateCcw, CheckCircle2, User,
 } from "lucide-react";
@@ -12,9 +12,9 @@ import type { Patient } from "@/pages/QueuePageLayout";
 
 // ─── Session persistence ──────────────────────────────────────────────────────
 
-const SESSIONS_KEY = "ehr-triage-sessions";
+export const SESSIONS_KEY = "ehr-triage-sessions";
 
-interface TriageSession {
+export interface TriageSession {
   id: string;
   algoId: string;
   algoName: string;
@@ -40,6 +40,14 @@ function saveSession(session: TriageSession): void {
   } catch { /* ignore */ }
 }
 
+export function loadSessions(): TriageSession[] {
+  try {
+    const raw = localStorage.getItem(SESSIONS_KEY);
+    if (raw) return JSON.parse(raw) as TriageSession[];
+  } catch { /* ignore */ }
+  return [];
+}
+
 function genId() { return `ts-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`; }
 
 function calcAge(dob: string): number {
@@ -53,7 +61,7 @@ function calcAge(dob: string): number {
 
 // ─── Outcome UI config ────────────────────────────────────────────────────────
 
-const OUTCOME_CFG: Record<TriageOutcomeType, { label: string; color: string; bg: string; border: string; emoji: string }> = {
+export const OUTCOME_CFG: Record<TriageOutcomeType, { label: string; color: string; bg: string; border: string; emoji: string }> = {
   ambulance:        { label: "Emergency — Call Ambulance",   color: "text-red-700",    bg: "bg-red-50",    border: "border-red-300",    emoji: "🚑" },
   teleconsultation: { label: "Teleconsultation Recommended", color: "text-blue-700",   bg: "bg-blue-50",   border: "border-blue-300",   emoji: "📞" },
   "doctor-visit":   { label: "Visit a Nearby Doctor",        color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-300",  emoji: "🏥" },
@@ -62,7 +70,7 @@ const OUTCOME_CFG: Record<TriageOutcomeType, { label: string; color: string; bg:
 
 // ─── Step answer model ────────────────────────────────────────────────────────
 
-interface StepAnswer {
+export interface StepAnswer {
   text?: string;
   selected?: Record<string, boolean>;
   value?: number;
@@ -404,16 +412,37 @@ function evalRouting(step: TriageStep, ans: StepAnswer | undefined): TriageOutco
 
 // ─── Main runner component ────────────────────────────────────────────────────
 
-export function TriageRunner({ patient, onFinishTriage }: { patient: Patient | null; onFinishTriage?: () => void }) {
+export function TriageRunner({
+  patient, onFinishTriage,
+  initialAlgoId, initialStepIndex, initialAnswers,
+  onDraftChange, onAlgoSelected,
+}: {
+  patient: Patient | null;
+  onFinishTriage?: () => void;
+  initialAlgoId?: string;
+  initialStepIndex?: number;
+  initialAnswers?: Record<string, StepAnswer>;
+  onDraftChange?: (algoId: string, stepIndex: number, answers: Record<string, StepAnswer>) => void;
+  onAlgoSelected?: (algoId: string, algoName: string, totalSteps: number) => void;
+}) {
   const { algorithms } = useTriageConfig();
   const enabled = algorithms.filter(a => a.enabled);
 
-  const [algoId, setAlgoId] = useState<string | null>(() => enabled.length === 1 ? enabled[0].id : null);
-  const [stepIndex, setStepIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, StepAnswer>>({});
+  const [algoId, setAlgoId] = useState<string | null>(() => initialAlgoId ?? (enabled.length === 1 ? enabled[0].id : null));
+  const [stepIndex, setStepIndex] = useState(initialStepIndex ?? 0);
+  const [answers, setAnswers] = useState<Record<string, StepAnswer>>(initialAnswers ?? {});
   const [routed, setRouted] = useState<{ outcome: TriageOutcome; by: string; severityBand?: { label: string; color: string } } | null>(null);
   const [done, setDone] = useState(false);
   const [startedAt, setStartedAt] = useState(() => Date.now());
+
+  const onDraftChangeRef = useRef(onDraftChange);
+  useEffect(() => { onDraftChangeRef.current = onDraftChange; });
+  useEffect(() => {
+    if (algoId && onDraftChangeRef.current) {
+      onDraftChangeRef.current(algoId, stepIndex, answers);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [algoId, stepIndex, answers]);
 
   const algo = enabled.find(a => a.id === algoId) ?? null;
 
@@ -459,7 +488,7 @@ export function TriageRunner({ patient, onFinishTriage }: { patient: Patient | n
           {enabled.map(a => (
             <button
               key={a.id}
-              onClick={() => { setAlgoId(a.id); setStepIndex(0); setAnswers({}); setRouted(null); setDone(false); setStartedAt(Date.now()); }}
+              onClick={() => { setAlgoId(a.id); setStepIndex(0); setAnswers({}); setRouted(null); setDone(false); setStartedAt(Date.now()); onAlgoSelected?.(a.id, a.name, a.steps.length); }}
               className="w-full rounded-xl border border-slate-200 bg-white hover:border-[#4982CF]/50 hover:shadow-sm p-4 text-left transition-all group flex items-center gap-4"
             >
               <div className="h-10 w-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">

@@ -13,7 +13,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from "recharts";
-import { QueueAppHeader, timeAgo } from "@/pages/QueuePageLayout";
+import { QueueAppHeader, timeAgo, type Patient } from "@/pages/QueuePageLayout";
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import {
   useNursingConfig,
@@ -29,7 +29,7 @@ import {
 import { loadVitalsConfig, type VitalConfig } from "@/pages/SoapConfigModule";
 import { useNursingCareTasks } from "@/hooks/useNursingCareTasks";
 import { CareTasksTab, PatientGoalsTab } from "@/pages/NursingCareTasksTab";
-import { TriageRunner } from "@/pages/TriageRunner";
+import { TriageRunner, loadSessions, OUTCOME_CFG, type StepAnswer, type TriageSession } from "@/pages/TriageRunner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1560,6 +1560,189 @@ function ProcedureTabContent() {
   );
 }
 
+// ─── Triage draft persistence ─────────────────────────────────────────────────
+
+const TRIAGE_DRAFTS_KEY = "ehr-triage-drafts";
+
+interface TriageDraft {
+  draftId: string;
+  algoId: string;
+  algoName: string;
+  patientRef: string | null;
+  patientName: string | null;
+  totalSteps: number;
+  stepIndex: number;
+  answers: Record<string, StepAnswer>;
+  startedAt: number;
+  updatedAt: number;
+}
+
+function loadTriageDrafts(): TriageDraft[] {
+  try {
+    const raw = localStorage.getItem(TRIAGE_DRAFTS_KEY);
+    if (raw) return JSON.parse(raw) as TriageDraft[];
+  } catch { /* ignore */ }
+  return [];
+}
+
+function persistTriageDrafts(drafts: TriageDraft[]): void {
+  try { localStorage.setItem(TRIAGE_DRAFTS_KEY, JSON.stringify(drafts)); } catch { /* ignore */ }
+}
+
+function genTriageDraftId() { return `td-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`; }
+
+// ─── Triage split panel ────────────────────────────────────────────────────────
+
+function TriageSplitPanel({ patient }: { patient: Patient | null }) {
+  const [drafts, setDrafts] = useState<TriageDraft[]>(loadTriageDrafts);
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  const [completedSessions, setCompletedSessions] = useState<TriageSession[]>(loadSessions);
+  const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
+
+  const activeDraft = drafts.find(d => d.draftId === activeDraftId) ?? null;
+
+  function mutateDrafts(fn: (prev: TriageDraft[]) => TriageDraft[]) {
+    setDrafts(prev => {
+      const next = fn(prev);
+      persistTriageDrafts(next);
+      return next;
+    });
+  }
+
+  function handleAlgoSelected(algoId: string, algoName: string, totalSteps: number) {
+    const draftId = genTriageDraftId();
+    const draft: TriageDraft = {
+      draftId, algoId, algoName,
+      patientRef: patient?.mrn ?? null,
+      patientName: patient?.name ?? null,
+      totalSteps, stepIndex: 0, answers: {},
+      startedAt: Date.now(), updatedAt: Date.now(),
+    };
+    mutateDrafts(prev => [...prev, draft]);
+    setActiveDraftId(draftId);
+  }
+
+  function handleDraftChange(algoId: string, stepIndex: number, answers: Record<string, StepAnswer>) {
+    if (!activeDraftId) return;
+    mutateDrafts(prev => prev.map(d =>
+      d.draftId === activeDraftId
+        ? { ...d, algoId, stepIndex, answers, updatedAt: Date.now() }
+        : d
+    ));
+  }
+
+  function handleFinishTriage() {
+    if (activeDraftId) {
+      mutateDrafts(prev => prev.filter(d => d.draftId !== activeDraftId));
+    }
+    setActiveDraftId(null);
+    setCompletedSessions(loadSessions());
+  }
+
+  return (
+    <div className="flex-1 flex overflow-hidden">
+      {/* Left panel */}
+      <div className="w-64 flex-shrink-0 border-r border-slate-100 flex flex-col overflow-y-auto bg-slate-50/40">
+        <Collapsible title="Required Actions" badge={drafts.length} defaultOpen>
+          {drafts.length === 0 ? (
+            <p className="text-xs text-slate-400 px-4 pb-4">No active triage sessions.</p>
+          ) : (
+            <div className="space-y-1.5 px-3 pb-3">
+              {drafts.map(d => (
+                <button
+                  key={d.draftId}
+                  onClick={() => setActiveDraftId(d.draftId)}
+                  className={`w-full text-left rounded-xl border px-3.5 py-3 transition-all ${
+                    activeDraftId === d.draftId
+                      ? "bg-[#4982CF]/10 border-[#4982CF]/30 shadow-sm"
+                      : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-800 leading-tight truncate">{d.algoName}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        {d.patientName ?? "Walk-in"} · Step {d.stepIndex + 1} of {d.totalSteps}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </Collapsible>
+
+        <Collapsible title="All Records" badge={completedSessions.length} defaultOpen={false}>
+          {completedSessions.length === 0 ? (
+            <p className="text-xs text-slate-400 px-4 pb-4">No completed sessions.</p>
+          ) : (
+            <div className="space-y-1.5 px-3 pb-3">
+              {[...completedSessions].reverse().map(s => {
+                const cfg = OUTCOME_CFG[s.outcomeType];
+                const expanded = expandedRecord === s.id;
+                return (
+                  <div key={s.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <button
+                      onClick={() => setExpandedRecord(expanded ? null : s.id)}
+                      className="w-full text-left px-3.5 py-3 flex items-start gap-2.5"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-800 leading-tight truncate">{s.algoName}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">{s.patientName ?? "Walk-in"}</p>
+                        <span className={`inline-flex items-center mt-1.5 text-[9px] font-bold rounded-full px-2 py-0.5 ${cfg.bg} ${cfg.color}`}>
+                          {cfg.emoji} {cfg.label}
+                        </span>
+                      </div>
+                      <ChevronDown className={`h-3 w-3 text-slate-400 flex-shrink-0 mt-1 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                    </button>
+                    {expanded && (
+                      <div className="border-t border-slate-100 px-3.5 py-3 space-y-2.5">
+                        {s.stepAnswers.map(sa => (
+                          <div key={sa.stepId}>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{sa.stepTitle}</p>
+                            <p className="text-xs text-slate-700 mt-0.5">{sa.summary}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Collapsible>
+      </div>
+
+      {/* Right panel */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {activeDraftId && (
+          <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+            <span className="text-xs text-slate-500 font-medium truncate">{activeDraft?.algoName}</span>
+            <button
+              onClick={() => setActiveDraftId(null)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors flex-shrink-0 ml-3"
+            >
+              <Plus className="h-3 w-3" /> New Triage
+            </button>
+          </div>
+        )}
+        <TriageRunner
+          key={activeDraftId ?? "picker"}
+          patient={patient}
+          initialAlgoId={activeDraft?.algoId}
+          initialStepIndex={activeDraft?.stepIndex}
+          initialAnswers={activeDraft?.answers}
+          onAlgoSelected={handleAlgoSelected}
+          onDraftChange={handleDraftChange}
+          onFinishTriage={handleFinishTriage}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── Vitals split panel (fullscreen drawer) ───────────────────────────────────
 
 function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { entry: MultiEntry; onClose: () => void; onSave: () => void; initialCategory?: NurseCategory }) {
@@ -1739,7 +1922,7 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
             </div>
           </div>
         ) : activeCategory === "triage" ? (
-          <TriageRunner patient={entry.patient} onFinishTriage={onClose} />
+          <TriageSplitPanel patient={entry.patient} />
         ) : (
           <div className="flex-1 flex items-center justify-center text-center p-10">
             <div>
