@@ -1,0 +1,105 @@
+Updated Care Plan Workflow & UI Logic
+
+Currently, the left side displays Care Plans with expandable bullet points and staff progress notes, while the right side already shows the active Care Plan with task actions such as:
+
+Start
+Done
+Skip
+
+This behavior now needs to be modified.
+
+Updated Left Panel Behavior
+
+The left sidebar should only display Care Plans as simple cards.
+
+Changes Required
+Remove the expand/collapse functionality from the left side
+Remove inline bullet point previews
+Remove inline staff progress notes from the left panel
+
+Instead, each Care Plan should appear as a compact summary card only.
+
+Care Plan Card Information
+
+Each card may contain:
+
+Care Plan title
+Doctor name
+SOAP Note reference
+Created date/time
+Progress indicator
+Status (In Progress / Pending / Completed)
+
+No detailed task list should appear inside the card.
+
+Right Side Behavior
+
+The right panel will become the dedicated Care Plan workspace.
+
+Default State
+
+By default, the right side should remain empty until the user selects a Care Plan from the left sidebar.
+
+Example empty state:
+
+“Select a Care Plan to begin”
+Or a similar placeholder UI
+Loading a Care Plan
+
+When the user clicks a Care Plan card from the left sidebar:
+
+That Care Plan should load into the right panel
+The full detailed workflow should appear there
+The UI structure should remain similar to the current right-side implementation
+
+This includes:
+
+Care Plan tasks
+Instructions
+Start button
+Done button
+Skip button
+Staff notes/actions
+Save & Complete Button Logic
+
+A Save & Complete button should appear at the bottom of the right-side Care Plan workspace.
+
+Validation Rules
+
+The Save & Complete button must remain disabled until:
+
+All Care Plan tasks are marked as Done
+Important
+Tasks marked as “Skipped” should not count as completed unless explicitly allowed by workflow rules
+The system should validate task completion status in real time
+Completion Workflow
+
+Once all tasks are marked as Done:
+
+The Save & Complete button becomes enabled
+Staff clicks the button
+The Care Plan:
+Moves from Required Actions to All Records
+Saves completion data into local storage
+Preserves staff notes and task statuses
+Draft Persistence
+
+While staff is working on a Care Plan:
+
+Progress should auto-save continuously
+Current task states should persist
+Notes and updates should persist
+Switching between Care Plans should not lose progress
+
+When returning to a previously opened Care Plan:
+
+It should restore exactly from its last saved state
+Final UX Goal
+
+This updated workflow creates a cleaner and more scalable Care Plan experience by:
+
+Keeping the left sidebar lightweight and easy to scan
+Using the right side as the dedicated execution workspace
+Supporting multiple simultaneous Care Plans
+Preventing accidental completion before all required tasks are finished
+Maintaining full draft persistence and workflow continuity
