@@ -2425,6 +2425,12 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
   }
 
   function handleVitalsComplete() {
+    // Guard: only complete if at least one value has been entered
+    const vals = { ...vitalValues };
+    delete vals._date;
+    const hasData = Object.values(vals).some(v => v.trim() !== "") || painScore >= 0 || mentalAnswers.some(a => a > 0);
+    if (!hasData) return;
+
     const record: VitalsRecord = {
       recordId: `vr-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       vitalValues, painScore, mentalAnswers,
@@ -2550,7 +2556,7 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
                       }}
                       className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors"
                     >
-                      <Plus className="h-3 w-3" /> New Entry
+                      <Plus className="h-3 w-3" /> New Vitals Entry
                     </button>
                   )}
                   <button
