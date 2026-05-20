@@ -2512,54 +2512,57 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
             </div>
             {/* Right panel */}
             <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Right panel toolbar */}
+              {/* Sub-header */}
               <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm flex-shrink-0">
-                    {(["vitals", "pain", "mental"] as const).map((tab, i) => {
-                      const labels = { vitals: "Vitals", pain: "Pain Score", mental: "Mental Health" };
-                      return (
-                        <button
-                          key={tab}
-                          onClick={() => { setVitalsTab(tab); if (tab !== "vitals") setShowTrends(false); }}
-                          className={`px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${i > 0 ? "border-l border-slate-200" : ""} ${vitalsTab === tab ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-                          {labels[tab]}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <Activity className="h-4 w-4 text-[#4982CF] flex-shrink-0" />
+                  <span className="text-xs text-slate-600 font-medium">Patient Vitals</span>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {vitalsTab === "vitals" && (
-                    <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm">
+                {(activeDraftId !== null || vitalsDrafts.length === 0) && (
+                  <button
+                    onClick={() => {
+                      setActiveDraftId(null);
+                      setVitalValues(blankVitalValues());
+                      setPainScore(-1);
+                      setMentalAnswers([0, 0, 0, 0]);
+                      setVitalsTab("vitals");
+                      creatingDraftRef.current = false;
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors flex-shrink-0 ml-3"
+                  >
+                    <Plus className="h-3 w-3" /> New Vitals Entry
+                  </button>
+                )}
+              </div>
+              {/* Tab toolbar */}
+              <div className="flex-shrink-0 flex items-center justify-between px-5 py-2 border-b border-slate-100 bg-white">
+                <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 overflow-hidden shadow-sm flex-shrink-0">
+                  {(["vitals", "pain", "mental"] as const).map((tab, i) => {
+                    const labels = { vitals: "Vitals", pain: "Pain Score", mental: "Mental Health" };
+                    return (
                       <button
-                        onClick={() => setShowTrends(false)}
-                        className={`px-3 py-1.5 text-xs font-semibold transition-colors ${!showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-                        Form
+                        key={tab}
+                        onClick={() => { setVitalsTab(tab); if (tab !== "vitals") setShowTrends(false); }}
+                        className={`px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${i > 0 ? "border-l border-slate-200" : ""} ${vitalsTab === tab ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                        {labels[tab]}
                       </button>
-                      <button
-                        onClick={() => setShowTrends(true)}
-                        className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-                        <TrendingUp className="h-3 w-3" /> Trends
-                      </button>
-                    </div>
-                  )}
-                  {activeDraftId && (
+                    );
+                  })}
+                </div>
+                {vitalsTab === "vitals" && (
+                  <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 overflow-hidden shadow-sm flex-shrink-0">
                     <button
-                      onClick={() => {
-                        setActiveDraftId(null);
-                        setVitalValues(blankVitalValues());
-                        setPainScore(-1);
-                        setMentalAnswers([0, 0, 0, 0]);
-                        setVitalsTab("vitals");
-                        creatingDraftRef.current = false;
-                      }}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors"
-                    >
-                      <Plus className="h-3 w-3" /> New Vitals Entry
+                      onClick={() => setShowTrends(false)}
+                      className={`px-3 py-1.5 text-xs font-semibold transition-colors ${!showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                      Form
                     </button>
-                  )}
-                </div>
+                    <button
+                      onClick={() => setShowTrends(true)}
+                      className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                      <TrendingUp className="h-3 w-3" /> Trends
+                    </button>
+                  </div>
+                )}
               </div>
               {vitalsTab === "vitals" && showTrends && <VitalsTrends />}
               {vitalsTab === "vitals" && !showTrends && (
