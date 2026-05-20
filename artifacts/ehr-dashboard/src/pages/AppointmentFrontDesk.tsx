@@ -1370,14 +1370,14 @@ function AppointmentCard({ state, isPaid, role, onClose, onView, onEdit, onStatu
 
         {/* Actions */}
         <div className="px-4 py-3 flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => { onView(appt); onClose(); }} className="flex-1 h-8 text-xs gap-1.5">
-            <Eye className="h-3 w-3" /> View
+          <Button size="sm" variant="outline" onClick={() => { navTo(`/patients/${getPatientIdByMrn(appt.patientMrn)}`); onClose(); }} className="flex-1 h-8 text-xs gap-1.5">
+            <Eye className="h-3 w-3" /> View Profile
           </Button>
           {role === "doctor" ? (
             <Button
               size="sm"
               variant="outline"
-              onClick={() => { navTo(`/patients/${getPatientIdByMrn(appt.patientMrn)}`); onClose(); }}
+              onClick={() => { onView(appt); onClose(); }}
               className="flex-1 h-8 text-xs gap-1.5 border-[#4982CF]/40 text-[#4982CF] hover:bg-blue-50"
             >
               <BookOpen className="h-3 w-3" /> Open Facesheet
@@ -2646,7 +2646,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
           isPaid={paidIds.has(cardState.appt.id)}
           role={role}
           onClose={() => setCardState(null)}
-          onView={appt => setViewAppt(appt)}
+          onView={appt => setFacesheetAppt(appt)}
           onEdit={appt => openBooking({}, appt)}
           onStatusChange={(id, status) => {
             updateAppointment(id, { status });
