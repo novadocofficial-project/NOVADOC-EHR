@@ -1230,85 +1230,433 @@ function CarePlanSection({ patientMrn }: { patientMrn: string | null }) {
   );
 }
 
+// ─── Goal data types & helpers ────────────────────────────────────────────────
+
+interface GoalItem {
+  goalUid:    string;
+  title:      string;
+  priority:   "Low" | "Normal" | "High";
+  targetDate: string;
+  actions:    string[];
+  doctorName: string;
+  noteDate:   string;
+}
+
+interface GoalDraft {
+  draftId:   string;
+  goalUid:   string;
+  nurseNote: string;
+  startedAt: number;
+  updatedAt: number;
+}
+
+interface GoalRecord {
+  recordId:    string;
+  goalUid:     string;
+  goalTitle:   string;
+  priority:    "Low" | "Normal" | "High";
+  targetDate:  string;
+  actions:     string[];
+  doctorName:  string;
+  noteDate:    string;
+  nurseNote:   string;
+  completedAt: number;
+}
+
+const GOAL_DRAFTS_KEY  = "ehr-goal-drafts-v1";
+const GOAL_RECORDS_KEY = "ehr-goal-records-v1";
+
+function loadGoalDrafts(): GoalDraft[] {
+  try { return JSON.parse(localStorage.getItem(GOAL_DRAFTS_KEY) ?? "[]"); } catch { return []; }
+}
+function persistGoalDrafts(d: GoalDraft[]): void {
+  try { localStorage.setItem(GOAL_DRAFTS_KEY, JSON.stringify(d)); } catch { /**/ }
+}
+function loadGoalRecords(): GoalRecord[] {
+  try { return JSON.parse(localStorage.getItem(GOAL_RECORDS_KEY) ?? "[]"); } catch { return []; }
+}
+function persistGoalRecords(r: GoalRecord[]): void {
+  try { localStorage.setItem(GOAL_RECORDS_KEY, JSON.stringify(r)); } catch { /**/ }
+}
+
+function loadGoalItems(completedUids: Set<string>): GoalItem[] {
+  const items: GoalItem[] = [];
+  const seen  = new Set<string>();
+
+  // 1. Seed data from SOAP_DUMMY
+  SOAP_DUMMY.forEach((note, ni) => {
+    note.patientGoals.forEach((title, gi) => {
+      const uid = `seed-${ni}-${gi}`;
+      if (!seen.has(uid) && !completedUids.has(uid)) {
+        seen.add(uid);
+        items.push({ goalUid: uid, title, priority: "Normal", targetDate: "", actions: [], doctorName: note.signedBy, noteDate: note.signedAt });
+      }
+    });
+  });
+
+  // 2. Scan localStorage for live soap drafts (soap_draft_<entryId>)
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith("soap_draft_")) continue;
+      const entryId = key.replace("soap_draft_", "");
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const ns = JSON.parse(raw) as { patientGoals?: { goals?: Array<{ uid: string; title: string; priority?: "Low" | "Normal" | "High"; targetDate?: string; actions?: string[] }> } };
+      (ns?.patientGoals?.goals ?? []).forEach(g => {
+        if (!seen.has(g.uid) && !completedUids.has(g.uid)) {
+          seen.add(g.uid);
+          items.push({ goalUid: g.uid, title: g.title, priority: g.priority ?? "Normal", targetDate: g.targetDate ?? "", actions: g.actions ?? [], doctorName: entryId, noteDate: "" });
+        }
+      });
+    }
+  } catch { /**/ }
+
+  return items;
+}
+
+function goalPriCls(priority: "Low" | "Normal" | "High"): string {
+  return priority === "High" ? "bg-red-50 text-red-600 border-red-200"
+    : priority === "Low" ? "bg-green-50 text-green-600 border-green-200"
+    : "bg-blue-50 text-blue-600 border-blue-200";
+}
+
 // ─── Left panel — Goals ───────────────────────────────────────────────────────
 
-function GoalsLeftPanel({ entry }: { entry: MultiEntry }) {
-  const p = entry.patient;
-  const [exp0, setExp0] = useState(false);
-  const [exp1, setExp1] = useState(false);
-
-  const mockRecords = [
-    {
-      date: "21 Feb 2025", range: "01 Jul 2025", doctor: "Dr. Asif Imam",
-      goalCount: 3, notesCount: 2,
-      titles: ["Control blood sugar levels", "Reduce blood pressure", "Improve medication adherence"],
-    },
-    {
-      date: "14 Jan 2025", range: "01 Apr 2025", doctor: "Dr. Fatima Zahra",
-      goalCount: 2, notesCount: 2,
-      titles: ["Improve mobility post-surgery", "Achieve healthy weight range"],
-    },
-  ];
+function GoalsLeftPanel({
+  goalItems, goalDrafts, goalRecords, activeGoalUid, onSelectGoal, onDiscardDraft,
+}: {
+  goalItems:      GoalItem[];
+  goalDrafts:     GoalDraft[];
+  goalRecords:    GoalRecord[];
+  activeGoalUid:  string | null;
+  onSelectGoal:   (uid: string) => void;
+  onDiscardDraft: (uid: string) => void;
+}) {
+  const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Record</p>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-3">
-        <Collapsible title="Patient Info" defaultOpen={false}>
-          {p ? (
-            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-1.5 text-xs">
-              {[["Name", p.name], ["MRN", p.mrn], ["Gender", p.gender === "M" ? "Male" : "Female"], ["DOB", p.dob], ["Phone", p.phone]].map(([l, v]) => (
-                <div key={l} className="flex justify-between">
-                  <span className="text-slate-400">{l}</span>
-                  <span className="font-semibold text-slate-800">{v}</span>
-                </div>
-              ))}
-            </div>
-          ) : <p className="text-xs text-slate-400 italic">No patient on file</p>}
-        </Collapsible>
+    <div className="h-full flex flex-col overflow-y-auto bg-white">
 
-        <Collapsible title="All Records" badge={mockRecords.length} defaultOpen>
-          {mockRecords.map((rec, idx) => {
-            const expanded = idx === 0 ? exp0 : exp1;
-            const setExpanded = idx === 0 ? setExp0 : setExp1;
-            return (
-              <div key={idx} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs mb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-slate-800 leading-tight flex-1">
-                    {rec.goalCount} goal{rec.goalCount !== 1 ? "s" : ""} · {rec.notesCount} nurse note{rec.notesCount !== 1 ? "s" : ""}
-                  </p>
-                  <button
-                    onClick={() => setExpanded(e => !e)}
-                    className="text-[10px] font-bold text-[#4982CF] hover:underline flex-shrink-0 flex items-center gap-1">
-                    {expanded ? <><ChevronUp className="h-3 w-3" /> Collapse</> : <><Maximize2 className="h-3 w-3" /> Expand</>}
-                  </button>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 justify-between mt-1.5">
-                  <span>{rec.date} · Target: {rec.range}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1"><Target className="h-3 w-3" />Goals</span>
-                    <span className="flex items-center gap-1"><User className="h-3 w-3" />{rec.doctor}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">Active</span>
-                  </div>
-                </div>
-                {expanded && (
-                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Goals</p>
-                    {rec.titles.map((title, i) => (
-                      <div key={i} className="flex items-center gap-2 text-[11px] text-slate-600">
-                        <Target className="h-3 w-3 text-pink-400 flex-shrink-0" />
-                        {title}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </Collapsible>
+      {/* ── Required Actions ── */}
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-2 flex-shrink-0">
+        <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+        <span className="text-xs font-bold text-slate-700 flex-1">Required Actions</span>
+        {goalItems.length > 0 && (
+          <span className="text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 rounded-full px-2 py-0.5 leading-none">
+            {goalItems.length}
+          </span>
+        )}
       </div>
+
+      <div className="px-3 py-3 space-y-2">
+        {goalItems.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+            <Target className="h-4 w-4 text-slate-300" />
+            <p className="text-xs text-slate-400">No pending goals</p>
+          </div>
+        ) : goalItems.map(item => {
+          const active = activeGoalUid === item.goalUid;
+          const draft  = goalDrafts.find(d => d.goalUid === item.goalUid);
+          const age    = draft ? Date.now() - draft.updatedAt : 0;
+          const ageLabel = age < 60_000 ? "just now" : age < 3_600_000 ? `${Math.floor(age / 60_000)}m ago` : `${Math.floor(age / 3_600_000)}h ago`;
+          return (
+            <div
+              key={item.goalUid}
+              className={`rounded-xl border transition-all ${
+                active
+                  ? "bg-green-50/60 border-green-300/60 shadow-sm ring-1 ring-green-200/60"
+                  : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
+              }`}
+            >
+              <button onClick={() => onSelectGoal(item.goalUid)} className="w-full text-left p-3.5 pr-2">
+                <div className="flex items-start gap-3">
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? "bg-green-100" : "bg-green-50"}`}>
+                    <Target className={`h-4 w-4 ${active ? "text-green-600" : "text-green-400"}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                      <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{item.title}</p>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${goalPriCls(item.priority)}`}>
+                        {item.priority}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 truncate">{item.doctorName}{item.noteDate ? ` · ${item.noteDate}` : ""}</p>
+                    <div className="mt-1 flex items-center gap-2 flex-wrap">
+                      {draft ? (
+                        <>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">In Progress</span>
+                          <span className="text-[10px] text-slate-400">saved {ageLabel}</span>
+                        </>
+                      ) : (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-slate-100 text-slate-500 border-slate-200">Pending</span>
+                      )}
+                    </div>
+                  </div>
+                  {draft && (
+                    <button
+                      onClick={e => { e.stopPropagation(); onDiscardDraft(item.goalUid); }}
+                      className="h-6 w-6 rounded-md flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0 mt-0.5"
+                      title="Discard draft note"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── All Records ── */}
+      <div className="bg-white border-y border-slate-100 px-4 py-3 flex items-center gap-2 flex-shrink-0 mt-2">
+        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+        <span className="text-xs font-bold text-slate-700 flex-1">All Records</span>
+        {goalRecords.length > 0 && (
+          <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full px-2 py-0.5 leading-none">
+            {goalRecords.length}
+          </span>
+        )}
+      </div>
+
+      <div className="px-3 py-3 space-y-2 pb-6">
+        {goalRecords.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 py-5 flex flex-col items-center gap-1.5 text-center">
+            <CheckCircle2 className="h-4 w-4 text-slate-300" />
+            <p className="text-xs text-slate-400">No completed records yet</p>
+          </div>
+        ) : [...goalRecords].reverse().map(rec => {
+          const expanded = expandedRecord === rec.recordId;
+          return (
+            <div key={rec.recordId} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="px-3 py-2.5 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setExpandedRecord(expanded ? null : rec.recordId)}>
+                <div className="flex items-start gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{rec.goalTitle}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {new Date(rec.completedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                      {" · "}{rec.doctorName}
+                    </p>
+                  </div>
+                  <ChevronDown className={`h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-1 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                </div>
+              </div>
+              {expanded && (
+                <div className="border-t border-slate-100 px-3 py-3 space-y-2.5 bg-slate-50/50">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${goalPriCls(rec.priority)}`}>{rec.priority}</span>
+                    {rec.targetDate && <span className="text-[10px] text-slate-500">Target: {rec.targetDate}</span>}
+                  </div>
+                  {rec.actions.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Recommended Actions</p>
+                      <ul className="space-y-1">
+                        {rec.actions.map((a, i) => (
+                          <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-600">
+                            <span className="h-3.5 w-3.5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-[8px] font-bold flex-shrink-0 mt-0.5">{i + 1}</span>
+                            {a}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {rec.nurseNote && (
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Nurse Progress Note</p>
+                      <p className="text-[10px] text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 leading-relaxed whitespace-pre-wrap">{rec.nurseNote}</p>
+                    </div>
+                  )}
+                  <p className="text-[9px] text-slate-400">
+                    Completed {new Date(rec.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {rec.noteDate ? ` · SOAP: ${rec.noteDate}` : ""}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Goals Workspace (right panel) ───────────────────────────────────────────
+
+function GoalsWorkspace({
+  goalItem, goalDraft, onNoteChange, onComplete,
+}: {
+  goalItem:     GoalItem | null;
+  goalDraft:    GoalDraft | null;
+  onNoteChange: (note: string) => void;
+  onComplete:   () => void;
+}) {
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Compact sub-header */}
+      <div className="flex-shrink-0 flex items-center px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+        <Target className="h-4 w-4 text-green-600 flex-shrink-0" />
+        <span className="text-xs text-slate-600 font-medium truncate ml-2">
+          {goalItem ? goalItem.title : "Goals"}
+        </span>
+      </div>
+
+      {!goalItem ? (
+        /* Idle state */
+        <div className="flex-1 flex flex-col items-center justify-center py-20 gap-4">
+          <div className="h-16 w-16 rounded-2xl bg-green-50 flex items-center justify-center">
+            <Target className="h-8 w-8 text-green-300" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-slate-600">No goal selected</p>
+            <p className="text-xs text-slate-400 mt-1">Select a goal from Required Actions to review.</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            {/* Goal metadata (read-only) */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+              <div className="flex items-start gap-2 flex-wrap">
+                <p className="text-sm font-bold text-slate-800 flex-1 leading-snug">{goalItem.title}</p>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${goalPriCls(goalItem.priority)}`}>
+                  {goalItem.priority}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500">
+                {goalItem.targetDate && <span>Target: <span className="font-semibold text-slate-700">{goalItem.targetDate}</span></span>}
+                <span>Doctor: <span className="font-semibold text-slate-700">{goalItem.doctorName}</span></span>
+                {goalItem.noteDate && <span>SOAP: <span className="font-semibold text-slate-700">{goalItem.noteDate}</span></span>}
+              </div>
+              {goalItem.actions.length > 0 && (
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Recommended Actions</p>
+                  <ul className="space-y-1">
+                    {goalItem.actions.map((a, i) => (
+                      <li key={i} className="flex items-start gap-2 text-[11px] text-slate-600">
+                        <span className="h-4 w-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-[8px] font-bold flex-shrink-0 mt-px">{i + 1}</span>
+                        {a}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Nurse progress note */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                Progress Note
+              </label>
+              <textarea
+                value={goalDraft?.nurseNote ?? ""}
+                onChange={e => onNoteChange(e.target.value)}
+                rows={5}
+                placeholder="Add progress observations for this goal…"
+                className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-[#4982CF]/50 focus:ring-1 focus:ring-[#4982CF]/20 resize-none transition-all placeholder:text-slate-300"
+              />
+              {goalDraft && goalDraft.updatedAt > 0 && (
+                <p className="text-[9px] text-slate-400 mt-1">
+                  Auto-saved · {new Date(goalDraft.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Save & Complete */}
+          <div className="flex-shrink-0 border-t border-slate-200 px-5 py-3 bg-white">
+            <button
+              onClick={onComplete}
+              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-sm font-bold transition-colors cursor-pointer"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Save &amp; Complete
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Goals Section — owns state, composes left + right ────────────────────────
+
+function GoalsSection() {
+  const [records,       setRecords]       = useState<GoalRecord[]>(loadGoalRecords);
+  const [drafts,        setDrafts]        = useState<GoalDraft[]>(loadGoalDrafts);
+  const [activeGoalUid, setActiveGoalUid] = useState<string | null>(null);
+
+  const completedUids = useMemo(() => new Set(records.map(r => r.goalUid)), [records]);
+  const goalItems     = useMemo(() => loadGoalItems(completedUids), [completedUids]);
+
+  const activeDraft = drafts.find(d => d.goalUid === activeGoalUid) ?? null;
+  const activeItem  = goalItems.find(g => g.goalUid === activeGoalUid) ?? null;
+
+  function selectGoal(goalUid: string) {
+    setActiveGoalUid(goalUid);
+    setDrafts(prev => {
+      if (prev.find(d => d.goalUid === goalUid)) return prev;
+      const next = [...prev, { draftId: goalUid, goalUid, nurseNote: "", startedAt: Date.now(), updatedAt: Date.now() }];
+      persistGoalDrafts(next);
+      return next;
+    });
+  }
+
+  function patchNote(goalUid: string, nurseNote: string) {
+    setDrafts(prev => {
+      const next = prev.map(d => d.goalUid === goalUid ? { ...d, nurseNote, updatedAt: Date.now() } : d);
+      persistGoalDrafts(next);
+      return next;
+    });
+  }
+
+  function discardDraft(goalUid: string) {
+    setDrafts(prev => { const next = prev.filter(d => d.goalUid !== goalUid); persistGoalDrafts(next); return next; });
+    if (activeGoalUid === goalUid) setActiveGoalUid(null);
+  }
+
+  function completeDraft(goalUid: string) {
+    const item  = goalItems.find(g => g.goalUid === goalUid);
+    const draft = drafts.find(d => d.goalUid === goalUid);
+    if (!item) return;
+    const record: GoalRecord = {
+      recordId:    `gr-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      goalUid:     item.goalUid,
+      goalTitle:   item.title,
+      priority:    item.priority,
+      targetDate:  item.targetDate,
+      actions:     item.actions,
+      doctorName:  item.doctorName,
+      noteDate:    item.noteDate,
+      nurseNote:   draft?.nurseNote ?? "",
+      completedAt: Date.now(),
+    };
+    setRecords(prev => { const next = [...prev, record]; persistGoalRecords(next); return next; });
+    setDrafts(prev => { const next = prev.filter(d => d.goalUid !== goalUid); persistGoalDrafts(next); return next; });
+    setActiveGoalUid(null);
+  }
+
+  return (
+    <div className="flex-1 flex overflow-hidden">
+      <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
+        <GoalsLeftPanel
+          goalItems={goalItems}
+          goalDrafts={drafts}
+          goalRecords={records}
+          activeGoalUid={activeGoalUid}
+          onSelectGoal={selectGoal}
+          onDiscardDraft={discardDraft}
+        />
+      </div>
+      <GoalsWorkspace
+        goalItem={activeItem}
+        goalDraft={activeDraft}
+        onNoteChange={note => activeGoalUid && patchNote(activeGoalUid, note)}
+        onComplete={() => activeGoalUid && completeDraft(activeGoalUid)}
+      />
     </div>
   );
 }
@@ -3512,22 +3860,7 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
         ) : activeCategory === "care-plan" ? (
           <CarePlanSection patientMrn={entry.patient?.mrn ?? null} />
         ) : activeCategory === "goals" ? (
-          <div className="flex-1 flex overflow-hidden">
-            <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
-              <GoalsLeftPanel entry={entry} />
-            </div>
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
-                <Target className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-bold text-slate-700">Patient Goals</span>
-              </div>
-              <PatientGoalsTab
-                goals={goals}
-                goalNotes={execState.goals}
-                onNoteChange={updateGoalNote}
-              />
-            </div>
-          </div>
+          <GoalsSection />
         ) : activeCategory === "triage" ? (
           <TriageSplitPanel patient={entry.patient} />
         ) : (
