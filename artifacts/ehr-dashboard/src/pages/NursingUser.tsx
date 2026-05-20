@@ -2448,7 +2448,7 @@ function ProcedureSection() {
 
   function discardDraft(draftId: string) {
     setDrafts(prev => { const next = prev.filter(d => d.draftId !== draftId); persistProcDrafts(next); return next; });
-    if (activeDraftId === draftId) setActiveDraftId(null);
+    if (activeDraftId === draftId) { setActiveDraftId(null); setShowGateway(true); }
   }
 
   function completeDraft(draftId: string) {
