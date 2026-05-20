@@ -311,12 +311,13 @@ function VitalsLeftPanel({ drafts, records, activeDraftId, configuredVitals, onR
 // ─── Left panel — Nursing Procedures ─────────────────────────────────────────
 
 function ProcedureLeftPanel({
-  drafts, records, activeDraftId, onSelectDraft,
+  drafts, records, activeDraftId, onSelectDraft, onDiscardDraft,
 }: {
-  drafts:         ProcDraft[];
-  records:        ProcRecord[];
-  activeDraftId:  string | null;
-  onSelectDraft:  (id: string) => void;
+  drafts:          ProcDraft[];
+  records:         ProcRecord[];
+  activeDraftId:   string | null;
+  onSelectDraft:   (id: string) => void;
+  onDiscardDraft:  (draftId: string) => void;
 }) {
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
   const configuredVitals = useMemo(() => loadVitalsConfig(), []);
@@ -364,32 +365,42 @@ function ProcedureLeftPanel({
             : age < 3_600_000 ? `${Math.floor(age / 60_000)}m ago`
             : `${Math.floor(age / 3_600_000)}h ago`;
           return (
-            <button
+            <div
               key={d.draftId}
-              onClick={() => onSelectDraft(d.draftId)}
-              className={`w-full text-left rounded-xl border p-3.5 transition-all ${
+              className={`rounded-xl border transition-all ${
                 active
                   ? "bg-teal-50/60 border-teal-300/60 shadow-sm ring-1 ring-teal-200/60"
                   : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
               }`}
             >
-              <div className="flex items-start gap-3">
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? "bg-teal-100" : "bg-teal-50"}`}>
-                  <Stethoscope className={`h-4 w-4 ${active ? "text-teal-600" : "text-teal-400"}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{d.templateName}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    Started {new Date(d.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                  <div className="mt-1 flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">In Progress</span>
-                    <span className="text-[10px] text-slate-400">saved {ageLabel}</span>
+              <button
+                onClick={() => onSelectDraft(d.draftId)}
+                className="w-full text-left p-3.5 pr-2"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? "bg-teal-100" : "bg-teal-50"}`}>
+                    <Stethoscope className={`h-4 w-4 ${active ? "text-teal-600" : "text-teal-400"}`} />
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{d.templateName}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Started {new Date(d.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                    <div className="mt-1 flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">In Progress</span>
+                      <span className="text-[10px] text-slate-400">saved {ageLabel}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={e => { e.stopPropagation(); onDiscardDraft(d.draftId); }}
+                    className="h-6 w-6 rounded-md flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0 mt-0.5"
+                    title="Discard draft"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 mt-1 transition-transform ${active ? "rotate-90 text-teal-600" : "text-slate-300"}`} />
-              </div>
-            </button>
+              </button>
+            </div>
           );
         })}
       </div>
@@ -2473,6 +2484,11 @@ function ProcedureSection() {
     setShowGateway(false);
   }
 
+  function discardDraft(draftId: string) {
+    setDrafts(prev => { const next = prev.filter(d => d.draftId !== draftId); persistProcDrafts(next); return next; });
+    if (activeDraftId === draftId) setActiveDraftId(null);
+  }
+
   function completeDraft(draftId: string) {
     const draft = drafts.find(d => d.draftId === draftId);
     if (!draft) return;
@@ -2502,6 +2518,7 @@ function ProcedureSection() {
           records={records}
           activeDraftId={activeDraftId}
           onSelectDraft={id => { setActiveDraftId(id); setShowGateway(false); }}
+          onDiscardDraft={discardDraft}
         />
       </div>
       <div className="flex-1 flex flex-col overflow-hidden">
