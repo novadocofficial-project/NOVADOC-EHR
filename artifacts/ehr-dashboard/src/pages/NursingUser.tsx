@@ -414,6 +414,8 @@ interface CarePlanSource {
   doctorName:    string;
   signedAt:      string;
   carePlanItems: string[];
+  /** "seed" for seed notes; patient MRN for localStorage-sourced notes (empty string = unknown) */
+  patientRef:    string;
 }
 
 interface CarePlanDraftEntry {
@@ -442,16 +444,51 @@ function saveCarePlanRecords(recs: CarePlanRecord[]): void {
   try { localStorage.setItem(CAREPLAN_RECORDS_KEY, JSON.stringify(recs)); } catch { /**/ }
 }
 
-/** Scan both seed data (always) and localStorage signed notes (all — MRN filtering
- *  is not possible without embedding MRN in SignedRecord; that is a future enhancement). */
-function scanCarePlanSources(_patientMrn: string | null): CarePlanSource[] {
+/** Build a map of queue-entry-id → patient MRN by reading the persisted queue state. */
+function buildEntryMrnMap(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem("ehr-queue-v2");
+    if (!raw) return {};
+    const queue = JSON.parse(raw) as Array<{ id: string; patient?: { mrn?: string } }>;
+    const map: Record<string, string> = {};
+    for (const entry of queue) {
+      if (entry.id && entry.patient?.mrn) map[entry.id] = entry.patient.mrn;
+    }
+    return map;
+  } catch { return {}; }
+}
+
+/** Extract care plan items from a NoteState's carePlan field.
+ *  Handles both CarePlanData { tasks: CarePlanTask[] } and legacy string[] shapes. */
+function extractCarePlanItems(carePlan: unknown): string[] {
+  if (!carePlan) return [];
+  // CarePlanData shape: { tasks: CarePlanTask[] }
+  if (typeof carePlan === "object" && !Array.isArray(carePlan)) {
+    const tasks = (carePlan as CarePlanData).tasks;
+    if (Array.isArray(tasks) && tasks.length > 0) return tasks.map(t => t.title).filter(Boolean);
+  }
+  // Legacy / seed shape: string[]
+  if (Array.isArray(carePlan)) {
+    const strs = (carePlan as unknown[]).filter(x => typeof x === "string") as string[];
+    if (strs.length > 0) return strs;
+  }
+  return [];
+}
+
+/** Return care plan sources to display in Required Actions.
+ *  - Seed SOAP notes: always visible (patientRef = "seed").
+ *  - localStorage signed notes: filtered to patientMrn when known; shown unfiltered
+ *    when patientMrn is null (walk-in / unknown patient). */
+function scanCarePlanSources(patientMrn: string | null): CarePlanSource[] {
   const seedSources: CarePlanSource[] = SOAP_DUMMY.map((note, i) => ({
     id:            `seed-${i}`,
     doctorName:    note.signedBy,
     signedAt:      note.signedAt,
     carePlanItems: note.carePlan,
+    patientRef:    "seed",
   }));
 
+  const entryMrnMap = buildEntryMrnMap();
   const lsSources: CarePlanSource[] = [];
   try {
     const signedKeys: string[] = [];
@@ -460,18 +497,24 @@ function scanCarePlanSources(_patientMrn: string | null): CarePlanSource[] {
       if (k?.startsWith(SOAP_SIGNED_PREFIX)) signedKeys.push(k);
     }
     for (const key of signedKeys) {
+      const entryId = key.slice(SOAP_SIGNED_PREFIX.length);
+      const mrnForEntry = entryMrnMap[entryId] ?? "";
+      // If we know the current patient, filter to their records only
+      if (patientMrn && mrnForEntry && mrnForEntry !== patientMrn) continue;
+
       const raw = localStorage.getItem(key);
       if (!raw) continue;
       const records = JSON.parse(raw) as SignedRecord[];
       records.forEach((rec, idx) => {
         if (!rec.signed || !rec.noteState) return;
-        const tasks = (rec.noteState.carePlan as CarePlanData | undefined)?.tasks ?? [];
-        if (tasks.length === 0) return;
+        const items = extractCarePlanItems(rec.noteState.carePlan as unknown);
+        if (items.length === 0) return;
         lsSources.push({
-          id:            `ls-${key.replace(SOAP_SIGNED_PREFIX, "")}-${idx}`,
+          id:            `ls-${entryId}-${idx}`,
           doctorName:    rec.doctor ?? "Unknown Doctor",
           signedAt:      `${rec.date}${rec.time ? ", " + rec.time : ""}`,
-          carePlanItems: tasks.map(t => t.title),
+          carePlanItems: items,
+          patientRef:    mrnForEntry,
         });
       });
     }
@@ -487,12 +530,13 @@ interface CareLeftPanelProps {
   draftNotes:    CarePlanDraftStore;
   records:       CarePlanRecord[];
   openIds:       Set<string>;
+  patientMrn:    string | null;
   onToggleOpen:  (id: string) => void;
   onNotesChange: (id: string, notes: string) => void;
   onComplete:    (source: CarePlanSource) => void;
 }
 
-function CareLeftPanel({ sources, draftNotes, records, openIds, onToggleOpen, onNotesChange, onComplete }: CareLeftPanelProps) {
+function CareLeftPanel({ sources, draftNotes, records, openIds, patientMrn, onToggleOpen, onNotesChange, onComplete }: CareLeftPanelProps) {
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
 
   // Most-recently-updated open draft id (for amber highlight)
@@ -509,6 +553,14 @@ function CareLeftPanel({ sources, draftNotes, records, openIds, onToggleOpen, on
   // Sources not yet completed
   const completedIds = new Set(records.map(r => r.source.id));
   const pendingSources = sources.filter(s => !completedIds.has(s.id));
+
+  // All Records: seed records always shown; patient-specific records filtered by MRN
+  const visibleRecords = records.filter(r =>
+    r.source.patientRef === "seed" ||
+    !patientMrn ||
+    !r.source.patientRef ||
+    r.source.patientRef === patientMrn
+  );
 
   return (
     <div className="h-full flex flex-col bg-white overflow-hidden">
@@ -628,20 +680,20 @@ function CareLeftPanel({ sources, draftNotes, records, openIds, onToggleOpen, on
         <div className="sticky top-0 z-10 bg-white border-t border-b border-slate-100 px-4 py-3 flex items-center gap-2">
           <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
           <span className="text-xs font-bold text-slate-700 flex-1">All Records</span>
-          {records.length > 0 && (
+          {visibleRecords.length > 0 && (
             <span className="text-[10px] font-bold bg-green-50 text-green-600 border border-green-100 rounded-full px-2 py-0.5 leading-none">
-              {records.length}
+              {visibleRecords.length}
             </span>
           )}
         </div>
 
         <div className="px-3 py-3 space-y-2">
-          {records.length === 0 ? (
+          {visibleRecords.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
               <CheckCircle2 className="h-4 w-4 text-slate-300" />
               <p className="text-xs text-slate-400">No completed records</p>
             </div>
-          ) : [...records].reverse().map(r => {
+          ) : [...visibleRecords].reverse().map(r => {
             const exp = expandedRecord === r.recordId;
             return (
               <div key={r.recordId} className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
@@ -755,6 +807,7 @@ function CarePlanLeftPanelContainer({ patientMrn }: { patientMrn: string | null 
       draftNotes={draftNotes}
       records={records}
       openIds={openIds}
+      patientMrn={patientMrn}
       onToggleOpen={handleToggleOpen}
       onNotesChange={handleNotesChange}
       onComplete={handleComplete}
