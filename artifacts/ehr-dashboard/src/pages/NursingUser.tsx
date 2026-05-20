@@ -1040,45 +1040,9 @@ function HistoryTabContent({
     );
   }
 
-  const currentId = activeTemplate?.id ?? "";
-
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto px-5 py-5">
-        {enabledTemplates.length > 1 && (
-          <div className="mb-5 pb-4 border-b border-slate-100">
-            <div className="flex items-center justify-between mb-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Select Template</p>
-              {autoMappedTemplateId && (
-                <span className="text-[10px] font-semibold text-[#4982CF] flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#4982CF] inline-block" />
-                  Pre-selected by visit type
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {enabledTemplates.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => selectTemplate(t.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors flex items-center gap-1.5 ${
-                    currentId === t.id
-                      ? "bg-[#4982CF] border-[#4982CF] text-white shadow-sm"
-                      : "bg-white border-slate-200 text-slate-600 hover:border-[#4982CF] hover:text-[#4982CF]"
-                  }`}
-                >
-                  {t.name}
-                  {t.id === autoMappedTemplateId && (
-                    <span className={`text-[9px] font-black uppercase px-1 py-0.5 rounded ${currentId === t.id ? "bg-white/25 text-white" : "bg-[#4982CF]/10 text-[#4982CF]"}`}>
-                      Auto
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {activeTemplate && (
           <div className="space-y-3">
             {activeTemplate.components.map(comp => (
@@ -1933,17 +1897,44 @@ function genHistoryDraftId() { return `hd-${Date.now()}-${Math.random().toString
 // ─── History split panel ──────────────────────────────────────────────────────
 
 function HistorySplitPanel({ patient, visitTypeId }: { patient: Patient | null; visitTypeId?: string }) {
+  const { config } = useNursingConfig();
+  const enabledTemplates = useMemo(() => config.templates.filter(t => t.enabled), [config.templates]);
+
+  const autoMappedTemplateId = useMemo(() => {
+    if (!visitTypeId) return null;
+    const mappedId = config.visitTypeMappings?.[visitTypeId];
+    if (!mappedId) return null;
+    return enabledTemplates.find(t => t.id === mappedId) ? mappedId : null;
+  }, [visitTypeId, config.visitTypeMappings, enabledTemplates]);
+
   const [drafts, setDrafts] = useState<HistoryDraft[]>(() => {
     const all = loadHistoryDrafts();
     const real = all.filter(d => !isHistoryDraftBlank(d));
     if (real.length !== all.length) persistHistoryDrafts(real);
     return real;
   });
+
   const [activeDraftId, setActiveDraftId] = useState<string | null>(() => {
     const real = loadHistoryDrafts().filter(d => !isHistoryDraftBlank(d));
     if (real.length === 0) return null;
     return [...real].sort((a, b) => b.updatedAt - a.updatedAt)[0].draftId;
   });
+
+  // pendingTemplateId: set when the user has picked a template from the picker
+  // but hasn't yet created a draft (no content typed). null = show picker.
+  // Auto-skip picker when only 1 template or visitTypeId maps to one.
+  const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(() => {
+    const realDrafts = loadHistoryDrafts().filter(d => !isHistoryDraftBlank(d));
+    if (realDrafts.length > 0) return null; // will resume a draft, no picker needed
+    const templates = config.templates.filter(t => t.enabled);
+    if (templates.length === 1) return templates[0].id;
+    if (visitTypeId) {
+      const mappedId = config.visitTypeMappings?.[visitTypeId];
+      if (mappedId && templates.find(t => t.id === mappedId)) return mappedId;
+    }
+    return null;
+  });
+
   const [records, setRecords] = useState<HistoryRecord[]>(loadHistoryRecords);
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
 
@@ -2021,12 +2012,20 @@ function HistorySplitPanel({ patient, visitTypeId }: { patient: Patient | null; 
       mutateDrafts(prev => prev.filter(d => d.draftId !== activeDraftId));
     }
     setActiveDraftId(null);
+    setPendingTemplateId(null);
   }
 
   function discardDraft(draftId: string) {
     mutateDrafts(prev => prev.filter(d => d.draftId !== draftId));
-    if (activeDraftId === draftId) setActiveDraftId(null);
+    if (activeDraftId === draftId) {
+      setActiveDraftId(null);
+      setPendingTemplateId(null);
+    }
   }
+
+  // Resolved template id for the right panel (draft takes priority over pending)
+  const resolvedTemplateId = activeDraft?.templateId ?? pendingTemplateId ?? null;
+  const showPicker = resolvedTemplateId === null;
 
   return (
     <div className="flex-1 flex overflow-hidden">
@@ -2068,7 +2067,7 @@ function HistorySplitPanel({ patient, visitTypeId }: { patient: Patient | null; 
                 }`}
               >
                 <button
-                  onClick={() => setActiveDraftId(d.draftId)}
+                  onClick={() => { setActiveDraftId(d.draftId); setPendingTemplateId(null); }}
                   className="w-full text-left p-3.5 pr-2"
                 >
                   <div className="flex items-start gap-3">
@@ -2156,31 +2155,91 @@ function HistorySplitPanel({ patient, visitTypeId }: { patient: Patient | null; 
 
       {/* ── Right panel ── */}
       <div className="w-1/2 flex flex-col overflow-hidden">
+        {/* Toolbar */}
         <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-2 min-w-0">
             <ClipboardList className="h-4 w-4 text-amber-600 flex-shrink-0" />
             <span className="text-xs text-slate-600 font-medium truncate">
-              {activeDraft ? (activeDraft.templateName ?? "History Draft") : "New History Record"}
+              {activeDraft
+                ? (activeDraft.templateName ?? "History Draft")
+                : pendingTemplateId
+                  ? (enabledTemplates.find(t => t.id === pendingTemplateId)?.name ?? "New Record")
+                  : "Select Template"}
             </span>
           </div>
-          {activeDraftId && (
+          {(activeDraftId || pendingTemplateId) && (
             <button
-              onClick={() => setActiveDraftId(null)}
+              onClick={() => { setActiveDraftId(null); setPendingTemplateId(null); }}
               className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors flex-shrink-0 ml-3"
             >
               <Plus className="h-3 w-3" /> New Record
             </button>
           )}
         </div>
-        <HistoryTabContent
-          key={activeDraftId ?? "new"}
-          visitTypeId={visitTypeId}
-          initialTemplateId={activeDraft?.templateId ?? undefined}
-          initialData={activeDraft?.data}
-          initialSystemValues={activeDraft?.systemValues}
-          onStateChange={handleStateChange}
-          onComplete={handleComplete}
-        />
+
+        {showPicker ? (
+          /* ── Template picker ── */
+          <div className="flex-1 overflow-y-auto px-5 py-6">
+            {enabledTemplates.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
+                <ClipboardList className="h-10 w-10 opacity-30" />
+                <p className="text-sm font-semibold">No history templates configured</p>
+                <p className="text-xs">An admin can set up templates in Admin → Nursing History.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-bold text-slate-700 mb-1">Select a template to begin</p>
+                <p className="text-xs text-slate-400 mb-5">Choose the type of history record you want to document.</p>
+                <div className="space-y-3">
+                  {enabledTemplates.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => setPendingTemplateId(t.id)}
+                      className={`w-full text-left rounded-xl border-2 p-4 transition-all hover:border-[#4982CF] hover:bg-[#4982CF]/5 hover:shadow-sm group ${
+                        t.id === autoMappedTemplateId
+                          ? "border-[#4982CF] bg-[#4982CF]/5"
+                          : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          t.id === autoMappedTemplateId ? "bg-[#4982CF]/15" : "bg-amber-50 group-hover:bg-[#4982CF]/10"
+                        }`}>
+                          <ClipboardList className={`h-5 w-5 ${
+                            t.id === autoMappedTemplateId ? "text-[#4982CF]" : "text-amber-500 group-hover:text-[#4982CF]"
+                          }`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-slate-800">{t.name}</p>
+                            {t.id === autoMappedTemplateId && (
+                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#4982CF]/10 text-[#4982CF]">Auto</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {t.components.length} section{t.components.length !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+                        <ChevronDown className="h-4 w-4 text-slate-300 group-hover:text-[#4982CF] -rotate-90 flex-shrink-0" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          /* ── History form ── */
+          <HistoryTabContent
+            key={activeDraftId ?? pendingTemplateId ?? "new"}
+            visitTypeId={visitTypeId}
+            initialTemplateId={resolvedTemplateId ?? undefined}
+            initialData={activeDraft?.data}
+            initialSystemValues={activeDraft?.systemValues}
+            onStateChange={handleStateChange}
+            onComplete={handleComplete}
+          />
+        )}
       </div>
     </div>
   );
