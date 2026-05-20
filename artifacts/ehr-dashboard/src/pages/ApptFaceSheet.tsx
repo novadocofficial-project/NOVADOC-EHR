@@ -408,7 +408,10 @@ export function ApptFaceSheet({
   const [noteSessionIdx, setNoteSessionIdx] = useState<number>(() => {
     try {
       const stored = localStorage.getItem(`appt_note_session_${appt.id}`);
-      if (stored !== null) return parseInt(stored, 10);
+      if (stored !== null) {
+        const parsed = parseInt(stored, 10);
+        if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+      }
     } catch { /**/ }
     return readSignedRecords(appt.id).length;
   });
