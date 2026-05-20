@@ -129,6 +129,7 @@ const ALL_EHR_KEYS = [
   "ehr-billing-counters", "ehr-billing-reg", "ehr-fifo-lock", "ehr-visit-types",
   "ehr-queue-v2", "ehr-queue-nums-v2", "ehr-queue-ver",
   "ehr-triage-sessions", "ehr-nursing-task-exec-v1", "ehr-careplan-bridge-v1",
+  "ehr-careplan-records", "ehr-cp-exec-v2",
   "ehr-nursing-history-template-sel", "ehr-nursing-proc-template-sel",
   "ehr-patients-v1", "ehr-appointments-v1", "ehr-appt-invoices", "ehr-appt-nursing-v1",
   "ehr-reg-form-draft", "ehr-specialty-forms-v1", "ehr-ros-config-v1",
