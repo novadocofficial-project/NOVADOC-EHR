@@ -931,40 +931,10 @@ function HistoryTabContent({
   const { config } = useNursingConfig();
   const enabledTemplates = useMemo(() => config.templates.filter(t => t.enabled), [config.templates]);
 
-  const HISTORY_TEMPLATE_KEY = "ehr-nursing-history-template-sel";
-
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(() => {
-    if (initialTemplateId) return initialTemplateId;
-    try { return sessionStorage.getItem(HISTORY_TEMPLATE_KEY) ?? null; } catch { return null; }
-  });
-
-  const autoMappedTemplateId = useMemo(() => {
-    if (!visitTypeId) return null;
-    const mappedId = config.visitTypeMappings?.[visitTypeId];
-    if (!mappedId) return null;
-    return enabledTemplates.find(t => t.id === mappedId) ? mappedId : null;
-  }, [visitTypeId, config.visitTypeMappings, enabledTemplates]);
-
-  const hasOverridden = useRef(false);
-
-  useEffect(() => {
-    if (!hasOverridden.current && autoMappedTemplateId && !initialTemplateId) {
-      setSelectedTemplateId(autoMappedTemplateId);
-    }
-  }, [autoMappedTemplateId, initialTemplateId]);
-
-  function selectTemplate(id: string) {
-    hasOverridden.current = true;
-    setSelectedTemplateId(id);
-    try { sessionStorage.setItem(HISTORY_TEMPLATE_KEY, id); } catch { /**/ }
-  }
-
   const activeTemplate = useMemo(() => {
     if (enabledTemplates.length === 0) return null;
-    if (enabledTemplates.length === 1) return enabledTemplates[0];
-    const found = enabledTemplates.find(t => t.id === selectedTemplateId);
-    return found ?? enabledTemplates[0];
-  }, [enabledTemplates, selectedTemplateId]);
+    return enabledTemplates.find(t => t.id === initialTemplateId) ?? enabledTemplates[0];
+  }, [enabledTemplates, initialTemplateId]);
 
   const [data, setData] = useState<HistoryEntryMap>(initialData ?? {});
   const [systemValues, setSystemValues] = useState<Record<string, string>>(initialSystemValues ?? {});
@@ -1940,6 +1910,14 @@ function HistorySplitPanel({ patient, visitTypeId }: { patient: Patient | null; 
 
   const activeDraft = drafts.find(d => d.draftId === activeDraftId) ?? null;
 
+  // Returns the template that should be pre-selected when returning to the picker,
+  // skipping the picker entirely when there is only one choice.
+  function computeDefaultTemplateId(): string | null {
+    if (enabledTemplates.length === 1) return enabledTemplates[0].id;
+    if (autoMappedTemplateId) return autoMappedTemplateId;
+    return null;
+  }
+
   function mutateDrafts(fn: (prev: HistoryDraft[]) => HistoryDraft[]) {
     setDrafts(prev => {
       const next = fn(prev);
@@ -1982,6 +1960,7 @@ function HistorySplitPanel({ patient, visitTypeId }: { patient: Patient | null; 
       };
       mutateDrafts(prev => [...prev, draft]);
       setActiveDraftId(draftId);
+      setPendingTemplateId(null);
       return;
     }
 
@@ -2012,14 +1991,14 @@ function HistorySplitPanel({ patient, visitTypeId }: { patient: Patient | null; 
       mutateDrafts(prev => prev.filter(d => d.draftId !== activeDraftId));
     }
     setActiveDraftId(null);
-    setPendingTemplateId(null);
+    setPendingTemplateId(computeDefaultTemplateId());
   }
 
   function discardDraft(draftId: string) {
     mutateDrafts(prev => prev.filter(d => d.draftId !== draftId));
     if (activeDraftId === draftId) {
       setActiveDraftId(null);
-      setPendingTemplateId(null);
+      setPendingTemplateId(computeDefaultTemplateId());
     }
   }
 
@@ -2169,7 +2148,7 @@ function HistorySplitPanel({ patient, visitTypeId }: { patient: Patient | null; 
           </div>
           {(activeDraftId || pendingTemplateId) && (
             <button
-              onClick={() => { setActiveDraftId(null); setPendingTemplateId(null); }}
+              onClick={() => { setActiveDraftId(null); setPendingTemplateId(computeDefaultTemplateId()); }}
               className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors flex-shrink-0 ml-3"
             >
               <Plus className="h-3 w-3" /> New Record
