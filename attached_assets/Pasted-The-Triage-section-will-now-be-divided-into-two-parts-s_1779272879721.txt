@@ -1,0 +1,66 @@
+The Triage section will now be divided into two parts, similar to the Nursing module layout where the left side contains Required Actions and All Records.
+
+Since triage algorithms are dynamically loaded from local storage as arrays, the system should support loading any triage flow dynamically, such as Chest Pain Triage or Back Pain Triage.
+
+Updated Triage Workflow
+Right Side – Active Triage Workspace
+
+The right side of the screen will be used to:
+
+Select a triage algorithm
+Perform the triage workflow
+Continue working on the currently selected triage
+
+For example:
+
+The user selects Chest Pain Triage
+The triage workflow opens on the right side
+User starts answering questions and making selections
+Left Side – Required Actions & Draft Triage Notes
+
+The left panel will contain:
+
+Required Actions
+
+This section will show all triage workflows that are currently in progress (draft state).
+
+Each triage draft will:
+
+Auto-save continuously in local storage
+Preserve the exact progress and selections made by the user
+Allow switching between multiple triage workflows without losing data
+Example Scenario
+The user starts working on Chest Pain Triage
+Progress is automatically saved as a draft in local storage
+Before completing it, the user decides to work on Back Pain Triage
+The user selects Back Pain Triage
+The Chest Pain Triage moves into the Required Actions section as a draft
+Back Pain Triage now becomes active on the right side
+
+Later:
+
+Clicking on Chest Pain Triage from the left panel restores the workflow exactly from where it was left
+Clicking on Back Pain Triage restores that workflow from its saved state
+
+This allows users to work on multiple triage assessments simultaneously without losing progress.
+
+Completing a Triage
+
+Once a triage workflow is completed:
+
+It will be removed from the Required Actions section
+It will be saved into the All Records section
+The completed triage record will remain stored in local storage
+All Records Section
+
+The All Records section will contain previously completed triage records.
+
+Features:
+
+Expandable/collapsible record view
+Users can review:
+Selected answers
+Decisions made during triage
+Final outcome/results
+
+All completed records should persist in local storage so historical triage data can always be reviewed later.
