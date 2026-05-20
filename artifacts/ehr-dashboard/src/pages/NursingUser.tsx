@@ -319,6 +319,23 @@ function ProcedureLeftPanel({
   onSelectDraft:  (id: string) => void;
 }) {
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
+  const configuredVitals = useMemo(() => loadVitalsConfig(), []);
+
+  function vitalsRowsFromRecord(v: Record<string, string>): [string, string][] {
+    return configuredVitals
+      .filter(vit => vit.opd !== "skip")
+      .flatMap(vit => {
+        if (vit.id === "bp") {
+          const sys = v["bp_sys"] ?? "";
+          const dia = v["bp_dia"] ?? "";
+          if (!sys && !dia) return [];
+          return [[vit.name, `${sys || "—"}/${dia || "—"} ${vit.unit}`]] as [string, string][];
+        }
+        const val = v[vit.id] ?? "";
+        if (!val.trim()) return [];
+        return [[`${vit.name}${vit.unit ? ` (${vit.unit})` : ""}`, val]] as [string, string][];
+      });
+  }
 
   return (
     <div className="h-full flex flex-col overflow-y-auto bg-white">
@@ -362,9 +379,12 @@ function ProcedureLeftPanel({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{d.templateName}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Started {new Date(d.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </p>
                   <div className="mt-1 flex items-center gap-2 flex-wrap">
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">In Progress</span>
-                    <span className="text-[10px] text-slate-400">{ageLabel}</span>
+                    <span className="text-[10px] text-slate-400">saved {ageLabel}</span>
                   </div>
                 </div>
                 <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 mt-1 transition-transform ${active ? "rotate-90 text-teal-600" : "text-slate-300"}`} />
@@ -393,6 +413,14 @@ function ProcedureLeftPanel({
           </div>
         ) : [...records].reverse().map(r => {
           const exp = expandedRecord === r.recordId;
+          const vitalsRows    = vitalsRowsFromRecord(r.vitalsValues);
+          const filledMeds    = r.medRows.filter(m => m.drug.trim());
+          const filledBilling = r.billingRows.filter(b => b.name.trim());
+          const hasCustom     = Object.values(r.customValues).some(entries =>
+            entries.some(e => Object.values(e).some(v => v.trim())),
+          );
+          const hasAnyData = vitalsRows.length > 0 || filledMeds.length > 0
+            || !!r.consentData.status || filledBilling.length > 0 || hasCustom;
           return (
             <div key={r.recordId} className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
               <button
@@ -405,25 +433,111 @@ function ProcedureLeftPanel({
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{r.templateName}</p>
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    Completed {new Date(r.completedAt).toLocaleDateString()} · {r.componentNames.length} component{r.componentNames.length !== 1 ? "s" : ""}
+                    {new Date(r.completedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
                   </p>
                 </div>
                 <ChevronDown className={`h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-1 transition-transform ${exp ? "rotate-180" : ""}`} />
               </button>
               {exp && (
-                <div className="border-t border-slate-200 bg-white px-4 py-3">
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Components Recorded</p>
-                  <div className="rounded-lg overflow-hidden border border-slate-100">
-                    {r.componentNames.map((name, i) => (
-                      <div key={name} className={`flex items-center gap-2 px-2.5 py-1.5 ${i % 2 === 0 ? "bg-violet-50" : "bg-white"}`}>
-                        <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" />
-                        <span className="text-[11px] text-slate-600">{name}</span>
+                <div className="border-t border-slate-200 bg-white px-4 py-3 space-y-3">
+                  {!hasAnyData && (
+                    <p className="text-xs text-slate-400 italic">No data recorded.</p>
+                  )}
+
+                  {/* Vitals */}
+                  {vitalsRows.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Vital Signs</p>
+                      <div className="rounded-lg overflow-hidden border border-slate-100">
+                        {vitalsRows.map(([label, value], i) => (
+                          <div key={label} className={`flex items-center justify-between px-2.5 py-1.5 ${i % 2 === 0 ? "bg-blue-50" : "bg-white"}`}>
+                            <span className="text-[11px] text-slate-500">{label}</span>
+                            <span className="text-[11px] font-semibold text-slate-800">{value}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-2">
-                    {new Date(r.completedAt).toLocaleString()}
-                  </p>
+                    </div>
+                  )}
+
+                  {/* Medications */}
+                  {filledMeds.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Medications Given</p>
+                      <div className="rounded-lg overflow-hidden border border-slate-100">
+                        {filledMeds.map((m, i) => (
+                          <div key={m.id} className={`px-2.5 py-1.5 ${i % 2 === 0 ? "bg-violet-50" : "bg-white"}`}>
+                            <span className="text-[11px] font-semibold text-slate-700">{m.drug}</span>
+                            {(m.dose || m.route) && (
+                              <span className="text-[10px] text-slate-400 ml-1.5">
+                                {[m.dose, m.route].filter(Boolean).join(" · ")}
+                              </span>
+                            )}
+                            {m.notes && <p className="text-[10px] text-slate-400 mt-0.5">{m.notes}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Consent */}
+                  {r.consentData.status && (
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Consent</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                          r.consentData.status === "obtained" ? "bg-green-100 text-green-700"
+                          : r.consentData.status === "pending"  ? "bg-amber-100 text-amber-700"
+                          : "bg-rose-100 text-rose-700"
+                        }`}>
+                          {r.consentData.status.charAt(0).toUpperCase() + r.consentData.status.slice(1)}
+                        </span>
+                        {r.consentData.witness && (
+                          <span className="text-[11px] text-slate-500">Witness: {r.consentData.witness}</span>
+                        )}
+                      </div>
+                      {r.consentData.notes && (
+                        <p className="text-[10px] text-slate-400 mt-1">{r.consentData.notes}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Billing */}
+                  {filledBilling.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Billing Items</p>
+                      <div className="rounded-lg overflow-hidden border border-slate-100">
+                        {filledBilling.map((b, i) => (
+                          <div key={b.id} className={`flex items-center justify-between px-2.5 py-1.5 ${i % 2 === 0 ? "bg-slate-50" : "bg-white"}`}>
+                            <span className="text-[11px] text-slate-600">{b.name} × {b.qty}</span>
+                            <span className="text-[11px] font-semibold text-slate-700">
+                              {(b.qty * b.unitFee).toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Custom fields */}
+                  {hasCustom && (
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Additional Fields</p>
+                      <div className="space-y-0.5">
+                        {Object.entries(r.customValues).flatMap(([, entries]) =>
+                          entries.flatMap((entry, eIdx) =>
+                            Object.entries(entry)
+                              .filter(([, v]) => v.trim())
+                              .map(([key, val]) => (
+                                <div key={`${eIdx}-${key}`} className="flex items-start justify-between gap-2 text-[11px]">
+                                  <span className="text-slate-400 truncate">{key}</span>
+                                  <span className="text-slate-700 font-medium text-right">{val}</span>
+                                </div>
+                              )),
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2103,7 +2217,7 @@ function ProcedureWorkspace({
   activeDraft, activeTemplate, templates, showGateway,
   onStartNew, onSelectTemplate, onCancelGateway,
   onVitalsChange, onMedChange, onConsentChange, onBillingChange,
-  onCustomChange, onAddCustomEntry, onRemoveCustomEntry, onComplete,
+  onCustomChange, onAddCustomEntry, onRemoveCustomEntry, onComplete, onBackToDrafts,
 }: {
   activeDraft:        ProcDraft | null;
   activeTemplate:     NursingProcedureTemplate | null;
@@ -2120,6 +2234,7 @@ function ProcedureWorkspace({
   onAddCustomEntry:   (compId: string, limit: number | null) => void;
   onRemoveCustomEntry:(compId: string, idx: number) => void;
   onComplete:         () => void;
+  onBackToDrafts?:    () => void;
 }) {
   if (templates.length === 0) {
     return (
@@ -2204,23 +2319,34 @@ function ProcedureWorkspace({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-        <div className="h-8 w-8 rounded-lg bg-teal-50 flex items-center justify-center flex-shrink-0">
-          <Stethoscope className="h-4 w-4 text-teal-600" />
+      <div className="flex-shrink-0 border-b border-slate-100 bg-slate-50/50">
+        {onBackToDrafts && (
+          <button
+            onClick={onBackToDrafts}
+            className="flex items-center gap-1 px-5 pt-2 pb-0 text-[11px] font-semibold text-[#4982CF] hover:opacity-70 transition-opacity"
+          >
+            <ChevronDown className="h-3 w-3 rotate-90" />
+            Back to drafts
+          </button>
+        )}
+        <div className="flex items-center gap-3 px-5 py-2.5">
+          <div className="h-8 w-8 rounded-lg bg-teal-50 flex items-center justify-center flex-shrink-0">
+            <Stethoscope className="h-4 w-4 text-teal-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-slate-800 truncate">{template.name}</p>
+            <p className="text-[11px] text-slate-400">
+              Started {new Date(draft.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Auto-saving
+            </p>
+          </div>
+          <button
+            onClick={onStartNew}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 text-teal-700 text-xs font-bold hover:bg-teal-100 transition-colors flex-shrink-0"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New
+          </button>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-slate-800 truncate">{template.name}</p>
-          <p className="text-[11px] text-slate-400">
-            Started {new Date(draft.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Auto-saving
-          </p>
-        </div>
-        <button
-          onClick={onStartNew}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 text-teal-700 text-xs font-bold hover:bg-teal-100 transition-colors flex-shrink-0"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          New
-        </button>
       </div>
 
       {/* Components */}
@@ -2411,6 +2537,7 @@ function ProcedureSection() {
             patchDraft(activeDraftId, { customValues: { ...activeDraft.customValues, [compId]: entries } });
           }}
           onComplete={() => activeDraftId && completeDraft(activeDraftId)}
+          onBackToDrafts={activeDraftId ? () => setActiveDraftId(null) : undefined}
         />
       </div>
     </div>
