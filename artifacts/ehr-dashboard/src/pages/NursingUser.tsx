@@ -30,6 +30,9 @@ import { loadVitalsConfig, type VitalConfig } from "@/pages/SoapConfigModule";
 import { useNursingCareTasks } from "@/hooks/useNursingCareTasks";
 import { CareTasksTab, PatientGoalsTab } from "@/pages/NursingCareTasksTab";
 import { TriageRunner, loadSessions, OUTCOME_CFG, type StepAnswer, type TriageSession } from "@/pages/TriageRunner";
+import { SOAP_DUMMY } from "@/data/soapDummy";
+import type { CarePlanData } from "@/pages/CarePlanSection";
+import type { SignedRecord } from "@/pages/SoapNotePage";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -400,115 +403,362 @@ function ProcedureLeftPanel({ entry }: { entry: MultiEntry }) {
   );
 }
 
+// ─── Care Plan — types, localStorage helpers, scanner ────────────────────────
+
+const CAREPLAN_DRAFTS_KEY   = "ehr-careplan-drafts";
+const CAREPLAN_RECORDS_KEY  = "ehr-careplan-records";
+const SOAP_SIGNED_PREFIX    = "soap_signed_";
+
+interface CarePlanSource {
+  id:            string;
+  doctorName:    string;
+  signedAt:      string;
+  carePlanItems: string[];
+}
+
+interface CarePlanDraftEntry {
+  notes:     string;
+  updatedAt: number;
+}
+type CarePlanDraftStore = Record<string, CarePlanDraftEntry>;
+
+interface CarePlanRecord {
+  recordId:    string;
+  source:      CarePlanSource;
+  staffNotes:  string;
+  completedAt: number;
+}
+
+function loadCarePlanDraftNotes(): CarePlanDraftStore {
+  try { return JSON.parse(localStorage.getItem(CAREPLAN_DRAFTS_KEY) ?? "{}") as CarePlanDraftStore; } catch { return {}; }
+}
+function saveCarePlanDraftNotes(store: CarePlanDraftStore): void {
+  try { localStorage.setItem(CAREPLAN_DRAFTS_KEY, JSON.stringify(store)); } catch { /**/ }
+}
+function loadCarePlanRecords(): CarePlanRecord[] {
+  try { const raw = localStorage.getItem(CAREPLAN_RECORDS_KEY); return raw ? JSON.parse(raw) as CarePlanRecord[] : []; } catch { return []; }
+}
+function saveCarePlanRecords(recs: CarePlanRecord[]): void {
+  try { localStorage.setItem(CAREPLAN_RECORDS_KEY, JSON.stringify(recs)); } catch { /**/ }
+}
+
+/** Scan both seed data (always) and localStorage signed notes (all — MRN filtering
+ *  is not possible without embedding MRN in SignedRecord; that is a future enhancement). */
+function scanCarePlanSources(_patientMrn: string | null): CarePlanSource[] {
+  const seedSources: CarePlanSource[] = SOAP_DUMMY.map((note, i) => ({
+    id:            `seed-${i}`,
+    doctorName:    note.signedBy,
+    signedAt:      note.signedAt,
+    carePlanItems: note.carePlan,
+  }));
+
+  const lsSources: CarePlanSource[] = [];
+  try {
+    const signedKeys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(SOAP_SIGNED_PREFIX)) signedKeys.push(k);
+    }
+    for (const key of signedKeys) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const records = JSON.parse(raw) as SignedRecord[];
+      records.forEach((rec, idx) => {
+        if (!rec.signed || !rec.noteState) return;
+        const tasks = (rec.noteState.carePlan as CarePlanData | undefined)?.tasks ?? [];
+        if (tasks.length === 0) return;
+        lsSources.push({
+          id:            `ls-${key.replace(SOAP_SIGNED_PREFIX, "")}-${idx}`,
+          doctorName:    rec.doctor ?? "Unknown Doctor",
+          signedAt:      `${rec.date}${rec.time ? ", " + rec.time : ""}`,
+          carePlanItems: tasks.map(t => t.title),
+        });
+      });
+    }
+  } catch { /**/ }
+
+  return [...seedSources, ...lsSources];
+}
+
 // ─── Left panel — Care Plan ───────────────────────────────────────────────────
 
-function CareLeftPanel({ entry, tasks, execs }: {
-  entry: MultiEntry;
-  tasks: import("@/hooks/useNursingCareTasks").CarePlanTaskRef[];
-  execs: import("@/hooks/useNursingCareTasks").TaskExec[];
-}) {
-  const p = entry.patient;
-  const [exp0, setExp0] = useState(false);
-  const [exp1, setExp1] = useState(false);
+interface CareLeftPanelProps {
+  sources:       CarePlanSource[];
+  draftNotes:    CarePlanDraftStore;
+  records:       CarePlanRecord[];
+  openIds:       Set<string>;
+  onToggleOpen:  (id: string) => void;
+  onNotesChange: (id: string, notes: string) => void;
+  onComplete:    (source: CarePlanSource) => void;
+}
 
-  const urgentPending = tasks.filter((t, i) => t.priority === "Urgent" && (execs[i]?.status === "pending" || execs.find(e => e.uid === t.uid)?.status === "pending")).length;
+function CareLeftPanel({ sources, draftNotes, records, openIds, onToggleOpen, onNotesChange, onComplete }: CareLeftPanelProps) {
+  const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
 
-  const mockRecords = [
-    {
-      date: "21 Feb 2025", range: "26 Feb 2025", doctor: "Dr. Asif Imam",
-      taskCount: 4, doneCount: 3,
-      titles: ["Wound dressing", "BP monitoring", "Insulin teaching", "Dietary counseling"],
-    },
-    {
-      date: "14 Jan 2025", range: "21 Jan 2025", doctor: "Dr. Fatima Zahra",
-      taskCount: 3, doneCount: 3,
-      titles: ["Post-op care instructions", "Mobility exercises", "Medication review"],
-    },
-  ];
+  // Most-recently-updated open draft id (for amber highlight)
+  const newestOpenId = useMemo(() => {
+    let best: string | null = null;
+    let bestTs = 0;
+    for (const id of openIds) {
+      const ts = draftNotes[id]?.updatedAt ?? 0;
+      if (ts > bestTs) { bestTs = ts; best = id; }
+    }
+    return best;
+  }, [openIds, draftNotes]);
+
+  // Sources not yet completed
+  const completedIds = new Set(records.map(r => r.source.id));
+  const pendingSources = sources.filter(s => !completedIds.has(s.id));
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Patient Record</p>
+    <div className="h-full flex flex-col bg-white overflow-hidden">
+
+      {/* ── Required Actions header ── */}
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-2 flex-shrink-0">
+        <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+        <span className="text-xs font-bold text-slate-700 flex-1">Required Actions</span>
+        {pendingSources.length > 0 && (
+          <span className="text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 rounded-full px-2 py-0.5 leading-none">
+            {pendingSources.length}
+          </span>
+        )}
       </div>
-      <div className="flex-1 overflow-y-auto px-4 py-3">
-        <Collapsible title="Patient Info" defaultOpen={false}>
-          {p ? (
-            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-1.5 text-xs">
-              {[["Name", p.name], ["MRN", p.mrn], ["Gender", p.gender === "M" ? "Male" : "Female"], ["DOB", p.dob], ["Phone", p.phone]].map(([l, v]) => (
-                <div key={l} className="flex justify-between">
-                  <span className="text-slate-400">{l}</span>
-                  <span className="font-semibold text-slate-800">{v}</span>
-                </div>
-              ))}
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-3 py-3 space-y-2">
+          {pendingSources.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+              <Heart className="h-4 w-4 text-slate-300" />
+              <p className="text-xs text-slate-400">No pending care plans</p>
             </div>
-          ) : <p className="text-xs text-slate-400 italic">No patient on file</p>}
-        </Collapsible>
+          ) : pendingSources.map(src => {
+            const isOpen   = openIds.has(src.id);
+            const isNewest = src.id === newestOpenId;
+            const draft    = draftNotes[src.id];
+            const preview  = src.carePlanItems.slice(0, 2);
 
-        <Collapsible title="Required Actions" badge={urgentPending} accent defaultOpen>
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 space-y-1.5 text-xs mb-2">
-            {urgentPending > 0 ? (
-              <>
-                <p className="font-semibold text-slate-800 leading-tight">
-                  {urgentPending} urgent task{urgentPending !== 1 ? "s" : ""} pending — action required
-                </p>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                  <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500 inline-block" />Urgent</span>
-                  <span className="flex items-center gap-1"><Heart className="h-3 w-3" />Care Plan</span>
-                  <span className="flex items-center gap-1"><User className="h-3 w-3" />{p?.name ?? "Patient"}</span>
-                </div>
-              </>
-            ) : (
-              <p className="text-slate-400 italic text-[11px]">No urgent actions — all tasks on track.</p>
-            )}
-          </div>
-        </Collapsible>
-
-        <Collapsible title="All Records" badge={mockRecords.length} defaultOpen>
-          {mockRecords.map((rec, idx) => {
-            const expanded = idx === 0 ? exp0 : exp1;
-            const setExpanded = idx === 0 ? setExp0 : setExp1;
-            const pct = Math.round((rec.doneCount / rec.taskCount) * 100);
             return (
-              <div key={idx} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs mb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-slate-800 leading-tight flex-1">
-                    {rec.doneCount}/{rec.taskCount} tasks complete · {pct}%
-                  </p>
-                  <button
-                    onClick={() => setExpanded(e => !e)}
-                    className="text-[10px] font-bold text-[#4982CF] hover:underline flex-shrink-0 flex items-center gap-1">
-                    {expanded ? <><ChevronUp className="h-3 w-3" /> Collapse</> : <><Maximize2 className="h-3 w-3" /> Expand</>}
-                  </button>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 justify-between mt-1.5">
-                  <span>{rec.date} · {rec.range}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1"><Heart className="h-3 w-3" />Care Plan</span>
-                    <span className="flex items-center gap-1"><User className="h-3 w-3" />{rec.doctor}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">Active</span>
-                  </div>
-                </div>
-                <div className="mt-1.5 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: pct === 100 ? "#10b981" : "#4982CF" }} />
-                </div>
-                {expanded && (
-                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Tasks</p>
-                    {rec.titles.map((title, i) => (
-                      <div key={i} className="flex items-center gap-2 text-[11px] text-slate-600">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" />
-                        {title}
+              <div
+                key={src.id}
+                className={`rounded-xl border transition-all ${
+                  isNewest
+                    ? "bg-amber-50/60 border-amber-300/60 shadow-sm ring-1 ring-amber-200/60"
+                    : isOpen
+                      ? "bg-amber-50/30 border-amber-200/50"
+                      : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
+                }`}
+              >
+                {/* Card header — click to toggle */}
+                <button
+                  onClick={() => onToggleOpen(src.id)}
+                  className="w-full text-left p-3.5"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isOpen ? "bg-amber-100" : "bg-amber-50"}`}>
+                      <Heart className={`h-4 w-4 ${isOpen ? "text-amber-600" : "text-amber-500"}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 leading-snug">{src.doctorName}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{src.signedAt}</p>
+                      <div className="mt-1.5 space-y-0.5">
+                        {preview.map((item, i) => (
+                          <p key={i} className="text-[10px] text-slate-500 truncate flex items-start gap-1">
+                            <span className="text-slate-300 flex-shrink-0">·</span>
+                            {item}
+                          </p>
+                        ))}
+                        {src.carePlanItems.length > 2 && (
+                          <p className="text-[10px] text-slate-400 italic">+{src.carePlanItems.length - 2} more</p>
+                        )}
                       </div>
-                    ))}
+                    </div>
+                    <ChevronDown className={`h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-1 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                  </div>
+                </button>
+
+                {/* Inline notes area */}
+                {isOpen && (
+                  <div className="border-t border-amber-100 px-3.5 pb-3.5 pt-3 space-y-3">
+                    {/* Full care plan items */}
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Care Plan Instructions</p>
+                      <div className="space-y-1">
+                        {src.carePlanItems.map((item, i) => (
+                          <div key={i} className="flex items-start gap-2 text-[11px] text-slate-700">
+                            <span className="text-[#4982CF] font-bold flex-shrink-0 mt-0.5">{i + 1}.</span>
+                            {item}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Staff notes textarea */}
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Staff Progress Notes</p>
+                      <textarea
+                        value={draft?.notes ?? ""}
+                        onChange={e => onNotesChange(src.id, e.target.value)}
+                        placeholder="Document progress, observations, or updates…"
+                        rows={3}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 placeholder-slate-400 resize-none focus:outline-none focus:ring-1 focus:ring-[#4982CF] focus:border-[#4982CF] transition"
+                      />
+                      {draft?.updatedAt && (
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          Auto-saved {new Date(draft.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Save & Complete button */}
+                    <button
+                      onClick={() => onComplete(src)}
+                      className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-xs font-bold py-2 transition-colors"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Save &amp; Complete
+                    </button>
                   </div>
                 )}
               </div>
             );
           })}
-        </Collapsible>
+        </div>
+
+        {/* ── All Records ── */}
+        <div className="sticky top-0 z-10 bg-white border-t border-b border-slate-100 px-4 py-3 flex items-center gap-2">
+          <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+          <span className="text-xs font-bold text-slate-700 flex-1">All Records</span>
+          {records.length > 0 && (
+            <span className="text-[10px] font-bold bg-green-50 text-green-600 border border-green-100 rounded-full px-2 py-0.5 leading-none">
+              {records.length}
+            </span>
+          )}
+        </div>
+
+        <div className="px-3 py-3 space-y-2">
+          {records.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+              <CheckCircle2 className="h-4 w-4 text-slate-300" />
+              <p className="text-xs text-slate-400">No completed records</p>
+            </div>
+          ) : [...records].reverse().map(r => {
+            const exp = expandedRecord === r.recordId;
+            return (
+              <div key={r.recordId} className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                <button
+                  onClick={() => setExpandedRecord(exp ? null : r.recordId)}
+                  className="w-full text-left p-3.5 flex items-start gap-3 hover:bg-white transition-colors"
+                >
+                  <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{r.source.doctorName}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{r.source.signedAt}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Completed {new Date(r.completedAt).toLocaleDateString()} · {r.source.carePlanItems.length} item{r.source.carePlanItems.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <ChevronDown className={`h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-1 transition-transform ${exp ? "rotate-180" : ""}`} />
+                </button>
+                {exp && (
+                  <div className="border-t border-slate-200 bg-white px-4 py-3 space-y-3">
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Care Plan Instructions</p>
+                      <div className="space-y-1">
+                        {r.source.carePlanItems.map((item, i) => (
+                          <div key={i} className="flex items-start gap-2 text-[11px] text-slate-700">
+                            <span className="text-emerald-500 font-bold flex-shrink-0 mt-0.5">{i + 1}.</span>
+                            {item}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {r.staffNotes && (
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Staff Notes</p>
+                        <p className="text-xs text-slate-700 whitespace-pre-wrap">{r.staffNotes}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
+  );
+}
+
+// ─── Care Plan left panel state container ─────────────────────────────────────
+
+function CarePlanLeftPanelContainer({ patientMrn }: { patientMrn: string | null }) {
+  const [sources, setSources]     = useState<CarePlanSource[]>(() => scanCarePlanSources(patientMrn));
+  const [draftNotes, setDraftNotes] = useState<CarePlanDraftStore>(loadCarePlanDraftNotes);
+  const [records, setRecords]     = useState<CarePlanRecord[]>(loadCarePlanRecords);
+  const [openIds, setOpenIds]     = useState<Set<string>>(new Set());
+
+  // Re-scan when another tab signs a new SOAP note
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key?.startsWith(SOAP_SIGNED_PREFIX)) {
+        setSources(scanCarePlanSources(patientMrn));
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [patientMrn]);
+
+  function handleToggleOpen(id: string) {
+    setOpenIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+  }
+
+  function handleNotesChange(id: string, notes: string) {
+    setDraftNotes(prev => {
+      const next = { ...prev, [id]: { notes, updatedAt: Date.now() } };
+      saveCarePlanDraftNotes(next);
+      return next;
+    });
+  }
+
+  function handleComplete(source: CarePlanSource) {
+    const record: CarePlanRecord = {
+      recordId:    `cp-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      source,
+      staffNotes:  draftNotes[source.id]?.notes ?? "",
+      completedAt: Date.now(),
+    };
+    setRecords(prev => {
+      const next = [...prev, record];
+      saveCarePlanRecords(next);
+      return next;
+    });
+    // Remove from draft store
+    setDraftNotes(prev => {
+      const next = { ...prev };
+      delete next[source.id];
+      saveCarePlanDraftNotes(next);
+      return next;
+    });
+    // Close the card
+    setOpenIds(prev => { const next = new Set(prev); next.delete(source.id); return next; });
+  }
+
+  return (
+    <CareLeftPanel
+      sources={sources}
+      draftNotes={draftNotes}
+      records={records}
+      openIds={openIds}
+      onToggleOpen={handleToggleOpen}
+      onNotesChange={handleNotesChange}
+      onComplete={handleComplete}
+    />
   );
 }
 
@@ -2614,7 +2864,7 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
         ) : activeCategory === "care-plan" ? (
           <div className="flex-1 flex overflow-hidden">
             <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
-              <CareLeftPanel entry={entry} tasks={tasks} execs={execState.tasks} />
+              <CarePlanLeftPanelContainer patientMrn={entry.patient?.mrn ?? null} />
             </div>
             <div className="flex-1 flex flex-col overflow-hidden">
               <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
