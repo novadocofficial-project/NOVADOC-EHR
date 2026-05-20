@@ -7,7 +7,7 @@ import {
   Repeat, AlertTriangle, LayoutGrid, Columns2, RefreshCw,
   Hash, Check, ArrowRight, Pencil, CalendarDays, UserPlus,
   Banknote, Shield, Building2, Heart, FileSignature, Receipt, Activity,
-  ClipboardList,
+  ClipboardList, PenLine, Minus,
 } from "lucide-react";
 import { ApptFaceSheet } from "@/pages/ApptFaceSheet";
 import { ApptNursingDrawer } from "@/pages/ApptNursingDrawer";
@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSepa
 import { Switch } from "@/components/ui/switch";
 import { QueueAppHeader } from "@/pages/QueuePageLayout";
 import { useAppointmentDoctors } from "@/hooks/useAppointmentDoctors";
+import { hasSoapDraft, readSignedRecords } from "@/hooks/useSoapNoteDraft";
 import { useAppointments, type Appointment, type ApptStatus } from "@/hooks/useAppointments";
 import { useApptInvoices } from "@/hooks/useApptInvoices";
 import { usePatients, getPatientIdByMrn } from "@/hooks/usePatients";
@@ -2026,6 +2027,27 @@ function DoctorViewPanel({ doctors, date, appointments, filterTypes, paidIds, on
 
 // ─── Counselling View ─────────────────────────────────────────────────────────
 
+function getHealthRecordStatus(apptId: string): "not-started" | "in-progress" | "completed" {
+  const signed = readSignedRecords(apptId);
+  let sessionIdx = signed.length;
+  try {
+    const stored = localStorage.getItem(`appt_note_session_${apptId}`);
+    if (stored !== null) {
+      const parsed = parseInt(stored, 10);
+      if (Number.isFinite(parsed) && parsed >= 0) sessionIdx = parsed;
+    }
+  } catch { /**/ }
+  if (hasSoapDraft(`${apptId}_n${sessionIdx}`)) return "in-progress";
+  if (signed.length > 0) return "completed";
+  return "not-started";
+}
+
+const HEALTH_RECORD_STATUS_CONFIG = {
+  "not-started": { label: "Not Started", cls: "bg-slate-100 text-slate-500 border-slate-200",  Icon: Minus         },
+  "in-progress":  { label: "In Progress", cls: "bg-amber-50  text-amber-700  border-amber-200",  Icon: PenLine       },
+  "completed":    { label: "Completed",   cls: "bg-emerald-50 text-emerald-700 border-emerald-200", Icon: CheckCircle2 },
+} as const;
+
 const COUNSELLING_STATUS_CONFIG: Record<ApptStatus, { label: string; cls: string }> = {
   booked:      { label: "Booked",      cls: "bg-blue-50    text-blue-700    border-blue-200"    },
   confirmed:   { label: "Confirmed",   cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -2067,6 +2089,7 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Priority</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Waiting Time</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Patient Status</th>
+            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Health Record</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Action</th>
           </tr>
         </thead>
@@ -2106,6 +2129,17 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${statusCfg.cls}`}>
                     {statusCfg.label}
                   </span>
+                </td>
+                <td className="px-4 py-3">
+                  {(() => {
+                    const hrStatus = getHealthRecordStatus(appt.id);
+                    const { label, cls, Icon } = HEALTH_RECORD_STATUS_CONFIG[hrStatus];
+                    return (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${cls}`}>
+                        <Icon className="h-3 w-3" />{label}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-4 py-3">
                   <button
