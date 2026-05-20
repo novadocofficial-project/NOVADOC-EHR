@@ -2228,6 +2228,9 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
 
   // Appointment Facesheet (page-replacement, counselling view only)
   const [facesheetAppt, setFacesheetAppt] = useState<Appointment | null>(null);
+  // Incremented each time the doctor closes a facesheet so CounsellingView
+  // re-mounts and re-reads localStorage, picking up the latest HR status.
+  const [counsellingKey, setCounsellingKey] = useState(0);
 
   // Nursing drawer (nursing role only)
   const [nursingAppt, setNursingAppt] = useState<Appointment | null>(null);
@@ -2393,7 +2396,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
       <ApptFaceSheet
         appt={facesheetAppt}
         doctorName={doctorName}
-        onBack={() => setFacesheetAppt(null)}
+        onBack={() => { setFacesheetAppt(null); setCounsellingKey(k => k + 1); }}
       />
     );
   }
@@ -2617,6 +2620,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
           />
         ) : layoutMode === "counselling" && role === "doctor" ? (
           <CounsellingView
+            key={counsellingKey}
             appointments={appointments.filter(a =>
               a.date === todayStr() && a.doctorId === selectedDoctorId
             )}
