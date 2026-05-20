@@ -911,13 +911,30 @@ function CustomComponentForm({ component, values, onChange, entryLayout, columns
 
 // ─── History tab content ──────────────────────────────────────────────────────
 
-function HistoryTabContent({ visitTypeId }: { visitTypeId?: string }) {
+type HistoryEntryMap = Record<string, Record<string, string>[]>;
+
+function HistoryTabContent({
+  visitTypeId,
+  initialTemplateId,
+  initialData,
+  initialSystemValues,
+  onStateChange,
+  onComplete,
+}: {
+  visitTypeId?: string;
+  initialTemplateId?: string;
+  initialData?: HistoryEntryMap;
+  initialSystemValues?: Record<string, string>;
+  onStateChange?: (templateId: string | null, templateName: string | null, data: HistoryEntryMap, systemValues: Record<string, string>) => void;
+  onComplete?: (snapshot: { templateId: string; templateName: string; sections: { name: string; lines: string[] }[] }) => void;
+}) {
   const { config } = useNursingConfig();
   const enabledTemplates = useMemo(() => config.templates.filter(t => t.enabled), [config.templates]);
 
   const HISTORY_TEMPLATE_KEY = "ehr-nursing-history-template-sel";
 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(() => {
+    if (initialTemplateId) return initialTemplateId;
     try { return sessionStorage.getItem(HISTORY_TEMPLATE_KEY) ?? null; } catch { return null; }
   });
 
@@ -931,10 +948,10 @@ function HistoryTabContent({ visitTypeId }: { visitTypeId?: string }) {
   const hasOverridden = useRef(false);
 
   useEffect(() => {
-    if (!hasOverridden.current && autoMappedTemplateId) {
+    if (!hasOverridden.current && autoMappedTemplateId && !initialTemplateId) {
       setSelectedTemplateId(autoMappedTemplateId);
     }
-  }, [autoMappedTemplateId]);
+  }, [autoMappedTemplateId, initialTemplateId]);
 
   function selectTemplate(id: string) {
     hasOverridden.current = true;
@@ -949,9 +966,23 @@ function HistoryTabContent({ visitTypeId }: { visitTypeId?: string }) {
     return found ?? enabledTemplates[0];
   }, [enabledTemplates, selectedTemplateId]);
 
-  type EntryMap = Record<string, Record<string, string>[]>;
-  const [data, setData] = useState<EntryMap>({});
-  const [systemValues, setSystemValues] = useState<Record<string, string>>({});
+  const [data, setData] = useState<HistoryEntryMap>(initialData ?? {});
+  const [systemValues, setSystemValues] = useState<Record<string, string>>(initialSystemValues ?? {});
+
+  const onStateChangeRef = useRef(onStateChange);
+  useEffect(() => { onStateChangeRef.current = onStateChange; });
+  useEffect(() => {
+    onStateChangeRef.current?.(activeTemplate?.id ?? null, activeTemplate?.name ?? null, data, systemValues);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTemplate?.id, data, systemValues]);
+
+  const hasContent = useMemo(() => {
+    const dataFilled = Object.values(data).some(entries =>
+      entries.some(entry => Object.values(entry).some(v => v.trim() !== ""))
+    );
+    const sysFilled = Object.values(systemValues).some(v => v.trim() !== "");
+    return dataFilled || sysFilled;
+  }, [data, systemValues]);
 
   function getEntries(compId: string): Record<string, string>[] {
     return data[compId] ?? [{}];
@@ -979,6 +1010,26 @@ function HistoryTabContent({ visitTypeId }: { visitTypeId?: string }) {
     });
   }
 
+  function handleComplete() {
+    if (!activeTemplate || !onComplete) return;
+    const sections = activeTemplate.components.map(comp => {
+      if (comp.type === "system") {
+        const val = systemValues[comp.id] ?? "";
+        return { name: comp.name, lines: val.trim() ? [val] : [] };
+      }
+      const entries = data[comp.id] ?? [{}];
+      const lines: string[] = [];
+      for (const entry of entries) {
+        for (const field of comp.fields.filter(f => f.enabled)) {
+          const val = entry[field.id];
+          if (val && val.trim()) lines.push(`${field.label}: ${val}`);
+        }
+      }
+      return { name: comp.name, lines };
+    });
+    onComplete({ templateId: activeTemplate.id, templateName: activeTemplate.name, sections });
+  }
+
   if (enabledTemplates.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center flex-1 py-20 text-slate-400 gap-3">
@@ -992,98 +1043,112 @@ function HistoryTabContent({ visitTypeId }: { visitTypeId?: string }) {
   const currentId = activeTemplate?.id ?? "";
 
   return (
-    <div className="flex-1 overflow-y-auto px-5 py-5">
-      {enabledTemplates.length > 1 && (
-        <div className="mb-5 pb-4 border-b border-slate-100">
-          <div className="flex items-center justify-between mb-2.5">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Select Template</p>
-            {autoMappedTemplateId && (
-              <span className="text-[10px] font-semibold text-[#4982CF] flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#4982CF] inline-block" />
-                Pre-selected by visit type
-              </span>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto px-5 py-5">
+        {enabledTemplates.length > 1 && (
+          <div className="mb-5 pb-4 border-b border-slate-100">
+            <div className="flex items-center justify-between mb-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Select Template</p>
+              {autoMappedTemplateId && (
+                <span className="text-[10px] font-semibold text-[#4982CF] flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#4982CF] inline-block" />
+                  Pre-selected by visit type
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {enabledTemplates.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => selectTemplate(t.id)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors flex items-center gap-1.5 ${
+                    currentId === t.id
+                      ? "bg-[#4982CF] border-[#4982CF] text-white shadow-sm"
+                      : "bg-white border-slate-200 text-slate-600 hover:border-[#4982CF] hover:text-[#4982CF]"
+                  }`}
+                >
+                  {t.name}
+                  {t.id === autoMappedTemplateId && (
+                    <span className={`text-[9px] font-black uppercase px-1 py-0.5 rounded ${currentId === t.id ? "bg-white/25 text-white" : "bg-[#4982CF]/10 text-[#4982CF]"}`}>
+                      Auto
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTemplate && (
+          <div className="space-y-3">
+            {activeTemplate.components.map(comp => (
+              <Collapsible key={comp.id} title={comp.name} defaultOpen>
+                {comp.type === "system" ? (
+                  <SystemComponentView
+                    systemKey={comp.systemKey}
+                    value={systemValues[comp.id] ?? ""}
+                    onChange={v => setSystemValues(prev => ({ ...prev, [comp.id]: v }))}
+                  />
+                ) : (
+                  <div className="pb-2">
+                    {(() => {
+                      const entries = getEntries(comp.id);
+                      return (
+                        <>
+                          <div className="space-y-4">
+                            {entries.map((entryVals, idx) => (
+                              <div key={idx} className={comp.repeatable && entries.length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
+                                {comp.repeatable && entries.length > 1 && (
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entry {idx + 1}</span>
+                                    <button onClick={() => removeEntry(comp.id, idx)} className="text-slate-300 hover:text-rose-500 transition-colors">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                                <CustomComponentForm
+                                  component={comp}
+                                  values={entryVals}
+                                  onChange={v => setEntry(comp.id, idx, v)}
+                                  entryLayout={comp.entryLayout}
+                                  columns={comp.columns}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          {comp.repeatable && (
+                            <button
+                              onClick={() => addEntry(comp.id, comp.repeatLimit)}
+                              disabled={comp.repeatLimit !== null && entries.length >= comp.repeatLimit}
+                              className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-3"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              Add Entry{comp.repeatLimit !== null ? ` (${entries.length}/${comp.repeatLimit})` : ""}
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </Collapsible>
+            ))}
+            {activeTemplate.components.length === 0 && (
+              <p className="text-xs text-slate-400 italic px-1">No components in this template.</p>
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {enabledTemplates.map(t => (
-              <button
-                key={t.id}
-                onClick={() => selectTemplate(t.id)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors flex items-center gap-1.5 ${
-                  currentId === t.id
-                    ? "bg-[#4982CF] border-[#4982CF] text-white shadow-sm"
-                    : "bg-white border-slate-200 text-slate-600 hover:border-[#4982CF] hover:text-[#4982CF]"
-                }`}
-              >
-                {t.name}
-                {t.id === autoMappedTemplateId && (
-                  <span className={`text-[9px] font-black uppercase px-1 py-0.5 rounded ${currentId === t.id ? "bg-white/25 text-white" : "bg-[#4982CF]/10 text-[#4982CF]"}`}>
-                    Auto
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {activeTemplate && (
-        <div className="space-y-3">
-          {activeTemplate.components.map(comp => (
-            <Collapsible key={comp.id} title={comp.name} defaultOpen>
-              {comp.type === "system" ? (
-                <SystemComponentView
-                  systemKey={comp.systemKey}
-                  value={systemValues[comp.id] ?? ""}
-                  onChange={v => setSystemValues(prev => ({ ...prev, [comp.id]: v }))}
-                />
-              ) : (
-                <div className="pb-2">
-                  {(() => {
-                    const entries = getEntries(comp.id);
-                    return (
-                      <>
-                        <div className="space-y-4">
-                          {entries.map((entryVals, idx) => (
-                            <div key={idx} className={comp.repeatable && entries.length > 1 ? "rounded-xl border border-slate-200 bg-slate-50/50 p-3 relative" : ""}>
-                              {comp.repeatable && entries.length > 1 && (
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entry {idx + 1}</span>
-                                  <button onClick={() => removeEntry(comp.id, idx)} className="text-slate-300 hover:text-rose-500 transition-colors">
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              )}
-                              <CustomComponentForm
-                                component={comp}
-                                values={entryVals}
-                                onChange={v => setEntry(comp.id, idx, v)}
-                                entryLayout={comp.entryLayout}
-                                columns={comp.columns}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                        {comp.repeatable && (
-                          <button
-                            onClick={() => addEntry(comp.id, comp.repeatLimit)}
-                            disabled={comp.repeatLimit !== null && entries.length >= comp.repeatLimit}
-                            className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity mt-3"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                            Add Entry{comp.repeatLimit !== null ? ` (${entries.length}/${comp.repeatLimit})` : ""}
-                          </button>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
-            </Collapsible>
-          ))}
-          {activeTemplate.components.length === 0 && (
-            <p className="text-xs text-slate-400 italic px-1">No components in this template.</p>
-          )}
+      {onComplete && (
+        <div className="flex-shrink-0 border-t border-slate-100 px-5 py-3">
+          <button
+            disabled={!hasContent}
+            onClick={handleComplete}
+            className="w-full py-2 rounded-xl bg-[#4982CF] text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#3a6fb8] transition-colors"
+          >
+            Save &amp; Complete
+          </button>
         </div>
       )}
     </div>
@@ -1804,6 +1869,319 @@ function TriageSplitPanel({ patient }: { patient: Patient | null }) {
   );
 }
 
+// ─── History draft persistence ────────────────────────────────────────────────
+
+const HISTORY_DRAFTS_KEY = "ehr-history-drafts";
+const HISTORY_RECORDS_KEY = "ehr-history-records";
+
+interface HistoryDraft {
+  draftId: string;
+  templateId: string | null;
+  templateName: string | null;
+  patientRef: string | null;
+  patientName: string | null;
+  data: HistoryEntryMap;
+  systemValues: Record<string, string>;
+  startedAt: number;
+  updatedAt: number;
+}
+
+interface HistoryRecord {
+  recordId: string;
+  templateId: string;
+  templateName: string;
+  patientRef: string | null;
+  patientName: string | null;
+  sections: { name: string; lines: string[] }[];
+  completedAt: number;
+}
+
+function isHistoryDraftBlank(d: HistoryDraft): boolean {
+  const dataFilled = Object.values(d.data).some(entries =>
+    entries.some(entry => Object.values(entry).some(v => v.trim() !== ""))
+  );
+  const sysFilled = Object.values(d.systemValues).some(v => v.trim() !== "");
+  return !dataFilled && !sysFilled;
+}
+
+function loadHistoryDrafts(): HistoryDraft[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_DRAFTS_KEY);
+    if (raw) return JSON.parse(raw) as HistoryDraft[];
+  } catch { /* ignore */ }
+  return [];
+}
+
+function persistHistoryDrafts(drafts: HistoryDraft[]): void {
+  try { localStorage.setItem(HISTORY_DRAFTS_KEY, JSON.stringify(drafts)); } catch { /* ignore */ }
+}
+
+function loadHistoryRecords(): HistoryRecord[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_RECORDS_KEY);
+    if (raw) return JSON.parse(raw) as HistoryRecord[];
+  } catch { /* ignore */ }
+  return [];
+}
+
+function persistHistoryRecords(records: HistoryRecord[]): void {
+  try { localStorage.setItem(HISTORY_RECORDS_KEY, JSON.stringify(records)); } catch { /* ignore */ }
+}
+
+function genHistoryDraftId() { return `hd-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`; }
+
+// ─── History split panel ──────────────────────────────────────────────────────
+
+function HistorySplitPanel({ patient, visitTypeId }: { patient: Patient | null; visitTypeId?: string }) {
+  const [drafts, setDrafts] = useState<HistoryDraft[]>(() => {
+    const all = loadHistoryDrafts();
+    const real = all.filter(d => !isHistoryDraftBlank(d));
+    if (real.length !== all.length) persistHistoryDrafts(real);
+    return real;
+  });
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(() => {
+    const real = loadHistoryDrafts().filter(d => !isHistoryDraftBlank(d));
+    if (real.length === 0) return null;
+    return [...real].sort((a, b) => b.updatedAt - a.updatedAt)[0].draftId;
+  });
+  const [records, setRecords] = useState<HistoryRecord[]>(loadHistoryRecords);
+  const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
+
+  const activeDraft = drafts.find(d => d.draftId === activeDraftId) ?? null;
+
+  function mutateDrafts(fn: (prev: HistoryDraft[]) => HistoryDraft[]) {
+    setDrafts(prev => {
+      const next = fn(prev);
+      persistHistoryDrafts(next);
+      return next;
+    });
+  }
+
+  const creatingDraftRef = useRef(false);
+
+  useEffect(() => {
+    if (activeDraftId) creatingDraftRef.current = false;
+  }, [activeDraftId]);
+
+  function handleStateChange(
+    templateId: string | null,
+    templateName: string | null,
+    data: HistoryEntryMap,
+    systemValues: Record<string, string>,
+  ) {
+    const dataFilled = Object.values(data).some(entries =>
+      entries.some(entry => Object.values(entry).some(v => v.trim() !== ""))
+    );
+    const sysFilled = Object.values(systemValues).some(v => v.trim() !== "");
+    if (!dataFilled && !sysFilled) return;
+
+    const currentId = activeDraftId;
+    if (!currentId) {
+      if (creatingDraftRef.current) return;
+      creatingDraftRef.current = true;
+      const draftId = genHistoryDraftId();
+      const draft: HistoryDraft = {
+        draftId, templateId, templateName,
+        patientRef: patient?.mrn ?? null,
+        patientName: patient?.name ?? null,
+        data, systemValues,
+        startedAt: Date.now(), updatedAt: Date.now(),
+      };
+      mutateDrafts(prev => [...prev, draft]);
+      setActiveDraftId(draftId);
+      return;
+    }
+    mutateDrafts(prev => prev.map(d =>
+      d.draftId === currentId
+        ? { ...d, templateId, templateName, data, systemValues, updatedAt: Date.now() }
+        : d
+    ));
+  }
+
+  function handleComplete(snapshot: { templateId: string; templateName: string; sections: { name: string; lines: string[] }[] }) {
+    const record: HistoryRecord = {
+      recordId: `hr-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      templateId: snapshot.templateId,
+      templateName: snapshot.templateName,
+      patientRef: patient?.mrn ?? null,
+      patientName: patient?.name ?? null,
+      sections: snapshot.sections,
+      completedAt: Date.now(),
+    };
+    setRecords(prev => {
+      const next = [...prev, record];
+      persistHistoryRecords(next);
+      return next;
+    });
+    if (activeDraftId) {
+      mutateDrafts(prev => prev.filter(d => d.draftId !== activeDraftId));
+    }
+    setActiveDraftId(null);
+  }
+
+  function discardDraft(draftId: string) {
+    mutateDrafts(prev => prev.filter(d => d.draftId !== draftId));
+    if (activeDraftId === draftId) setActiveDraftId(null);
+  }
+
+  return (
+    <div className="flex-1 flex overflow-hidden">
+      {/* ── Left panel ── */}
+      <div className="w-1/2 flex-shrink-0 border-r border-slate-200 flex flex-col overflow-y-auto bg-white">
+
+        {/* Required Actions header */}
+        <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-2">
+          <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+          <span className="text-xs font-bold text-slate-700 flex-1">Required Actions</span>
+          {drafts.length > 0 && (
+            <span className="text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 rounded-full px-2 py-0.5 leading-none">
+              {drafts.length}
+            </span>
+          )}
+        </div>
+
+        <div className="px-3 py-3 space-y-2">
+          {drafts.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+              <ClipboardList className="h-4 w-4 text-slate-300" />
+              <p className="text-xs text-slate-400">No active history records</p>
+            </div>
+          ) : drafts.map(d => {
+            const active = activeDraftId === d.draftId;
+            const age = Date.now() - d.updatedAt;
+            const ageLabel = age < 60_000
+              ? "just now"
+              : age < 3_600_000
+                ? `${Math.floor(age / 60_000)}m ago`
+                : `${Math.floor(age / 3_600_000)}h ago`;
+            return (
+              <div
+                key={d.draftId}
+                className={`rounded-xl border transition-all ${
+                  active
+                    ? "bg-amber-50/60 border-amber-300/60 shadow-sm ring-1 ring-amber-200/60"
+                    : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
+                }`}
+              >
+                <button
+                  onClick={() => setActiveDraftId(d.draftId)}
+                  className="w-full text-left p-3.5 pr-2"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? "bg-amber-100" : "bg-amber-50"}`}>
+                      <ClipboardList className={`h-4 w-4 ${active ? "text-amber-600" : "text-amber-500"}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 leading-snug truncate">
+                        {d.templateName ?? "History Draft"}
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{d.patientName ?? "Walk-in"}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{ageLabel}</p>
+                    </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); discardDraft(d.draftId); }}
+                      className="h-6 w-6 rounded-md flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0 mt-0.5"
+                      title="Discard draft"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* All Records header */}
+        <div className="sticky top-0 z-10 bg-white border-t border-b border-slate-100 px-4 py-3 flex items-center gap-2 mt-1">
+          <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+          <span className="text-xs font-bold text-slate-700 flex-1">All Records</span>
+          {records.length > 0 && (
+            <span className="text-[10px] font-bold bg-green-50 text-green-600 border border-green-100 rounded-full px-2 py-0.5 leading-none">
+              {records.length}
+            </span>
+          )}
+        </div>
+
+        <div className="px-3 py-3 space-y-2">
+          {records.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+              <CheckCircle2 className="h-4 w-4 text-slate-300" />
+              <p className="text-xs text-slate-400">No completed records</p>
+            </div>
+          ) : [...records].reverse().map(r => {
+            const expanded = expandedRecord === r.recordId;
+            const filledSections = r.sections.filter(s => s.lines.length > 0);
+            return (
+              <div key={r.recordId} className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                <button
+                  onClick={() => setExpandedRecord(expanded ? null : r.recordId)}
+                  className="w-full text-left p-3.5 flex items-start gap-3 hover:bg-white transition-colors"
+                >
+                  <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{r.templateName}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{r.patientName ?? "Walk-in"}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {new Date(r.completedAt).toLocaleDateString()} · {filledSections.length} section{filledSections.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <ChevronDown className={`h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-1 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                </button>
+                {expanded && (
+                  <div className="border-t border-slate-200 bg-white px-4 py-3 space-y-3">
+                    {filledSections.length === 0 ? (
+                      <p className="text-xs text-slate-400 italic">No content recorded.</p>
+                    ) : filledSections.map(s => (
+                      <div key={s.name}>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{s.name}</p>
+                        {s.lines.map((line, i) => (
+                          <p key={i} className="text-xs text-slate-700 mt-0.5">{line}</p>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Right panel ── */}
+      <div className="w-1/2 flex flex-col overflow-hidden">
+        <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-2 min-w-0">
+            <ClipboardList className="h-4 w-4 text-amber-600 flex-shrink-0" />
+            <span className="text-xs text-slate-600 font-medium truncate">
+              {activeDraft ? (activeDraft.templateName ?? "History Draft") : "New History Record"}
+            </span>
+          </div>
+          {activeDraftId && (
+            <button
+              onClick={() => setActiveDraftId(null)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#4982CF] hover:text-[#3a6fb8] transition-colors flex-shrink-0 ml-3"
+            >
+              <Plus className="h-3 w-3" /> New Record
+            </button>
+          )}
+        </div>
+        <HistoryTabContent
+          key={activeDraftId ?? "new"}
+          visitTypeId={visitTypeId}
+          initialTemplateId={activeDraft?.templateId ?? undefined}
+          initialData={activeDraft?.data}
+          initialSystemValues={activeDraft?.systemValues}
+          onStateChange={handleStateChange}
+          onComplete={handleComplete}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── Vitals split panel (fullscreen drawer) ───────────────────────────────────
 
 function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { entry: MultiEntry; onClose: () => void; onSave: () => void; initialCategory?: NurseCategory }) {
@@ -1925,13 +2303,7 @@ function VitalsPanel({ entry, onClose, onSave, initialCategory = "vitals" }: { e
             </div>
           </div>
         ) : activeCategory === "history" ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
-              <ClipboardList className="h-4 w-4 text-amber-600" />
-              <span className="text-sm font-bold text-slate-700">Patient History</span>
-            </div>
-            <HistoryTabContent visitTypeId={entry.visitTypeId} />
-          </div>
+          <HistorySplitPanel patient={entry.patient} visitTypeId={entry.visitTypeId} />
         ) : activeCategory === "procedures" ? (
           <div className="flex-1 flex overflow-hidden">
             <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
