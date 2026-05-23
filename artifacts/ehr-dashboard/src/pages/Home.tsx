@@ -57,7 +57,7 @@ const MODULES: Mod[] = [
   { id: "tele-clinic",      label: "Tele-Clinic",                    icon: Video,        iconColor: "#0d9488", iconBg: "#ccfbf1", active: false },
   { id: "urgent-care",      label: "Urgent Care & Emergency Clinic", icon: AlertOctagon, iconColor: "#dc2626", iconBg: "#fee2e2", active: true,  href: "/appointments/nursing?section=triage", desc: "Emergency triage & rapid patient assessment" },
   { id: "genetic-disease",  label: "Genetic Disease Diabetes",       icon: Dna,          iconColor: "#7c3aed", iconBg: "#ede9fe", active: false },
-  { id: "mental-health",    label: "Mental Health Clinic",           icon: Brain,        iconColor: "#db2777", iconBg: "#fce7f3", active: false },
+  { id: "mental-health",    label: "Mental Health",                  icon: Brain,        iconColor: "#db2777", iconBg: "#fce7f3", active: true,  href: "/appointments/nursing?section=vitals", desc: "Mental health assessments & vital monitoring" },
   { id: "support-staff",    label: "Support Staff",                  icon: Headphones,   iconColor: "#6366f1", iconBg: "#ede9fe", active: false },
   { id: "rural-hc",         label: "Rural Healthcare",               icon: MapPin,       iconColor: "#65a30d", iconBg: "#ecfccb", active: false },
   { id: "physician-asst",   label: "Physician Assistant",            icon: MonitorPlay,  iconColor: "#0284c7", iconBg: "#e0f2fe", active: false },
