@@ -1348,14 +1348,13 @@ function goalStatusChip(status: GoalDraft["status"] | "pending") {
 // ─── Left panel — Goals ───────────────────────────────────────────────────────
 
 function GoalsLeftPanel({
-  requiredGroups, recordGroups, drafts, activeGoalUid, onSelectGoal, onDiscardDraft,
+  requiredGroups, recordGroups, drafts, activeGoalUid, onSelectGoal,
 }: {
   requiredGroups:  SoapNoteGroup[];
   recordGroups:    SoapNoteGroup[];
   drafts:          GoalDraft[];
   activeGoalUid:   string | null;
   onSelectGoal:    (uid: string) => void;
-  onDiscardDraft:  (uid: string) => void;
 }) {
   const [collapsedRequired, setCollapsedRequired] = useState<Set<string>>(new Set());
   const [openRecords,       setOpenRecords]       = useState<Set<string>>(new Set());
@@ -1389,43 +1388,40 @@ function GoalsLeftPanel({
     );
   }
 
-  function GoalRow({ goal, isFinalized }: { goal: GoalItem; isFinalized: boolean }) {
-    const active = activeGoalUid === goal.goalUid;
-    const draft  = getDraft(goal.goalUid);
+  function GoalRow({ goal, isFinalized, readOnly = false }: { goal: GoalItem; isFinalized: boolean; readOnly?: boolean }) {
+    const active = !readOnly && activeGoalUid === goal.goalUid;
     const status = getStatus(goal.goalUid);
+    const inner = (
+      <div className="flex items-start gap-2">
+        <div className={`h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 ${active ? "bg-green-100" : "bg-green-50"}`}>
+          <Target className={`h-3 w-3 ${active ? "text-green-600" : "text-green-400"}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-semibold text-slate-800 leading-snug">{goal.title}</p>
+          <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${goalPriCls(goal.priority)}`}>{goal.priority}</span>
+            {goalStatusChip(status)}
+          </div>
+        </div>
+      </div>
+    );
     return (
       <div
         className={`mx-3 mb-1.5 rounded-xl border transition-all ${isFinalized ? "opacity-55" : ""} ${
           active
             ? "bg-green-50/70 border-green-300/60 shadow-sm ring-1 ring-green-200/60"
+            : readOnly
+            ? "bg-white border-slate-200"
             : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
         }`}
       >
-        <div className="flex items-center">
-          <button onClick={() => onSelectGoal(goal.goalUid)} className="flex-1 text-left px-3 py-2.5 min-w-0">
-            <div className="flex items-start gap-2">
-              <div className={`h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 ${active ? "bg-green-100" : "bg-green-50"}`}>
-                <Target className={`h-3 w-3 ${active ? "text-green-600" : "text-green-400"}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-semibold text-slate-800 leading-snug">{goal.title}</p>
-                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${goalPriCls(goal.priority)}`}>{goal.priority}</span>
-                  {goalStatusChip(status)}
-                </div>
-              </div>
-            </div>
+        {readOnly ? (
+          <div className="px-3 py-2.5">{inner}</div>
+        ) : (
+          <button onClick={() => onSelectGoal(goal.goalUid)} className="w-full text-left px-3 py-2.5">
+            {inner}
           </button>
-          {draft && (
-            <button
-              onClick={() => onDiscardDraft(goal.goalUid)}
-              className="h-6 w-6 mr-2 rounded-md flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0"
-              title="Reset to pending"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
+        )}
       </div>
     );
   }
@@ -1502,7 +1498,7 @@ function GoalsLeftPanel({
                 />
                 {isOpen && (
                   <div className="pt-2 pb-1">
-                    {group.goals.map(goal => <GoalRow key={goal.goalUid} goal={goal} isFinalized={false} />)}
+                    {group.goals.map(goal => <GoalRow key={goal.goalUid} goal={goal} isFinalized={false} readOnly={true} />)}
                   </div>
                 )}
               </div>
@@ -1724,11 +1720,6 @@ function GoalsSection() {
     setActiveGoalUid(null);
   }
 
-  function discardDraft(goalUid: string) {
-    setDrafts(prev => { const next = prev.filter(d => d.goalUid !== goalUid); persistGoalDrafts(next); return next; });
-    if (activeGoalUid === goalUid) setActiveGoalUid(null);
-  }
-
   return (
     <div className="flex-1 flex overflow-hidden">
       <div className="w-1/2 flex-shrink-0 border-r border-slate-200 overflow-hidden">
@@ -1738,14 +1729,13 @@ function GoalsSection() {
           drafts={drafts}
           activeGoalUid={activeGoalUid}
           onSelectGoal={selectGoal}
-          onDiscardDraft={discardDraft}
         />
       </div>
       <GoalsWorkspace
         goalItem={activeItem}
         goalDraft={activeDraft}
         onSave={saveGoal}
-        onDiscard={() => activeGoalUid && discardDraft(activeGoalUid)}
+        onDiscard={() => setActiveGoalUid(null)}
       />
     </div>
   );
