@@ -1348,13 +1348,15 @@ function goalStatusChip(status: GoalDraft["status"] | "pending") {
 // ─── Left panel — Goals ───────────────────────────────────────────────────────
 
 function GoalsLeftPanel({
-  requiredGroups, recordGroups, drafts, activeGoalUid, onSelectGoal,
+  requiredGroups, recordGroups, drafts, activeGoalUid, activeRecordUid, onSelectGoal, onViewRecord,
 }: {
   requiredGroups:  SoapNoteGroup[];
   recordGroups:    SoapNoteGroup[];
   drafts:          GoalDraft[];
   activeGoalUid:   string | null;
+  activeRecordUid: string | null;
   onSelectGoal:    (uid: string) => void;
+  onViewRecord:    (uid: string) => void;
 }) {
   const [collapsedRequired, setCollapsedRequired] = useState<Set<string>>(new Set());
   const [openRecords,       setOpenRecords]       = useState<Set<string>>(new Set());
@@ -1388,13 +1390,16 @@ function GoalsLeftPanel({
     );
   }
 
-  function GoalRow({ goal, isFinalized, readOnly = false }: { goal: GoalItem; isFinalized: boolean; readOnly?: boolean }) {
-    const active = !readOnly && activeGoalUid === goal.goalUid;
-    const status = getStatus(goal.goalUid);
+  function GoalRow({ goal, isFinalized, viewOnly = false }: { goal: GoalItem; isFinalized: boolean; viewOnly?: boolean }) {
+    const active  = !viewOnly && activeGoalUid === goal.goalUid;
+    const viewing = viewOnly  && activeRecordUid === goal.goalUid;
+    const status  = getStatus(goal.goalUid);
     const inner = (
       <div className="flex items-start gap-2">
-        <div className={`h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 ${active ? "bg-green-100" : "bg-green-50"}`}>
-          <Target className={`h-3 w-3 ${active ? "text-green-600" : "text-green-400"}`} />
+        <div className={`h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 ${
+          active || viewing ? "bg-emerald-100" : "bg-green-50"
+        }`}>
+          <Target className={`h-3 w-3 ${active || viewing ? "text-emerald-600" : "text-green-400"}`} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold text-slate-800 leading-snug">{goal.title}</p>
@@ -1410,18 +1415,17 @@ function GoalsLeftPanel({
         className={`mx-3 mb-1.5 rounded-xl border transition-all ${isFinalized ? "opacity-55" : ""} ${
           active
             ? "bg-green-50/70 border-green-300/60 shadow-sm ring-1 ring-green-200/60"
-            : readOnly
-            ? "bg-white border-slate-200"
+            : viewing
+            ? "bg-emerald-50/60 border-emerald-300/60 shadow-sm ring-1 ring-emerald-200/60"
             : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
         }`}
       >
-        {readOnly ? (
-          <div className="px-3 py-2.5">{inner}</div>
-        ) : (
-          <button onClick={() => onSelectGoal(goal.goalUid)} className="w-full text-left px-3 py-2.5">
-            {inner}
-          </button>
-        )}
+        <button
+          onClick={() => viewOnly ? onViewRecord(goal.goalUid) : onSelectGoal(goal.goalUid)}
+          className="w-full text-left px-3 py-2.5"
+        >
+          {inner}
+        </button>
       </div>
     );
   }
@@ -1498,7 +1502,7 @@ function GoalsLeftPanel({
                 />
                 {isOpen && (
                   <div className="pt-2 pb-1">
-                    {group.goals.map(goal => <GoalRow key={goal.goalUid} goal={goal} isFinalized={false} readOnly={true} />)}
+                    {group.goals.map(goal => <GoalRow key={goal.goalUid} goal={goal} isFinalized={false} viewOnly={true} />)}
                   </div>
                 )}
               </div>
@@ -1519,10 +1523,11 @@ const GOAL_STATUS_OPTIONS: { value: GoalDraft["status"]; label: string; activeCl
 ];
 
 function GoalsWorkspace({
-  goalItem, goalDraft, onSave, onDiscard,
+  goalItem, goalDraft, readOnly = false, onSave, onDiscard,
 }: {
   goalItem:  GoalItem | null;
   goalDraft: GoalDraft | null;
+  readOnly?: boolean;
   onSave:    (goalUid: string, note: string, status: GoalDraft["status"]) => void;
   onDiscard: () => void;
 }) {
@@ -1536,14 +1541,74 @@ function GoalsWorkspace({
     setSoapOpen(false);
   }, [goalItem?.goalUid]);
 
+  // Shared SOAP context card (used in both editable and read-only modes)
+  function SoapContextCard() {
+    return (
+      <div className="rounded-xl border border-slate-200 overflow-hidden">
+        <button
+          onClick={() => setSoapOpen(o => !o)}
+          className="w-full flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100/60 transition-colors text-left"
+        >
+          <ClipboardList className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex-1">SOAP Note Context</span>
+          <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition-transform ${soapOpen ? "rotate-90" : ""}`} />
+        </button>
+        {soapOpen && goalItem && (
+          <div className="px-4 py-3 space-y-3 bg-white border-t border-slate-100">
+            {goalItem.diagnoses.length > 0 && (
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Diagnoses</p>
+                <div className="space-y-1.5">
+                  {goalItem.diagnoses.map((d, i) => (
+                    <div key={i} className="flex items-start gap-2 text-[10px]">
+                      <span className="font-mono text-slate-400 flex-shrink-0 mt-px">{d.code}</span>
+                      <span className="text-slate-700 flex-1 leading-snug">{d.name}</span>
+                      <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex-shrink-0 ${d.severity === "High" ? "bg-red-50 text-red-600" : d.severity === "Moderate" ? "bg-orange-50 text-orange-600" : "bg-green-50 text-green-600"}`}>
+                        {d.severity}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {goalItem.carePlanSteps.length > 0 && (
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Care Plan</p>
+                <ul className="space-y-1">
+                  {goalItem.carePlanSteps.map((s, i) => (
+                    <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-600">
+                      <span className="h-3.5 w-3.5 rounded-full bg-[#4982CF]/10 text-[#4982CF] flex items-center justify-center text-[8px] font-bold flex-shrink-0 mt-0.5">{i + 1}</span>
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {goalItem.visitDescription && (
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Visit Summary</p>
+                <p className="text-[10px] text-slate-600 leading-relaxed">{goalItem.visitDescription}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Sub-header */}
-      <div className="flex-shrink-0 flex items-center px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+      <div className="flex-shrink-0 flex items-center px-5 py-2.5 border-b border-slate-100 bg-slate-50/50 gap-2">
         <Target className="h-4 w-4 text-green-600 flex-shrink-0" />
-        <span className="text-xs text-slate-600 font-medium truncate ml-2">
+        <span className="text-xs text-slate-600 font-medium truncate flex-1">
           {goalItem ? goalItem.title : "Goals"}
         </span>
+        {readOnly && (
+          <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
+            <CheckCircle2 className="h-2.5 w-2.5" /> Finalized
+          </span>
+        )}
       </div>
 
       {!goalItem ? (
@@ -1556,62 +1621,51 @@ function GoalsWorkspace({
             <p className="text-xs text-slate-400 mt-1">Click any goal from the list to review and document.</p>
           </div>
         </div>
+      ) : readOnly ? (
+        /* ── Read-only summary view (All Records) ── */
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          <SoapContextCard />
+
+          {/* Goal title + priority + final status */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 space-y-2">
+            <div className="flex items-start gap-2 flex-wrap">
+              <p className="text-sm font-bold text-slate-800 flex-1 leading-snug">{goalItem.title}</p>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${goalPriCls(goalItem.priority)}`}>
+                {goalItem.priority}
+              </span>
+            </div>
+            {goalItem.targetDate && (
+              <p className="text-[10px] text-slate-500">Target: <span className="font-semibold text-slate-700">{goalItem.targetDate}</span></p>
+            )}
+            {goalDraft?.status && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Final status:</span>
+                {goalStatusChip(goalDraft.status)}
+              </div>
+            )}
+          </div>
+
+          {/* Progress note — static */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Progress Note</p>
+            {goalDraft?.nurseNote ? (
+              <div className="text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2.5 leading-relaxed whitespace-pre-wrap">
+                {goalDraft.nurseNote}
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 italic bg-slate-50 border border-dashed border-slate-200 rounded-xl px-3 py-4 text-center">
+                No progress note was recorded for this goal.
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
+        /* ── Editable workspace (Required Actions) ── */
         <>
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            <SoapContextCard />
 
-            {/* SOAP Note Context — collapsible */}
-            <div className="rounded-xl border border-slate-200 overflow-hidden">
-              <button
-                onClick={() => setSoapOpen(o => !o)}
-                className="w-full flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100/60 transition-colors text-left"
-              >
-                <ClipboardList className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex-1">SOAP Note Context</span>
-                <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition-transform ${soapOpen ? "rotate-90" : ""}`} />
-              </button>
-              {soapOpen && (
-                <div className="px-4 py-3 space-y-3 bg-white border-t border-slate-100">
-                  {goalItem.diagnoses.length > 0 && (
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Diagnoses</p>
-                      <div className="space-y-1.5">
-                        {goalItem.diagnoses.map((d, i) => (
-                          <div key={i} className="flex items-start gap-2 text-[10px]">
-                            <span className="font-mono text-slate-400 flex-shrink-0 mt-px">{d.code}</span>
-                            <span className="text-slate-700 flex-1 leading-snug">{d.name}</span>
-                            <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex-shrink-0 ${d.severity === "High" ? "bg-red-50 text-red-600" : d.severity === "Moderate" ? "bg-orange-50 text-orange-600" : "bg-green-50 text-green-600"}`}>
-                              {d.severity}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {goalItem.carePlanSteps.length > 0 && (
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Care Plan</p>
-                      <ul className="space-y-1">
-                        {goalItem.carePlanSteps.map((s, i) => (
-                          <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-600">
-                            <span className="h-3.5 w-3.5 rounded-full bg-[#4982CF]/10 text-[#4982CF] flex items-center justify-center text-[8px] font-bold flex-shrink-0 mt-0.5">{i + 1}</span>
-                            {s}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {goalItem.visitDescription && (
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Visit Summary</p>
-                      <p className="text-[10px] text-slate-600 leading-relaxed">{goalItem.visitDescription}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Goal title + priority (read-only) */}
+            {/* Goal title + priority */}
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5">
               <div className="flex items-start gap-2 flex-wrap">
                 <p className="text-sm font-bold text-slate-800 flex-1 leading-snug">{goalItem.title}</p>
@@ -1682,6 +1736,7 @@ function GoalsWorkspace({
 function GoalsSection() {
   const [drafts,        setDrafts]        = useState<GoalDraft[]>(loadGoalDrafts);
   const [activeGoalUid, setActiveGoalUid] = useState<string | null>(null);
+  const [viewOnly,      setViewOnly]      = useState(false);
 
   const groups = useMemo(() => loadGoalGroups(), []);
 
@@ -1695,10 +1750,12 @@ function GoalsSection() {
   const requiredGroups = groups.filter(g => !isGroupFinalized(g));
   const recordGroups   = groups.filter(g  => isGroupFinalized(g));
 
-  const activeItem  = groups.flatMap(g => g.goals).find(g => g.goalUid === activeGoalUid) ?? null;
+  const allGoals    = groups.flatMap(g => g.goals);
+  const activeItem  = allGoals.find(g => g.goalUid === activeGoalUid) ?? null;
   const activeDraft = drafts.find(d => d.goalUid === activeGoalUid) ?? null;
 
   function selectGoal(goalUid: string) {
+    setViewOnly(false);
     setActiveGoalUid(goalUid);
     setDrafts(prev => {
       if (prev.find(d => d.goalUid === goalUid)) return prev;
@@ -1706,6 +1763,11 @@ function GoalsSection() {
       persistGoalDrafts(next);
       return next;
     });
+  }
+
+  function viewRecord(goalUid: string) {
+    setViewOnly(true);
+    setActiveGoalUid(goalUid);
   }
 
   function saveGoal(goalUid: string, nurseNote: string, status: GoalDraft["status"]) {
@@ -1727,13 +1789,16 @@ function GoalsSection() {
           requiredGroups={requiredGroups}
           recordGroups={recordGroups}
           drafts={drafts}
-          activeGoalUid={activeGoalUid}
+          activeGoalUid={viewOnly ? null : activeGoalUid}
+          activeRecordUid={viewOnly ? activeGoalUid : null}
           onSelectGoal={selectGoal}
+          onViewRecord={viewRecord}
         />
       </div>
       <GoalsWorkspace
         goalItem={activeItem}
         goalDraft={activeDraft}
+        readOnly={viewOnly}
         onSave={saveGoal}
         onDiscard={() => setActiveGoalUid(null)}
       />
