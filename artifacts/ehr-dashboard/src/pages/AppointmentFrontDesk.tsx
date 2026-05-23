@@ -2234,6 +2234,23 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
 
   // Nursing drawer (nursing role only)
   const [nursingAppt, setNursingAppt] = useState<Appointment | null>(null);
+  const autoOpenedRef = useRef(false);
+
+  // Auto-open nursing drawer when URL has ?section= (e.g. from Care Manager card)
+  useEffect(() => {
+    if (role !== "nursing") return;
+    if (autoOpenedRef.current) return;
+    const section = new URLSearchParams(window.location.search).get("section");
+    if (!section) return;
+    if (appointments.length === 0) return;
+    autoOpenedRef.current = true;
+    const today = todayStr();
+    const todayAppts = appointments
+      .filter(a => a.date === today && a.status !== "cancelled")
+      .sort((a, b) => a.slotStart.localeCompare(b.slotStart));
+    const pick = todayAppts[0] ?? appointments.sort((a, b) => a.slotStart.localeCompare(b.slotStart))[0];
+    if (pick) setNursingAppt(pick);
+  }, [role, appointments]);
 
   // Invoice billing drawer
   const [invoiceAppt, setInvoiceAppt] = useState<Appointment | null>(null);
