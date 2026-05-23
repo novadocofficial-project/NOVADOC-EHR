@@ -2534,6 +2534,11 @@ function ApptTriageSplitPanel({ appt }: { appt: Appointment }) {
 
   const activeDraft = drafts.find(d => d.draftId === activeDraftId) ?? null;
 
+  const patientMrn = appt.patientMrn || null;
+  const visibleSessions = patientMrn
+    ? completedSessions.filter(s => s.patientRef === patientMrn)
+    : completedSessions;
+
   function mutateDrafts(fn: (prev: TriageDraft[]) => TriageDraft[]) {
     setDrafts(prev => { const next = fn(prev); persistApptTriageDrafts(next); return next; });
   }
