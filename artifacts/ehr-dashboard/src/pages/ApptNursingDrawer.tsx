@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
   X, ChevronRight, ChevronDown, AlertCircle, Heart, Activity,
-  ClipboardList, Stethoscope, Target, TrendingUp, CheckCircle2,
+  ClipboardList, Stethoscope, Target, CheckCircle2,
   Maximize2, Minimize2, Plus, Trash2, Pill, Receipt, ShieldCheck,
   DollarSign, Play, SkipForward, RotateCcw, Layers,
 } from "lucide-react";
@@ -244,7 +244,7 @@ function SystemComponentView({ systemKey, value, onChange }: { systemKey?: strin
 
 interface VitalsDraft {
   draftId: string; vitalValues: Record<string, string>; painScore: number;
-  mentalAnswers: number[]; vitalsTab: "vitals" | "pain" | "mental";
+  mentalAnswers: number[]; vitalsTab: "vitals" | "pain" | "mental" | "trends";
   patientRef: string | null; patientName: string | null; startedAt: number; updatedAt: number;
 }
 interface VitalsRecord {
@@ -600,8 +600,7 @@ function VitalsTrends() {
 }
 
 function ApptVitalsSection({ appt }: { appt: Appointment }) {
-  const [showTrends, setShowTrends]   = useState(false);
-  const configuredVitals              = useMemo(() => loadVitalsConfig(), []);
+  const configuredVitals = useMemo(() => loadVitalsConfig(), []);
 
   const [vitalsDrafts, setVitalsDrafts] = useState<VitalsDraft[]>(() => {
     const all = loadApptVitalsDrafts();
@@ -618,7 +617,7 @@ function ApptVitalsSection({ appt }: { appt: Appointment }) {
 
   const activeDraft = vitalsDrafts.find(d => d.draftId === activeDraftId) ?? null;
 
-  const [vitalsTab, setVitalsTab]         = useState<"vitals" | "pain" | "mental">(activeDraft?.vitalsTab ?? "vitals");
+  const [vitalsTab, setVitalsTab]         = useState<"vitals" | "pain" | "mental" | "trends">(activeDraft?.vitalsTab ?? "vitals");
   const [vitalValues, setVitalValues]     = useState<Record<string, string>>(activeDraft?.vitalValues ?? blankVitalValues());
   const [painScore, setPainScore]         = useState<number>(activeDraft?.painScore ?? -1);
   const [mentalAnswers, setMentalAnswers] = useState<number[]>(activeDraft?.mentalAnswers ?? [0, 0, 0, 0]);
@@ -721,32 +720,24 @@ function ApptVitalsSection({ appt }: { appt: Appointment }) {
             </button>
           )}
         </div>
-        <div className="flex-shrink-0 flex items-center justify-between px-5 py-2 border-b border-slate-100 bg-white">
-          <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 overflow-hidden shadow-sm flex-shrink-0">
-            {(["vitals", "pain", "mental"] as const).map((tab, i) => {
-              const labels = { vitals: "Vitals", pain: "Pain Score", mental: "Mental Health" };
+        <div className="flex-shrink-0 flex items-center px-5 py-2 border-b border-slate-100 bg-white">
+          <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 overflow-hidden shadow-sm">
+            {(["vitals", "pain", "mental", "trends"] as const).map((tab, i) => {
+              const labels: Record<string, string> = { vitals: "Vitals", pain: "Pain Score", mental: "Mental Health", trends: "Trends" };
               return (
                 <button key={tab}
-                  onClick={() => { setVitalsTab(tab); if (tab !== "vitals") setShowTrends(false); }}
+                  onClick={() => setVitalsTab(tab)}
                   className={`px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${i > 0 ? "border-l border-slate-200" : ""} ${vitalsTab === tab ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
                   {labels[tab]}
                 </button>
               );
             })}
           </div>
-          {vitalsTab === "vitals" && (
-            <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 overflow-hidden shadow-sm flex-shrink-0">
-              <button onClick={() => setShowTrends(false)} className={`px-3 py-1.5 text-xs font-semibold transition-colors ${!showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>Form</button>
-              <button onClick={() => setShowTrends(true)} className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${showTrends ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-                <TrendingUp className="h-3 w-3" /> Trends
-              </button>
-            </div>
-          )}
         </div>
-        {vitalsTab === "vitals" && showTrends && <VitalsTrends />}
-        {vitalsTab === "vitals" && !showTrends && <VitalsFormVitalsOnly vitalValues={vitalValues} setVitalValues={setVitalValues} configuredVitals={configuredVitals} />}
-        {vitalsTab === "pain" && <VitalsPainTab painScore={painScore} setPainScore={setPainScore} painConfig={configuredVitals.find(v => v.id === "pain")} />}
-        {vitalsTab === "mental" && <VitalsMentalTab mentalAnswers={mentalAnswers} setMentalAnswers={setMentalAnswers} />}
+        {vitalsTab === "vitals"  && <VitalsFormVitalsOnly vitalValues={vitalValues} setVitalValues={setVitalValues} configuredVitals={configuredVitals} />}
+        {vitalsTab === "pain"    && <VitalsPainTab painScore={painScore} setPainScore={setPainScore} painConfig={configuredVitals.find(v => v.id === "pain")} />}
+        {vitalsTab === "mental"  && <VitalsMentalTab mentalAnswers={mentalAnswers} setMentalAnswers={setMentalAnswers} />}
+        {vitalsTab === "trends"  && <VitalsTrends />}
         <div className="flex-shrink-0 border-t border-slate-200 px-5 py-3 bg-white">
           <button onClick={handleVitalsComplete}
             className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-[#4982CF] hover:bg-[#3a6fb8] text-white text-sm font-bold transition-colors">
