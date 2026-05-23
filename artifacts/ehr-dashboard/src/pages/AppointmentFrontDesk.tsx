@@ -10,7 +10,7 @@ import {
   ClipboardList, PenLine, Minus,
 } from "lucide-react";
 import { ApptFaceSheet } from "@/pages/ApptFaceSheet";
-import { ApptNursingDrawer } from "@/pages/ApptNursingDrawer";
+import { ApptNursingDrawer, type NurseCategory } from "@/pages/ApptNursingDrawer";
 import { BillingContent, ReceiptInfo, printThermalReceipt } from "@/pages/FrontDeskUser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -2711,6 +2711,11 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
         <ApptNursingDrawer
           appt={nursingAppt}
           onClose={() => setNursingAppt(null)}
+          initialCategory={(() => {
+            const s = new URLSearchParams(window.location.search).get("section");
+            const valid: NurseCategory[] = ["vitals", "history", "procedures", "care-plan", "goals", "triage"];
+            return (valid.includes(s as NurseCategory) ? s as NurseCategory : undefined);
+          })()}
         />
       )}
 

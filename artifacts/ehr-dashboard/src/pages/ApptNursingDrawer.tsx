@@ -31,7 +31,7 @@ import type { SignedRecord } from "@/pages/SoapNotePage";
 
 // ─── Category types ───────────────────────────────────────────────────────────
 
-type NurseCategory = "triage" | "history" | "vitals" | "care-plan" | "procedures" | "goals";
+export type NurseCategory = "triage" | "history" | "vitals" | "care-plan" | "procedures" | "goals";
 
 const CATEGORY_NAV_LABELS: { id: NurseCategory; label: string }[] = [
   { id: "triage", label: "Triage" }, { id: "history", label: "History" },
@@ -2679,8 +2679,8 @@ function ApptTriageSplitPanel({ appt }: { appt: Appointment }) {
 // MAIN EXPORT — ApptNursingDrawer
 // ══════════════════════════════════════════════════════════════════════════════
 
-export function ApptNursingDrawer({ appt, onClose }: { appt: Appointment; onClose: () => void }) {
-  const [activeCategory, setActiveCategory] = useState<NurseCategory>("vitals");
+export function ApptNursingDrawer({ appt, onClose, initialCategory }: { appt: Appointment; onClose: () => void; initialCategory?: NurseCategory }) {
+  const [activeCategory, setActiveCategory] = useState<NurseCategory>(initialCategory ?? "vitals");
   const [fullscreen, setFullscreen]         = useState(false);
   const [showConfirm, setShowConfirm]       = useState(false);
 

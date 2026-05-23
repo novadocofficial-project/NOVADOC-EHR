@@ -50,7 +50,7 @@ const MODULES: Mod[] = [
   { id: "primary-hc",       label: "Primary Healthcare",             icon: Stethoscope,  iconColor: "#059669", iconBg: "#d1fae5", active: true,  href: "/queue/token/multistep", desc: "OPD multi-step visit workflow" },
   { id: "ncd-clinic",       label: "NCD Clinic",                     icon: Activity,     iconColor: "#d97706", iconBg: "#fef3c7", active: false },
   { id: "specialist-care",  label: "Specialist Care Modules",        icon: ClipboardList,iconColor: "#7c3aed", iconBg: "#ede9fe", active: true,  href: "/admin?section=specialty-forms", desc: "Manage specialty consultation forms" },
-  { id: "care-manager",     label: "Care Manager",                   icon: UserCheck,    iconColor: "#0891b2", iconBg: "#cffafe", active: false },
+  { id: "care-manager",     label: "Care Manager",                   icon: UserCheck,    iconColor: "#0891b2", iconBg: "#cffafe", active: true,  href: "/appointments/nursing?section=care-plan", desc: "Patient care plans & nursing care management" },
   { id: "social-det",       label: "Social Determinants",            icon: Globe,        iconColor: "#2563eb", iconBg: "#dbeafe", active: true,  href: "/admin?section=reg-demographics", desc: "Patient registration & demographics" },
   { id: "preventive-hp",    label: "Preventive Health Protocol",     icon: ShieldCheck,  iconColor: "#059669", iconBg: "#d1fae5", active: false },
   { id: "home-hc",          label: "Home Healthcare",                icon: HomeIcon,     iconColor: "#ea580c", iconBg: "#ffedd5", active: false },
