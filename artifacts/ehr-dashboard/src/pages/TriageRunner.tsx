@@ -12,7 +12,8 @@ import type { Patient } from "@/pages/QueuePageLayout";
 
 // ─── Session persistence ──────────────────────────────────────────────────────
 
-export const SESSIONS_KEY = "ehr-triage-sessions";
+export const SESSIONS_KEY      = "ehr-triage-sessions";
+export const APPT_SESSIONS_KEY = "appt-triage-sessions";
 
 export interface TriageSession {
   id: string;
@@ -31,18 +32,22 @@ export interface TriageSession {
   stepAnswers: { stepId: string; stepTitle: string; summary: string }[];
 }
 
-function saveSession(session: TriageSession): void {
+function saveSession(session: TriageSession, key: string = SESSIONS_KEY): void {
   try {
-    const raw = localStorage.getItem(SESSIONS_KEY);
+    const raw = localStorage.getItem(key);
     const existing: TriageSession[] = raw ? (JSON.parse(raw) as TriageSession[]) : [];
     existing.push(session);
-    localStorage.setItem(SESSIONS_KEY, JSON.stringify(existing));
+    localStorage.setItem(key, JSON.stringify(existing));
   } catch { /* ignore */ }
 }
 
 export function loadSessions(): TriageSession[] {
+  return loadSessionsFromKey(SESSIONS_KEY);
+}
+
+export function loadSessionsFromKey(key: string): TriageSession[] {
   try {
-    const raw = localStorage.getItem(SESSIONS_KEY);
+    const raw = localStorage.getItem(key);
     if (raw) return JSON.parse(raw) as TriageSession[];
   } catch { /* ignore */ }
   return [];
@@ -416,6 +421,7 @@ export function TriageRunner({
   patient, onFinishTriage,
   initialAlgoId, initialStepIndex, initialAnswers,
   onDraftChange, onAlgoSelected,
+  sessionsKey,
 }: {
   patient: Patient | null;
   onFinishTriage?: () => void;
@@ -424,6 +430,7 @@ export function TriageRunner({
   initialAnswers?: Record<string, StepAnswer>;
   onDraftChange?: (algoId: string, stepIndex: number, answers: Record<string, StepAnswer>) => void;
   onAlgoSelected?: (algoId: string, algoName: string, totalSteps: number) => void;
+  sessionsKey?: string;
 }) {
   const { algorithms } = useTriageConfig();
   const enabled = algorithms.filter(a => a.enabled);
@@ -543,7 +550,7 @@ export function TriageRunner({
         summary: summarizeAnswer(s, answers[s.id]),
       })),
     };
-    saveSession(session);
+    saveSession(session, sessionsKey ?? SESSIONS_KEY);
     setDone(true);
     onFinishTriage?.();
   }

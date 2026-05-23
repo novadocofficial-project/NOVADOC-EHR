@@ -24,7 +24,7 @@ import {
   type ProcedureSystemComponentKey,
   type ConditionalRule,
 } from "@/hooks/useNursingConfig";
-import { TriageRunner, loadSessions, OUTCOME_CFG, type StepAnswer, type TriageSession } from "@/pages/TriageRunner";
+import { TriageRunner, loadSessionsFromKey, APPT_SESSIONS_KEY, OUTCOME_CFG, type StepAnswer, type TriageSession } from "@/pages/TriageRunner";
 import { SOAP_DUMMY } from "@/data/soapDummy";
 import type { CarePlanData } from "@/pages/CarePlanSection";
 import type { SignedRecord } from "@/pages/SoapNotePage";
@@ -1762,43 +1762,25 @@ function extractCarePlanItems(carePlan: unknown): string[] {
   return [];
 }
 
-function buildEntryMrnMap(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem("ehr-queue-v2");
-    if (!raw) return {};
-    const queue = JSON.parse(raw) as Array<{ id: string; patient?: { mrn?: string } }>;
-    const map: Record<string, string> = {};
-    for (const entry of queue) { if (entry.id && entry.patient?.mrn) map[entry.id] = entry.patient.mrn; }
-    return map;
-  } catch { return {}; }
-}
-
-function scanCarePlanSources(patientMrn: string | null): CarePlanSource[] {
+function scanApptCarePlanSources(apptId: string, patientMrn: string | null): CarePlanSource[] {
   const seedSources: CarePlanSource[] = SOAP_DUMMY.map((note, i) => ({
     id: `seed-${i}`, doctorName: note.signedBy, signedAt: note.signedAt,
     carePlanItems: note.carePlan, patientRef: "seed",
   }));
   if (!patientMrn) return seedSources;
-  const entryMrnMap = buildEntryMrnMap();
   const lsSources: CarePlanSource[] = [];
   try {
-    const signedKeys: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k?.startsWith(SOAP_SIGNED_PREFIX)) signedKeys.push(k); }
-    for (const key of signedKeys) {
-      const entryId = key.slice(SOAP_SIGNED_PREFIX.length);
-      const mrnForEntry = entryMrnMap[entryId] ?? "";
-      if (mrnForEntry !== patientMrn) continue;
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
+    const raw = localStorage.getItem(`${SOAP_SIGNED_PREFIX}${apptId}`);
+    if (raw) {
       const records = JSON.parse(raw) as SignedRecord[];
       records.forEach((rec, idx) => {
         if (!rec.signed || !rec.noteState) return;
         const items = extractCarePlanItems(rec.noteState.carePlan as unknown);
         if (items.length === 0) return;
         lsSources.push({
-          id: `ls-${entryId}-${idx}`, doctorName: rec.doctor ?? "Unknown Doctor",
+          id: `ls-${apptId}-${idx}`, doctorName: rec.doctor ?? "Unknown Doctor",
           signedAt: `${rec.date}${rec.time ? ", " + rec.time : ""}`,
-          carePlanItems: items, patientRef: mrnForEntry,
+          carePlanItems: items, patientRef: patientMrn,
         });
       });
     }
@@ -2051,17 +2033,17 @@ function CarePlanWorkspace({ source, tasks, onAdvance, onSkip, onReset, onNoteCh
 
 function ApptCarePlanSection({ appt }: { appt: Appointment }) {
   const patientMrn = appt.patientMrn || null;
-  const [sources,     setSources]     = useState<CarePlanSource[]>(() => scanCarePlanSources(patientMrn));
+  const [sources,     setSources]     = useState<CarePlanSource[]>(() => scanApptCarePlanSources(appt.id, patientMrn));
   const [records,     setRecords]     = useState<CarePlanRecord[]>(loadApptCarePlanRecords);
   const [selectedId,  setSelectedId]  = useState<string | null>(null);
   const [cpExecStore, setCpExecStore] = useState<CpExecStore>(loadApptCpExecStore);
 
-  useEffect(() => { setSources(scanCarePlanSources(patientMrn)); setSelectedId(null); }, [patientMrn]);
+  useEffect(() => { setSources(scanApptCarePlanSources(appt.id, patientMrn)); setSelectedId(null); }, [appt.id, patientMrn]);
   useEffect(() => {
-    function onStorage(e: StorageEvent) { if (e.key?.startsWith(SOAP_SIGNED_PREFIX)) setSources(scanCarePlanSources(patientMrn)); }
+    function onStorage(e: StorageEvent) { if (e.key === `${SOAP_SIGNED_PREFIX}${appt.id}`) setSources(scanApptCarePlanSources(appt.id, patientMrn)); }
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [patientMrn]);
+  }, [appt.id, patientMrn]);
 
   function handleSelect(id: string) {
     setSelectedId(id);
@@ -2153,7 +2135,7 @@ function persistApptGoalDrafts(d: GoalDraft[]): void {
   try { localStorage.setItem(APPT_GOAL_DRAFTS_KEY, JSON.stringify(d)); } catch { /**/ }
 }
 
-function loadGoalGroups(): SoapNoteGroup[] {
+function loadApptGoalGroups(apptId: string): SoapNoteGroup[] {
   const groups: SoapNoteGroup[] = [];
   SOAP_DUMMY.forEach((note, ni) => {
     if (note.patientGoals.length === 0) return;
@@ -2166,18 +2148,19 @@ function loadGoalGroups(): SoapNoteGroup[] {
       })),
     });
   });
+  const apptDraftPrefix = `soap_draft_${apptId}_n`;
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (!key?.startsWith("soap_draft_")) continue;
-      const entryId = key.replace("soap_draft_", "");
+      if (!key?.startsWith(apptDraftPrefix)) continue;
       const raw = localStorage.getItem(key);
       if (!raw) continue;
       const ns = JSON.parse(raw) as { patientGoals?: { goals?: Array<{ uid: string; title: string; priority?: "Low" | "Normal" | "High"; targetDate?: string }> }; diagnoses?: { code: string; name: string; severity: string }[]; carePlan?: string[]; visitDescription?: string };
       const goals = ns?.patientGoals?.goals ?? [];
       if (goals.length === 0) continue;
+      const sessionId = key.replace("soap_draft_", "");
       groups.push({
-        groupId: `draft-${entryId}`, doctorName: entryId, noteDate: "", firstDiagnosis: ns.diagnoses?.[0]?.name ?? "",
+        groupId: `draft-${sessionId}`, doctorName: sessionId, noteDate: "", firstDiagnosis: ns.diagnoses?.[0]?.name ?? "",
         goals: goals.map(g => ({ goalUid: g.uid, title: g.title, priority: g.priority ?? "Normal", targetDate: g.targetDate ?? "", diagnoses: ns.diagnoses ?? [], carePlanSteps: ns.carePlan ?? [], visitDescription: ns.visitDescription ?? "" })),
       });
     }
@@ -2446,12 +2429,12 @@ function GoalsWorkspace({ goalItem, goalDraft, readOnly = false, onSave, onDisca
   );
 }
 
-function ApptGoalsSection() {
+function ApptGoalsSection({ appt }: { appt: Appointment }) {
   const [drafts,        setDrafts]        = useState<GoalDraft[]>(loadApptGoalDrafts);
   const [activeGoalUid, setActiveGoalUid] = useState<string | null>(null);
   const [viewOnly,      setViewOnly]      = useState(false);
 
-  const groups = useMemo(() => loadGoalGroups(), []);
+  const groups = useMemo(() => loadApptGoalGroups(appt.id), [appt.id]);
 
   function getStatus(goalUid: string): GoalDraft["status"] | "pending" { return drafts.find(d => d.goalUid === goalUid)?.status ?? "pending"; }
   function isGroupFinalized(group: SoapNoteGroup): boolean {
@@ -2536,7 +2519,7 @@ function ApptTriageSplitPanel({ appt }: { appt: Appointment }) {
     if (all.length === 0) return null;
     return [...all].sort((a, b) => b.updatedAt - a.updatedAt)[0].draftId;
   });
-  const [completedSessions, setCompletedSessions] = useState<TriageSession[]>(loadSessions);
+  const [completedSessions, setCompletedSessions] = useState<TriageSession[]>(() => loadSessionsFromKey(APPT_SESSIONS_KEY));
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
 
   const activeDraft = drafts.find(d => d.draftId === activeDraftId) ?? null;
@@ -2563,7 +2546,7 @@ function ApptTriageSplitPanel({ appt }: { appt: Appointment }) {
   function handleFinishTriage() {
     if (activeDraftId) mutateDrafts(prev => prev.filter(d => d.draftId !== activeDraftId));
     setActiveDraftId(null);
-    setCompletedSessions(loadSessions());
+    setCompletedSessions(loadSessionsFromKey(APPT_SESSIONS_KEY));
   }
 
   return (
@@ -2670,6 +2653,7 @@ function ApptTriageSplitPanel({ appt }: { appt: Appointment }) {
           onAlgoSelected={handleAlgoSelected}
           onDraftChange={handleDraftChange}
           onFinishTriage={handleFinishTriage}
+          sessionsKey={APPT_SESSIONS_KEY}
         />
       </div>
     </div>
@@ -2727,7 +2711,7 @@ export function ApptNursingDrawer({ appt, onClose }: { appt: Appointment; onClos
         {activeCategory === "history"    && <ApptHistorySplitPanel appt={appt} />}
         {activeCategory === "procedures" && <ApptProcedureSection />}
         {activeCategory === "care-plan"  && <ApptCarePlanSection   appt={appt} />}
-        {activeCategory === "goals"      && <ApptGoalsSection />}
+        {activeCategory === "goals"      && <ApptGoalsSection appt={appt} />}
         {activeCategory === "triage"     && <ApptTriageSplitPanel  appt={appt} />}
 
       </div>
