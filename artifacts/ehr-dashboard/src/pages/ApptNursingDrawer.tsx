@@ -1759,23 +1759,42 @@ function scanApptCarePlanSources(apptId: string, patientMrn: string | null): Car
     carePlanItems: note.carePlan, patientRef: "seed",
   }));
   if (!patientMrn) return seedSources;
-  const lsSources: CarePlanSource[] = [];
-  try {
-    const raw = localStorage.getItem(`${SOAP_SIGNED_PREFIX}${apptId}`);
-    if (raw) {
+
+  const mrn = patientMrn;
+
+  function extractFromKey(key: string, keyTag: string): CarePlanSource[] {
+    const out: CarePlanSource[] = [];
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return out;
       const records = JSON.parse(raw) as SignedRecord[];
       records.forEach((rec, idx) => {
         if (!rec.signed || !rec.noteState) return;
         const items = extractCarePlanItems(rec.noteState.carePlan as unknown);
         if (items.length === 0) return;
-        lsSources.push({
-          id: `ls-${apptId}-${idx}`, doctorName: rec.doctor ?? "Unknown Doctor",
+        out.push({
+          id: `ls-${keyTag}-${idx}`, doctorName: rec.doctor ?? "Unknown Doctor",
           signedAt: `${rec.date}${rec.time ? ", " + rec.time : ""}`,
-          carePlanItems: items, patientRef: patientMrn,
+          carePlanItems: items, patientRef: mrn,
         });
       });
+    } catch { /**/ }
+    return out;
+  }
+
+  const lsSources: CarePlanSource[] = [];
+  const apptSessionPrefix = `${SOAP_SIGNED_PREFIX}${apptId}_n`;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (key.startsWith(apptSessionPrefix)) {
+        const tag = key.slice(SOAP_SIGNED_PREFIX.length);
+        lsSources.push(...extractFromKey(key, tag));
+      }
     }
   } catch { /**/ }
+  lsSources.push(...extractFromKey(`${SOAP_SIGNED_PREFIX}${apptId}`, apptId));
   return [...seedSources, ...lsSources];
 }
 
@@ -2031,7 +2050,7 @@ function ApptCarePlanSection({ appt }: { appt: Appointment }) {
 
   useEffect(() => { setSources(scanApptCarePlanSources(appt.id, patientMrn)); setSelectedId(null); }, [appt.id, patientMrn]);
   useEffect(() => {
-    function onStorage(e: StorageEvent) { if (e.key === `${SOAP_SIGNED_PREFIX}${appt.id}`) setSources(scanApptCarePlanSources(appt.id, patientMrn)); }
+    function onStorage(e: StorageEvent) { if (e.key === `${SOAP_SIGNED_PREFIX}${appt.id}` || e.key?.startsWith(`${SOAP_SIGNED_PREFIX}${appt.id}_n`)) setSources(scanApptCarePlanSources(appt.id, patientMrn)); }
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, [appt.id, patientMrn]);
