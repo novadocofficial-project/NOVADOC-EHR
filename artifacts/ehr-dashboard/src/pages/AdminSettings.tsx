@@ -135,6 +135,12 @@ const ALL_EHR_KEYS = [
   "ehr-nursing-history-template-sel", "ehr-nursing-proc-template-sel",
   "ehr-patients-v1", "ehr-appointments-v1", "ehr-appt-invoices", "ehr-appt-nursing-v1",
   "ehr-reg-form-draft", "ehr-specialty-forms-v1", "ehr-ros-config-v1",
+  "appt-vitals-drafts", "appt-vitals-records",
+  "appt-history-drafts", "appt-history-records",
+  "appt-proc-drafts-v1", "appt-proc-records-v1",
+  "appt-careplan-records", "appt-cp-exec-v2",
+  "appt-goal-drafts-v1",
+  "appt-triage-drafts", "appt-triage-sessions",
 ] as const;
 
 export type Specialty = {
@@ -480,7 +486,7 @@ export function AdminSettings() {
   const resetAppData = () => {
     ALL_EHR_KEYS.forEach(k => localStorage.removeItem(k));
     // Dynamic prefix keys
-    const dynamicPrefixes = ["soap_draft_", "soap_clinical_"];
+    const dynamicPrefixes = ["soap_draft_", "soap_clinical_", "soap_signed_"];
     const len = localStorage.length;
     const toRemove: string[] = [];
     for (let i = 0; i < len; i++) {
