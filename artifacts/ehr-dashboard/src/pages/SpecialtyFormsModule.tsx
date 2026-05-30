@@ -899,7 +899,7 @@ function FieldEditor({
           </Select>
         </div>
 
-        {!needsOptions && !needsRatingConfig && field.type !== "yes-no" && field.type !== "time" && (
+        {(!needsOptions || field.type === "multiselect") && !needsRatingConfig && field.type !== "yes-no" && field.type !== "time" && (
           <div className="col-span-2 space-y-1.5">
             <Label className="text-[11px] font-semibold text-slate-500">
               Placeholder / Hint{" "}
@@ -1032,23 +1032,15 @@ function PreviewField({ field }: { field: FormField }) {
         </div>
       )}
       {field.type === "multiselect" && (
-        <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 space-y-1.5">
-          <p className="text-xs text-slate-400 italic mb-1">Select one or more…</p>
-          {(field.options.filter(Boolean).length ? field.options.filter(Boolean) : ["Option 1", "Option 2", "Option 3"]).map(opt => (
-            <label key={opt} className="flex cursor-not-allowed items-center gap-2 text-sm text-slate-500">
-              <Checkbox disabled />
-              {opt}
-            </label>
-          ))}
-          {field.allowOther && (
-            <div className="pt-1 border-t border-slate-200 mt-1">
-              <label className="flex cursor-not-allowed items-center gap-2 text-sm text-slate-500 mb-1.5">
-                <Checkbox disabled />
-                <span className="italic">Other</span>
-              </label>
-              <Input disabled className="h-8 bg-white text-sm ml-6" placeholder="Specify…" />
-            </div>
-          )}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-not-allowed opacity-70">
+            <span className="text-xs text-slate-300 flex-1">{field.placeholder || "Select options…"}</span>
+            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+          </div>
+          <p className="text-[10px] text-slate-400 leading-relaxed">
+            Opens a searchable dropdown with checkboxes.
+            {field.allowOther && ' Includes an \u201cAdd custom\u2026\u201d entry for free-text values.'}
+          </p>
         </div>
       )}
       {field.type === "rating" && (
