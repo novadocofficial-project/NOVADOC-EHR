@@ -653,21 +653,45 @@ function SpecialtyFormPanel({
                   />
                 )}
                 {field.type === "checkbox-group" && (
-                  <div className="flex flex-wrap gap-x-4 gap-y-2">
-                    {field.options.map(opt => {
-                      const checked = ((data[field.id] as string[]) ?? []).includes(opt);
-                      return (
-                        <label key={opt} className="flex items-center gap-2 cursor-pointer" onClick={() => {
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                      {field.options.map(opt => {
+                        const checked = ((data[field.id] as string[]) ?? []).includes(opt);
+                        return (
+                          <label key={opt} className="flex items-center gap-2 cursor-pointer" onClick={() => {
+                            const current = (data[field.id] as string[]) ?? [];
+                            update(field.id, checked ? current.filter(x => x !== opt) : [...current, opt]);
+                          }}>
+                            <div className={`h-3.5 w-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${checked ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300 hover:border-[#4982CF]"}`}>
+                              {checked && <Check className="h-2.5 w-2.5 text-white" />}
+                            </div>
+                            <span className={`text-[11px] select-none ${checked ? "font-semibold text-[#4982CF]" : "text-slate-600"}`}>{opt}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {field.allowOther && (
+                      <div className="pt-1.5 border-t border-slate-100 space-y-1.5">
+                        <label className="flex items-center gap-2 cursor-pointer" onClick={() => {
                           const current = (data[field.id] as string[]) ?? [];
-                          update(field.id, checked ? current.filter(x => x !== opt) : [...current, opt]);
+                          const hasOther = current.includes("__other__");
+                          update(field.id, hasOther ? current.filter(x => x !== "__other__") : [...current, "__other__"]);
                         }}>
-                          <div className={`h-3.5 w-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${checked ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300 hover:border-[#4982CF]"}`}>
-                            {checked && <Check className="h-2.5 w-2.5 text-white" />}
+                          <div className={`h-3.5 w-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${((data[field.id] as string[]) ?? []).includes("__other__") ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300 hover:border-[#4982CF]"}`}>
+                            {((data[field.id] as string[]) ?? []).includes("__other__") && <Check className="h-2.5 w-2.5 text-white" />}
                           </div>
-                          <span className={`text-[11px] select-none ${checked ? "font-semibold text-[#4982CF]" : "text-slate-600"}`}>{opt}</span>
+                          <span className="text-[11px] italic text-slate-500 select-none">Other</span>
                         </label>
-                      );
-                    })}
+                        {((data[field.id] as string[]) ?? []).includes("__other__") && (
+                          <input
+                            value={(data[`${field.id}__other`] as string) ?? ""}
+                            onChange={e => update(`${field.id}__other`, e.target.value)}
+                            placeholder="Specify…"
+                            className="ml-6 w-[calc(100%-1.5rem)] text-xs text-slate-700 border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 focus:outline-none focus:border-[#4982CF] focus:bg-white transition-colors"
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
                 {field.type === "radio-group" && (
@@ -684,6 +708,118 @@ function SpecialtyFormPanel({
                       );
                     })}
                   </div>
+                )}
+                {field.type === "multiselect" && (
+                  <div className="space-y-1.5">
+                    <div className="grid grid-cols-1 gap-y-1.5">
+                      {field.options.filter(Boolean).map(opt => {
+                        const checked = ((data[field.id] as string[]) ?? []).includes(opt);
+                        return (
+                          <label key={opt} className="flex items-center gap-2.5 cursor-pointer rounded-lg px-3 py-2 border transition-all hover:bg-slate-50"
+                            style={{ borderColor: checked ? "#4982CF" : "#e2e8f0", backgroundColor: checked ? "#4982CF0d" : undefined }}
+                            onClick={() => {
+                              const current = (data[field.id] as string[]) ?? [];
+                              update(field.id, checked ? current.filter(x => x !== opt) : [...current, opt]);
+                            }}>
+                            <div className={`h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${checked ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300"}`}>
+                              {checked && <Check className="h-3 w-3 text-white" />}
+                            </div>
+                            <span className={`text-xs select-none ${checked ? "font-semibold text-[#4982CF]" : "text-slate-600"}`}>{opt}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {field.allowOther && (
+                      <div className="pt-1.5 border-t border-slate-100 space-y-1.5">
+                        <label className="flex items-center gap-2.5 cursor-pointer rounded-lg px-3 py-2 border transition-all hover:bg-slate-50"
+                          style={{ borderColor: ((data[field.id] as string[]) ?? []).includes("__other__") ? "#4982CF" : "#e2e8f0", backgroundColor: ((data[field.id] as string[]) ?? []).includes("__other__") ? "#4982CF0d" : undefined }}
+                          onClick={() => {
+                            const current = (data[field.id] as string[]) ?? [];
+                            const hasOther = current.includes("__other__");
+                            update(field.id, hasOther ? current.filter(x => x !== "__other__") : [...current, "__other__"]);
+                          }}>
+                          <div className={`h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${((data[field.id] as string[]) ?? []).includes("__other__") ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300"}`}>
+                            {((data[field.id] as string[]) ?? []).includes("__other__") && <Check className="h-3 w-3 text-white" />}
+                          </div>
+                          <span className={`text-xs italic select-none ${((data[field.id] as string[]) ?? []).includes("__other__") ? "font-semibold text-[#4982CF]" : "text-slate-500"}`}>Other</span>
+                        </label>
+                        {((data[field.id] as string[]) ?? []).includes("__other__") && (
+                          <input
+                            value={(data[`${field.id}__other`] as string) ?? ""}
+                            onChange={e => update(`${field.id}__other`, e.target.value)}
+                            placeholder="Specify…"
+                            autoFocus
+                            className="w-full text-xs text-slate-700 border border-[#4982CF] rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[#4982CF]/30 transition-colors"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {field.type === "dropdown" && (
+                  <div className="relative">
+                    <select
+                      value={(data[field.id] as string) ?? ""}
+                      onChange={e => update(field.id, e.target.value)}
+                      className="w-full appearance-none text-xs text-slate-700 border border-slate-200 rounded-lg px-3 py-2 pr-8 bg-slate-50 focus:outline-none focus:border-[#4982CF] focus:bg-white transition-colors cursor-pointer"
+                    >
+                      <option value="">{field.placeholder || "Select an option…"}</option>
+                      {field.options.filter(Boolean).map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  </div>
+                )}
+                {field.type === "rating" && (() => {
+                  const min = field.ratingMin ?? 1;
+                  const max = field.ratingMax ?? 10;
+                  const current = (data[field.id] as number) ?? null;
+                  return (
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap gap-1.5">
+                        {Array.from({ length: Math.max(1, max - min + 1) }, (_, i) => min + i).map(n => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => update(field.id, current === n ? null : n)}
+                            className={`h-8 w-8 rounded-md border text-xs font-semibold transition-all ${current === n ? "bg-[#4982CF] border-[#4982CF] text-white shadow-sm" : "border-slate-200 bg-slate-50 text-slate-500 hover:border-[#4982CF] hover:text-[#4982CF]"}`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                      {current !== null && (
+                        <p className="text-[10px] text-[#4982CF] font-semibold">Selected: {current}</p>
+                      )}
+                    </div>
+                  );
+                })()}
+                {field.type === "yes-no" && (() => {
+                  const current = data[field.id] as string | undefined;
+                  return (
+                    <div className="flex gap-2">
+                      {(["Yes", "No"] as const).map(opt => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => update(field.id, current === opt ? undefined : opt)}
+                          className={`flex items-center gap-1.5 rounded-full border px-5 py-1.5 text-xs font-semibold transition-all ${current === opt ? (opt === "Yes" ? "bg-[#4982CF] border-[#4982CF] text-white" : "bg-rose-500 border-rose-500 text-white") : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300"}`}
+                        >
+                          {opt === "Yes" ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
+                {field.type === "time" && (
+                  <input
+                    type="time"
+                    value={(data[field.id] as string) ?? ""}
+                    onChange={e => update(field.id, e.target.value)}
+                    className="text-xs text-slate-700 border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:outline-none focus:border-[#4982CF] focus:bg-white transition-colors"
+                  />
                 )}
               </div>
             ))}
