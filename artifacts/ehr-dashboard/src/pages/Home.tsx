@@ -63,7 +63,7 @@ const MODULES: Mod[] = [
   { id: "physician-asst",   label: "Physician Assistant",            icon: MonitorPlay,  iconColor: "#0284c7", iconBg: "#e0f2fe", active: false },
   { id: "data-analytics",   label: "Data Analytics",                 icon: BarChart2,    iconColor: "#4982CF", iconBg: "#dbeafe", active: true,  href: "/reports", desc: "Financial records & transactions" },
   { id: "population-hc",    label: "Population Healthcare",          icon: Users,        iconColor: "#b45309", iconBg: "#fef3c7", active: false },
-  { id: "research-docs",    label: "Research Documents",             icon: FileSearch,   iconColor: "#6366f1", iconBg: "#ede9fe", active: false },
+  { id: "research-docs",    label: "Research Documents",             icon: FileSearch,   iconColor: "#6366f1", iconBg: "#ede9fe", active: true,  href: "/admin?section=health-ed-library", desc: "Health education materials & patient handouts" },
   { id: "quality-assurance",label: "Quality Assurance",              icon: CheckCircle2, iconColor: "#059669", iconBg: "#d1fae5", active: false },
   { id: "lms",              label: "Learning Management System",     icon: GraduationCap,iconColor: "#7c3aed", iconBg: "#ede9fe", active: false },
 ];
