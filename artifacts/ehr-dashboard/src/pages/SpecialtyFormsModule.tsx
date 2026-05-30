@@ -4,6 +4,7 @@ import {
   ChevronLeft, FileText, GripVertical,
   AlignLeft, CheckSquare, ToggleLeft, Hash, Calendar,
   Layers, Users, X, Check, BookOpen, Send, ArrowUp, ArrowDown,
+  ChevronDown, ListChecks, Star, Clock, ToggleRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,8 @@ const LS_KEY = "ehr-specialty-forms-v1";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type FieldType =
-  | "textarea" | "text" | "checkbox-group" | "radio-group" | "number" | "date";
+  | "textarea" | "text" | "checkbox-group" | "radio-group" | "number" | "date"
+  | "dropdown" | "multiselect" | "rating" | "yes-no" | "time";
 
 export type FormField = {
   id: string;
@@ -35,6 +37,8 @@ export type FormField = {
   type: FieldType;
   placeholder: string;
   options: string[];
+  ratingMin?: number;
+  ratingMax?: number;
 };
 
 export type FormSection = {
@@ -140,12 +144,17 @@ const SEED_FORMS: SpecialtyForm[] = [
 // ── Field type metadata ───────────────────────────────────────────────────────
 
 const FIELD_TYPES: { value: FieldType; label: string; icon: React.ReactNode }[] = [
-  { value: "textarea",       label: "Text Area",      icon: <AlignLeft   className="h-3.5 w-3.5" /> },
-  { value: "text",           label: "Text Input",     icon: <FileText    className="h-3.5 w-3.5" /> },
-  { value: "checkbox-group", label: "Checkbox Group", icon: <CheckSquare className="h-3.5 w-3.5" /> },
-  { value: "radio-group",    label: "Radio Group",    icon: <ToggleLeft  className="h-3.5 w-3.5" /> },
-  { value: "number",         label: "Number",         icon: <Hash        className="h-3.5 w-3.5" /> },
-  { value: "date",           label: "Date",           icon: <Calendar    className="h-3.5 w-3.5" /> },
+  { value: "textarea",       label: "Text Area",             icon: <AlignLeft   className="h-3.5 w-3.5" /> },
+  { value: "text",           label: "Text Input",            icon: <FileText    className="h-3.5 w-3.5" /> },
+  { value: "checkbox-group", label: "Checkbox Group",        icon: <CheckSquare className="h-3.5 w-3.5" /> },
+  { value: "radio-group",    label: "Radio Group",           icon: <ToggleLeft  className="h-3.5 w-3.5" /> },
+  { value: "dropdown",       label: "Dropdown",              icon: <ChevronDown className="h-3.5 w-3.5" /> },
+  { value: "multiselect",    label: "Multi-select Dropdown", icon: <ListChecks  className="h-3.5 w-3.5" /> },
+  { value: "number",         label: "Number",                icon: <Hash        className="h-3.5 w-3.5" /> },
+  { value: "rating",         label: "Rating Scale",          icon: <Star        className="h-3.5 w-3.5" /> },
+  { value: "yes-no",         label: "Yes / No",              icon: <ToggleRight className="h-3.5 w-3.5" /> },
+  { value: "date",           label: "Date",                  icon: <Calendar    className="h-3.5 w-3.5" /> },
+  { value: "time",           label: "Time",                  icon: <Clock       className="h-3.5 w-3.5" /> },
 ];
 
 function fieldTypeLabel(t: FieldType) {
@@ -790,7 +799,9 @@ function FieldEditor({
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
-  const needsOptions = field.type === "checkbox-group" || field.type === "radio-group";
+  const needsOptions = field.type === "checkbox-group" || field.type === "radio-group"
+    || field.type === "dropdown" || field.type === "multiselect";
+  const needsRatingConfig = field.type === "rating";
 
   return (
     <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-[#4982CF]/25">
@@ -837,7 +848,7 @@ function FieldEditor({
           </Select>
         </div>
 
-        {!needsOptions && (
+        {!needsOptions && !needsRatingConfig && field.type !== "yes-no" && field.type !== "time" && (
           <div className="col-span-2 space-y-1.5">
             <Label className="text-[11px] font-semibold text-slate-500">
               Placeholder / Hint{" "}
@@ -864,6 +875,31 @@ function FieldEditor({
               onChange={e => onChange({ options: e.target.value.split("\n") })}
               placeholder={"Option 1\nOption 2\nOption 3"}
             />
+          </div>
+        )}
+
+        {needsRatingConfig && (
+          <div className="col-span-2 grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-semibold text-slate-500">Min Value</Label>
+              <Input
+                type="number"
+                className="h-8 text-sm"
+                value={field.ratingMin ?? 1}
+                onChange={e => onChange({ ratingMin: Number(e.target.value) })}
+                min={0}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-semibold text-slate-500">Max Value</Label>
+              <Input
+                type="number"
+                className="h-8 text-sm"
+                value={field.ratingMax ?? 10}
+                onChange={e => onChange({ ratingMax: Number(e.target.value) })}
+                min={1}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -910,6 +946,59 @@ function PreviewField({ field }: { field: FormField }) {
             </label>
           ))}
         </div>
+      )}
+      {field.type === "dropdown" && (
+        <div className="relative w-full">
+          <select
+            disabled
+            className="w-full appearance-none rounded-md border border-slate-200 bg-slate-50 px-3 py-2 pr-8 text-sm text-slate-400 cursor-not-allowed"
+          >
+            <option>{field.placeholder || "Select an option…"}</option>
+            {field.options.filter(Boolean).map(opt => <option key={opt}>{opt}</option>)}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        </div>
+      )}
+      {field.type === "multiselect" && (
+        <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 space-y-1.5">
+          <p className="text-xs text-slate-400 italic mb-1">Select one or more…</p>
+          {(field.options.filter(Boolean).length ? field.options.filter(Boolean) : ["Option 1", "Option 2", "Option 3"]).map(opt => (
+            <label key={opt} className="flex cursor-not-allowed items-center gap-2 text-sm text-slate-500">
+              <Checkbox disabled />
+              {opt}
+            </label>
+          ))}
+        </div>
+      )}
+      {field.type === "rating" && (
+        <div className="flex flex-wrap gap-1.5">
+          {Array.from(
+            { length: Math.max(1, (field.ratingMax ?? 10) - (field.ratingMin ?? 1) + 1) },
+            (_, i) => (field.ratingMin ?? 1) + i
+          ).map(n => (
+            <button
+              key={n}
+              type="button"
+              disabled
+              className="h-8 w-8 rounded-md border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-400 cursor-not-allowed"
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      )}
+      {field.type === "yes-no" && (
+        <div className="flex gap-2">
+          <button type="button" disabled className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm font-semibold text-slate-400 cursor-not-allowed">
+            <Check className="h-3.5 w-3.5" /> Yes
+          </button>
+          <button type="button" disabled className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm font-semibold text-slate-400 cursor-not-allowed">
+            <X className="h-3.5 w-3.5" /> No
+          </button>
+        </div>
+      )}
+      {field.type === "time" && (
+        <Input type="time" disabled className="h-9 w-40 bg-slate-50 text-sm" />
       )}
     </div>
   );
