@@ -1180,6 +1180,18 @@ FOODS TO LIMIT
   },
 ];
 
+// ─── Admin library loader ─────────────────────────────────────────────────────
+
+const LIBRARY_KEY = "ehr-health-ed-library-v1";
+
+export function getHealthEdDocs(): HealthEdDoc[] {
+  try {
+    const raw = localStorage.getItem(LIBRARY_KEY);
+    if (raw) return JSON.parse(raw) as HealthEdDoc[];
+  } catch { /**/ }
+  return HEALTH_ED_DOCS;
+}
+
 // ─── Favourites (localStorage) ────────────────────────────────────────────────
 
 const FAVS_KEY = "health_ed_fav_docIds";
@@ -1241,7 +1253,8 @@ function PreviewModal({ doc, onClose }: { doc: HealthEdDoc; onClose: () => void 
 // ─── Chips Panel ──────────────────────────────────────────────────────────────
 
 export function HealthEdChipsPanel({ data, onOpen }: { data: HealthEdSelection; onOpen: () => void }) {
-  const selected = HEALTH_ED_DOCS.filter(d => data.docIds.includes(d.id));
+  const allDocs = getHealthEdDocs();
+  const selected = allDocs.filter(d => data.docIds.includes(d.id));
 
   if (selected.length === 0) {
     return (
@@ -1292,10 +1305,11 @@ export function HealthEdDrawer({ savedData, onSave, onClose }: HealthEdDrawerPro
   const [collapsed,    setCollapsed]    = useState<Set<HealthEdCategory>>(new Set());
 
   const q = query.toLowerCase().trim();
+  const allDocs = useMemo(() => getHealthEdDocs(), []);
 
   const filteredDocs = useMemo(() =>
-    q ? HEALTH_ED_DOCS.filter(d => d.title.toLowerCase().includes(q) || d.brief.toLowerCase().includes(q) || d.category.toLowerCase().includes(q)) : HEALTH_ED_DOCS,
-    [q]
+    q ? allDocs.filter(d => d.title.toLowerCase().includes(q) || d.brief.toLowerCase().includes(q) || d.category.toLowerCase().includes(q)) : allDocs,
+    [q, allDocs]
   );
 
   function toggleFav(id: string) {

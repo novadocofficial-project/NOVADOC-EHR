@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Banknote,
   Bell,
+  BookOpen,
   FileText,
   FlaskConical,
   Sliders,
@@ -83,6 +84,7 @@ import type { PatRegSection } from "@/pages/PatientRegistrationModule";
 import { OrderSetsModule } from "@/pages/OrderSetsModule";
 import { UsersManagementModule } from "@/pages/UsersManagementModule";
 import { RoutingRulesModule } from "@/pages/RoutingRulesModule";
+import { HealthEdLibraryModule } from "@/pages/HealthEdLibraryModule";
 import { INITIAL_SERVICE_TYPES, INITIAL_SERVICES } from "@/pages/BillingTypes";
 import { HomeNavButton, QueueNavDropdown, AppointmentsNavDropdown, ReportsNavDropdown } from "@/pages/QueuePageLayout";
 import type { ServiceType, Service } from "@/pages/BillingTypes";
@@ -141,6 +143,7 @@ const ALL_EHR_KEYS = [
   "appt-careplan-records", "appt-cp-exec-v2",
   "appt-goal-drafts-v1",
   "appt-triage-drafts", "appt-triage-sessions",
+  "ehr-health-ed-library-v1",
 ] as const;
 
 export type Specialty = {
@@ -241,7 +244,8 @@ type ActiveModule =
   | "lab-order-sets" | "imaging-order-sets"
   | "users-counters"
   | "reg-basic-info" | "reg-patient-types" | "reg-welfare-forms"
-  | "reg-demographics" | "reg-custom-sections" | "reg-workflow" | "reg-quick";
+  | "reg-demographics" | "reg-custom-sections" | "reg-workflow" | "reg-quick"
+  | "health-ed-library";
 
 export function AdminSettings() {
   const [, setLocation] = useLocation();
@@ -717,6 +721,7 @@ export function AdminSettings() {
                 {subNavItem("referral-destinations", <MapPin className="h-3.5 w-3.5" />,        "Referral Destinations")}
                 {subNavItem("template-manager",      <FileText className="h-3.5 w-3.5" />,      "Template Manager")}
                 {subNavItem("specialty-forms",       <Layers   className="h-3.5 w-3.5" />,      "Specialty Forms")}
+                {subNavItem("health-ed-library",     <BookOpen className="h-3.5 w-3.5" />,      "Health Ed Library")}
               </div>
             )}
 
@@ -1034,6 +1039,7 @@ export function AdminSettings() {
 
           {activeModule === "pe-builder" && <PhysicalExamBuilderModule />}
           {activeModule === "template-manager" && <TemplateManagerModule />}
+          {activeModule === "health-ed-library" && <HealthEdLibraryModule />}
           {activeModule === "specialty-forms" && <SpecialtyFormsModule doctors={doctors} />}
 
           {(activeModule === "care-plan-library"
