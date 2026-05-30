@@ -599,6 +599,203 @@ function TimerPill({ label, timer }: { label: string; timer: ReturnType<typeof u
 
 // ─── Specialty Form Renderer ──────────────────────────────────────────────────
 
+function MultiSelectFieldInput({
+  options, allowOther, placeholder, selected, onChange,
+}: {
+  options: string[];
+  allowOther?: boolean;
+  placeholder?: string;
+  selected: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const [open,    setOpen]    = useState(false);
+  const [search,  setSearch]  = useState("");
+  const [custom,  setCustom]  = useState("");
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef  = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      const t = e.target as Node;
+      if (!triggerRef.current?.contains(t) && !dropdownRef.current?.contains(t)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  function openDropdown() {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setDropPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+    setOpen(true);
+  }
+
+  function toggle(item: string) {
+    onChange(selected.includes(item) ? selected.filter(s => s !== item) : [...selected, item]);
+  }
+  function remove(item: string) { onChange(selected.filter(s => s !== item)); }
+  function addCustom() {
+    const val = custom.trim();
+    if (val && !selected.includes(val)) onChange([...selected, val]);
+    setCustom("");
+  }
+  function onDragStart(idx: number) { setDragIdx(idx); }
+  function onDragOver(e: React.DragEvent, idx: number) { e.preventDefault(); setOverIdx(idx); }
+  function onDrop(idx: number) {
+    if (dragIdx === null || dragIdx === idx) return;
+    const next = [...selected];
+    const [moved] = next.splice(dragIdx, 1);
+    next.splice(idx, 0, moved);
+    onChange(next);
+    setDragIdx(null); setOverIdx(null);
+  }
+  function onDragEnd() { setDragIdx(null); setOverIdx(null); }
+
+  const allOptions = [...options.filter(Boolean), ...selected.filter(s => !options.includes(s))];
+  const filtered   = allOptions.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="relative">
+      <button
+        ref={triggerRef}
+        onClick={() => open ? setOpen(false) : openDropdown()}
+        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:border-[#4982CF]/50 transition-colors text-left">
+        {selected.length === 0 ? (
+          <span className="text-xs text-slate-300 flex-1">{placeholder || "Select options…"}</span>
+        ) : (
+          <span className="text-xs font-semibold flex-1" style={{ color: "#4982CF" }}>
+            {selected.length} option{selected.length > 1 ? "s" : ""} selected
+          </span>
+        )}
+        <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{ position: "fixed", top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
+          className="bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100">
+            <Search className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+            <input
+              autoFocus
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search…"
+              className="flex-1 text-xs outline-none text-slate-700 placeholder-slate-300 bg-transparent"
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="text-slate-300 hover:text-slate-500">
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          <div className="max-h-52 overflow-y-auto py-1">
+            {filtered.map(opt => {
+              const checked = selected.includes(opt);
+              const rank    = selected.indexOf(opt) + 1;
+              return (
+                <button
+                  key={opt}
+                  onClick={() => toggle(opt)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${checked ? "bg-blue-50/60" : "hover:bg-slate-50"}`}>
+                  <div
+                    className="h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all"
+                    style={checked ? { backgroundColor: "#4982CF", borderColor: "#4982CF" } : { borderColor: "#cbd5e1" }}>
+                    {checked && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                  </div>
+                  <span className="text-xs text-slate-700 flex-1">{opt}</span>
+                  {checked && (
+                    <span
+                      className="text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center text-white flex-shrink-0"
+                      style={{ backgroundColor: "#4982CF" }}>
+                      {rank}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            {filtered.length === 0 && (
+              <p className="px-4 py-4 text-xs text-center text-slate-400">
+                {allowOther ? "No matches — add as custom below" : "No matches"}
+              </p>
+            )}
+          </div>
+
+          {allowOther && (
+            <div className="flex items-center gap-2 px-3 py-2.5 border-t border-slate-100 bg-slate-50/50">
+              <Plus className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+              <input
+                value={custom}
+                onChange={e => setCustom(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
+                placeholder="Add custom…"
+                className="flex-1 text-xs outline-none text-slate-700 placeholder-slate-300 bg-transparent"
+              />
+              <button
+                onClick={addCustom}
+                disabled={!custom.trim()}
+                className="text-[10px] font-bold px-2.5 py-1 rounded-lg text-white transition-opacity disabled:opacity-30"
+                style={{ backgroundColor: "#4982CF" }}>
+                Add
+              </button>
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
+
+      {selected.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {selected.map((item, idx) => {
+            const isPrimary  = idx === 0;
+            const isDragging = dragIdx === idx;
+            const isOver     = overIdx === idx && dragIdx !== idx;
+            return (
+              <div
+                key={item}
+                draggable
+                onDragStart={() => onDragStart(idx)}
+                onDragOver={e => onDragOver(e, idx)}
+                onDrop={() => onDrop(idx)}
+                onDragEnd={onDragEnd}
+                className={[
+                  "flex items-center gap-2.5 px-3 py-2 rounded-xl border-2 cursor-grab active:cursor-grabbing select-none transition-all duration-150",
+                  isDragging ? "opacity-40 scale-[0.97]" : "",
+                  isOver     ? "border-[#4982CF] shadow-md scale-[1.02]" : "",
+                  isPrimary  ? "bg-[#4982CF] text-white border-[#4982CF] shadow-sm" : "bg-blue-50 text-blue-800 border-blue-200",
+                ].join(" ")}>
+                <GripVertical className="h-3.5 w-3.5 opacity-50 flex-shrink-0" />
+                <span className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${isPrimary ? "bg-white/25 text-white" : "bg-[#4982CF] text-white"}`}>
+                  {idx + 1}
+                </span>
+                <span className="text-xs font-semibold flex-1">{item}</span>
+                {isPrimary && (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-white/20 text-white/90 flex-shrink-0">Primary</span>
+                )}
+                <button
+                  onClick={e => { e.stopPropagation(); remove(item); }}
+                  className={`hover:opacity-70 transition-opacity flex-shrink-0 ${isPrimary ? "text-white/70" : "text-blue-400"}`}>
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            );
+          })}
+          <p className="text-[10px] text-slate-400 flex items-center gap-1 pt-0.5">
+            <GripVertical className="h-3 w-3" />
+            Drag to reorder · <span className="font-semibold text-slate-500">Position 1 = Primary</span>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SpecialtyFormPanel({
   form,
   data,
@@ -710,51 +907,13 @@ function SpecialtyFormPanel({
                   </div>
                 )}
                 {field.type === "multiselect" && (
-                  <div className="space-y-1.5">
-                    <div className="grid grid-cols-1 gap-y-1.5">
-                      {field.options.filter(Boolean).map(opt => {
-                        const checked = ((data[field.id] as string[]) ?? []).includes(opt);
-                        return (
-                          <label key={opt} className="flex items-center gap-2.5 cursor-pointer rounded-lg px-3 py-2 border transition-all hover:bg-slate-50"
-                            style={{ borderColor: checked ? "#4982CF" : "#e2e8f0", backgroundColor: checked ? "#4982CF0d" : undefined }}
-                            onClick={() => {
-                              const current = (data[field.id] as string[]) ?? [];
-                              update(field.id, checked ? current.filter(x => x !== opt) : [...current, opt]);
-                            }}>
-                            <div className={`h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${checked ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300"}`}>
-                              {checked && <Check className="h-3 w-3 text-white" />}
-                            </div>
-                            <span className={`text-xs select-none ${checked ? "font-semibold text-[#4982CF]" : "text-slate-600"}`}>{opt}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    {field.allowOther && (
-                      <div className="pt-1.5 border-t border-slate-100 space-y-1.5">
-                        <label className="flex items-center gap-2.5 cursor-pointer rounded-lg px-3 py-2 border transition-all hover:bg-slate-50"
-                          style={{ borderColor: ((data[field.id] as string[]) ?? []).includes("__other__") ? "#4982CF" : "#e2e8f0", backgroundColor: ((data[field.id] as string[]) ?? []).includes("__other__") ? "#4982CF0d" : undefined }}
-                          onClick={() => {
-                            const current = (data[field.id] as string[]) ?? [];
-                            const hasOther = current.includes("__other__");
-                            update(field.id, hasOther ? current.filter(x => x !== "__other__") : [...current, "__other__"]);
-                          }}>
-                          <div className={`h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${((data[field.id] as string[]) ?? []).includes("__other__") ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300"}`}>
-                            {((data[field.id] as string[]) ?? []).includes("__other__") && <Check className="h-3 w-3 text-white" />}
-                          </div>
-                          <span className={`text-xs italic select-none ${((data[field.id] as string[]) ?? []).includes("__other__") ? "font-semibold text-[#4982CF]" : "text-slate-500"}`}>Other</span>
-                        </label>
-                        {((data[field.id] as string[]) ?? []).includes("__other__") && (
-                          <input
-                            value={(data[`${field.id}__other`] as string) ?? ""}
-                            onChange={e => update(`${field.id}__other`, e.target.value)}
-                            placeholder="Specify…"
-                            autoFocus
-                            className="w-full text-xs text-slate-700 border border-[#4982CF] rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[#4982CF]/30 transition-colors"
-                          />
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <MultiSelectFieldInput
+                    options={field.options}
+                    allowOther={field.allowOther}
+                    placeholder={field.placeholder}
+                    selected={(data[field.id] as string[]) ?? []}
+                    onChange={v => update(field.id, v)}
+                  />
                 )}
                 {field.type === "dropdown" && (
                   <div className="relative">
