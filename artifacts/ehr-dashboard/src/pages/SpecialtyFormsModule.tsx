@@ -39,6 +39,7 @@ export type FormField = {
   options: string[];
   ratingMin?: number;
   ratingMax?: number;
+  allowOther?: boolean;
 };
 
 export type FormSection = {
@@ -60,10 +61,37 @@ export type SpecialtyForm = {
 
 // ── Storage helpers ───────────────────────────────────────────────────────────
 
+const CHIEF_COMPLAINT_OPTIONS = [
+  "Sneezing and Runny Nose", "Itchy and Watery Eyes", "Skin Rash",
+  "Urticaria and Hives", "Swelling of the Skin", "Cough and Wheezing",
+  "Chest Congestion", "Difficulty in Breathing", "Frequent Sore Throat",
+  "Dry Cough", "Cough with Clear Sputum", "Postnasal Drip and Sinus Congestion",
+  "Eczematous Rashes", "Allergy to Food", "Allergy to Medicine",
+  "Nasal Polyps", "Repeated Ear Infection", "Plugged Ears", "Snoring and Sleep Apnea",
+];
+
 export function loadForms(): SpecialtyForm[] {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw) as SpecialtyForm[];
+    if (raw) {
+      const forms = JSON.parse(raw) as SpecialtyForm[];
+      // Migration: patch sf-asif-immuno chief complaint if still textarea
+      const asif = forms.find(f => f.id === "sf-asif-immuno");
+      if (asif) {
+        const s1 = asif.sections.find(s => s.id === "s1");
+        if (s1) {
+          const f1 = s1.fields.find(f => f.id === "f1");
+          if (f1 && f1.type === "textarea") {
+            f1.type = "multiselect";
+            f1.options = CHIEF_COMPLAINT_OPTIONS;
+            f1.allowOther = true;
+            f1.placeholder = "";
+            localStorage.setItem(LS_KEY, JSON.stringify(forms));
+          }
+        }
+      }
+      return forms;
+    }
   } catch { /**/ }
   return SEED_FORMS;
 }
@@ -85,7 +113,30 @@ const SEED_FORMS: SpecialtyForm[] = [
     sections: [
       {
         id: "s1", title: "Chief Complaint", description: "",
-        fields: [{ id: "f1", label: "Chief Complaint", type: "textarea", placeholder: "Describe the patient's main complaint...", options: [] }],
+        fields: [{
+          id: "f1", label: "Chief Complaint", type: "multiselect", placeholder: "", allowOther: true,
+          options: [
+            "Sneezing and Runny Nose",
+            "Itchy and Watery Eyes",
+            "Skin Rash",
+            "Urticaria and Hives",
+            "Swelling of the Skin",
+            "Cough and Wheezing",
+            "Chest Congestion",
+            "Difficulty in Breathing",
+            "Frequent Sore Throat",
+            "Dry Cough",
+            "Cough with Clear Sputum",
+            "Postnasal Drip and Sinus Congestion",
+            "Eczematous Rashes",
+            "Allergy to Food",
+            "Allergy to Medicine",
+            "Nasal Polyps",
+            "Repeated Ear Infection",
+            "Plugged Ears",
+            "Snoring and Sleep Apnea",
+          ],
+        }],
       },
       {
         id: "s2", title: "History 1", description: "",
@@ -864,17 +915,29 @@ function FieldEditor({
         )}
 
         {needsOptions && (
-          <div className="col-span-2 space-y-1.5">
-            <Label className="text-[11px] font-semibold text-slate-500">
-              Options{" "}
-              <span className="font-normal text-slate-400">(one per line)</span>
-            </Label>
-            <Textarea
-              className="min-h-[80px] resize-none font-mono text-sm"
-              value={field.options.join("\n")}
-              onChange={e => onChange({ options: e.target.value.split("\n") })}
-              placeholder={"Option 1\nOption 2\nOption 3"}
-            />
+          <div className="col-span-2 space-y-2">
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-semibold text-slate-500">
+                Options{" "}
+                <span className="font-normal text-slate-400">(one per line)</span>
+              </Label>
+              <Textarea
+                className="min-h-[80px] resize-none font-mono text-sm"
+                value={field.options.join("\n")}
+                onChange={e => onChange({ options: e.target.value.split("\n") })}
+                placeholder={"Option 1\nOption 2\nOption 3"}
+              />
+            </div>
+            <label className="flex cursor-pointer items-center gap-2">
+              <Checkbox
+                checked={!!field.allowOther}
+                onCheckedChange={v => onChange({ allowOther: !!v })}
+                className="data-[state=checked]:bg-[#4982CF] data-[state=checked]:border-[#4982CF]"
+              />
+              <span className="text-[11px] font-semibold text-slate-500">
+                Allow "Other" — free-text entry if no option matches
+              </span>
+            </label>
           </div>
         )}
 
@@ -935,6 +998,15 @@ function PreviewField({ field }: { field: FormField }) {
               {opt}
             </label>
           ))}
+          {field.allowOther && (
+            <div className="pt-1 border-t border-slate-100 mt-1">
+              <label className="flex cursor-not-allowed items-center gap-2 text-sm text-slate-500 mb-1.5">
+                <Checkbox disabled />
+                <span className="italic">Other</span>
+              </label>
+              <Input disabled className="h-8 bg-slate-50 text-sm ml-6" placeholder="Specify…" />
+            </div>
+          )}
         </div>
       )}
       {field.type === "radio-group" && (
@@ -968,6 +1040,15 @@ function PreviewField({ field }: { field: FormField }) {
               {opt}
             </label>
           ))}
+          {field.allowOther && (
+            <div className="pt-1 border-t border-slate-200 mt-1">
+              <label className="flex cursor-not-allowed items-center gap-2 text-sm text-slate-500 mb-1.5">
+                <Checkbox disabled />
+                <span className="italic">Other</span>
+              </label>
+              <Input disabled className="h-8 bg-white text-sm ml-6" placeholder="Specify…" />
+            </div>
+          )}
         </div>
       )}
       {field.type === "rating" && (
