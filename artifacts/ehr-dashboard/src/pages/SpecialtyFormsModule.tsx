@@ -137,6 +137,26 @@ export function loadForms(): SpecialtyForm[] {
         }
         // Remove old s3 (History 2)
         asif.sections = asif.sections.filter(s => s.id !== "s3");
+        // Migration: patch s7 Provisional Diagnosis f8 → multiselect
+        const s7 = asif.sections.find(s => s.id === "s7");
+        if (s7) {
+          const f8 = s7.fields.find(f => f.id === "f8");
+          if (!f8 || f8.type !== "multiselect") {
+            s7.fields = [{ id: "f8", label: "Diagnosis", type: "multiselect", placeholder: "Select diagnosis…", allowOther: true, selectionStyle: "simple", options: [
+              "Airway Disease (Unspecified) — J98.9", "Allergic Conjunctivitis — H10.13",
+              "Allergic Rhinitis — J30.9", "Anaphylactic Reaction — T78.2XXA",
+              "Angioedema — T78.3XXA", "Anxiety — F41.9", "Anxiety and Depression — F41.8",
+              "Asthma — J45.909", "Atopic Dermatitis — L20.9", "Bronchitis — J40",
+              "Chronic Sinusitis — J32.9", "Chronic Urticaria — L50.8",
+              "Contact Dermatitis — L25.9", "Drug Allergy — Z88.9", "Dry Skin — L85.3",
+              "Food Allergy — Z91.018", "Fungal Skin Infection — B36.9",
+              "Gluten Allergy — K90.41", "Hair Color Allergy — L23.4",
+              "Hereditary Angioedema — D84.1", "Immune Deficiency — D84.9",
+              "NSAID Allergy — Z88.6", "Postnasal Drip — R09.82",
+              "Reactive Airway Disease — J45.909", "Recurrent Sore Throats — J31.2",
+            ] }];
+          }
+        }
         // Migration: patch s5 Physical Examination → multiselect
         const s5 = asif.sections.find(s => s.id === "s5");
         if (s5) {
@@ -295,7 +315,33 @@ const SEED_FORMS: SpecialtyForm[] = [
       },
       {
         id: "s7", title: "Provisional Diagnosis", description: "",
-        fields: [{ id: "f8", label: "Diagnosis", type: "textarea", placeholder: "Provisional diagnosis with ICD code if available...", options: [] }],
+        fields: [{ id: "f8", label: "Diagnosis", type: "multiselect", placeholder: "Select diagnosis…", allowOther: true, selectionStyle: "simple", options: [
+          "Airway Disease (Unspecified) — J98.9",
+          "Allergic Conjunctivitis — H10.13",
+          "Allergic Rhinitis — J30.9",
+          "Anaphylactic Reaction — T78.2XXA",
+          "Angioedema — T78.3XXA",
+          "Anxiety — F41.9",
+          "Anxiety and Depression — F41.8",
+          "Asthma — J45.909",
+          "Atopic Dermatitis — L20.9",
+          "Bronchitis — J40",
+          "Chronic Sinusitis — J32.9",
+          "Chronic Urticaria — L50.8",
+          "Contact Dermatitis — L25.9",
+          "Drug Allergy — Z88.9",
+          "Dry Skin — L85.3",
+          "Food Allergy — Z91.018",
+          "Fungal Skin Infection — B36.9",
+          "Gluten Allergy — K90.41",
+          "Hair Color Allergy — L23.4",
+          "Hereditary Angioedema — D84.1",
+          "Immune Deficiency — D84.9",
+          "NSAID Allergy — Z88.6",
+          "Postnasal Drip — R09.82",
+          "Reactive Airway Disease — J45.909",
+          "Recurrent Sore Throats — J31.2",
+        ] }],
       },
       {
         id: "s8", title: "Investigations", description: "",
