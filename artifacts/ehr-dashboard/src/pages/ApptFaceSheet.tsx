@@ -457,12 +457,13 @@ export function ApptFaceSheet({
         onDoctorSign={(noteState) => {
           const now = new Date();
           const newRecord: SignedRecord = {
-            date:   now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
-            day:    now.toLocaleDateString("en-US", { weekday: "long" }),
-            time:   now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-            type:   "Consultation Note",
-            doctor: doctorName,
-            signed: true,
+            date:     now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+            day:      now.toLocaleDateString("en-US", { weekday: "long" }),
+            time:     now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+            type:     "Consultation Note",
+            doctor:   doctorName,
+            signed:   true,
+            signedAt: now.getTime(),
             noteState: noteState ?? undefined,
           };
           setApptSignedRecords(prev => {

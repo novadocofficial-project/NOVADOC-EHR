@@ -287,12 +287,13 @@ export function DoctorUser() {
     const now = new Date();
     const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
     const record: SignedRecord = {
-      date: now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-      day:  days[now.getDay()],
-      time: `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`,
-      type: "Consultation Note",
-      doctor: "Dr. Emily Wong",
-      signed: true,
+      date:     now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+      day:      days[now.getDay()],
+      time:     `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`,
+      type:     "Consultation Note",
+      doctor:   "Dr. Emily Wong",
+      signed:   true,
+      signedAt: now.getTime(),
       ...(noteState ? { noteState } : {}),
     };
     setSignedRecordsMap(prev => {

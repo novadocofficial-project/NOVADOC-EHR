@@ -2087,9 +2087,18 @@ function readWaitStopTimes(): Record<string, number> {
 function writeWaitStopTime(apptId: string, ts: number): void {
   try {
     const map = readWaitStopTimes();
+    if (map[apptId]) return;
     map[apptId] = ts;
     localStorage.setItem(WAIT_STOPPED_KEY, JSON.stringify(map));
   } catch { /**/ }
+}
+
+function resolveStopTime(apptId: string): number | null {
+  const signed = readSignedRecords(apptId);
+  if (signed.length === 0) return null;
+  const timestamps = signed.map(r => (r as { signedAt?: number }).signedAt).filter((t): t is number => typeof t === "number");
+  if (timestamps.length > 0) return Math.min(...timestamps);
+  return null;
 }
 
 function formatElapsed(ms: number): string {
@@ -2108,7 +2117,6 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
   const [stopTimes, setStopTimes] = useState<Record<string, number>>(readWaitStopTimes);
 
   useEffect(() => {
-    const mountTs = Date.now();
     setStopTimes(prev => {
       let changed = false;
       const next = { ...prev };
@@ -2116,9 +2124,10 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
         if (next[appt.id]) continue;
         const vitalsAt = getVitalsCompletedAt(appt.id);
         if (!vitalsAt) continue;
-        if (getHealthRecordStatus(appt.id) === "completed") {
-          next[appt.id] = mountTs;
-          writeWaitStopTime(appt.id, mountTs);
+        const stopAt = resolveStopTime(appt.id);
+        if (stopAt !== null) {
+          next[appt.id] = stopAt;
+          writeWaitStopTime(appt.id, stopAt);
           changed = true;
         }
       }
@@ -2129,8 +2138,7 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
 
   useEffect(() => {
     const id = setInterval(() => {
-      const ts = Date.now();
-      setNow(ts);
+      setNow(Date.now());
       setStopTimes(prev => {
         let changed = false;
         const next = { ...prev };
@@ -2138,9 +2146,10 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
           if (next[appt.id]) continue;
           const vitalsAt = getVitalsCompletedAt(appt.id);
           if (!vitalsAt) continue;
-          if (getHealthRecordStatus(appt.id) === "completed") {
-            next[appt.id] = ts;
-            writeWaitStopTime(appt.id, ts);
+          const stopAt = resolveStopTime(appt.id);
+          if (stopAt !== null) {
+            next[appt.id] = stopAt;
+            writeWaitStopTime(appt.id, stopAt);
             changed = true;
           }
         }

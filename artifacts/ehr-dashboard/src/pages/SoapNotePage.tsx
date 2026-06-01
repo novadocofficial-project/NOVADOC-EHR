@@ -94,6 +94,7 @@ export interface SignedRecord {
   type: string;
   doctor: string;
   signed: true;
+  signedAt?: number;
   noteState?: NoteState;
 }
 
