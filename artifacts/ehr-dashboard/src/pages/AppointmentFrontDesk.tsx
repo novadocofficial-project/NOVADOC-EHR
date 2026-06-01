@@ -2064,14 +2064,32 @@ const COUNSELLING_PRIORITY_CONFIG: Record<"normal" | "urgent" | "emergency", { l
   emergency: { label: "Emergency", cls: "bg-red-50    text-red-600   border-red-200"   },
 };
 
+const WAIT_STOPPED_KEY = "appt-vitals-wait-stopped";
+
 function getVitalsCompletedAt(apptId: string): number | null {
   try {
     const raw = localStorage.getItem("appt-vitals-records");
     if (!raw) return null;
     const records = JSON.parse(raw) as Array<{ apptId?: string; completedAt: number }>;
-    const match = records.find(r => r.apptId === apptId);
-    return match ? match.completedAt : null;
+    const matches = records.filter(r => r.apptId === apptId);
+    if (matches.length === 0) return null;
+    return Math.max(...matches.map(r => r.completedAt));
   } catch { return null; }
+}
+
+function readWaitStopTimes(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(WAIT_STOPPED_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function writeWaitStopTime(apptId: string, ts: number): void {
+  try {
+    const map = readWaitStopTimes();
+    map[apptId] = ts;
+    localStorage.setItem(WAIT_STOPPED_KEY, JSON.stringify(map));
+  } catch { /**/ }
 }
 
 function formatElapsed(ms: number): string {
@@ -2087,11 +2105,51 @@ function formatElapsed(ms: number): string {
 function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appointment[]; onOpenFacesheet: (appt: Appointment) => void }) {
   const sorted = [...appointments].sort((a, b) => a.slotStart.localeCompare(b.slotStart));
   const [now, setNow] = useState(() => Date.now());
+  const [stopTimes, setStopTimes] = useState<Record<string, number>>(readWaitStopTimes);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
+    const mountTs = Date.now();
+    setStopTimes(prev => {
+      let changed = false;
+      const next = { ...prev };
+      for (const appt of sorted) {
+        if (next[appt.id]) continue;
+        const vitalsAt = getVitalsCompletedAt(appt.id);
+        if (!vitalsAt) continue;
+        if (getHealthRecordStatus(appt.id) === "completed") {
+          next[appt.id] = mountTs;
+          writeWaitStopTime(appt.id, mountTs);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const ts = Date.now();
+      setNow(ts);
+      setStopTimes(prev => {
+        let changed = false;
+        const next = { ...prev };
+        for (const appt of sorted) {
+          if (next[appt.id]) continue;
+          const vitalsAt = getVitalsCompletedAt(appt.id);
+          if (!vitalsAt) continue;
+          if (getHealthRecordStatus(appt.id) === "completed") {
+            next[appt.id] = ts;
+            writeWaitStopTime(appt.id, ts);
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sorted.map(a => a.id).join(",")]);
 
   if (sorted.length === 0) {
     return (
@@ -2154,8 +2212,10 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
                   {(() => {
                     const vitalsAt = getVitalsCompletedAt(appt.id);
                     if (!vitalsAt) return <span className="text-slate-300">—</span>;
-                    const hrDone = getHealthRecordStatus(appt.id) === "completed";
-                    const ms = now - vitalsAt;
+                    const stopAt = stopTimes[appt.id] ?? null;
+                    const hrDone = stopAt !== null || getHealthRecordStatus(appt.id) === "completed";
+                    const effectiveEnd = stopAt ?? now;
+                    const ms = effectiveEnd - vitalsAt;
                     const activeColor = ms > 30 * 60 * 1000 ? "text-red-600" : ms > 15 * 60 * 1000 ? "text-amber-600" : "text-emerald-600";
                     return (
                       <span className={`flex items-center gap-1 text-xs font-semibold ${hrDone ? "text-slate-400" : activeColor}`}>
