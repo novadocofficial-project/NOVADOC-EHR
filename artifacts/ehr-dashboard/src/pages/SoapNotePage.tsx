@@ -97,13 +97,405 @@ export interface SignedRecord {
   noteState?: NoteState;
 }
 
-function SpecialtyNotePreview({ form, data }: { form: SpecialtyForm; data: Record<string, unknown> }) {
+function SpecialtyNotePreview({ form, data, note }: { form: SpecialtyForm; data: Record<string, unknown>; note?: NoteState }) {
+  const Section = ({ icon, title, color, children }: { icon: React.ReactNode; title: string; color: string; children: React.ReactNode }) => (
+    <div className="mb-4">
+      <div className="flex items-center gap-2 mb-2">
+        <span style={{ color }}>{icon}</span>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{title}</p>
+      </div>
+      {children}
+    </div>
+  );
+
+  const sortedSystemComponents = [...(form.systemComponents ?? [])].sort((a, b) => a.order - b.order);
+
+  function renderSystemComponent(id: string): React.ReactNode {
+    if (!note) return null;
+    switch (id) {
+      case "chief-complaint": {
+        if (!note.chiefComplaints.length) return null;
+        return (
+          <Section key="sc-cc" icon={<PenLine className="h-3.5 w-3.5" />} title="Chief Complaint" color="#4982CF">
+            <div className="flex flex-wrap gap-1.5">
+              {note.chiefComplaints.map(c => (
+                <span key={c} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">{c}</span>
+              ))}
+            </div>
+          </Section>
+        );
+      }
+
+      case "hpi": {
+        const hasText = !!note.hpi?.trim();
+        const done = note.hpiDoneComplaints ?? [];
+        if (!hasText && !done.length) return null;
+        return (
+          <Section key="sc-hpi" icon={<FileText className="h-3.5 w-3.5" />} title="History of Present Illness" color="#6366f1">
+            {hasText ? (
+              <p className="text-[11px] leading-relaxed text-slate-600 bg-white border border-slate-200 rounded-lg px-3.5 py-2.5">{note.hpi}</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {done.map(c => (
+                  <span key={c} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0" /> {c}
+                  </span>
+                ))}
+              </div>
+            )}
+          </Section>
+        );
+      }
+
+      case "allergies": {
+        if (!note.allergies.length) return null;
+        return (
+          <Section key="sc-allg" icon={<ShieldAlert className="h-3.5 w-3.5" />} title="Allergies" color="#ef4444">
+            <div className="space-y-1.5">
+              {note.allergies.map(a => {
+                const sevClass = a.severity === "severe"   ? "bg-red-50 text-red-700 border-red-200"
+                              : a.severity === "moderate" ? "bg-amber-50 text-amber-700 border-amber-200"
+                              :                             "bg-sky-50 text-sky-700 border-sky-200";
+                return (
+                  <div key={a.id} className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${sevClass}`}>
+                    <span className="text-[10px] font-black flex-shrink-0">{a.name}</span>
+                    {a.reaction && (
+                      <>
+                        <div className="w-px self-stretch bg-current opacity-20 flex-shrink-0" />
+                        <p className="text-[10px] flex-1">{a.reaction}</p>
+                      </>
+                    )}
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-white/60 capitalize flex-shrink-0">{a.severity}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        );
+      }
+
+      case "medical-history": {
+        const hasPmh     = note.pmhActive.length > 0 || note.pmhResolved.length > 0;
+        const hasSurgical = note.surgicalRows.length > 0;
+        const hasFH      = note.fhRows.length > 0;
+        const sh         = note.socialHistory;
+        const hasSocial  = sh.tobacco.active || sh.alcohol.active || sh.vaping.active || !!sh.activity || !!sh.sleep;
+        if (!hasPmh && !hasSurgical && !hasFH && !hasSocial) return null;
+        return (
+          <Section key="sc-mhx" icon={<FileText className="h-3.5 w-3.5" />} title="Medical, Surgical, Family & Social History" color="#6366f1">
+            <div className="space-y-3">
+              {hasPmh && (
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Past Medical History</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {note.pmhActive.map(h => (
+                      <span key={h} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">{h}</span>
+                    ))}
+                    {note.pmhResolved.map(h => (
+                      <span key={`r-${h}`} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-50 text-slate-400 border border-slate-200 line-through">{h}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {hasSurgical && (
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Surgical History</p>
+                  <div className="space-y-1">
+                    {note.surgicalRows.map(s => (
+                      <div key={s.id} className="flex items-start gap-2">
+                        <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                        <p className="text-[11px] text-slate-600">{s.procedure}{s.date ? ` · ${s.date}` : ""}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {hasFH && (
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Family History</p>
+                  <div className="space-y-1">
+                    {note.fhRows.map(f => (
+                      <div key={f.id} className="flex items-start gap-2">
+                        <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-pink-400 flex-shrink-0" />
+                        <p className="text-[11px] text-slate-600"><span className="font-semibold">{f.relation}:</span> {f.condition}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {hasSocial && (
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Social History</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {sh.tobacco.active && (
+                      <span className="text-[10px] px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200">
+                        Smoking{sh.tobacco.intake ? `: ${sh.tobacco.intake}` : ""}
+                      </span>
+                    )}
+                    {sh.alcohol.active && (
+                      <span className="text-[10px] px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200">
+                        Alcohol{sh.alcohol.units ? `: ${sh.alcohol.units}` : ""}
+                      </span>
+                    )}
+                    {sh.activity && (
+                      <span className="text-[10px] px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200">Activity: {sh.activity}</span>
+                    )}
+                    {sh.sleep && (
+                      <span className="text-[10px] px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200">Sleep: {sh.sleep}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Section>
+        );
+      }
+
+      case "ros": {
+        const rosEntries = ROS_SYSTEMS.filter(s => (note.ros[s.id] ?? []).length > 0);
+        if (!rosEntries.length) return null;
+        return (
+          <Section key="sc-ros" icon={<Activity className="h-3.5 w-3.5" />} title="Review of Systems" color="#0ea5e9">
+            <div className="space-y-2">
+              {rosEntries.map(sys => (
+                <div key={sys.id} className="bg-white border border-slate-100 rounded-lg px-3 py-2">
+                  <p className="text-[10px] font-black text-sky-700 mb-1.5 uppercase tracking-wide">{sys.label}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {(note.ros[sys.id] ?? []).map(symptom => (
+                      <span key={symptom} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">{symptom}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        );
+      }
+
+      case "physical-exam": {
+        const peSystemObjs = BODY_SYSTEMS.filter(s => note.peSystems.includes(s.id));
+        if (!peSystemObjs.length) return null;
+        return (
+          <Section key="sc-pe" icon={<Stethoscope className="h-3.5 w-3.5" />} title="Physical Examination" color="#8b5cf6">
+            <div className="space-y-2">
+              {peSystemObjs.map(sys => {
+                const saved = (note.peSavedData ?? {})[sys.id];
+                const hasFindings = saved && Object.values(saved).some(v => v.trim());
+                return (
+                  <div key={sys.id} className="bg-white border border-slate-100 rounded-lg px-3 py-2">
+                    <p className="text-[10px] font-black text-violet-700 mb-1 uppercase tracking-wide">{sys.label}</p>
+                    {hasFindings
+                      ? <PeSummary systemId={sys.id} savedData={saved} />
+                      : <p className="text-[10px] text-slate-400 italic">No findings recorded</p>
+                    }
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        );
+      }
+
+      case "poc-labs": {
+        const completed = (note.pocTests ?? []).filter(t => t.status !== "pending");
+        if (!completed.length) return null;
+        return (
+          <Section key="sc-poc" icon={<TestTube className="h-3.5 w-3.5" />} title="Point of Care Labs" color="#0ea5e9">
+            <div className="space-y-1.5">
+              {completed.map(t => {
+                const isPositive = t.status === "positive";
+                return (
+                  <div key={t.id} className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${isPositive ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
+                    <span className="text-[10px] font-bold flex-1 text-slate-700">{t.name}</span>
+                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full capitalize ${isPositive ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
+                      {t.status.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        );
+      }
+
+      case "diagnosis": {
+        if (!note.diagnoses.length) return null;
+        return (
+          <Section key="sc-dx" icon={<Target className="h-3.5 w-3.5" />} title="Assessment & Diagnosis" color="#ef4444">
+            <div className="space-y-2">
+              {note.diagnoses.map((d, i) => (
+                <div key={d.code ?? i} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+                  <span className="text-[10px] font-black font-mono text-slate-600">{d.code}</span>
+                  <div className="w-px self-stretch bg-slate-200 flex-shrink-0" />
+                  <p className="text-[11px] font-semibold flex-1 text-slate-700">{d.name}</p>
+                  {d.isProvisional && (
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex-shrink-0">Provisional</span>
+                  )}
+                  {d.isFinal && (
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">Final</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Section>
+        );
+      }
+
+      case "lab-orders": {
+        if (!note.labOrders.length) return null;
+        return (
+          <Section key="sc-lab" icon={<Microscope className="h-3.5 w-3.5" />} title="Lab Orders" color="#f59e0b">
+            <div className="space-y-2">
+              {note.labOrders.map((order, idx) => (
+                <div key={order.id ?? idx} className={`rounded-lg border px-3 py-2 ${order.voided ? "border-rose-100 bg-rose-50/60" : "border-amber-100 bg-amber-50/40"}`}>
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${order.voided ? "text-rose-400 line-through" : "text-amber-700"}`}>
+                      Order {idx + 1}{idx === 0 ? " · Original" : " · Follow-up"}
+                    </span>
+                    {order.sentAt && (
+                      <span className="text-[9px] text-slate-400">
+                        · {new Date(order.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                      </span>
+                    )}
+                    {order.voided && (
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 border border-rose-200">VOIDED</span>
+                    )}
+                  </div>
+                  {order.voided && order.voidReason && (
+                    <p className="text-[9px] text-rose-400 italic mb-1">Reason: {order.voidReason}</p>
+                  )}
+                  <div className="flex flex-wrap gap-1">
+                    {order.tests.map(t => (
+                      <span key={t.id} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${order.voided ? "bg-slate-50 text-slate-400 border-slate-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>{t.name}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        );
+      }
+
+      case "formulary": {
+        const meds = note.formulary?.medicines ?? [];
+        if (!meds.length) return null;
+        return (
+          <Section key="sc-rx" icon={<Pill className="h-3.5 w-3.5" />} title="Prescriptions" color="#8b5cf6">
+            <div className="space-y-2">
+              {meds.map(m => (
+                <div key={m.uid} className="bg-white border border-slate-200 rounded-lg px-3 py-2.5">
+                  <p className="text-[11px] font-black text-slate-800">{m.brand}{m.genericName ? ` (${m.genericName})` : ""}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    {[m.dose && m.unit ? `${m.dose} ${m.unit}` : m.dose, m.route, m.frequency].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Section>
+        );
+      }
+
+      case "imaging": {
+        const orders = note.imaging?.orders ?? [];
+        if (!orders.length) return null;
+        return (
+          <Section key="sc-img" icon={<Eye className="h-3.5 w-3.5" />} title="Imaging Orders" color="#0ea5e9">
+            <div className="space-y-1.5">
+              {orders.map(o => (
+                <div key={o.uid} className="flex items-center gap-2 text-[11px] text-sky-700 bg-sky-50 border border-sky-200 rounded-lg px-3 py-2">
+                  <ScanLine className="h-3 w-3 flex-shrink-0" />
+                  <span className="font-semibold flex-1">{o.testName}</span>
+                  {o.category && <span className="text-[9px] text-sky-500">{o.category}</span>}
+                </div>
+              ))}
+            </div>
+          </Section>
+        );
+      }
+
+      case "care-plan": {
+        const tasks = note.carePlan?.tasks ?? [];
+        if (!tasks.length) return null;
+        return (
+          <Section key="sc-cp" icon={<BookOpen className="h-3.5 w-3.5" />} title="Care Plan" color="#10b981">
+            <div className="space-y-1.5">
+              {tasks.map(t => (
+                <div key={t.uid} className="flex items-start gap-2">
+                  <CheckCircle2 className={`h-3 w-3 flex-shrink-0 mt-0.5 ${t.priority === "Urgent" ? "text-red-400" : "text-emerald-500"}`} />
+                  <div>
+                    <p className="text-[11px] text-slate-700 font-medium">{t.title}</p>
+                    {(t.assignee || t.dueDate) && (
+                      <p className="text-[9px] text-slate-400 mt-0.5">{[t.assignee, t.dueDate].filter(Boolean).join(" · ")}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        );
+      }
+
+      case "referrals": {
+        const refs = note.referrals?.referrals ?? [];
+        if (!refs.length) return null;
+        return (
+          <Section key="sc-ref" icon={<Send className="h-3.5 w-3.5" />} title="Referrals" color="#4982CF">
+            <div className="space-y-1.5">
+              {refs.map(r => {
+                const label = r.referralTarget === "Consultant" ? (r.speciality || r.consultantName)
+                            : r.referralTarget === "Procedure"  ? r.procedureName
+                            : r.referralTarget === "ER"         ? r.facilityName
+                            :                                     r.customTarget;
+                return (
+                  <div key={r.id} className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 flex items-start gap-3">
+                    <span className="text-[10px] font-black text-blue-700 flex-shrink-0 pt-0.5">{label}</span>
+                    {r.consultantName && r.referralTarget === "Consultant" && (
+                      <>
+                        <div className="w-px self-stretch bg-blue-200 flex-shrink-0" />
+                        <p className="text-[10px] text-blue-600">{r.consultantName}</p>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        );
+      }
+
+      case "patient-goals": {
+        const goals = note.patientGoals?.goals ?? [];
+        if (!goals.length) return null;
+        return (
+          <Section key="sc-pg" icon={<Target className="h-3.5 w-3.5" />} title="Patient Goals" color="#10b981">
+            <div className="space-y-1.5">
+              {goals.map(g => (
+                <div key={g.uid} className="flex items-start gap-2">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[11px] text-slate-700 font-medium">{g.title}</p>
+                    {g.targetDate && <p className="text-[9px] text-slate-400 mt-0.5">Target: {g.targetDate}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        );
+      }
+
+      default:
+        return null;
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
         <Layers className="h-3.5 w-3.5 flex-shrink-0" style={{ color: ACCENT }} />
         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{form.name}</p>
       </div>
+
+      {/* Custom specialty form sections */}
       {form.sections.map(section => {
         const filledFields = section.fields.filter(field => {
           const v = data[field.id];
@@ -135,6 +527,20 @@ function SpecialtyNotePreview({ form, data }: { form: SpecialtyForm; data: Recor
           </div>
         );
       })}
+
+      {/* System component data — rendered below custom sections in the admin-configured order */}
+      {note && sortedSystemComponents.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 py-0.5">
+            <div className="h-px flex-1 bg-slate-200" />
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+              <Layers className="h-3 w-3" /> System Components
+            </p>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+          {sortedSystemComponents.map(sc => renderSystemComponent(sc.id))}
+        </>
+      )}
     </div>
   );
 }
@@ -167,7 +573,7 @@ function LiveNotePreview({ note }: { note: NoteState }) {
   return (
     <div className="px-6 py-5 bg-slate-50 border-t border-slate-100">
       {specialtyForm ? (
-        <SpecialtyNotePreview form={specialtyForm} data={note.specialtyFormData!} />
+        <SpecialtyNotePreview form={specialtyForm} data={note.specialtyFormData!} note={note} />
       ) : (
       <div className="grid grid-cols-2 gap-x-8">
 
