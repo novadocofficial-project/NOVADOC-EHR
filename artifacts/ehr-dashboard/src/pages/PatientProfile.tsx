@@ -683,7 +683,7 @@ export function PatientProfile() {
 
   const TABS: { id: TabId; label: string; icon: React.ElementType; color: string; count?: number }[] = [
     { id: "overview",    label: "Overview",       icon: FileText,     color: "#4982CF" },
-    { id: "health",      label: "Health Records", icon: FileText,     color: "#4982CF", count: visitCount   || undefined },
+    { id: "health",      label: "Appointments",   icon: FileText,     color: "#4982CF", count: visitCount   || undefined },
     { id: "labs",        label: "Lab Reports",    icon: FlaskConical, color: "#f59e0b", count: labCount     || undefined },
     { id: "radiology",   label: "Radiology",      icon: Scan,         color: "#0ea5e9", count: radCount     || undefined },
     { id: "files",       label: "Files",          icon: Folder,       color: "#f59e0b" },
@@ -863,7 +863,7 @@ export function PatientProfile() {
                 <div className="flex-1 overflow-y-auto p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 
-                    <SectionCard title="Health Records" icon={FileText} color="#4982CF" count={visitCount || undefined} onViewAll={() => setActiveTab("health")}>
+                    <SectionCard title="Appointments" icon={FileText} color="#4982CF" count={visitCount || undefined} onViewAll={() => setActiveTab("health")}>
                       {appointments.slice(0, 3).map((a, i) => (
                         <div key={i} className="flex items-center gap-2 py-0.5">
                           <div className="h-1.5 w-1.5 rounded-full bg-[#4982CF] flex-shrink-0" />
