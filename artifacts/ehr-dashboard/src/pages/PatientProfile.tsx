@@ -819,13 +819,13 @@ export function PatientProfile() {
         <div className="flex flex-1 flex-col overflow-hidden">
 
           {/* Tab strip */}
-          <div className="flex-none overflow-x-auto bg-white border-b border-slate-200">
+          <div className="flex-none overflow-x-auto bg-white border-b border-slate-200 pt-2">
             <div className="flex min-w-max">
               {TABS.map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                  className={`flex items-center gap-1.5 px-5 py-4 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors ${
                     activeTab === tab.id
                       ? "border-[#4982CF] text-[#4982CF]"
                       : "border-transparent text-slate-500 hover:text-slate-700"
