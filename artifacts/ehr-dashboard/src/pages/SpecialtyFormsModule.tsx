@@ -233,25 +233,26 @@ export function loadForms(): SpecialtyForm[] {
             ] }];
           }
         }
-        // Migration: backfill globalOrder on sections; remap system component orders to unified space
-        forms.forEach(f => {
-          const missesGlobalOrder = f.sections.some(s => (s as FormSection & { globalOrder?: number }).globalOrder == null);
-          if (missesGlobalOrder) {
-            f.sections.forEach((s, i) => {
-              if ((s as FormSection & { globalOrder?: number }).globalOrder == null)
-                (s as FormSection).globalOrder = i * 100;
-            });
-            const maxSectionOrder = f.sections.reduce((m, s) => Math.max(m, s.globalOrder ?? 0), 0);
-            const sortedScs = [...f.systemComponents].sort((a, b) => a.order - b.order);
-            sortedScs.forEach((sc, i) => { sc.order = maxSectionOrder + (i + 1) * 100; });
-            f.systemComponents = sortedScs;
-          }
-          // Ensure migration-added s13 has globalOrder
-          const s13 = f.sections.find(s => s.id === "s13");
-          if (s13 && !s13.globalOrder) s13.globalOrder = f.sections.length * 100;
-        });
-        localStorage.setItem(LS_KEY, JSON.stringify(forms));
       }
+      // Migration: backfill globalOrder on sections for ALL forms; remap SC orders into unified space
+      forms.forEach(f => {
+        const missesGlobalOrder = f.sections.some(s => (s as FormSection & { globalOrder?: number }).globalOrder == null);
+        if (missesGlobalOrder) {
+          f.sections.forEach((s, i) => {
+            if ((s as FormSection & { globalOrder?: number }).globalOrder == null)
+              (s as FormSection).globalOrder = i * 100;
+          });
+          const maxSectionOrder = f.sections.reduce((m, s) => Math.max(m, s.globalOrder ?? 0), 0);
+          const sortedScs = [...f.systemComponents].sort((a, b) => a.order - b.order);
+          sortedScs.forEach((sc, i) => { sc.order = maxSectionOrder + (i + 1) * 100; });
+          f.systemComponents = sortedScs;
+        }
+        // Ensure migration-added s13 has a valid globalOrder (use nullish, not falsy, to allow 0)
+        const s13 = f.sections.find(s => s.id === "s13");
+        if (s13 && (s13 as FormSection & { globalOrder?: number }).globalOrder == null)
+          s13.globalOrder = f.sections.length * 100;
+      });
+      localStorage.setItem(LS_KEY, JSON.stringify(forms));
       return forms;
     }
   } catch { /**/ }
