@@ -137,6 +137,21 @@ export function loadForms(): SpecialtyForm[] {
         }
         // Remove old s3 (History 2)
         asif.sections = asif.sections.filter(s => s.id !== "s3");
+        // Migration: patch s5 Physical Examination → multiselect
+        const s5 = asif.sections.find(s => s.id === "s5");
+        if (s5) {
+          const f5 = s5.fields.find(f => f.id === "f5");
+          if (!f5 || f5.type !== "multiselect") {
+            s5.fields = [{ id: "f5", label: "Physical Examination", type: "multiselect", placeholder: "Select examination findings…", allowOther: true, selectionStyle: "simple", options: [
+              "The Physical Examination is normal",
+              "Bilateral Crackles", "Bilateral Wheezing", "Clear Nasal Discharge",
+              "Dry Skin in General", "Eczematous Rashes", "Erythematous Conjunctiva",
+              "Erythematous Throat with Post Nasal Drip", "Nasal Congestion", "Post Nasal Drip",
+              "Swelling of Lips and Face", "Urticarial Rashes",
+              "Wheezing on the Left Side", "Wheezing on the Right",
+            ] }];
+          }
+        }
         localStorage.setItem(LS_KEY, JSON.stringify(forms));
       }
       return forms;
@@ -254,10 +269,22 @@ const SEED_FORMS: SpecialtyForm[] = [
       },
       {
         id: "s5", title: "Physical Examination", description: "",
-        fields: [
-          { id: "f5", label: "General Appearance", type: "text", placeholder: "Alert, oriented, well-nourished...", options: [] },
-          { id: "f6", label: "Examination Findings", type: "textarea", placeholder: "Systemic examination findings...", options: [] },
-        ],
+        fields: [{ id: "f5", label: "Physical Examination", type: "multiselect", placeholder: "Select examination findings…", allowOther: true, selectionStyle: "simple", options: [
+          "The Physical Examination is normal",
+          "Bilateral Crackles",
+          "Bilateral Wheezing",
+          "Clear Nasal Discharge",
+          "Dry Skin in General",
+          "Eczematous Rashes",
+          "Erythematous Conjunctiva",
+          "Erythematous Throat with Post Nasal Drip",
+          "Nasal Congestion",
+          "Post Nasal Drip",
+          "Swelling of Lips and Face",
+          "Urticarial Rashes",
+          "Wheezing on the Left Side",
+          "Wheezing on the Right",
+        ] }],
       },
       {
         id: "s6", title: "Red Flags", description: "Check all red flag signs that are present",
