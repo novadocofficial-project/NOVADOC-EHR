@@ -113,7 +113,7 @@ export function loadForms(): SpecialtyForm[] {
         if (s2 && s2.title !== "History") {
           s2.title = "History";
           s2.description = "";
-          s2.fields = [{ id: "f2", label: "Patient History", type: "multiselect", placeholder: "Select patient history…", selectionStyle: "simple", options: [
+          s2.fields = [{ id: "f2", label: "Patient History", type: "multiselect", placeholder: "Select patient history…", allowOther: true, selectionStyle: "simple", options: [
             "Allergy to Food", "Allergy to Medicine", "Anxiety", "Anxiety and Depression",
             "Chest Congestion", "Cough With Clear Sputum", "Cough with Wheezing",
             "Difficulty in Breathing", "Dry Cough Due to Throat Irritation", "Eczematous Rashes",
@@ -189,7 +189,7 @@ const SEED_FORMS: SpecialtyForm[] = [
       },
       {
         id: "s2", title: "History", description: "",
-        fields: [{ id: "f2", label: "Patient History", type: "multiselect", placeholder: "Select patient history…", selectionStyle: "simple", options: [
+        fields: [{ id: "f2", label: "Patient History", type: "multiselect", placeholder: "Select patient history…", allowOther: true, selectionStyle: "simple", options: [
           "Allergy to Food",
           "Allergy to Medicine",
           "Anxiety",
