@@ -1017,7 +1017,7 @@ function FormBuilder({
         {/* ── Left: Section list ── */}
         <div className="flex w-52 flex-none flex-col border-r border-slate-200 bg-slate-50 overflow-hidden">
           <div className="flex flex-none items-center justify-between border-b border-slate-200 px-3 py-2.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Sections</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Layout</span>
             <Button
               variant="ghost" size="icon"
               className="h-6 w-6 hover:bg-[#4982CF]/10"
@@ -1030,44 +1030,68 @@ function FormBuilder({
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {form.sections.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-                <p className="text-center text-[11px]">No sections yet.<br />Click + to add one.</p>
-              </div>
-            ) : form.sections.map((sec, idx) => (
-              <div
-                key={sec.id}
-                onClick={() => { setSelectedSectionId(sec.id); setActiveTab("fields"); }}
-                className={`group flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-2 transition-colors ${selectedSectionId === sec.id ? "border-[#4982CF]/25 bg-[#4982CF]/10" : "border-transparent hover:border-slate-200 hover:bg-white"}`}
-              >
-                <GripVertical className="h-3.5 w-3.5 shrink-0 text-slate-300" />
-                <span className={`flex-1 truncate text-xs font-medium ${selectedSectionId === sec.id ? "text-[#4982CF]" : "text-slate-700"}`}>
-                  {idx + 1}. {sec.title}
-                </span>
-                <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
-                  <button
-                    onClick={e => { e.stopPropagation(); moveSection(sec.id, -1); }}
-                    className="text-slate-400 hover:text-slate-600 disabled:opacity-30"
-                    disabled={idx === 0}
-                  >
-                    <ArrowUp className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); moveSection(sec.id, 1); }}
-                    className="text-slate-400 hover:text-slate-600 disabled:opacity-30"
-                    disabled={idx === form.sections.length - 1}
-                  >
-                    <ArrowDown className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); deleteSection(sec.id); }}
-                    className="text-slate-400 hover:text-rose-600"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-            ))}
+            {(() => {
+              const enabledSCs = form.systemComponents ?? [];
+              const unified = [
+                ...form.sections.map(s => ({ type: "section" as const, id: s.id, pos: s.globalOrder })),
+                ...enabledSCs.map(sc => ({ type: "sc" as const, id: sc.id, pos: sc.order })),
+              ].sort((a, b) => a.pos - b.pos);
+              const sectionNumbers = Object.fromEntries(
+                [...form.sections].sort((a, b) => a.globalOrder - b.globalOrder).map((s, i) => [s.id, i + 1])
+              );
+              if (unified.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                    <p className="text-center text-[11px]">No sections yet.<br />Click + to add one.</p>
+                  </div>
+                );
+              }
+              return unified.map((item, idx) => {
+                const isFirst = idx === 0;
+                const isLast = idx === unified.length - 1;
+                if (item.type === "section") {
+                  const sec = form.sections.find(s => s.id === item.id)!;
+                  return (
+                    <div
+                      key={sec.id}
+                      onClick={() => { setSelectedSectionId(sec.id); setActiveTab("fields"); }}
+                      className={`group flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-2 transition-colors ${selectedSectionId === sec.id ? "border-[#4982CF]/25 bg-[#4982CF]/10" : "border-transparent hover:border-slate-200 hover:bg-white"}`}
+                    >
+                      <GripVertical className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+                      <span className={`flex-1 truncate text-xs font-medium ${selectedSectionId === sec.id ? "text-[#4982CF]" : "text-slate-700"}`}>
+                        {sectionNumbers[sec.id]}. {sec.title}
+                      </span>
+                      <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
+                        <button onClick={e => { e.stopPropagation(); moveInLayout(sec.id, "section", -1); }} className="text-slate-400 hover:text-slate-600 disabled:opacity-30" disabled={isFirst}><ArrowUp className="h-3 w-3" /></button>
+                        <button onClick={e => { e.stopPropagation(); moveInLayout(sec.id, "section", 1); }} className="text-slate-400 hover:text-slate-600 disabled:opacity-30" disabled={isLast}><ArrowDown className="h-3 w-3" /></button>
+                        <button onClick={e => { e.stopPropagation(); deleteSection(sec.id); }} className="text-slate-400 hover:text-rose-600"><X className="h-3 w-3" /></button>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  const comp = SYSTEM_COMPONENTS.find(c => c.id === item.id);
+                  if (!comp) return null;
+                  return (
+                    <div
+                      key={`sc-${item.id}`}
+                      onClick={() => setActiveTab("system-components")}
+                      className="group flex cursor-pointer items-center gap-1.5 rounded-lg border border-l-2 border-transparent px-2.5 py-2 transition-colors hover:bg-white"
+                      style={{ borderLeftColor: `${comp.color}60` }}
+                    >
+                      <div className="h-3.5 w-3.5 flex-shrink-0 flex items-center justify-center">
+                        <comp.icon className="h-3 w-3" style={{ color: comp.color }} />
+                      </div>
+                      <span className="flex-1 truncate text-xs font-medium text-slate-500">{comp.label}</span>
+                      <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
+                        <button onClick={e => { e.stopPropagation(); moveInLayout(item.id, "sc", -1); }} className="text-slate-400 hover:text-slate-600 disabled:opacity-30" disabled={isFirst}><ArrowUp className="h-3 w-3" /></button>
+                        <button onClick={e => { e.stopPropagation(); moveInLayout(item.id, "sc", 1); }} className="text-slate-400 hover:text-slate-600 disabled:opacity-30" disabled={isLast}><ArrowDown className="h-3 w-3" /></button>
+                        <button onClick={e => { e.stopPropagation(); toggleSystemComponent(item.id); }} className="text-slate-400 hover:text-rose-500"><X className="h-3 w-3" /></button>
+                      </div>
+                    </div>
+                  );
+                }
+              });
+            })()}
           </div>
 
           <div className="flex-none border-t border-slate-200 p-2">
@@ -1163,65 +1187,9 @@ function FormBuilder({
                   </div>
                 </div>
 
-                {/* Note Layout — unified ordered list */}
-                {(form.sections.length > 0 || (form.systemComponents ?? []).length > 0) && (() => {
-                  const unified = [
-                    ...form.sections.map(s => ({ type: "section" as const, id: s.id, pos: s.globalOrder, label: s.title, comp: null as null })),
-                    ...(form.systemComponents ?? []).map(sc => {
-                      const comp = SYSTEM_COMPONENTS.find(c => c.id === sc.id) ?? null;
-                      return { type: "sc" as const, id: sc.id, pos: sc.order, label: comp?.label ?? sc.id, comp };
-                    }),
-                  ].sort((a, b) => a.pos - b.pos);
-                  return (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Note Layout</p>
-                        <span className="text-[9px] font-normal text-slate-300 normal-case tracking-normal">— use arrows to interleave</span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 leading-relaxed">
-                        Drag system components between custom sections to set their position in the clinical note.
-                      </p>
-                      <div className="space-y-1.5">
-                        {unified.map((item, idx) => {
-                          const isFirst = idx === 0;
-                          const isLast  = idx === unified.length - 1;
-                          if (item.type === "section") {
-                            return (
-                              <div key={`sec-${item.id}`} className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                                <div className="h-6 w-6 rounded-md bg-slate-200/80 flex items-center justify-center flex-shrink-0">
-                                  <Layers className="h-3.5 w-3.5 text-slate-500" />
-                                </div>
-                                <span className="flex-1 text-xs font-semibold text-slate-600">{item.label}</span>
-                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-500 flex-shrink-0">Section</span>
-                                <div className="flex items-center gap-0.5 flex-shrink-0">
-                                  <button onClick={() => moveInLayout(item.id, "section", -1)} disabled={isFirst} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed"><ArrowUp className="h-3 w-3" /></button>
-                                  <button onClick={() => moveInLayout(item.id, "section", 1)} disabled={isLast}  className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed"><ArrowDown className="h-3 w-3" /></button>
-                                </div>
-                              </div>
-                            );
-                          } else {
-                            const comp = item.comp;
-                            if (!comp) return null;
-                            return (
-                              <div key={`sc-${item.id}`} className="flex items-center gap-2.5 rounded-xl border border-[#4982CF]/25 bg-[#4982CF]/5 px-3 py-2.5">
-                                <div className="h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${comp.color}18` }}>
-                                  <comp.icon className="h-3.5 w-3.5" style={{ color: comp.color }} />
-                                </div>
-                                <span className="flex-1 text-xs font-semibold text-slate-700">{comp.label}</span>
-                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: `${comp.color}15`, color: comp.color }}>System</span>
-                                <div className="flex items-center gap-0.5 flex-shrink-0">
-                                  <button onClick={() => moveInLayout(item.id, "sc", -1)} disabled={isFirst} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed"><ArrowUp className="h-3 w-3" /></button>
-                                  <button onClick={() => moveInLayout(item.id, "sc", 1)} disabled={isLast}  className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed"><ArrowDown className="h-3 w-3" /></button>
-                                  <button onClick={() => toggleSystemComponent(item.id)} className="p-1 text-slate-400 hover:text-rose-500 transition-colors" title="Remove"><X className="h-3 w-3" /></button>
-                                </div>
-                              </div>
-                            );
-                          }
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Enabled components appear in the sidebar on the left — reorder them there alongside your sections.
+                </p>
               </div>
             </div>
           ) : activeTab === "fields" ? (
