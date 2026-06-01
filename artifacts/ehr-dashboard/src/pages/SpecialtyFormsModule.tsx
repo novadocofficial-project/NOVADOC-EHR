@@ -137,6 +137,20 @@ export function loadForms(): SpecialtyForm[] {
         }
         // Remove old s3 (History 2)
         asif.sections = asif.sections.filter(s => s.id !== "s3");
+        // Migration: patch s8 Investigations f9 → multiselect
+        const s8 = asif.sections.find(s => s.id === "s8");
+        if (s8) {
+          const f9 = s8.fields.find(f => f.id === "f9");
+          if (!f9 || f9.type !== "multiselect") {
+            s8.fields = [{ id: "f9", label: "Investigations Required", type: "multiselect", placeholder: "Select investigations…", allowOther: true, selectionStyle: "simple", options: [
+              "CBC", "Chest X-Ray", "CRP", "CT Scan of the Sinus",
+              "Environmental Allergy Blood Test", "Environmental Allergy Intra Dermal Skin Test",
+              "Environmental Allergy Skin Prick Test", "Food Allergy Blood Test",
+              "Food Allergy Skin Prick Tests", "GGT", "IgA and IgG levels", "IgE",
+              "LFTs", "PFT'S", "Sinus X-Ray", "TSH", "Vit B12", "Vit D",
+            ] }];
+          }
+        }
         // Migration: patch s7 Provisional Diagnosis f8 → multiselect
         const s7 = asif.sections.find(s => s.id === "s7");
         if (s7) {
@@ -345,7 +359,26 @@ const SEED_FORMS: SpecialtyForm[] = [
       },
       {
         id: "s8", title: "Investigations", description: "",
-        fields: [{ id: "f9", label: "Investigations Required", type: "textarea", placeholder: "List required lab, imaging, or other investigations...", options: [] }],
+        fields: [{ id: "f9", label: "Investigations Required", type: "multiselect", placeholder: "Select investigations…", allowOther: true, selectionStyle: "simple", options: [
+          "CBC",
+          "Chest X-Ray",
+          "CRP",
+          "CT Scan of the Sinus",
+          "Environmental Allergy Blood Test",
+          "Environmental Allergy Intra Dermal Skin Test",
+          "Environmental Allergy Skin Prick Test",
+          "Food Allergy Blood Test",
+          "Food Allergy Skin Prick Tests",
+          "GGT",
+          "IgA and IgG levels",
+          "IgE",
+          "LFTs",
+          "PFT'S",
+          "Sinus X-Ray",
+          "TSH",
+          "Vit B12",
+          "Vit D",
+        ] }],
       },
       {
         id: "s9", title: "General Measures", description: "",
