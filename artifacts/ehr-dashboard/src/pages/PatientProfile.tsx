@@ -700,7 +700,7 @@ export function PatientProfile() {
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <div className="flex-none bg-white border-b border-slate-200 shadow-sm z-20">
         <QueueAppHeader />
-        <div className="flex items-center px-6 py-2">
+        <div className="flex items-center px-6 py-1">
           <button
             onClick={() => history.back()}
             className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
