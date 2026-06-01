@@ -700,14 +700,6 @@ export function PatientProfile() {
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <div className="flex-none bg-white border-b border-slate-200 shadow-sm z-20">
         <QueueAppHeader />
-        <div className="flex items-center px-6 py-1">
-          <button
-            onClick={() => history.back()}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back
-          </button>
-        </div>
       </div>
 
       {/* ── Body: two-panel ─────────────────────────────────────────────────── */}
@@ -718,8 +710,18 @@ export function PatientProfile() {
 
           {/* ── Fixed top: identity + demographics + print cards ── */}
           <div className="flex-none">
+            {/* Back button */}
+            <div className="px-4 pt-3 pb-1">
+              <button
+                onClick={() => history.back()}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Back
+              </button>
+            </div>
+
             {/* Avatar + identity */}
-            <div className="flex flex-col items-center px-5 pt-6 pb-4">
+            <div className="flex flex-col items-center px-5 pt-3 pb-4">
               <div
                 className="h-20 w-20 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-sm"
                 style={{ backgroundColor: bg }}
