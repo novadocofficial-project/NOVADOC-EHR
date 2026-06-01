@@ -600,11 +600,12 @@ function TimerPill({ label, timer }: { label: string; timer: ReturnType<typeof u
 // ─── Specialty Form Renderer ──────────────────────────────────────────────────
 
 function MultiSelectFieldInput({
-  options, allowOther, placeholder, selected, onChange,
+  options, allowOther, placeholder, selectionStyle = "ranked", selected, onChange,
 }: {
   options: string[];
   allowOther?: boolean;
   placeholder?: string;
+  selectionStyle?: "ranked" | "simple";
   selected: string[];
   onChange: (v: string[]) => void;
 }) {
@@ -750,7 +751,24 @@ function MultiSelectFieldInput({
         document.body
       )}
 
-      {selected.length > 0 && (
+      {selected.length > 0 && selectionStyle === "simple" && (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {selected.map(item => (
+            <span
+              key={item}
+              className="flex items-center gap-1.5 rounded-full border border-[#4982CF]/30 bg-blue-50 px-2.5 py-1 text-xs font-medium text-[#4982CF]">
+              {item}
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); remove(item); }}
+                className="text-[#4982CF]/50 hover:text-[#4982CF] transition-colors">
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {selected.length > 0 && selectionStyle === "ranked" && (
         <div className="mt-3 space-y-1.5">
           {selected.map((item, idx) => {
             const isPrimary  = idx === 0;
@@ -911,6 +929,7 @@ function SpecialtyFormPanel({
                     options={field.options}
                     allowOther={field.allowOther}
                     placeholder={field.placeholder}
+                    selectionStyle={field.selectionStyle}
                     selected={(data[field.id] as string[]) ?? []}
                     onChange={v => update(field.id, v)}
                   />

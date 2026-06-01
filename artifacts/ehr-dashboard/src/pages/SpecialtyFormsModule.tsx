@@ -40,6 +40,7 @@ export type FormField = {
   ratingMin?: number;
   ratingMax?: number;
   allowOther?: boolean;
+  selectionStyle?: "ranked" | "simple";
 };
 
 export type FormSection = {
@@ -92,16 +93,19 @@ export function loadForms(): SpecialtyForm[] {
         const s4 = asif.sections.find(s => s.id === "s4");
         if (s4) {
           const f4 = s4.fields.find(f => f.id === "f4");
-          if (f4 && f4.type === "textarea") {
-            f4.type = "multiselect";
-            f4.placeholder = "Select medications…";
-            f4.allowOther = true;
-            f4.options = [
-              "Rigix (Cetirizine)", "Telfast (Fexofenadine)", "Kestine (Ebastine)",
-              "Myteka (Montelukast)", "Hivate (Mometesone)", "Flixonose (Fluticasone)",
-              "Nebulized Treatment", "Ventolin Inhaler", "Foster Inhaler",
-              "Seretide Inhaler", "Combivair", "T-Day 5mg", "T-Day 10mg",
-            ];
+          if (f4) {
+            if (f4.type === "textarea") {
+              f4.type = "multiselect";
+              f4.placeholder = "Select medications…";
+              f4.allowOther = true;
+              f4.options = [
+                "Rigix (Cetirizine)", "Telfast (Fexofenadine)", "Kestine (Ebastine)",
+                "Myteka (Montelukast)", "Hivate (Mometesone)", "Flixonose (Fluticasone)",
+                "Nebulized Treatment", "Ventolin Inhaler", "Foster Inhaler",
+                "Seretide Inhaler", "Combivair", "T-Day 5mg", "T-Day 10mg",
+              ];
+            }
+            if (!f4.selectionStyle) f4.selectionStyle = "simple";
           }
         }
         localStorage.setItem(LS_KEY, JSON.stringify(forms));
@@ -164,7 +168,7 @@ const SEED_FORMS: SpecialtyForm[] = [
       },
       {
         id: "s4", title: "Current Medicine", description: "",
-        fields: [{ id: "f4", label: "Current Medications", type: "multiselect", placeholder: "Select medications…", allowOther: true, options: [
+        fields: [{ id: "f4", label: "Current Medications", type: "multiselect", placeholder: "Select medications…", allowOther: true, selectionStyle: "simple", options: [
           "Rigix (Cetirizine)",
           "Telfast (Fexofenadine)",
           "Kestine (Ebastine)",
@@ -968,6 +972,26 @@ function FieldEditor({
                 Allow "Other" — free-text entry if no option matches
               </span>
             </label>
+            {field.type === "multiselect" && (
+              <div className="space-y-1.5 pt-0.5">
+                <Label className="text-[11px] font-semibold text-slate-500">Selection Style</Label>
+                <div className="flex gap-2">
+                  {(["ranked", "simple"] as const).map(style => (
+                    <button
+                      key={style}
+                      type="button"
+                      onClick={() => onChange({ selectionStyle: style })}
+                      className={`flex-1 rounded-lg border py-1.5 text-[11px] font-semibold transition-all ${
+                        (field.selectionStyle ?? "ranked") === style
+                          ? "bg-[#4982CF] border-[#4982CF] text-white"
+                          : "border-slate-200 text-slate-500 hover:border-[#4982CF]/40"
+                      }`}>
+                      {style === "ranked" ? "Ranked (primary + reorder)" : "Simple tags"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
