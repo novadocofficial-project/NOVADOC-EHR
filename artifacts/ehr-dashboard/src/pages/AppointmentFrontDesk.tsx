@@ -2084,6 +2084,7 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
           <tr className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Slot / Time</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Patient Name</th>
+            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Appointment ID</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Appointment Type</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Priority</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Waiting Time</th>
@@ -2111,6 +2112,9 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
                   {appt.patientMrn && (
                     <p className="text-xs text-slate-400 mt-0.5 font-mono">{appt.patientMrn}</p>
                   )}
+                </td>
+                <td className="px-4 py-3">
+                  <span className="text-xs font-mono text-slate-500">{appt.id}</span>
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {appt.type || <span className="text-slate-300">—</span>}
