@@ -582,10 +582,9 @@ function QuickActions({ onEdit, onComingSoon }: { onEdit: () => void; onComingSo
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-type DrawerKey =
-  | "health" | "files" | "labs" | "radiology"
-  | "family" | "invoices" | "allergies" | "vitals" | "meds"
-  | null;
+type TabId =
+  | "overview" | "health" | "labs" | "radiology" | "files"
+  | "medications" | "allergies" | "vitals" | "family" | "invoices";
 
 export function PatientProfile() {
   const { id }        = useParams<{ id: string }>();
@@ -600,7 +599,7 @@ export function PatientProfile() {
     allergies, medicines, labOrders, imagingOrders, fhRows, vitals,
   } = usePatientProfile(patient?.mrn ?? "");
 
-  const [openDrawer, setOpenDrawer] = useState<DrawerKey>(null);
+  const [activeTab,  setActiveTab]  = useState<TabId>("overview");
   const [showEdit,   setShowEdit]   = useState(false);
   const [printMode,  setPrintMode]  = useState<"registration" | "family" | null>(null);
 
@@ -646,267 +645,336 @@ export function PatientProfile() {
     );
   }
 
-  const age          = calcAge(patient.dob);
-  const inits        = initials(patient.name);
-  const bg           = avatarColor(patient.name);
-  const labCount     = labOrders.filter(lo => !lo.voided).reduce((s, lo) => s + lo.tests.length, 0);
-  const radCount     = imagingOrders.length;
-  const invoiceCount = appointments.filter(a => invoices[a.id]).length;
-  const visitCount   = visits.reduce((s, v) => s + v.signedRecords.length, 0) + appointments.length;
+  const age           = calcAge(patient.dob);
+  const inits         = initials(patient.name);
+  const bg            = avatarColor(patient.name);
+  const labCount      = labOrders.filter(lo => !lo.voided).reduce((s, lo) => s + lo.tests.length, 0);
+  const radCount      = imagingOrders.length;
+  const invoiceCount  = appointments.filter(a => invoices[a.id]).length;
+  const visitCount    = visits.reduce((s, v) => s + v.signedRecords.length, 0) + appointments.length;
+  const filledFh      = fhRows.filter(r => r.condition || r.relation);
+
+  const allDates = [
+    ...visits.flatMap(v => v.signedRecords.map(sr => sr.date)),
+    ...appointments.map(a => a.date),
+  ].filter(Boolean).sort().reverse();
+  const lastVisitDate = allDates[0] ?? null;
+
+  const TABS: { id: TabId; label: string; icon: React.ElementType; color: string; count?: number }[] = [
+    { id: "overview",    label: "Overview",       icon: FileText,     color: "#4982CF" },
+    { id: "health",      label: "Health Records", icon: FileText,     color: "#4982CF", count: visitCount   || undefined },
+    { id: "labs",        label: "Lab Reports",    icon: FlaskConical, color: "#f59e0b", count: labCount     || undefined },
+    { id: "radiology",   label: "Radiology",      icon: Scan,         color: "#0ea5e9", count: radCount     || undefined },
+    { id: "files",       label: "Files",          icon: Folder,       color: "#f59e0b" },
+    { id: "medications", label: "Medications",    icon: Pill,         color: "#8b5cf6", count: medicines.length || undefined },
+    { id: "allergies",   label: "Allergies",      icon: AlertCircle,  color: "#ef4444", count: allergies.length || undefined },
+    { id: "vitals",      label: "Vitals",         icon: Activity,     color: "#8b5cf6", count: vitals.length   || undefined },
+    { id: "family",      label: "Family History", icon: Users,        color: "#ec4899", count: filledFh.length || undefined },
+    { id: "invoices",    label: "Invoices",       icon: Receipt,      color: "#10b981", count: invoiceCount || undefined },
+  ];
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
-      {/* ── Sticky header block ─────────────────────────────────────────────── */}
-      <div className="flex-none bg-slate-50 border-b border-slate-200 shadow-sm z-20">
+
+      {/* ── Top bar ─────────────────────────────────────────────────────────── */}
+      <div className="flex-none bg-white border-b border-slate-200 shadow-sm z-20">
         <QueueAppHeader />
-        {/* Breadcrumb + Print */}
-        <div className="flex items-center gap-3 px-6 py-2.5 max-w-7xl mx-auto w-full">
+        <div className="flex items-center px-6 py-2">
           <button
             onClick={() => history.back()}
             className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </button>
-          <div className="flex-1" />
-          <button
-            onClick={() => setPrintMode("registration")}
-            className="flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
-          >
-            <Printer className="h-3.5 w-3.5" /> Print Registration Card
-          </button>
-          <button
-            onClick={() => setPrintMode("family")}
-            className="flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
-          >
-            <Printer className="h-3.5 w-3.5" /> Print Family Card
-          </button>
         </div>
       </div>
 
-      {/* ── Scrollable content ──────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto">
-      <div className="px-6 py-5 space-y-5 max-w-7xl mx-auto w-full">
+      {/* ── Body: two-panel ─────────────────────────────────────────────────── */}
+      <div className="flex flex-1 overflow-hidden">
 
-        {/* Patient info card */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5">
-          <div className="flex items-start gap-5">
+        {/* ── Left sidebar ────────────────────────────────────────────────── */}
+        <div className="w-56 flex-none flex flex-col border-r border-slate-200 bg-white overflow-y-auto">
+
+          {/* Avatar + identity */}
+          <div className="flex flex-col items-center px-5 pt-6 pb-4">
             <div
-              className="h-20 w-20 rounded-2xl flex items-center justify-center text-white text-2xl font-black flex-shrink-0 shadow-sm"
+              className="h-20 w-20 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-sm"
               style={{ backgroundColor: bg }}
             >
               {inits}
             </div>
+            <p className="mt-3 text-sm font-black text-slate-900 text-center leading-tight">{patient.name}</p>
+            <span
+              className="mt-1.5 text-xs font-black px-2.5 py-0.5 rounded-full text-white"
+              style={{ backgroundColor: ACCENT }}
+            >
+              {patient.mrn}
+            </span>
+          </div>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-4 flex-wrap">
-                <div>
-                  <p className="text-xl font-black text-slate-900 leading-tight">{patient.name}</p>
-                  <p className="text-sm text-slate-500 mt-0.5">
-                    {patient.gender === "M" ? "Male" : "Female"} · {age}
-                  </p>
-                </div>
-                <span
-                  className="text-xs font-black px-3 py-1 rounded-full text-white"
-                  style={{ backgroundColor: ACCENT }}
-                >
-                  {patient.mrn}
-                </span>
+          {/* Demographics */}
+          <div className="px-4 pb-4 space-y-2.5">
+            <div className="flex items-center gap-2.5">
+              <User className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+              <span className="text-xs text-slate-600">{patient.gender === "M" ? "Male" : "Female"} · {age}</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <Phone className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+              <span className="text-xs text-slate-600 truncate">{patient.phone || "—"}</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <Calendar className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+              <span className="text-xs text-slate-600">{patient.dob || "—"}</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <Hash className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+              <span className="text-xs text-slate-400 truncate">{patient.id}</span>
+            </div>
+          </div>
+
+          <div className="mx-4 border-t border-slate-100" />
+
+          {/* Clinical quick-facts */}
+          <div className="px-4 py-4 space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quick Facts</p>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-slate-500">Last Visit</span>
+                <span className="text-xs font-semibold text-slate-700 text-right">{lastVisitDate ?? "—"}</span>
               </div>
-
-              <div className="flex flex-wrap gap-5 mt-3">
-                <div className="flex items-center gap-1.5">
-                  <Phone className="h-3.5 w-3.5 text-slate-400" />
-                  <span className="text-sm text-slate-600">{patient.phone || "—"}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                  <span className="text-sm text-slate-600">DOB: {patient.dob || "—"}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Hash className="h-3.5 w-3.5 text-slate-400" />
-                  <span className="text-sm text-slate-400">{patient.id}</span>
-                </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Medications</span>
+                <span className="text-xs font-semibold text-slate-700">{medicines.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Allergies</span>
+                <span className="text-xs font-semibold text-slate-700">{allergies.length}</span>
               </div>
             </div>
           </div>
+
+          <div className="flex-1" />
+
+          {/* Print buttons */}
+          <div className="px-4 py-4 space-y-2 border-t border-slate-100">
+            <button
+              onClick={() => setPrintMode("registration")}
+              className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <Printer className="h-3.5 w-3.5 flex-shrink-0" />Registration Card
+            </button>
+            <button
+              onClick={() => setPrintMode("family")}
+              className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <Printer className="h-3.5 w-3.5 flex-shrink-0" />Family Card
+            </button>
+          </div>
         </div>
 
-        {/* Quick actions */}
-        <QuickActions onEdit={() => setShowEdit(true)} onComingSoon={comingSoon} />
+        {/* ── Right area ──────────────────────────────────────────────────── */}
+        <div className="flex flex-1 flex-col overflow-hidden">
 
-        {/* 9 Section cards — responsive grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {/* Action bar */}
+          <div className="flex-none px-6 py-3 bg-white border-b border-slate-200">
+            <QuickActions onEdit={() => setShowEdit(true)} onComingSoon={comingSoon} />
+          </div>
 
-          {/* 1. Health Records */}
-          <SectionCard title="Health Records" icon={FileText} color="#4982CF" count={visitCount || undefined} onViewAll={() => setOpenDrawer("health")}>
-            {appointments.slice(0, 3).map((a, i) => (
-              <div key={i} className="flex items-center gap-2 py-0.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-[#4982CF] flex-shrink-0" />
-                <p className="text-xs text-slate-600 truncate flex-1">{a.type || a.specialty || "Visit"}</p>
-                <span className="text-[10px] text-slate-400 flex-shrink-0">{a.date}</span>
+          {/* Tab strip */}
+          <div className="flex-none overflow-x-auto bg-white border-b border-slate-200">
+            <div className="flex min-w-max">
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? "border-[#4982CF] text-[#4982CF]"
+                      : "border-transparent text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  <tab.icon className="h-3.5 w-3.5" />
+                  {tab.label}
+                  {tab.count !== undefined && (
+                    <span
+                      className="text-[10px] font-black px-1.5 py-0.5 rounded-full text-white leading-none"
+                      style={{ backgroundColor: tab.color }}
+                    >
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tab content */}
+          <div className="flex-1 overflow-y-auto bg-slate-50">
+
+            {activeTab === "overview" && (
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+
+                  <SectionCard title="Health Records" icon={FileText} color="#4982CF" count={visitCount || undefined} onViewAll={() => setActiveTab("health")}>
+                    {appointments.slice(0, 3).map((a, i) => (
+                      <div key={i} className="flex items-center gap-2 py-0.5">
+                        <div className="h-1.5 w-1.5 rounded-full bg-[#4982CF] flex-shrink-0" />
+                        <p className="text-xs text-slate-600 truncate flex-1">{a.type || a.specialty || "Visit"}</p>
+                        <span className="text-[10px] text-slate-400 flex-shrink-0">{a.date}</span>
+                      </div>
+                    ))}
+                    {visitCount === 0 && <p className="text-xs text-slate-400 text-center py-3">No records yet</p>}
+                  </SectionCard>
+
+                  <SectionCard title="Recent Files" icon={Folder} color="#f59e0b" onViewAll={() => setActiveTab("files")}>
+                    <p className="text-xs text-slate-400 text-center py-3">No files uploaded</p>
+                  </SectionCard>
+
+                  <SectionCard title="Laboratory Reports" icon={FlaskConical} color="#f59e0b" count={labCount || undefined} onViewAll={() => setActiveTab("labs")}>
+                    {labCount === 0
+                      ? <p className="text-xs text-slate-400 text-center py-3">No lab orders yet</p>
+                      : labOrders.filter(lo => !lo.voided)[0]?.tests.slice(0, 3).map((t, i) => (
+                        <div key={i} className="flex items-center gap-2 py-0.5">
+                          <div className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                          <p className="text-xs text-slate-600 truncate">{t.name}</p>
+                        </div>
+                      ))
+                    }
+                  </SectionCard>
+
+                  <SectionCard title="Radiology Reports" icon={Scan} color="#0ea5e9" count={radCount || undefined} onViewAll={() => setActiveTab("radiology")}>
+                    {imagingOrders.length === 0
+                      ? <p className="text-xs text-slate-400 text-center py-3">No reports yet</p>
+                      : imagingOrders.slice(0, 3).map((io, i) => (
+                        <div key={i} className="flex items-center gap-2 py-0.5">
+                          <div className="h-1.5 w-1.5 rounded-full bg-sky-400 flex-shrink-0" />
+                          <p className="text-xs text-slate-600 truncate">{io.testName}</p>
+                        </div>
+                      ))
+                    }
+                  </SectionCard>
+
+                  <SectionCard title="Family History" icon={Users} color="#ec4899" count={filledFh.length || undefined} onViewAll={() => setActiveTab("family")}>
+                    {filledFh.length === 0
+                      ? <p className="text-xs text-slate-400 text-center py-3">No family history</p>
+                      : filledFh.slice(0, 3).map((row, i) => (
+                        <div key={i} className="flex items-start gap-2 py-0.5">
+                          <Users className="h-3 w-3 text-rose-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-slate-600 leading-snug line-clamp-1">{row.condition}{row.relation ? ` · ${row.relation}` : ""}</p>
+                        </div>
+                      ))
+                    }
+                  </SectionCard>
+
+                  <SectionCard title="Invoices" icon={Receipt} color="#10b981" count={invoiceCount || undefined} onViewAll={() => setActiveTab("invoices")}>
+                    {invoiceCount === 0
+                      ? <p className="text-xs text-slate-400 text-center py-3">No invoices yet</p>
+                      : appointments.filter(a => invoices[a.id]).slice(0, 3).map((a, i) => {
+                        const r = invoices[a.id] as ReceiptInfo;
+                        return (
+                          <div key={i} className="flex items-center gap-2 py-0.5">
+                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                            <p className="text-xs text-slate-600 flex-1 truncate">#{r.invNo}</p>
+                            <span className="text-[11px] font-bold text-emerald-600">PKR {r.total?.toLocaleString()}</span>
+                          </div>
+                        );
+                      })
+                    }
+                  </SectionCard>
+
+                  <SectionCard title="Allergies" icon={AlertCircle} color="#ef4444" count={allergies.length || undefined} onViewAll={() => setActiveTab("allergies")}>
+                    {allergies.length === 0
+                      ? <p className="text-xs text-slate-400 text-center py-3">No allergies recorded</p>
+                      : allergies.slice(0, 3).map((a, i) => (
+                        <div key={i} className="flex items-center gap-2 py-0.5">
+                          <div className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: SEV_COLOR[a.severity] ?? "#94a3b8" }} />
+                          <p className="text-xs text-slate-700 truncate flex-1 font-medium">{(a as { name?: string }).name ?? "—"}</p>
+                          <span className="text-[9px] font-black flex-shrink-0" style={{ color: SEV_COLOR[a.severity] ?? "#94a3b8" }}>
+                            {a.severity}
+                          </span>
+                        </div>
+                      ))
+                    }
+                  </SectionCard>
+
+                  <SectionCard title="Vital Trends" icon={Activity} color="#8b5cf6" count={vitals.length || undefined} onViewAll={() => setActiveTab("vitals")}>
+                    {vitals.length === 0
+                      ? <p className="text-xs text-slate-400 text-center py-3">No vitals recorded yet</p>
+                      : vitals.slice(-3).reverse().map((v, i) => (
+                        <div key={i} className="flex items-center gap-2 py-0.5 text-xs">
+                          <span className="text-slate-400 w-16 flex-shrink-0">{v.date}</span>
+                          {v.bpSystolic && <span className="text-red-600 font-semibold">{v.bpSystolic}/{v.bpDiastolic} mmHg</span>}
+                          {v.pulse && <span className="text-purple-600 font-semibold ml-1">{v.pulse} bpm</span>}
+                        </div>
+                      ))
+                    }
+                  </SectionCard>
+
+                  <SectionCard title="Patient Medications" icon={Pill} color="#8b5cf6" count={medicines.length || undefined} onViewAll={() => setActiveTab("medications")}>
+                    {medicines.length === 0
+                      ? <p className="text-xs text-slate-400 text-center py-3">No medications prescribed</p>
+                      : medicines.slice(0, 3).map((m, i) => (
+                        <div key={i} className="flex items-center gap-2 py-0.5">
+                          <Pill className="h-3 w-3 text-purple-400 flex-shrink-0" />
+                          <p className="text-xs text-slate-700 truncate flex-1">{m.genericName}</p>
+                        </div>
+                      ))
+                    }
+                  </SectionCard>
+
+                </div>
               </div>
-            ))}
-            {visitCount === 0 && <p className="text-xs text-slate-400 text-center py-3">No records yet</p>}
-          </SectionCard>
+            )}
 
-          {/* 2. Recent Files */}
-          <SectionCard title="Recent Files" icon={Folder} color="#f59e0b" onViewAll={() => setOpenDrawer("files")}>
-            <p className="text-xs text-slate-400 text-center py-3">No files uploaded</p>
-          </SectionCard>
+            {activeTab === "health" && (
+              <div className="p-6 max-w-2xl">
+                <HealthRecordsContent appointments={appointments} visits={visits} />
+              </div>
+            )}
+            {activeTab === "labs" && (
+              <div className="p-6 max-w-2xl">
+                <LabReportsContent labOrders={labOrders} />
+              </div>
+            )}
+            {activeTab === "radiology" && (
+              <div className="p-6 max-w-2xl">
+                <RadiologyContent imagingOrders={imagingOrders} />
+              </div>
+            )}
+            {activeTab === "files" && (
+              <div className="p-6 max-w-2xl">
+                <FilesContent />
+              </div>
+            )}
+            {activeTab === "medications" && (
+              <div className="p-6 max-w-2xl">
+                <MedicationsContent medicines={medicines} />
+              </div>
+            )}
+            {activeTab === "allergies" && (
+              <div className="p-6 max-w-2xl">
+                <AllergiesContent allergies={allergies} />
+              </div>
+            )}
+            {activeTab === "vitals" && (
+              <div className="p-6">
+                <VitalsContent vitals={vitals} />
+              </div>
+            )}
+            {activeTab === "family" && (
+              <div className="p-6 max-w-2xl">
+                <FamilyHistoryContent fhRows={fhRows} />
+              </div>
+            )}
+            {activeTab === "invoices" && (
+              <div className="p-6 max-w-2xl">
+                <InvoicesContent appointments={appointments} invoices={invoices} />
+              </div>
+            )}
 
-          {/* 3. Laboratory Reports */}
-          <SectionCard title="Laboratory Reports" icon={FlaskConical} color="#f59e0b" count={labCount || undefined} onViewAll={() => setOpenDrawer("labs")}>
-            {labCount === 0
-              ? <p className="text-xs text-slate-400 text-center py-3">No lab orders yet</p>
-              : labOrders.filter(lo => !lo.voided)[0]?.tests.slice(0, 3).map((t, i) => (
-                <div key={i} className="flex items-center gap-2 py-0.5">
-                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                  <p className="text-xs text-slate-600 truncate">{t.name}</p>
-                </div>
-              ))
-            }
-          </SectionCard>
-
-          {/* 4. Radiology Reports */}
-          <SectionCard title="Radiology Reports" icon={Scan} color="#0ea5e9" count={radCount || undefined} onViewAll={() => setOpenDrawer("radiology")}>
-            {imagingOrders.length === 0
-              ? <p className="text-xs text-slate-400 text-center py-3">No reports yet</p>
-              : imagingOrders.slice(0, 3).map((io, i) => (
-                <div key={i} className="flex items-center gap-2 py-0.5">
-                  <div className="h-1.5 w-1.5 rounded-full bg-sky-400 flex-shrink-0" />
-                  <p className="text-xs text-slate-600 truncate">{io.testName}</p>
-                </div>
-              ))
-            }
-          </SectionCard>
-
-          {/* 5. Family History */}
-          {(() => {
-            const filledFh = fhRows.filter(r => r.condition || r.relation);
-            return (
-              <SectionCard title="Family History" icon={Users} color="#ec4899" count={filledFh.length || undefined} onViewAll={() => setOpenDrawer("family")}>
-                {filledFh.length === 0
-                  ? <p className="text-xs text-slate-400 text-center py-3">No family history</p>
-                  : filledFh.slice(0, 3).map((row, i) => (
-                    <div key={i} className="flex items-start gap-2 py-0.5">
-                      <Users className="h-3 w-3 text-rose-400 flex-shrink-0 mt-0.5" />
-                      <p className="text-xs text-slate-600 leading-snug line-clamp-1">{row.condition}{row.relation ? ` · ${row.relation}` : ""}</p>
-                    </div>
-                  ))
-                }
-              </SectionCard>
-            );
-          })()}
-
-          {/* 6. Invoices */}
-          <SectionCard title="Invoices" icon={Receipt} color="#10b981" count={invoiceCount || undefined} onViewAll={() => setOpenDrawer("invoices")}>
-            {invoiceCount === 0
-              ? <p className="text-xs text-slate-400 text-center py-3">No invoices yet</p>
-              : appointments.filter(a => invoices[a.id]).slice(0, 3).map((a, i) => {
-                const r = invoices[a.id] as ReceiptInfo;
-                return (
-                  <div key={i} className="flex items-center gap-2 py-0.5">
-                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                    <p className="text-xs text-slate-600 flex-1 truncate">#{r.invNo}</p>
-                    <span className="text-[11px] font-bold text-emerald-600">PKR {r.total?.toLocaleString()}</span>
-                  </div>
-                );
-              })
-            }
-          </SectionCard>
-
-          {/* 7. Allergies */}
-          <SectionCard title="Allergies" icon={AlertCircle} color="#ef4444" count={allergies.length || undefined} onViewAll={() => setOpenDrawer("allergies")}>
-            {allergies.length === 0
-              ? <p className="text-xs text-slate-400 text-center py-3">No allergies recorded</p>
-              : allergies.slice(0, 3).map((a, i) => (
-                <div key={i} className="flex items-center gap-2 py-0.5">
-                  <div className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: SEV_COLOR[a.severity] ?? "#94a3b8" }} />
-                  <p className="text-xs text-slate-700 truncate flex-1 font-medium">{a.name}</p>
-                  <span className="text-[9px] font-black flex-shrink-0" style={{ color: SEV_COLOR[a.severity] ?? "#94a3b8" }}>
-                    {a.severity}
-                  </span>
-                </div>
-              ))
-            }
-          </SectionCard>
-
-          {/* 8. Vital Trends */}
-          <SectionCard title="Vital Trends" icon={Activity} color="#8b5cf6" count={vitals.length || undefined} onViewAll={() => setOpenDrawer("vitals")}>
-            {vitals.length === 0
-              ? <p className="text-xs text-slate-400 text-center py-3">No vitals recorded yet</p>
-              : vitals.slice(-3).reverse().map((v, i) => (
-                <div key={i} className="flex items-center gap-2 py-0.5 text-xs">
-                  <span className="text-slate-400 w-16 flex-shrink-0">{v.date}</span>
-                  {v.bpSystolic && <span className="text-red-600 font-semibold">{v.bpSystolic}/{v.bpDiastolic} mmHg</span>}
-                  {v.pulse     && <span className="text-purple-600 font-semibold ml-1">{v.pulse} bpm</span>}
-                </div>
-              ))
-            }
-          </SectionCard>
-
-          {/* 9. Medications */}
-          <SectionCard title="Patient Medications" icon={Pill} color="#8b5cf6" count={medicines.length || undefined} onViewAll={() => setOpenDrawer("meds")}>
-            {medicines.length === 0
-              ? <p className="text-xs text-slate-400 text-center py-3">No medications prescribed</p>
-              : medicines.slice(0, 3).map((m, i) => (
-                <div key={i} className="flex items-center gap-2 py-0.5">
-                  <Pill className="h-3 w-3 text-purple-400 flex-shrink-0" />
-                  <p className="text-xs text-slate-700 truncate flex-1">{m.genericName}</p>
-                </div>
-              ))
-            }
-          </SectionCard>
-
+          </div>
         </div>
       </div>
-
-      {/* Section drawers */}
-      {openDrawer === "health" && (
-        <SectionDrawer title="Health Records" icon={FileText} color="#4982CF" onClose={() => setOpenDrawer(null)}>
-          <HealthRecordsContent appointments={appointments} visits={visits} />
-        </SectionDrawer>
-      )}
-      {openDrawer === "files" && (
-        <SectionDrawer title="Recent Files" icon={Folder} color="#f59e0b" onClose={() => setOpenDrawer(null)}>
-          <FilesContent />
-        </SectionDrawer>
-      )}
-      {openDrawer === "labs" && (
-        <SectionDrawer title="Laboratory Reports" icon={FlaskConical} color="#f59e0b" onClose={() => setOpenDrawer(null)}>
-          <LabReportsContent labOrders={labOrders} />
-        </SectionDrawer>
-      )}
-      {openDrawer === "radiology" && (
-        <SectionDrawer title="Radiology Reports" icon={Scan} color="#0ea5e9" onClose={() => setOpenDrawer(null)}>
-          <RadiologyContent imagingOrders={imagingOrders} />
-        </SectionDrawer>
-      )}
-      {openDrawer === "family" && (
-        <SectionDrawer title="Family History" icon={Users} color="#ec4899" onClose={() => setOpenDrawer(null)}>
-          <FamilyHistoryContent fhRows={fhRows} />
-        </SectionDrawer>
-      )}
-      {openDrawer === "invoices" && (
-        <SectionDrawer title="Invoices" icon={Receipt} color="#10b981" onClose={() => setOpenDrawer(null)}>
-          <InvoicesContent appointments={appointments} invoices={invoices} />
-        </SectionDrawer>
-      )}
-      {openDrawer === "allergies" && (
-        <SectionDrawer title="Allergies" icon={AlertCircle} color="#ef4444" onClose={() => setOpenDrawer(null)}>
-          <AllergiesContent allergies={allergies} />
-        </SectionDrawer>
-      )}
-      {openDrawer === "vitals" && (
-        <SectionDrawer title="Vital Trends" icon={Activity} color="#8b5cf6" onClose={() => setOpenDrawer(null)}>
-          <VitalsContent vitals={vitals} />
-        </SectionDrawer>
-      )}
-      {openDrawer === "meds" && (
-        <SectionDrawer title="Patient Medications" icon={Pill} color="#8b5cf6" onClose={() => setOpenDrawer(null)}>
-          <MedicationsContent medicines={medicines} />
-        </SectionDrawer>
-      )}
 
       {/* Edit Profile */}
       {showEdit && (
@@ -917,7 +985,7 @@ export function PatientProfile() {
         />
       )}
 
-      {/* ── Print cards (screen-hidden, print-visible) ─────────────────────── */}
+      {/* ── Print cards ─────────────────────────────────────────────────────── */}
       {printMode && patient && (
         <>
           <style>{`
@@ -939,8 +1007,6 @@ export function PatientProfile() {
                 </div>
                 <p className="text-xs text-slate-400">{new Date().toLocaleDateString()}</p>
               </div>
-
-              {/* Demographics — always shown */}
               <div className="space-y-1.5 mb-4">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Patient</p>
                 <p className="text-base font-black">{patient.name}</p>
@@ -951,8 +1017,6 @@ export function PatientProfile() {
                   <span><span className="font-semibold">Phone:</span> {patient.phone}</span>
                 </div>
               </div>
-
-              {/* Registration Card extra: allergies */}
               {printMode === "registration" && allergies.length > 0 && (
                 <div className="mt-4 pt-3 border-t border-slate-200">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Allergies</p>
@@ -963,8 +1027,6 @@ export function PatientProfile() {
                   </div>
                 </div>
               )}
-
-              {/* Family Card extra: family history rows */}
               {printMode === "family" && fhRows.length > 0 && (
                 <div className="mt-4 pt-3 border-t border-slate-200">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Family History</p>
@@ -986,7 +1048,6 @@ export function PatientProfile() {
           </div>
         </>
       )}
-      </div>{/* closes flex-1 overflow-y-auto */}
     </div>
   );
 }
