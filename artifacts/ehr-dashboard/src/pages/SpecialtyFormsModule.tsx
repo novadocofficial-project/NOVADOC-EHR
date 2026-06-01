@@ -49,6 +49,7 @@ export type FormSection = {
   title: string;
   description: string;
   fields: FormField[];
+  globalOrder: number;
 };
 
 export type SystemComponentEntry = { id: string; order: number };
@@ -145,7 +146,7 @@ export function loadForms(): SpecialtyForm[] {
         asif.sections = asif.sections.filter(s => s.id !== "s3");
         // Migration: add s13 Follow Up if missing
         if (!asif.sections.find(s => s.id === "s13")) {
-          asif.sections.push({ id: "s13", title: "Follow Up", description: "", fields: [{ id: "f14", label: "Follow Up Date", type: "date", placeholder: "", options: [] }] });
+          asif.sections.push({ id: "s13", title: "Follow Up", description: "", fields: [{ id: "f14", label: "Follow Up Date", type: "date", placeholder: "", options: [] }], globalOrder: asif.sections.length * 100 });
         }
         // Migration: patch s11 Specialist Referrals f12 → multiselect
         const s11 = asif.sections.find(s => s.id === "s11");
@@ -232,6 +233,23 @@ export function loadForms(): SpecialtyForm[] {
             ] }];
           }
         }
+        // Migration: backfill globalOrder on sections; remap system component orders to unified space
+        forms.forEach(f => {
+          const missesGlobalOrder = f.sections.some(s => (s as FormSection & { globalOrder?: number }).globalOrder == null);
+          if (missesGlobalOrder) {
+            f.sections.forEach((s, i) => {
+              if ((s as FormSection & { globalOrder?: number }).globalOrder == null)
+                (s as FormSection).globalOrder = i * 100;
+            });
+            const maxSectionOrder = f.sections.reduce((m, s) => Math.max(m, s.globalOrder ?? 0), 0);
+            const sortedScs = [...f.systemComponents].sort((a, b) => a.order - b.order);
+            sortedScs.forEach((sc, i) => { sc.order = maxSectionOrder + (i + 1) * 100; });
+            f.systemComponents = sortedScs;
+          }
+          // Ensure migration-added s13 has globalOrder
+          const s13 = f.sections.find(s => s.id === "s13");
+          if (s13 && !s13.globalOrder) s13.globalOrder = f.sections.length * 100;
+        });
         localStorage.setItem(LS_KEY, JSON.stringify(forms));
       }
       return forms;
@@ -257,7 +275,7 @@ const SEED_FORMS: SpecialtyForm[] = [
     updatedAt: new Date().toISOString(),
     sections: [
       {
-        id: "s1", title: "Chief Complaint", description: "",
+        id: "s1", title: "Chief Complaint", description: "", globalOrder: 0,
         fields: [{
           id: "f1", label: "Chief Complaint", type: "multiselect", placeholder: "", allowOther: true,
           options: [
@@ -284,7 +302,7 @@ const SEED_FORMS: SpecialtyForm[] = [
         }],
       },
       {
-        id: "s2", title: "History", description: "",
+        id: "s2", title: "History", description: "", globalOrder: 100,
         fields: [{ id: "f2", label: "Patient History", type: "multiselect", placeholder: "Select patient history…", allowOther: true, selectionStyle: "simple", options: [
           "Allergy to Food",
           "Allergy to Medicine",
@@ -331,7 +349,7 @@ const SEED_FORMS: SpecialtyForm[] = [
         ] }],
       },
       {
-        id: "s4", title: "Current Medicine", description: "",
+        id: "s4", title: "Current Medicine", description: "", globalOrder: 200,
         fields: [{ id: "f4", label: "Current Medications", type: "multiselect", placeholder: "Select medications…", allowOther: true, selectionStyle: "simple", options: [
           "Rigix (Cetirizine)",
           "Telfast (Fexofenadine)",
@@ -349,7 +367,7 @@ const SEED_FORMS: SpecialtyForm[] = [
         ] }],
       },
       {
-        id: "s5", title: "Physical Examination", description: "",
+        id: "s5", title: "Physical Examination", description: "", globalOrder: 300,
         fields: [{ id: "f5", label: "Physical Examination", type: "multiselect", placeholder: "Select examination findings…", allowOther: true, selectionStyle: "simple", options: [
           "The Physical Examination is normal",
           "Bilateral Crackles",
@@ -368,14 +386,14 @@ const SEED_FORMS: SpecialtyForm[] = [
         ] }],
       },
       {
-        id: "s6", title: "Red Flags", description: "Check all red flag signs that are present",
+        id: "s6", title: "Red Flags", description: "Check all red flag signs that are present", globalOrder: 400,
         fields: [{
           id: "f7", label: "Red Flag Signs", type: "checkbox-group", placeholder: "",
           options: ["Anaphylaxis", "Severe dyspnea", "Angioedema", "Hypotension", "Loss of consciousness", "High-grade fever (> 39°C)"],
         }],
       },
       {
-        id: "s7", title: "Provisional Diagnosis", description: "",
+        id: "s7", title: "Provisional Diagnosis", description: "", globalOrder: 500,
         fields: [{ id: "f8", label: "Diagnosis", type: "multiselect", placeholder: "Select diagnosis…", allowOther: true, selectionStyle: "simple", options: [
           "Airway Disease (Unspecified) — J98.9",
           "Allergic Conjunctivitis — H10.13",
@@ -405,7 +423,7 @@ const SEED_FORMS: SpecialtyForm[] = [
         ] }],
       },
       {
-        id: "s8", title: "Investigations", description: "",
+        id: "s8", title: "Investigations", description: "", globalOrder: 600,
         fields: [{ id: "f9", label: "Investigations Required", type: "multiselect", placeholder: "Select investigations…", allowOther: true, selectionStyle: "simple", options: [
           "CBC",
           "Chest X-Ray",
@@ -428,11 +446,11 @@ const SEED_FORMS: SpecialtyForm[] = [
         ] }],
       },
       {
-        id: "s9", title: "General Measures", description: "",
+        id: "s9", title: "General Measures", description: "", globalOrder: 700,
         fields: [{ id: "f10", label: "General Management", type: "textarea", placeholder: "Diet, lifestyle modifications, allergen avoidance...", options: [] }],
       },
       {
-        id: "s10", title: "Care Management", description: "",
+        id: "s10", title: "Care Management", description: "", globalOrder: 800,
         fields: [{ id: "f11", label: "Treatment Plan", type: "multiselect", placeholder: "Select care management items…", allowOther: true, selectionStyle: "simple", options: [
           "Behavioural Health Evaluation",
           "Demonstration of Inhaler Technique and Use of Spacer Device",
@@ -450,7 +468,7 @@ const SEED_FORMS: SpecialtyForm[] = [
         ] }],
       },
       {
-        id: "s11", title: "Specialist Referrals", description: "",
+        id: "s11", title: "Specialist Referrals", description: "", globalOrder: 900,
         fields: [{ id: "f12", label: "Referral Details", type: "multiselect", placeholder: "Select referrals…", allowOther: true, selectionStyle: "simple", options: [
           "ENT Consultation",
           "Family Medicine Consultation",
@@ -460,11 +478,11 @@ const SEED_FORMS: SpecialtyForm[] = [
         ] }],
       },
       {
-        id: "s12", title: "Others", description: "",
+        id: "s12", title: "Others", description: "", globalOrder: 1000,
         fields: [{ id: "f13", label: "Additional Notes", type: "textarea", placeholder: "Any other observations, instructions, or follow-up plan...", options: [] }],
       },
       {
-        id: "s13", title: "Follow Up", description: "",
+        id: "s13", title: "Follow Up", description: "", globalOrder: 1100,
         fields: [{ id: "f14", label: "Follow Up Date", type: "date", placeholder: "", options: [] }],
       },
     ],
@@ -530,8 +548,8 @@ function makeForm(): SpecialtyForm {
   };
 }
 
-function makeSection(): FormSection {
-  return { id: `sec-${Date.now()}`, title: "New Section", description: "", fields: [] };
+function makeSection(globalOrder = 0): FormSection {
+  return { id: `sec-${Date.now()}`, title: "New Section", description: "", fields: [], globalOrder };
 }
 
 function makeField(): FormField {
@@ -772,7 +790,12 @@ function FormBuilder({
   // ── Section mutations ──────────────────────────────────────────────────────
 
   const addSection = () => {
-    const sec = makeSection();
+    const allPositions = [
+      ...form.sections.map(s => s.globalOrder),
+      ...form.systemComponents.map(c => c.order),
+    ];
+    const nextPos = allPositions.length > 0 ? Math.max(...allPositions) + 100 : 0;
+    const sec = makeSection(nextPos);
     setForm(f => ({ ...f, sections: [...f.sections, sec] }));
     setSelectedSectionId(sec.id);
     setActiveTab("fields");
@@ -796,7 +819,11 @@ function FormBuilder({
       const idx = arr.findIndex(s => s.id === id);
       const to  = idx + dir;
       if (idx < 0 || to < 0 || to >= arr.length) return f;
+      const goA = arr[idx].globalOrder;
+      const goB = arr[to].globalOrder;
       [arr[idx], arr[to]] = [arr[to], arr[idx]];
+      arr[idx] = { ...arr[idx], globalOrder: goA };
+      arr[to]  = { ...arr[to],  globalOrder: goB };
       return { ...f, sections: arr };
     });
   };
@@ -875,18 +902,36 @@ function FormBuilder({
       const current = f.systemComponents ?? [];
       const exists = current.some(c => c.id === id);
       if (exists) return { ...f, systemComponents: current.filter(c => c.id !== id) };
-      const nextOrder = current.length > 0 ? Math.max(...current.map(c => c.order)) + 1 : 0;
+      const allPositions = [
+        ...f.sections.map(s => s.globalOrder),
+        ...current.map(c => c.order),
+      ];
+      const nextOrder = allPositions.length > 0 ? Math.max(...allPositions) + 100 : 100;
       return { ...f, systemComponents: [...current, { id, order: nextOrder }] };
     });
 
-  const moveSystemComponent = (id: string, dir: -1 | 1) =>
+  const moveInLayout = (itemId: string, itemType: "section" | "sc", dir: -1 | 1) =>
     setForm(f => {
-      const sorted = [...(f.systemComponents ?? [])].sort((a, b) => a.order - b.order);
-      const idx = sorted.findIndex(c => c.id === id);
+      const unified = [
+        ...f.sections.map(s => ({ type: "section" as const, id: s.id, pos: s.globalOrder })),
+        ...f.systemComponents.map(sc => ({ type: "sc" as const, id: sc.id, pos: sc.order })),
+      ].sort((a, b) => a.pos - b.pos);
+      const idx = unified.findIndex(item => item.id === itemId && item.type === itemType);
       const to = idx + dir;
-      if (idx < 0 || to < 0 || to >= sorted.length) return f;
-      [sorted[idx], sorted[to]] = [sorted[to], sorted[idx]];
-      return { ...f, systemComponents: sorted.map((c, i) => ({ ...c, order: i })) };
+      if (idx < 0 || to < 0 || to >= unified.length) return f;
+      const posA = unified[idx].pos;
+      const posB = unified[to].pos;
+      unified[idx] = { ...unified[idx], pos: posB };
+      unified[to]  = { ...unified[to],  pos: posA };
+      const newSections = f.sections.map(s => {
+        const u = unified.find(x => x.type === "section" && x.id === s.id);
+        return u ? { ...s, globalOrder: u.pos } : s;
+      });
+      const newSCs = f.systemComponents.map(sc => {
+        const u = unified.find(x => x.type === "sc" && x.id === sc.id);
+        return u ? { ...sc, order: u.pos } : sc;
+      });
+      return { ...f, sections: newSections, systemComponents: newSCs };
     });
 
   // ── Preview ────────────────────────────────────────────────────────────────
@@ -1082,57 +1127,11 @@ function FormBuilder({
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">System Components</p>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    Enable standard SOAP note components to render below this form's custom sections during the clinical encounter.
+                    Enable standard clinical components and arrange them anywhere between this form's custom sections.
                   </p>
                 </div>
 
-                {/* Enabled list (drag-reorder) */}
-                {(form.systemComponents ?? []).length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                      Enabled <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white" style={{ backgroundColor: ACCENT }}>{form.systemComponents.length}</span>
-                      <span className="text-[9px] font-normal text-slate-300 normal-case tracking-normal">— drag to reorder</span>
-                    </p>
-                    {[...(form.systemComponents ?? [])].sort((a, b) => a.order - b.order).map((sc, idx, arr) => {
-                      const comp = SYSTEM_COMPONENTS.find(c => c.id === sc.id);
-                      if (!comp) return null;
-                      return (
-                        <div key={sc.id} className="flex items-center gap-2.5 rounded-xl border border-[#4982CF]/25 bg-[#4982CF]/5 px-3 py-2.5">
-                          <GripVertical className="h-3.5 w-3.5 text-slate-300 flex-shrink-0" />
-                          <div className="h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${comp.color}18` }}>
-                            <comp.icon className="h-3.5 w-3.5" style={{ color: comp.color }} />
-                          </div>
-                          <span className="flex-1 text-xs font-semibold text-slate-700">{comp.label}</span>
-                          <div className="flex items-center gap-0.5 flex-shrink-0">
-                            <button
-                              onClick={() => moveSystemComponent(sc.id, -1)}
-                              disabled={idx === 0}
-                              className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed"
-                            >
-                              <ArrowUp className="h-3 w-3" />
-                            </button>
-                            <button
-                              onClick={() => moveSystemComponent(sc.id, 1)}
-                              disabled={idx === arr.length - 1}
-                              className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed"
-                            >
-                              <ArrowDown className="h-3 w-3" />
-                            </button>
-                            <button
-                              onClick={() => toggleSystemComponent(sc.id)}
-                              className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
-                              title="Remove"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* All 14 components — toggle grid */}
+                {/* All components — toggle grid */}
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">All Components</p>
                   <div className="grid grid-cols-2 gap-2">
@@ -1162,6 +1161,66 @@ function FormBuilder({
                     })}
                   </div>
                 </div>
+
+                {/* Note Layout — unified ordered list */}
+                {(form.sections.length > 0 || (form.systemComponents ?? []).length > 0) && (() => {
+                  const unified = [
+                    ...form.sections.map(s => ({ type: "section" as const, id: s.id, pos: s.globalOrder, label: s.title, comp: null as null })),
+                    ...(form.systemComponents ?? []).map(sc => {
+                      const comp = SYSTEM_COMPONENTS.find(c => c.id === sc.id) ?? null;
+                      return { type: "sc" as const, id: sc.id, pos: sc.order, label: comp?.label ?? sc.id, comp };
+                    }),
+                  ].sort((a, b) => a.pos - b.pos);
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Note Layout</p>
+                        <span className="text-[9px] font-normal text-slate-300 normal-case tracking-normal">— use arrows to interleave</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Drag system components between custom sections to set their position in the clinical note.
+                      </p>
+                      <div className="space-y-1.5">
+                        {unified.map((item, idx) => {
+                          const isFirst = idx === 0;
+                          const isLast  = idx === unified.length - 1;
+                          if (item.type === "section") {
+                            return (
+                              <div key={`sec-${item.id}`} className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                <div className="h-6 w-6 rounded-md bg-slate-200/80 flex items-center justify-center flex-shrink-0">
+                                  <Layers className="h-3.5 w-3.5 text-slate-500" />
+                                </div>
+                                <span className="flex-1 text-xs font-semibold text-slate-600">{item.label}</span>
+                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-500 flex-shrink-0">Section</span>
+                                <div className="flex items-center gap-0.5 flex-shrink-0">
+                                  <button onClick={() => moveInLayout(item.id, "section", -1)} disabled={isFirst} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed"><ArrowUp className="h-3 w-3" /></button>
+                                  <button onClick={() => moveInLayout(item.id, "section", 1)} disabled={isLast}  className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed"><ArrowDown className="h-3 w-3" /></button>
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            const comp = item.comp;
+                            if (!comp) return null;
+                            return (
+                              <div key={`sc-${item.id}`} className="flex items-center gap-2.5 rounded-xl border border-[#4982CF]/25 bg-[#4982CF]/5 px-3 py-2.5">
+                                <div className="h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${comp.color}18` }}>
+                                  <comp.icon className="h-3.5 w-3.5" style={{ color: comp.color }} />
+                                </div>
+                                <span className="flex-1 text-xs font-semibold text-slate-700">{comp.label}</span>
+                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: `${comp.color}15`, color: comp.color }}>System</span>
+                                <div className="flex items-center gap-0.5 flex-shrink-0">
+                                  <button onClick={() => moveInLayout(item.id, "sc", -1)} disabled={isFirst} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed"><ArrowUp className="h-3 w-3" /></button>
+                                  <button onClick={() => moveInLayout(item.id, "sc", 1)} disabled={isLast}  className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed"><ArrowDown className="h-3 w-3" /></button>
+                                  <button onClick={() => toggleSystemComponent(item.id)} className="p-1 text-slate-400 hover:text-rose-500 transition-colors" title="Remove"><X className="h-3 w-3" /></button>
+                                </div>
+                              </div>
+                            );
+                          }
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ) : activeTab === "fields" ? (

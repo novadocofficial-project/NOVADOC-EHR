@@ -822,14 +822,20 @@ function SpecialtyFormPanel({
   form,
   data,
   onChange,
+  renderSystemComponent,
 }: {
   form: SpecialtyForm;
   data: Record<string, unknown>;
   onChange: (d: Record<string, unknown>) => void;
+  renderSystemComponent: (id: string) => React.ReactNode;
 }) {
   function update(fieldId: string, value: unknown) {
     onChange({ ...data, [fieldId]: value });
   }
+  const unified = [
+    ...form.sections.map(s => ({ type: "section" as const, item: s, pos: s.globalOrder ?? 0 })),
+    ...(form.systemComponents ?? []).map(sc => ({ type: "sc" as const, item: sc, pos: sc.order })),
+  ].sort((a, b) => a.pos - b.pos);
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
@@ -841,8 +847,11 @@ function SpecialtyFormPanel({
           <p className="text-sm font-black text-slate-800 leading-tight">{form.name}</p>
         </div>
       </div>
-      {form.sections.map(section => (
-        <div key={section.id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+      {unified.map(entry => {
+        if (entry.type === "sc") return renderSystemComponent(entry.item.id);
+        const section = entry.item;
+        return (
+          <div key={section.id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
             <p className="text-xs font-black text-slate-700">{section.title}</p>
             {section.description && (
@@ -1006,8 +1015,9 @@ function SpecialtyFormPanel({
               </div>
             ))}
           </div>
-        </div>
-      ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1627,22 +1637,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               form={assignedForm}
               data={note.specialtyFormData ?? {}}
               onChange={data => set("specialtyFormData", data)}
+              renderSystemComponent={renderSystemComponent}
             />
-          )}
-
-          {/* System Components — rendered below specialty form sections in persisted order */}
-          {activeMode === "specialty" && assignedForm && (assignedForm.systemComponents ?? []).length > 0 && (
-            <>
-              <div className="flex items-center gap-2 px-1 py-1">
-                <div className="h-px flex-1 bg-slate-100" />
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                  <Layers className="h-3 w-3" />
-                  System Components
-                </p>
-                <div className="h-px flex-1 bg-slate-100" />
-              </div>
-              {[...(assignedForm.systemComponents ?? [])].sort((a, b) => a.order - b.order).map(sc => renderSystemComponent(sc.id))}
-            </>
           )}
 
           <div className={activeMode === "specialty" && assignedForm ? "hidden" : ""}>

@@ -108,7 +108,10 @@ function SpecialtyNotePreview({ form, data, note }: { form: SpecialtyForm; data:
     </div>
   );
 
-  const sortedSystemComponents = [...(form.systemComponents ?? [])].sort((a, b) => a.order - b.order);
+  const unifiedLayout = [
+    ...form.sections.map(s => ({ type: "section" as const, item: s, pos: s.globalOrder ?? 0 })),
+    ...(form.systemComponents ?? []).map(sc => ({ type: "sc" as const, item: sc, pos: sc.order })),
+  ].sort((a, b) => a.pos - b.pos);
 
   function renderSystemComponent(id: string): React.ReactNode {
     if (!note) return null;
@@ -495,8 +498,12 @@ function SpecialtyNotePreview({ form, data, note }: { form: SpecialtyForm; data:
         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{form.name}</p>
       </div>
 
-      {/* Custom specialty form sections */}
-      {form.sections.map(section => {
+      {/* Unified layout — custom sections and system components interleaved by globalOrder/order */}
+      {unifiedLayout.map(entry => {
+        if (entry.type === "sc") {
+          return note ? renderSystemComponent(entry.item.id) : null;
+        }
+        const section = entry.item;
         const filledFields = section.fields.filter(field => {
           const v = data[field.id];
           return v !== undefined && v !== "" && (!Array.isArray(v) || (v as string[]).length > 0);
@@ -527,20 +534,6 @@ function SpecialtyNotePreview({ form, data, note }: { form: SpecialtyForm; data:
           </div>
         );
       })}
-
-      {/* System component data — rendered below custom sections in the admin-configured order */}
-      {note && sortedSystemComponents.length > 0 && (
-        <>
-          <div className="flex items-center gap-2 py-0.5">
-            <div className="h-px flex-1 bg-slate-200" />
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-              <Layers className="h-3 w-3" /> System Components
-            </p>
-            <div className="h-px flex-1 bg-slate-200" />
-          </div>
-          {sortedSystemComponents.map(sc => renderSystemComponent(sc.id))}
-        </>
-      )}
     </div>
   );
 }
