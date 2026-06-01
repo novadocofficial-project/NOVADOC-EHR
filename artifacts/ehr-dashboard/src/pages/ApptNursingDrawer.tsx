@@ -250,6 +250,7 @@ interface VitalsDraft {
 interface VitalsRecord {
   recordId: string; vitalValues: Record<string, string>; painScore: number;
   mentalAnswers: number[]; patientRef: string | null; patientName: string | null; completedAt: number;
+  apptId?: string;
 }
 
 function blankVitalValues(): Record<string, string> { return { _date: new Date().toISOString().slice(0, 10) }; }
@@ -687,6 +688,7 @@ function ApptVitalsSection({ appt }: { appt: Appointment }) {
       vitalValues, painScore, mentalAnswers,
       patientRef: appt.patientMrn || null, patientName: appt.patientName || null,
       completedAt: Date.now(),
+      apptId: appt.id,
     };
     setVitalsRecords(prev => { const next = [...prev, record]; persistApptVitalsRecords(next); return next; });
     if (activeDraftId) mutateDrafts(prev => prev.filter(d => d.draftId !== activeDraftId));

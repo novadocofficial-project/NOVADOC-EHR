@@ -2064,8 +2064,34 @@ const COUNSELLING_PRIORITY_CONFIG: Record<"normal" | "urgent" | "emergency", { l
   emergency: { label: "Emergency", cls: "bg-red-50    text-red-600   border-red-200"   },
 };
 
+function getVitalsCompletedAt(apptId: string): number | null {
+  try {
+    const raw = localStorage.getItem("appt-vitals-records");
+    if (!raw) return null;
+    const records = JSON.parse(raw) as Array<{ apptId?: string; completedAt: number }>;
+    const match = records.find(r => r.apptId === apptId);
+    return match ? match.completedAt : null;
+  } catch { return null; }
+}
+
+function formatElapsed(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
 function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appointment[]; onOpenFacesheet: (appt: Appointment) => void }) {
   const sorted = [...appointments].sort((a, b) => a.slotStart.localeCompare(b.slotStart));
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   if (sorted.length === 0) {
     return (
@@ -2124,7 +2150,22 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
                     {priorityCfg.label}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-slate-300 select-none">—</td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  {(() => {
+                    const vitalsAt = getVitalsCompletedAt(appt.id);
+                    if (!vitalsAt) return <span className="text-slate-300">—</span>;
+                    const hrDone = getHealthRecordStatus(appt.id) === "completed";
+                    const ms = now - vitalsAt;
+                    const activeColor = ms > 30 * 60 * 1000 ? "text-red-600" : ms > 15 * 60 * 1000 ? "text-amber-600" : "text-emerald-600";
+                    return (
+                      <span className={`flex items-center gap-1 text-xs font-semibold ${hrDone ? "text-slate-400" : activeColor}`}>
+                        <Clock className="h-3 w-3 flex-none" />
+                        {formatElapsed(ms)}
+                        {hrDone && <span className="text-[10px] font-normal text-slate-400 ml-0.5">(final)</span>}
+                      </span>
+                    );
+                  })()}
+                </td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${statusCfg.cls}`}>
                     {statusCfg.label}
