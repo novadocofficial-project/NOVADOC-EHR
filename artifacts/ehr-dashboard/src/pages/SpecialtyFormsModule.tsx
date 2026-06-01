@@ -137,6 +137,20 @@ export function loadForms(): SpecialtyForm[] {
         }
         // Remove old s3 (History 2)
         asif.sections = asif.sections.filter(s => s.id !== "s3");
+        // Migration: patch s11 Specialist Referrals f12 → multiselect
+        const s11 = asif.sections.find(s => s.id === "s11");
+        if (s11) {
+          const f12 = s11.fields.find(f => f.id === "f12");
+          if (!f12 || f12.type !== "multiselect") {
+            s11.fields = [{ id: "f12", label: "Referral Details", type: "multiselect", placeholder: "Select referrals…", allowOther: true, selectionStyle: "simple", options: [
+              "ENT Consultation",
+              "Family Medicine Consultation",
+              "Behavioural Health Evaluation by a Clinical Psychologist",
+              "Nutritionist Consultation",
+              "Pulmonary Consultation",
+            ] }];
+          }
+        }
         // Migration: patch s10 Care Management f11 → multiselect
         const s10 = asif.sections.find(s => s.id === "s10");
         if (s10) {
@@ -426,7 +440,13 @@ const SEED_FORMS: SpecialtyForm[] = [
       },
       {
         id: "s11", title: "Specialist Referrals", description: "",
-        fields: [{ id: "f12", label: "Referral Details", type: "textarea", placeholder: "Refer to specialist / department / facility...", options: [] }],
+        fields: [{ id: "f12", label: "Referral Details", type: "multiselect", placeholder: "Select referrals…", allowOther: true, selectionStyle: "simple", options: [
+          "ENT Consultation",
+          "Family Medicine Consultation",
+          "Behavioural Health Evaluation by a Clinical Psychologist",
+          "Nutritionist Consultation",
+          "Pulmonary Consultation",
+        ] }],
       },
       {
         id: "s12", title: "Others", description: "",
