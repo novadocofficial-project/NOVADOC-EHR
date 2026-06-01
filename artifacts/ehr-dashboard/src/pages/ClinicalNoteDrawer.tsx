@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { VitalEntry } from "@/types/vitals";
-import { createPortal } from "react-dom";
+
 import {
   X, Maximize2, Minimize2, FileText,
   StopCircle, PauseCircle, PlayCircle, ChevronDown, ChevronUp,
@@ -144,11 +144,9 @@ function ChiefComplaintSelector({
   const [custom,   setCustom]   = useState("");
   const [dragIdx,  setDragIdx]  = useState<number | null>(null);
   const [overIdx,  setOverIdx]  = useState<number | null>(null);
-  const [dropPos,  setDropPos]  = useState({ top: 0, left: 0, width: 0 });
   const triggerRef              = useRef<HTMLButtonElement>(null);
   const dropdownRef             = useRef<HTMLDivElement>(null);
 
-  // Close on outside click (both trigger area and portal dropdown)
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent) {
@@ -160,13 +158,6 @@ function ChiefComplaintSelector({
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
-
-  function openDropdown() {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    setDropPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
-    setOpen(true);
-  }
 
   function toggle(item: string) {
     onChange(selected.includes(item) ? selected.filter(s => s !== item) : [...selected, item]);
@@ -199,7 +190,7 @@ function ChiefComplaintSelector({
       {/* Trigger bar */}
       <button
         ref={triggerRef}
-        onClick={() => open ? setOpen(false) : openDropdown()}
+        onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:border-[#4982CF]/50 transition-colors text-left">
         {selected.length === 0 ? (
           <span className="text-xs text-slate-300 flex-1">Select chief complaints…</span>
@@ -211,12 +202,11 @@ function ChiefComplaintSelector({
         <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
-      {/* Dropdown panel — rendered in a portal so it escapes overflow:hidden containers */}
-      {open && createPortal(
+      {/* Dropdown panel — inline absolute so it scrolls with the drawer */}
+      {open && (
         <div
           ref={dropdownRef}
-          style={{ position: "fixed", top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
-          className="bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
+          className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
 
           {/* Search bar */}
           <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100">
@@ -284,8 +274,7 @@ function ChiefComplaintSelector({
               Add
             </button>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
 
       {/* Selected chips — drag-and-drop priority */}
@@ -614,7 +603,6 @@ function MultiSelectFieldInput({
   const [custom,  setCustom]  = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
-  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef  = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -627,13 +615,6 @@ function MultiSelectFieldInput({
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
-
-  function openDropdown() {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    setDropPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
-    setOpen(true);
-  }
 
   function toggle(item: string) {
     onChange(selected.includes(item) ? selected.filter(s => s !== item) : [...selected, item]);
@@ -663,7 +644,7 @@ function MultiSelectFieldInput({
     <div className="relative">
       <button
         ref={triggerRef}
-        onClick={() => open ? setOpen(false) : openDropdown()}
+        onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:border-[#4982CF]/50 transition-colors text-left">
         {selected.length === 0 ? (
           <span className="text-xs text-slate-300 flex-1">{placeholder || "Select options…"}</span>
@@ -675,11 +656,10 @@ function MultiSelectFieldInput({
         <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
-      {open && createPortal(
+      {open && (
         <div
           ref={dropdownRef}
-          style={{ position: "fixed", top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
-          className="bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
+          className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100">
             <Search className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
             <input
@@ -747,8 +727,7 @@ function MultiSelectFieldInput({
               </button>
             </div>
           )}
-        </div>,
-        document.body
+        </div>
       )}
 
       {selected.length > 0 && selectionStyle === "simple" && (
