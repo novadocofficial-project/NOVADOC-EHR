@@ -137,6 +137,10 @@ export function loadForms(): SpecialtyForm[] {
         }
         // Remove old s3 (History 2)
         asif.sections = asif.sections.filter(s => s.id !== "s3");
+        // Migration: add s13 Follow Up if missing
+        if (!asif.sections.find(s => s.id === "s13")) {
+          asif.sections.push({ id: "s13", title: "Follow Up", description: "", fields: [{ id: "f14", label: "Follow Up Date", type: "date", placeholder: "", options: [] }] });
+        }
         // Migration: patch s11 Specialist Referrals f12 → multiselect
         const s11 = asif.sections.find(s => s.id === "s11");
         if (s11) {
@@ -451,6 +455,10 @@ const SEED_FORMS: SpecialtyForm[] = [
       {
         id: "s12", title: "Others", description: "",
         fields: [{ id: "f13", label: "Additional Notes", type: "textarea", placeholder: "Any other observations, instructions, or follow-up plan...", options: [] }],
+      },
+      {
+        id: "s13", title: "Follow Up", description: "",
+        fields: [{ id: "f14", label: "Follow Up Date", type: "date", placeholder: "", options: [] }],
       },
     ],
   },
