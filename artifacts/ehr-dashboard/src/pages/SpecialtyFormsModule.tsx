@@ -86,9 +86,25 @@ export function loadForms(): SpecialtyForm[] {
             f1.options = CHIEF_COMPLAINT_OPTIONS;
             f1.allowOther = true;
             f1.placeholder = "";
-            localStorage.setItem(LS_KEY, JSON.stringify(forms));
           }
         }
+        // Migration: patch f4 (Current Medications) if still textarea
+        const s4 = asif.sections.find(s => s.id === "s4");
+        if (s4) {
+          const f4 = s4.fields.find(f => f.id === "f4");
+          if (f4 && f4.type === "textarea") {
+            f4.type = "multiselect";
+            f4.placeholder = "Select medications…";
+            f4.allowOther = true;
+            f4.options = [
+              "Rigix (Cetirizine)", "Telfast (Fexofenadine)", "Kestine (Ebastine)",
+              "Myteka (Montelukast)", "Hivate (Mometesone)", "Flixonose (Fluticasone)",
+              "Nebulized Treatment", "Ventolin Inhaler", "Foster Inhaler",
+              "Seretide Inhaler", "Combivair", "T-Day 5mg", "T-Day 10mg",
+            ];
+          }
+        }
+        localStorage.setItem(LS_KEY, JSON.stringify(forms));
       }
       return forms;
     }
@@ -148,7 +164,21 @@ const SEED_FORMS: SpecialtyForm[] = [
       },
       {
         id: "s4", title: "Current Medicine", description: "",
-        fields: [{ id: "f4", label: "Current Medications", type: "textarea", placeholder: "List all current medications with dosages and frequency...", options: [] }],
+        fields: [{ id: "f4", label: "Current Medications", type: "multiselect", placeholder: "Select medications…", allowOther: true, options: [
+          "Rigix (Cetirizine)",
+          "Telfast (Fexofenadine)",
+          "Kestine (Ebastine)",
+          "Myteka (Montelukast)",
+          "Hivate (Mometesone)",
+          "Flixonose (Fluticasone)",
+          "Nebulized Treatment",
+          "Ventolin Inhaler",
+          "Foster Inhaler",
+          "Seretide Inhaler",
+          "Combivair",
+          "T-Day 5mg",
+          "T-Day 10mg",
+        ] }],
       },
       {
         id: "s5", title: "Physical Examination", description: "",
