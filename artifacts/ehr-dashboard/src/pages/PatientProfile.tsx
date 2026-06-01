@@ -660,6 +660,27 @@ export function PatientProfile() {
   ].filter(Boolean).sort().reverse();
   const lastVisitDate = allDates[0] ?? null;
 
+  type ActivityEvent = { title: string; subtitle: string; date: string; icon: React.ElementType; color: string };
+  const recentActivity: ActivityEvent[] = [
+    ...visits.flatMap(v => v.signedRecords.map(sr => ({
+      title: sr.type || "Clinical Visit", subtitle: sr.doctor || "", date: sr.date,
+      icon: FileText, color: "#4982CF",
+    }))),
+    ...appointments.map(a => ({
+      title: a.type || a.specialty || "Appointment",
+      subtitle: ({ checked_out: "Completed", booked: "Booked", confirmed: "Confirmed", checked_in: "In Progress", cancelled: "Cancelled", no_show: "No Show", rescheduled: "Rescheduled" } as Record<string, string>)[a.status] ?? a.status,
+      date: a.date, icon: CalendarPlus, color: "#f59e0b",
+    })),
+    ...labOrders.filter(lo => !lo.voided && lo.sentAt).map(lo => ({
+      title: lo.orderSetName ?? "Lab Order", subtitle: `${lo.tests.length} test${lo.tests.length !== 1 ? "s" : ""}`,
+      date: lo.sentAt!, icon: FlaskConical, color: "#f59e0b",
+    })),
+    ...appointments.filter(a => invoices[a.id]).map(a => {
+      const r = invoices[a.id] as ReceiptInfo;
+      return { title: `Invoice #${r.invNo}`, subtitle: `PKR ${r.total?.toLocaleString()}`, date: a.date, icon: Receipt, color: "#10b981" };
+    }),
+  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 15);
+
   const TABS: { id: TabId; label: string; icon: React.ElementType; color: string; count?: number }[] = [
     { id: "overview",    label: "Overview",       icon: FileText,     color: "#4982CF" },
     { id: "health",      label: "Health Records", icon: FileText,     color: "#4982CF", count: visitCount   || undefined },
@@ -693,120 +714,102 @@ export function PatientProfile() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* ── Left sidebar ────────────────────────────────────────────────── */}
-        <div className="w-56 flex-none flex flex-col border-r border-slate-200 bg-white overflow-y-auto">
+        <div className="w-56 flex-none flex flex-col border-r border-slate-200 bg-white overflow-hidden">
 
-          {/* Avatar + identity */}
-          <div className="flex flex-col items-center px-5 pt-6 pb-4">
-            <div
-              className="h-20 w-20 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-sm"
-              style={{ backgroundColor: bg }}
-            >
-              {inits}
-            </div>
-            <p className="mt-3 text-sm font-black text-slate-900 text-center leading-tight">{patient.name}</p>
-            <span
-              className="mt-1.5 text-xs font-black px-2.5 py-0.5 rounded-full text-white"
-              style={{ backgroundColor: ACCENT }}
-            >
-              {patient.mrn}
-            </span>
-          </div>
-
-          {/* Demographics */}
-          <div className="px-4 pb-4 space-y-2.5">
-            <div className="flex items-center gap-2.5">
-              <User className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-              <span className="text-xs text-slate-600">{patient.gender === "M" ? "Male" : "Female"} · {age}</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <Phone className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-              <span className="text-xs text-slate-600 truncate">{patient.phone || "—"}</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <Calendar className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-              <span className="text-xs text-slate-600">{patient.dob || "—"}</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <Hash className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-              <span className="text-xs text-slate-400 truncate">{patient.id}</span>
-            </div>
-          </div>
-
-          <div className="mx-4 border-t border-slate-100" />
-
-          {/* Clinical quick-facts */}
-          <div className="px-4 py-4 space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quick Facts</p>
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-slate-500">Last Visit</span>
-                <span className="text-xs font-semibold text-slate-700 text-right">{lastVisitDate ?? "—"}</span>
+          {/* ── Fixed top: identity + demographics + print cards ── */}
+          <div className="flex-none">
+            {/* Avatar + identity */}
+            <div className="flex flex-col items-center px-5 pt-6 pb-4">
+              <div
+                className="h-20 w-20 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-sm"
+                style={{ backgroundColor: bg }}
+              >
+                {inits}
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">Medications</span>
-                <span className="text-xs font-semibold text-slate-700">{medicines.length}</span>
+              <p className="mt-3 text-sm font-black text-slate-900 text-center leading-tight">{patient.name}</p>
+              <span
+                className="mt-1.5 text-xs font-black px-2.5 py-0.5 rounded-full text-white"
+                style={{ backgroundColor: ACCENT }}
+              >
+                {patient.mrn}
+              </span>
+            </div>
+
+            {/* Demographics */}
+            <div className="px-4 pb-4 space-y-2.5">
+              <div className="flex items-center gap-2.5">
+                <User className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                <span className="text-xs text-slate-600">{patient.gender === "M" ? "Male" : "Female"} · {age}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">Allergies</span>
-                <span className="text-xs font-semibold text-slate-700">{allergies.length}</span>
+              <div className="flex items-center gap-2.5">
+                <Phone className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                <span className="text-xs text-slate-600 truncate">{patient.phone || "—"}</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <Calendar className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                <span className="text-xs text-slate-600">{patient.dob || "—"}</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <Hash className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                <span className="text-xs text-slate-400 truncate">{patient.id}</span>
               </div>
             </div>
+
+            {/* Print cards — fixed */}
+            <div className="px-4 py-3 space-y-2 border-t border-slate-100">
+              <button
+                onClick={() => setPrintMode("registration")}
+                className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <Printer className="h-3.5 w-3.5 flex-shrink-0" />Registration Card
+              </button>
+              <button
+                onClick={() => setPrintMode("family")}
+                className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <Printer className="h-3.5 w-3.5 flex-shrink-0" />Family Card
+              </button>
+            </div>
           </div>
 
-          <div className="flex-1" />
-
-          {/* Print + action buttons */}
-          <div className="px-4 py-4 space-y-2 border-t border-slate-100">
+          {/* ── Scrollable bottom: action buttons ── */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 border-t border-slate-200">
             <button
-              onClick={() => setPrintMode("registration")}
+              onClick={() => setShowEdit(true)}
               className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
             >
-              <Printer className="h-3.5 w-3.5 flex-shrink-0" />Registration Card
+              <Edit2 className="h-3.5 w-3.5 flex-shrink-0" style={{ color: ACCENT }} />Edit Profile
             </button>
             <button
-              onClick={() => setPrintMode("family")}
+              onClick={() => comingSoon("Add Invoice")}
               className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
             >
-              <Printer className="h-3.5 w-3.5 flex-shrink-0" />Family Card
+              <Receipt className="h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />Add Invoice
             </button>
-            <div className="pt-1 border-t border-slate-100 space-y-2">
-              <button
-                onClick={() => setShowEdit(true)}
-                className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <Edit2 className="h-3.5 w-3.5 flex-shrink-0" style={{ color: ACCENT }} />Edit Profile
-              </button>
-              <button
-                onClick={() => comingSoon("Add Invoice")}
-                className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <Receipt className="h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />Add Invoice
-              </button>
-              <button
-                onClick={() => comingSoon("Add Appointment")}
-                className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <CalendarPlus className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />Add Appointment
-              </button>
-              <button
-                onClick={() => comingSoon("Add Token")}
-                className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <Ticket className="h-3.5 w-3.5 flex-shrink-0 text-purple-500" />Add Token
-              </button>
-              <button
-                onClick={() => comingSoon("Add File")}
-                className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <Upload className="h-3.5 w-3.5 flex-shrink-0 text-cyan-500" />Add File
-              </button>
-              <button
-                onClick={() => comingSoon("Add History")}
-                className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <History className="h-3.5 w-3.5 flex-shrink-0 text-pink-500" />Add History
-              </button>
-            </div>
+            <button
+              onClick={() => comingSoon("Add Appointment")}
+              className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <CalendarPlus className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />Add Appointment
+            </button>
+            <button
+              onClick={() => comingSoon("Add Token")}
+              className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <Ticket className="h-3.5 w-3.5 flex-shrink-0 text-purple-500" />Add Token
+            </button>
+            <button
+              onClick={() => comingSoon("Add File")}
+              className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <Upload className="h-3.5 w-3.5 flex-shrink-0 text-cyan-500" />Add File
+            </button>
+            <button
+              onClick={() => comingSoon("Add History")}
+              className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <History className="h-3.5 w-3.5 flex-shrink-0 text-pink-500" />Add History
+            </button>
           </div>
         </div>
 
@@ -842,165 +845,206 @@ export function PatientProfile() {
           </div>
 
           {/* Tab content */}
-          <div className="flex-1 overflow-y-auto bg-slate-50">
+          <div className="flex-1 overflow-hidden bg-slate-50">
 
+            {/* Overview — two-column: 9-card grid + Recent Activity panel */}
             {activeTab === "overview" && (
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="flex h-full overflow-hidden">
 
-                  <SectionCard title="Health Records" icon={FileText} color="#4982CF" count={visitCount || undefined} onViewAll={() => setActiveTab("health")}>
-                    {appointments.slice(0, 3).map((a, i) => (
-                      <div key={i} className="flex items-center gap-2 py-0.5">
-                        <div className="h-1.5 w-1.5 rounded-full bg-[#4982CF] flex-shrink-0" />
-                        <p className="text-xs text-slate-600 truncate flex-1">{a.type || a.specialty || "Visit"}</p>
-                        <span className="text-[10px] text-slate-400 flex-shrink-0">{a.date}</span>
-                      </div>
-                    ))}
-                    {visitCount === 0 && <p className="text-xs text-slate-400 text-center py-3">No records yet</p>}
-                  </SectionCard>
+                {/* Card grid */}
+                <div className="flex-1 overflow-y-auto p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 
-                  <SectionCard title="Recent Files" icon={Folder} color="#f59e0b" onViewAll={() => setActiveTab("files")}>
-                    <p className="text-xs text-slate-400 text-center py-3">No files uploaded</p>
-                  </SectionCard>
-
-                  <SectionCard title="Laboratory Reports" icon={FlaskConical} color="#f59e0b" count={labCount || undefined} onViewAll={() => setActiveTab("labs")}>
-                    {labCount === 0
-                      ? <p className="text-xs text-slate-400 text-center py-3">No lab orders yet</p>
-                      : labOrders.filter(lo => !lo.voided)[0]?.tests.slice(0, 3).map((t, i) => (
+                    <SectionCard title="Health Records" icon={FileText} color="#4982CF" count={visitCount || undefined} onViewAll={() => setActiveTab("health")}>
+                      {appointments.slice(0, 3).map((a, i) => (
                         <div key={i} className="flex items-center gap-2 py-0.5">
-                          <div className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                          <p className="text-xs text-slate-600 truncate">{t.name}</p>
+                          <div className="h-1.5 w-1.5 rounded-full bg-[#4982CF] flex-shrink-0" />
+                          <p className="text-xs text-slate-600 truncate flex-1">{a.type || a.specialty || "Visit"}</p>
+                          <span className="text-[10px] text-slate-400 flex-shrink-0">{a.date}</span>
                         </div>
-                      ))
-                    }
-                  </SectionCard>
+                      ))}
+                      {visitCount === 0 && <p className="text-xs text-slate-400 text-center py-3">No records yet</p>}
+                    </SectionCard>
 
-                  <SectionCard title="Radiology Reports" icon={Scan} color="#0ea5e9" count={radCount || undefined} onViewAll={() => setActiveTab("radiology")}>
-                    {imagingOrders.length === 0
-                      ? <p className="text-xs text-slate-400 text-center py-3">No reports yet</p>
-                      : imagingOrders.slice(0, 3).map((io, i) => (
-                        <div key={i} className="flex items-center gap-2 py-0.5">
-                          <div className="h-1.5 w-1.5 rounded-full bg-sky-400 flex-shrink-0" />
-                          <p className="text-xs text-slate-600 truncate">{io.testName}</p>
-                        </div>
-                      ))
-                    }
-                  </SectionCard>
+                    <SectionCard title="Recent Files" icon={Folder} color="#f59e0b" onViewAll={() => setActiveTab("files")}>
+                      <p className="text-xs text-slate-400 text-center py-3">No files uploaded</p>
+                    </SectionCard>
 
-                  <SectionCard title="Family History" icon={Users} color="#ec4899" count={filledFh.length || undefined} onViewAll={() => setActiveTab("family")}>
-                    {filledFh.length === 0
-                      ? <p className="text-xs text-slate-400 text-center py-3">No family history</p>
-                      : filledFh.slice(0, 3).map((row, i) => (
-                        <div key={i} className="flex items-start gap-2 py-0.5">
-                          <Users className="h-3 w-3 text-rose-400 flex-shrink-0 mt-0.5" />
-                          <p className="text-xs text-slate-600 leading-snug line-clamp-1">{row.condition}{row.relation ? ` · ${row.relation}` : ""}</p>
-                        </div>
-                      ))
-                    }
-                  </SectionCard>
-
-                  <SectionCard title="Invoices" icon={Receipt} color="#10b981" count={invoiceCount || undefined} onViewAll={() => setActiveTab("invoices")}>
-                    {invoiceCount === 0
-                      ? <p className="text-xs text-slate-400 text-center py-3">No invoices yet</p>
-                      : appointments.filter(a => invoices[a.id]).slice(0, 3).map((a, i) => {
-                        const r = invoices[a.id] as ReceiptInfo;
-                        return (
+                    <SectionCard title="Laboratory Reports" icon={FlaskConical} color="#f59e0b" count={labCount || undefined} onViewAll={() => setActiveTab("labs")}>
+                      {labCount === 0
+                        ? <p className="text-xs text-slate-400 text-center py-3">No lab orders yet</p>
+                        : labOrders.filter(lo => !lo.voided)[0]?.tests.slice(0, 3).map((t, i) => (
                           <div key={i} className="flex items-center gap-2 py-0.5">
-                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                            <p className="text-xs text-slate-600 flex-1 truncate">#{r.invNo}</p>
-                            <span className="text-[11px] font-bold text-emerald-600">PKR {r.total?.toLocaleString()}</span>
+                            <div className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                            <p className="text-xs text-slate-600 truncate">{t.name}</p>
                           </div>
-                        );
-                      })
-                    }
-                  </SectionCard>
+                        ))
+                      }
+                    </SectionCard>
 
-                  <SectionCard title="Allergies" icon={AlertCircle} color="#ef4444" count={allergies.length || undefined} onViewAll={() => setActiveTab("allergies")}>
-                    {allergies.length === 0
-                      ? <p className="text-xs text-slate-400 text-center py-3">No allergies recorded</p>
-                      : allergies.slice(0, 3).map((a, i) => (
-                        <div key={i} className="flex items-center gap-2 py-0.5">
-                          <div className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: SEV_COLOR[a.severity] ?? "#94a3b8" }} />
-                          <p className="text-xs text-slate-700 truncate flex-1 font-medium">{(a as { name?: string }).name ?? "—"}</p>
-                          <span className="text-[9px] font-black flex-shrink-0" style={{ color: SEV_COLOR[a.severity] ?? "#94a3b8" }}>
-                            {a.severity}
-                          </span>
-                        </div>
-                      ))
-                    }
-                  </SectionCard>
+                    <SectionCard title="Radiology Reports" icon={Scan} color="#0ea5e9" count={radCount || undefined} onViewAll={() => setActiveTab("radiology")}>
+                      {imagingOrders.length === 0
+                        ? <p className="text-xs text-slate-400 text-center py-3">No reports yet</p>
+                        : imagingOrders.slice(0, 3).map((io, i) => (
+                          <div key={i} className="flex items-center gap-2 py-0.5">
+                            <div className="h-1.5 w-1.5 rounded-full bg-sky-400 flex-shrink-0" />
+                            <p className="text-xs text-slate-600 truncate">{io.testName}</p>
+                          </div>
+                        ))
+                      }
+                    </SectionCard>
 
-                  <SectionCard title="Vital Trends" icon={Activity} color="#8b5cf6" count={vitals.length || undefined} onViewAll={() => setActiveTab("vitals")}>
-                    {vitals.length === 0
-                      ? <p className="text-xs text-slate-400 text-center py-3">No vitals recorded yet</p>
-                      : vitals.slice(-3).reverse().map((v, i) => (
-                        <div key={i} className="flex items-center gap-2 py-0.5 text-xs">
-                          <span className="text-slate-400 w-16 flex-shrink-0">{v.date}</span>
-                          {v.bpSystolic && <span className="text-red-600 font-semibold">{v.bpSystolic}/{v.bpDiastolic} mmHg</span>}
-                          {v.pulse && <span className="text-purple-600 font-semibold ml-1">{v.pulse} bpm</span>}
-                        </div>
-                      ))
-                    }
-                  </SectionCard>
+                    <SectionCard title="Family History" icon={Users} color="#ec4899" count={filledFh.length || undefined} onViewAll={() => setActiveTab("family")}>
+                      {filledFh.length === 0
+                        ? <p className="text-xs text-slate-400 text-center py-3">No family history</p>
+                        : filledFh.slice(0, 3).map((row, i) => (
+                          <div key={i} className="flex items-start gap-2 py-0.5">
+                            <Users className="h-3 w-3 text-rose-400 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-slate-600 leading-snug line-clamp-1">{row.condition}{row.relation ? ` · ${row.relation}` : ""}</p>
+                          </div>
+                        ))
+                      }
+                    </SectionCard>
 
-                  <SectionCard title="Patient Medications" icon={Pill} color="#8b5cf6" count={medicines.length || undefined} onViewAll={() => setActiveTab("medications")}>
-                    {medicines.length === 0
-                      ? <p className="text-xs text-slate-400 text-center py-3">No medications prescribed</p>
-                      : medicines.slice(0, 3).map((m, i) => (
-                        <div key={i} className="flex items-center gap-2 py-0.5">
-                          <Pill className="h-3 w-3 text-purple-400 flex-shrink-0" />
-                          <p className="text-xs text-slate-700 truncate flex-1">{m.genericName}</p>
-                        </div>
-                      ))
-                    }
-                  </SectionCard>
+                    <SectionCard title="Invoices" icon={Receipt} color="#10b981" count={invoiceCount || undefined} onViewAll={() => setActiveTab("invoices")}>
+                      {invoiceCount === 0
+                        ? <p className="text-xs text-slate-400 text-center py-3">No invoices yet</p>
+                        : appointments.filter(a => invoices[a.id]).slice(0, 3).map((a, i) => {
+                          const r = invoices[a.id] as ReceiptInfo;
+                          return (
+                            <div key={i} className="flex items-center gap-2 py-0.5">
+                              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                              <p className="text-xs text-slate-600 flex-1 truncate">#{r.invNo}</p>
+                              <span className="text-[11px] font-bold text-emerald-600">PKR {r.total?.toLocaleString()}</span>
+                            </div>
+                          );
+                        })
+                      }
+                    </SectionCard>
 
+                    <SectionCard title="Allergies" icon={AlertCircle} color="#ef4444" count={allergies.length || undefined} onViewAll={() => setActiveTab("allergies")}>
+                      {allergies.length === 0
+                        ? <p className="text-xs text-slate-400 text-center py-3">No allergies recorded</p>
+                        : allergies.slice(0, 3).map((a, i) => (
+                          <div key={i} className="flex items-center gap-2 py-0.5">
+                            <div className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: SEV_COLOR[a.severity] ?? "#94a3b8" }} />
+                            <p className="text-xs text-slate-700 truncate flex-1 font-medium">{(a as { name?: string }).name ?? "—"}</p>
+                            <span className="text-[9px] font-black flex-shrink-0" style={{ color: SEV_COLOR[a.severity] ?? "#94a3b8" }}>
+                              {a.severity}
+                            </span>
+                          </div>
+                        ))
+                      }
+                    </SectionCard>
+
+                    <SectionCard title="Vital Trends" icon={Activity} color="#8b5cf6" count={vitals.length || undefined} onViewAll={() => setActiveTab("vitals")}>
+                      {vitals.length === 0
+                        ? <p className="text-xs text-slate-400 text-center py-3">No vitals recorded yet</p>
+                        : vitals.slice(-3).reverse().map((v, i) => (
+                          <div key={i} className="flex items-center gap-2 py-0.5 text-xs">
+                            <span className="text-slate-400 w-16 flex-shrink-0">{v.date}</span>
+                            {v.bpSystolic && <span className="text-red-600 font-semibold">{v.bpSystolic}/{v.bpDiastolic} mmHg</span>}
+                            {v.pulse && <span className="text-purple-600 font-semibold ml-1">{v.pulse} bpm</span>}
+                          </div>
+                        ))
+                      }
+                    </SectionCard>
+
+                    <SectionCard title="Patient Medications" icon={Pill} color="#8b5cf6" count={medicines.length || undefined} onViewAll={() => setActiveTab("medications")}>
+                      {medicines.length === 0
+                        ? <p className="text-xs text-slate-400 text-center py-3">No medications prescribed</p>
+                        : medicines.slice(0, 3).map((m, i) => (
+                          <div key={i} className="flex items-center gap-2 py-0.5">
+                            <Pill className="h-3 w-3 text-purple-400 flex-shrink-0" />
+                            <p className="text-xs text-slate-700 truncate flex-1">{m.genericName}</p>
+                          </div>
+                        ))
+                      }
+                    </SectionCard>
+
+                  </div>
                 </div>
+
+                {/* Recent Activity panel */}
+                <div className="w-60 flex-none border-l border-slate-200 bg-white flex flex-col overflow-hidden">
+                  <div className="flex-none px-4 py-4 border-b border-slate-100">
+                    <p className="text-sm font-black text-slate-800">Recent Activity</p>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-3 py-3">
+                    {recentActivity.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                          <Activity className="h-4 w-4 text-slate-300" />
+                        </div>
+                        <p className="text-xs text-slate-400 text-center">No activity recorded yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {recentActivity.map((event, i) => (
+                          <div key={i} className="flex items-start gap-2.5 px-2 py-2.5 rounded-xl hover:bg-slate-50 transition-colors">
+                            <div
+                              className="h-6 w-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                              style={{ backgroundColor: `${event.color}15` }}
+                            >
+                              <event.icon className="h-3 w-3" style={{ color: event.color }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-slate-700 leading-snug truncate">{event.title}</p>
+                              {event.subtitle && <p className="text-[10px] text-slate-500 mt-0.5 truncate">{event.subtitle}</p>}
+                              <p className="text-[10px] text-slate-400 mt-0.5">{event.date}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
               </div>
             )}
 
             {activeTab === "health" && (
-              <div className="p-6 max-w-2xl">
+              <div className="h-full overflow-y-auto p-6 max-w-2xl">
                 <HealthRecordsContent appointments={appointments} visits={visits} />
               </div>
             )}
             {activeTab === "labs" && (
-              <div className="p-6 max-w-2xl">
+              <div className="h-full overflow-y-auto p-6 max-w-2xl">
                 <LabReportsContent labOrders={labOrders} />
               </div>
             )}
             {activeTab === "radiology" && (
-              <div className="p-6 max-w-2xl">
+              <div className="h-full overflow-y-auto p-6 max-w-2xl">
                 <RadiologyContent imagingOrders={imagingOrders} />
               </div>
             )}
             {activeTab === "files" && (
-              <div className="p-6 max-w-2xl">
+              <div className="h-full overflow-y-auto p-6 max-w-2xl">
                 <FilesContent />
               </div>
             )}
             {activeTab === "medications" && (
-              <div className="p-6 max-w-2xl">
+              <div className="h-full overflow-y-auto p-6 max-w-2xl">
                 <MedicationsContent medicines={medicines} />
               </div>
             )}
             {activeTab === "allergies" && (
-              <div className="p-6 max-w-2xl">
+              <div className="h-full overflow-y-auto p-6 max-w-2xl">
                 <AllergiesContent allergies={allergies} />
               </div>
             )}
             {activeTab === "vitals" && (
-              <div className="p-6">
+              <div className="h-full overflow-y-auto p-6">
                 <VitalsContent vitals={vitals} />
               </div>
             )}
             {activeTab === "family" && (
-              <div className="p-6 max-w-2xl">
+              <div className="h-full overflow-y-auto p-6 max-w-2xl">
                 <FamilyHistoryContent fhRows={fhRows} />
               </div>
             )}
             {activeTab === "invoices" && (
-              <div className="p-6 max-w-2xl">
+              <div className="h-full overflow-y-auto p-6 max-w-2xl">
                 <InvoicesContent appointments={appointments} invoices={invoices} />
               </div>
             )}
