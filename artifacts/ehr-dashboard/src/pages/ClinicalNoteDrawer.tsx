@@ -1288,6 +1288,244 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
     set(key, value);
   }
 
+  // ── System component renderer ─────────────────────────────────────────────
+  // Renders a single standard SOAP component section by ID, reusing all state
+  // and handlers already present in this component. Used in specialty mode when
+  // the form has system components enabled.
+
+  function renderSystemComponent(id: string): React.ReactNode {
+    switch (id) {
+      case "chief-complaint":
+        return (
+          <Section key="sc-cc" title="Chief Complaint" icon={PenLine} color="#4982CF" required filled={note.chiefComplaints.length > 0}>
+            <ChiefComplaintSelector
+              selected={note.chiefComplaints}
+              onChange={items => set("chiefComplaints", items)}
+            />
+          </Section>
+        );
+
+      case "hpi":
+        return (
+          <Section key="sc-hpi" title="History of Present Illness" icon={ClipboardList} color="#8b5cf6" filled={hpiDoneComplaints.length > 0}>
+            {note.chiefComplaints.length === 0 ? (
+              <div className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
+                <ClipboardList className="h-4 w-4 text-slate-300 flex-shrink-0" />
+                <p className="text-xs text-slate-400">Select Chief Complaints above — each will appear here as an HPI entry button.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Click a complaint to open its history template</p>
+                <div className="flex flex-wrap gap-2">
+                  {note.chiefComplaints.map((complaint, idx) => {
+                    const isDone = hpiDoneComplaints.includes(complaint);
+                    const isOpen = hpiOpenComplaint === complaint;
+                    return (
+                      <button
+                        key={complaint}
+                        onClick={() => setHpiOpenComplaint(isOpen ? null : complaint)}
+                        className={["flex items-center gap-2 px-3.5 py-2 rounded-xl border-2 text-xs font-bold transition-all", isOpen ? "text-white border-[#8b5cf6] bg-[#8b5cf6] shadow-md" : isDone ? "text-emerald-700 border-emerald-200 bg-emerald-50" : "text-slate-600 border-slate-200 bg-white hover:border-[#8b5cf6]/50"].join(" ")}>
+                        <span className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${isOpen ? "bg-white/25 text-white" : isDone ? "bg-emerald-200 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{idx + 1}</span>
+                        {complaint}
+                        {isDone ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" /> : <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                {note.chiefComplaints.map(complaint => {
+                  const isDone = hpiDoneComplaints.includes(complaint);
+                  const saved  = hpiSavedData[complaint];
+                  if (!isDone || !saved) return null;
+                  return (
+                    <div key={`summary-${complaint}`}>
+                      <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mt-3 mb-1">{complaint} — History Summary</p>
+                      <CoughSummary state={saved} />
+                    </div>
+                  );
+                })}
+                {hpiDoneComplaints.length > 0 && (
+                  <p className="text-[10px] text-slate-400 mt-1">{hpiDoneComplaints.length}/{note.chiefComplaints.length} complaints documented</p>
+                )}
+              </div>
+            )}
+          </Section>
+        );
+
+      case "allergies":
+        return (
+          <Section key="sc-allg" title="Allergies" icon={AlertCircle} color="#ef4444" required filled={note.allergies.length > 0}>
+            <AllergySelector entries={note.allergies} onChange={entries => set("allergies", entries)} />
+          </Section>
+        );
+
+      case "medical-history":
+        return (
+          <Section key="sc-mhx" title="Medical, Surgical, Family & Social History" icon={Users} color="#10b981" defaultOpen={false}
+            filled={(note.pmhActive ?? []).length > 0 || (note.pmhResolved ?? []).length > 0 || (note.surgicalRows ?? []).length > 0 || (note.fhRows ?? []).length > 0}>
+            <div className="mb-5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />Past Medical History
+              </p>
+              <PastHistoryPanel active={note.pmhActive ?? []} resolved={note.pmhResolved ?? []} onActiveChange={v => set("pmhActive", v)} onResolvedChange={v => set("pmhResolved", v)} />
+            </div>
+            <div className="mb-5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" />Surgical History
+              </p>
+              <SurgicalHistoryPanel rows={note.surgicalRows ?? []} onChange={v => set("surgicalRows", v)} />
+            </div>
+            <div className="mb-5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />Family History
+              </p>
+              <FamilyHistoryPanel rows={note.fhRows ?? []} genetic={note.fhGenetic ?? []} onRowsChange={v => set("fhRows", v)} onGeneticChange={v => set("fhGenetic", v)} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />Social History
+              </p>
+              <SocialHistoryPanel value={note.socialHistory ?? EMPTY_SOCIAL_HISTORY} onChange={v => set("socialHistory", v)} />
+            </div>
+          </Section>
+        );
+
+      case "ros":
+        return (
+          <Section key="sc-ros" title="Review of Systems" icon={Stethoscope} color="#0ea5e9" filled={Object.values(note.ros).some(arr => (arr?.length ?? 0) > 0)}>
+            <RosSummary checked={note.ros} onEdit={() => setRosDrawerOpen(true)} />
+          </Section>
+        );
+
+      case "physical-exam":
+        return (
+          <Section key="sc-pe" title="Physical Examination" icon={Stethoscope} color="#06b6d4" filled={peDoneSystemIds.length > 0}>
+            <PeSystemSelector selected={note.peSystems} onChange={systems => set("peSystems", systems)} />
+            <div className="mt-3">
+              <PeChipsPanel
+                systems={note.peSystems}
+                doneSystemIds={peDoneSystemIds}
+                savedDataMap={peSavedData}
+                onOpenSystem={id => setPeOpenSystem(prev => prev === id ? null : id)}
+                openSystemId={peOpenSystem}
+              />
+            </div>
+          </Section>
+        );
+
+      case "poc-labs":
+        return (
+          <Section key="sc-poc" title="Point of Care Labs" icon={FlaskConical} color="#f59e0b" defaultOpen={false} filled={(note.pocTests ?? []).length > 0}>
+            <PocLabsChipsPanel tests={note.pocTests ?? []} onOpen={() => setPocOpen(true)} />
+          </Section>
+        );
+
+      case "diagnosis":
+        return (
+          <Section key="sc-dx" title="Diagnosis" icon={Tag} color="#6366f1" required filled={diagnosisDone}>
+            {diagnosisDone && (
+              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center gap-1 mb-2 w-fit">
+                <CheckCircle2 className="h-2.5 w-2.5" /> {diagnosisSaved.length} code{diagnosisSaved.length !== 1 ? "s" : ""}
+              </span>
+            )}
+            <DiagnosisChipsPanel diagnoses={diagnosisSaved} onOpen={() => setDiagnosisOpen(true)} />
+          </Section>
+        );
+
+      case "lab-orders": {
+        const hasActiveSent = awaitingLab && !activeOrderIsVoided;
+        return (
+          <Section key="sc-lab" title="Lab Orders" icon={FlaskConical} color="#f59e0b" filled={labDone}>
+            {labOrders.length === 0 ? (
+              <button
+                onClick={() => { setLabDrawerMode("add"); setEditingOrderId(null); }}
+                className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl bg-amber-50/60 border-2 border-dashed border-amber-200 text-amber-600 font-bold text-xs hover:border-amber-400 hover:bg-amber-50 transition-all">
+                <Plus className="h-4 w-4 flex-shrink-0" />Order Lab Tests…
+              </button>
+            ) : (
+              <div className="space-y-3">
+                {labOrders.map((order, idx) => {
+                  const isSent   = !!order.sentAt && !order.voided;
+                  const isVoided = !!order.voided;
+                  const isUnsent = !order.sentAt && !isVoided;
+                  const isCurrentlyInLab = awaitingLab && !!activeLabSentAt && order.sentAt === activeLabSentAt;
+                  return (
+                    <div key={order.id ?? idx} className={["rounded-xl border px-3 py-2.5", isVoided ? "border-rose-100 bg-rose-50/40 opacity-70" : isSent ? "border-sky-200 bg-sky-50/40" : "border-slate-200 bg-white"].join(" ")}>
+                      <div className="flex items-center justify-between mb-1.5 gap-1 flex-wrap">
+                        <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isVoided ? "text-rose-400 line-through" : isSent ? "text-sky-600" : "text-slate-400"}`}>
+                          Order {idx + 1}{idx === 0 ? " · Original" : " · Follow-up"}
+                          {order.sentAt && <span className="normal-case font-medium tracking-normal" style={{ textDecoration: "none" }}>· {new Date(order.sentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>}
+                          {isVoided && <span className="ml-1 normal-case font-semibold tracking-normal text-rose-500" style={{ textDecoration: "none" }}>· VOIDED</span>}
+                        </p>
+                        <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+                          {isSent && <span className="flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600 border border-sky-200"><Send className="h-2.5 w-2.5" /> Sent to Lab</span>}
+                          {isSent && (!isCurrentlyInLab || labResultsReady) && !order.returnedFromLab && (
+                            <span className="flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300"><CheckCircle2 className="h-2.5 w-2.5" /> Results Complete</span>
+                          )}
+                          {order.returnedFromLab && <span className="flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-300"><RotateCcw className="h-2.5 w-2.5" /> Returned from Lab</span>}
+                          {isVoided && order.voidReason && <p className="text-[9px] text-rose-400 italic">Reason: {order.voidReason}</p>}
+                          {isSent && isCurrentlyInLab && !labResultsReady && (
+                            <button onClick={() => openVoidModal(order.id)} className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md text-rose-500 hover:text-rose-700 hover:bg-rose-100"><Trash2 className="h-2.5 w-2.5" /> Void</button>
+                          )}
+                          {isUnsent && !hasActiveSent && (
+                            <button onClick={() => handleSendToLab(order.id)} className="flex items-center gap-1 text-[9px] font-semibold px-2 py-1 rounded-md bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100"><Send className="h-2.5 w-2.5" /> Send to Lab</button>
+                          )}
+                          {isUnsent && <button onClick={() => { setEditingOrderId(order.id); setLabDrawerMode("edit"); }} className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md text-amber-600 hover:text-amber-800 hover:bg-amber-50"><PenLine className="h-2.5 w-2.5" /> Edit</button>}
+                          {isUnsent && <button onClick={() => handleRemoveOrder(order.id)} className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50"><Trash2 className="h-2.5 w-2.5" /> Remove</button>}
+                        </div>
+                      </div>
+                      <div className={isVoided ? "opacity-50 pointer-events-none" : ""}><LabChipsPanel order={order} /></div>
+                    </div>
+                  );
+                })}
+                <button onClick={() => { setLabDrawerMode("add"); setEditingOrderId(null); }} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border-2 border-dashed border-amber-200 text-amber-600 text-xs font-bold hover:border-amber-400 hover:bg-amber-50/40 transition-all">
+                  <Plus className="h-3.5 w-3.5" /> Add Lab Order
+                </button>
+              </div>
+            )}
+          </Section>
+        );
+      }
+
+      case "formulary":
+        return (
+          <Section key="sc-rx" title="Prescriptions / Formulary" icon={Pill} color="#8b5cf6" filled={(note.formulary?.medicines?.length ?? 0) > 0}>
+            <FormularyChipsPanel data={note.formulary ?? EMPTY_FORMULARY} onOpen={() => setFormularyOpen(true)} />
+          </Section>
+        );
+
+      case "imaging":
+        return (
+          <Section key="sc-img" title="Imaging" icon={Scan} color="#0ea5e9" filled={(note.imaging?.orders?.length ?? 0) > 0}>
+            <ImagingChipsPanel data={note.imaging ?? EMPTY_IMAGING} onOpen={() => setImagingOpen(true)} />
+          </Section>
+        );
+
+      case "care-plan":
+        return (
+          <Section key="sc-cp" title="Care Plan" icon={ClipboardList} color="#10b981" filled={(note.carePlan?.tasks?.length ?? 0) > 0}>
+            <CarePlanChipsPanel data={note.carePlan ?? EMPTY_CARE_PLAN} onOpen={() => setCarePlanOpen(true)} />
+          </Section>
+        );
+
+      case "referrals":
+        return (
+          <Section key="sc-ref" title="Referrals" icon={Users} color="#6366f1" filled={(note.referrals?.referrals?.length ?? 0) > 0}>
+            <ReferralChipsPanel data={note.referrals ?? EMPTY_REFERRAL_DATA} onOpen={() => setReferralOpen(true)} />
+          </Section>
+        );
+
+      case "patient-goals":
+        return (
+          <Section key="sc-pg" title="Patient Goals" icon={CheckCircle2} color="#ec4899" filled={(note.patientGoals?.goals?.length ?? 0) > 0}>
+            <PatientGoalsChipsPanel data={note.patientGoals ?? EMPTY_PATIENT_GOALS} onOpen={() => setPatientGoalsOpen(true)} />
+          </Section>
+        );
+
+      default:
+        return null;
+    }
+  }
+
   const progressColor = progress < 33 ? "#ef4444" : progress < 66 ? "#f59e0b" : "#10b981";
 
   return (
@@ -1390,6 +1628,21 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               data={note.specialtyFormData ?? {}}
               onChange={data => set("specialtyFormData", data)}
             />
+          )}
+
+          {/* System Components — rendered below specialty form sections in persisted order */}
+          {activeMode === "specialty" && assignedForm && (assignedForm.systemComponents ?? []).length > 0 && (
+            <>
+              <div className="flex items-center gap-2 px-1 py-1">
+                <div className="h-px flex-1 bg-slate-100" />
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                  <Layers className="h-3 w-3" />
+                  System Components
+                </p>
+                <div className="h-px flex-1 bg-slate-100" />
+              </div>
+              {[...(assignedForm.systemComponents ?? [])].sort((a, b) => a.order - b.order).map(sc => renderSystemComponent(sc.id))}
+            </>
           )}
 
           <div className={activeMode === "specialty" && assignedForm ? "hidden" : ""}>

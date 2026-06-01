@@ -5,6 +5,7 @@ import {
   AlignLeft, CheckSquare, ToggleLeft, Hash, Calendar,
   Layers, Users, X, Check, BookOpen, Send, ArrowUp, ArrowDown,
   ChevronDown, ListChecks, Star, Clock, ToggleRight,
+  AlertCircle, Stethoscope, FlaskConical, Tag, Pill, Scan, ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,12 +51,15 @@ export type FormSection = {
   fields: FormField[];
 };
 
+export type SystemComponentEntry = { id: string; order: number };
+
 export type SpecialtyForm = {
   id: string;
   name: string;
   status: "draft" | "published";
   sections: FormSection[];
   assignedDoctorIds: string[];
+  systemComponents: SystemComponentEntry[];
   createdAt: string;
   updatedAt: string;
 };
@@ -76,6 +80,8 @@ export function loadForms(): SpecialtyForm[] {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
       const forms = JSON.parse(raw) as SpecialtyForm[];
+      // Migration: ensure all forms have systemComponents array
+      forms.forEach(f => { if (!f.systemComponents) f.systemComponents = []; });
       // Migration: patch sf-asif-immuno chief complaint if still textarea
       const asif = forms.find(f => f.id === "sf-asif-immuno");
       if (asif) {
@@ -246,6 +252,7 @@ const SEED_FORMS: SpecialtyForm[] = [
     name: "Dr. Asif Imam — Immunology Consultation",
     status: "published",
     assignedDoctorIds: ["doc-asif"],
+    systemComponents: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     sections: [
@@ -484,6 +491,30 @@ function fieldTypeLabel(t: FieldType) {
   return FIELD_TYPES.find(f => f.value === t)?.label ?? t;
 }
 
+// ── System Component catalog ──────────────────────────────────────────────────
+
+export const SYSTEM_COMPONENTS: {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  color: string;
+}[] = [
+  { id: "chief-complaint", label: "Chief Complaint",                     icon: FileText,     color: "#4982CF" },
+  { id: "hpi",             label: "History of Present Illness",           icon: BookOpen,     color: "#8b5cf6" },
+  { id: "allergies",       label: "Allergies",                            icon: AlertCircle,  color: "#ef4444" },
+  { id: "medical-history", label: "Medical, Surgical & Family History",   icon: Users,        color: "#10b981" },
+  { id: "ros",             label: "Review of Systems",                    icon: ListChecks,   color: "#0ea5e9" },
+  { id: "physical-exam",   label: "Physical Examination",                 icon: Stethoscope,  color: "#06b6d4" },
+  { id: "poc-labs",        label: "Point of Care Labs",                   icon: FlaskConical, color: "#f59e0b" },
+  { id: "diagnosis",       label: "Diagnosis",                            icon: Tag,          color: "#6366f1" },
+  { id: "lab-orders",      label: "Lab Orders",                           icon: FlaskConical, color: "#f59e0b" },
+  { id: "formulary",       label: "Prescriptions / Formulary",            icon: Pill,         color: "#8b5cf6" },
+  { id: "imaging",         label: "Imaging",                              icon: Scan,         color: "#0ea5e9" },
+  { id: "care-plan",       label: "Care Plan",                            icon: ClipboardList, color: "#10b981" },
+  { id: "referrals",       label: "Referrals",                            icon: Users,        color: "#6366f1" },
+  { id: "patient-goals",   label: "Patient Goals",                        icon: CheckSquare,  color: "#ec4899" },
+];
+
 // ── Factory helpers ───────────────────────────────────────────────────────────
 
 function makeForm(): SpecialtyForm {
@@ -493,6 +524,7 @@ function makeForm(): SpecialtyForm {
     status: "draft",
     sections: [],
     assignedDoctorIds: [],
+    systemComponents: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -733,7 +765,7 @@ function FormBuilder({
     initialForm.sections[0]?.id ?? null,
   );
   const [previewMode, setPreviewMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<"fields" | "assignments">("fields");
+  const [activeTab, setActiveTab] = useState<"fields" | "assignments" | "system-components">("fields");
 
   const selectedSection = form.sections.find(s => s.id === selectedSectionId) ?? null;
 
@@ -835,6 +867,27 @@ function FormBuilder({
         ? f.assignedDoctorIds.filter(id => id !== docId)
         : [...f.assignedDoctorIds, docId],
     }));
+
+  // ── System component mutations ─────────────────────────────────────────────
+
+  const toggleSystemComponent = (id: string) =>
+    setForm(f => {
+      const current = f.systemComponents ?? [];
+      const exists = current.some(c => c.id === id);
+      if (exists) return { ...f, systemComponents: current.filter(c => c.id !== id) };
+      const nextOrder = current.length > 0 ? Math.max(...current.map(c => c.order)) + 1 : 0;
+      return { ...f, systemComponents: [...current, { id, order: nextOrder }] };
+    });
+
+  const moveSystemComponent = (id: string, dir: -1 | 1) =>
+    setForm(f => {
+      const sorted = [...(f.systemComponents ?? [])].sort((a, b) => a.order - b.order);
+      const idx = sorted.findIndex(c => c.id === id);
+      const to = idx + dir;
+      if (idx < 0 || to < 0 || to >= sorted.length) return f;
+      [sorted[idx], sorted[to]] = [sorted[to], sorted[idx]];
+      return { ...f, systemComponents: sorted.map((c, i) => ({ ...c, order: i })) };
+    });
 
   // ── Preview ────────────────────────────────────────────────────────────────
 
@@ -1006,9 +1059,112 @@ function FormBuilder({
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setActiveTab("system-components")}
+              className={`flex items-center gap-1.5 border-b-2 px-5 py-2.5 text-xs font-semibold transition-colors ${activeTab === "system-components" ? "border-[#4982CF] text-[#4982CF]" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+            >
+              <Layers className="h-3.5 w-3.5" />System Components
+              {(form.systemComponents ?? []).length > 0 && (
+                <span
+                  className="rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white"
+                  style={{ backgroundColor: ACCENT }}
+                >
+                  {form.systemComponents.length}
+                </span>
+              )}
+            </button>
           </div>
 
-          {activeTab === "fields" ? (
+          {activeTab === "system-components" ? (
+            <div className="flex-1 overflow-y-auto p-5">
+              <div className="max-w-2xl space-y-5">
+                {/* Header */}
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">System Components</p>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Enable standard SOAP note components to render below this form's custom sections during the clinical encounter.
+                  </p>
+                </div>
+
+                {/* Enabled list (drag-reorder) */}
+                {(form.systemComponents ?? []).length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                      Enabled <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white" style={{ backgroundColor: ACCENT }}>{form.systemComponents.length}</span>
+                      <span className="text-[9px] font-normal text-slate-300 normal-case tracking-normal">— drag to reorder</span>
+                    </p>
+                    {[...(form.systemComponents ?? [])].sort((a, b) => a.order - b.order).map((sc, idx, arr) => {
+                      const comp = SYSTEM_COMPONENTS.find(c => c.id === sc.id);
+                      if (!comp) return null;
+                      return (
+                        <div key={sc.id} className="flex items-center gap-2.5 rounded-xl border border-[#4982CF]/25 bg-[#4982CF]/5 px-3 py-2.5">
+                          <GripVertical className="h-3.5 w-3.5 text-slate-300 flex-shrink-0" />
+                          <div className="h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${comp.color}18` }}>
+                            <comp.icon className="h-3.5 w-3.5" style={{ color: comp.color }} />
+                          </div>
+                          <span className="flex-1 text-xs font-semibold text-slate-700">{comp.label}</span>
+                          <div className="flex items-center gap-0.5 flex-shrink-0">
+                            <button
+                              onClick={() => moveSystemComponent(sc.id, -1)}
+                              disabled={idx === 0}
+                              className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed"
+                            >
+                              <ArrowUp className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={() => moveSystemComponent(sc.id, 1)}
+                              disabled={idx === arr.length - 1}
+                              className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed"
+                            >
+                              <ArrowDown className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={() => toggleSystemComponent(sc.id)}
+                              className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
+                              title="Remove"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* All 14 components — toggle grid */}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">All Components</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {SYSTEM_COMPONENTS.map(comp => {
+                      const enabled = (form.systemComponents ?? []).some(c => c.id === comp.id);
+                      return (
+                        <button
+                          key={comp.id}
+                          onClick={() => toggleSystemComponent(comp.id)}
+                          className={[
+                            "flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all",
+                            enabled
+                              ? "border-[#4982CF]/30 bg-[#4982CF]/8 shadow-sm"
+                              : "border-slate-200 bg-white hover:border-[#4982CF]/30 hover:bg-slate-50",
+                          ].join(" ")}
+                        >
+                          <div className="h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${comp.color}18` }}>
+                            <comp.icon className="h-3.5 w-3.5" style={{ color: comp.color }} />
+                          </div>
+                          <span className={`flex-1 text-xs font-semibold ${enabled ? "text-[#4982CF]" : "text-slate-700"}`}>{comp.label}</span>
+                          {enabled
+                            ? <Check className="h-3.5 w-3.5 flex-shrink-0" style={{ color: ACCENT }} />
+                            : <Plus className="h-3 w-3 text-slate-300 flex-shrink-0" />
+                          }
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : activeTab === "fields" ? (
             <div className="flex-1 overflow-y-auto p-5">
               {!selectedSection ? (
                 <div className="flex h-full flex-col items-center justify-center text-slate-400">
