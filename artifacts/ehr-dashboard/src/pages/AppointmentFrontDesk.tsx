@@ -2114,7 +2114,7 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-xs font-mono text-slate-500">{appt.id}</span>
+                  <span className="text-xs font-mono text-slate-500">APT-{appt.id.slice(-5).toUpperCase()}</span>
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {appt.type || <span className="text-slate-300">—</span>}
