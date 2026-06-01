@@ -4,7 +4,7 @@ import {
   ArrowLeft, User, Phone, Calendar, Hash, Edit2,
   FileText, Folder, FlaskConical, Scan, Users, Receipt,
   AlertCircle, Activity, Pill, Maximize2, Minimize2, X,
-  Printer, Upload, History, CalendarPlus, Ticket,
+  Printer, Upload, History, CalendarPlus, Ticket, Mail,
   ChevronRight,
 } from "lucide-react";
 import {
@@ -811,6 +811,12 @@ export function PatientProfile() {
               className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
             >
               <History className="h-3.5 w-3.5 flex-shrink-0 text-pink-500" />Add History
+            </button>
+            <button
+              onClick={() => comingSoon("Email Profile")}
+              className="w-full flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <Mail className="h-3.5 w-3.5 flex-shrink-0 text-sky-500" />Email Profile
             </button>
           </div>
         </div>
