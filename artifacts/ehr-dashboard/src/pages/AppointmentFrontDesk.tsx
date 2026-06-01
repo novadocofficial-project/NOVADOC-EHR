@@ -2094,11 +2094,16 @@ function writeWaitStopTime(apptId: string, ts: number): void {
 }
 
 function resolveStopTime(apptId: string): number | null {
-  const signed = readSignedRecords(apptId);
-  if (signed.length === 0) return null;
-  const timestamps = signed.map(r => (r as { signedAt?: number }).signedAt).filter((t): t is number => typeof t === "number");
-  if (timestamps.length > 0) return Math.min(...timestamps);
-  return null;
+  const status = getHealthRecordStatus(apptId);
+  if (status === "not-started") return null;
+  if (status === "completed") {
+    const signed = readSignedRecords(apptId);
+    const timestamps = signed
+      .map(r => (r as { signedAt?: number }).signedAt)
+      .filter((t): t is number => typeof t === "number");
+    if (timestamps.length > 0) return Math.min(...timestamps);
+  }
+  return Date.now();
 }
 
 function formatElapsed(ms: number): string {
@@ -2222,7 +2227,7 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
                     const vitalsAt = getVitalsCompletedAt(appt.id);
                     if (!vitalsAt) return <span className="text-slate-300">—</span>;
                     const stopAt = stopTimes[appt.id] ?? null;
-                    const hrDone = stopAt !== null || getHealthRecordStatus(appt.id) === "completed";
+                    const hrDone = stopAt !== null;
                     const effectiveEnd = stopAt ?? now;
                     const ms = effectiveEnd - vitalsAt;
                     const activeColor = ms > 30 * 60 * 1000 ? "text-red-600" : ms > 15 * 60 * 1000 ? "text-amber-600" : "text-emerald-600";
