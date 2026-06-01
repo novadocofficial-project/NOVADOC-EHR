@@ -137,6 +137,28 @@ export function loadForms(): SpecialtyForm[] {
         }
         // Remove old s3 (History 2)
         asif.sections = asif.sections.filter(s => s.id !== "s3");
+        // Migration: patch s10 Care Management f11 → multiselect
+        const s10 = asif.sections.find(s => s.id === "s10");
+        if (s10) {
+          const f11 = s10.fields.find(f => f.id === "f11");
+          if (!f11 || f11.type !== "multiselect") {
+            s10.fields = [{ id: "f11", label: "Treatment Plan", type: "multiselect", placeholder: "Select care management items…", allowOther: true, selectionStyle: "simple", options: [
+              "Behavioural Health Evaluation",
+              "Demonstration of Inhaler Technique and Use of Spacer Device",
+              "Demonstration of Nasal Spray Technique",
+              "Demonstration of Peak Flow Measurements and Documentation",
+              "Information on Allergen Avoidance of Dust Mite and Cockroach",
+              "Information on Allergy Vaccination, its Benefits and Risks",
+              "Instructions on Diagnostic Tests and Procedures Ordered",
+              "Instructions on ENT Specialist and Other Specialists Referral",
+              "Instructions on Family Medicine Referral",
+              "Instructions on Taking Prescription Medicines and Potential Side Effects",
+              "Nutritional Advice from Nutritionist",
+              "Patient Care Manager Contact Information",
+              "Visit Websites of The American Academy of Allergy and American College of Allergy",
+            ] }];
+          }
+        }
         // Migration: patch s8 Investigations f9 → multiselect
         const s8 = asif.sections.find(s => s.id === "s8");
         if (s8) {
@@ -386,7 +408,21 @@ const SEED_FORMS: SpecialtyForm[] = [
       },
       {
         id: "s10", title: "Care Management", description: "",
-        fields: [{ id: "f11", label: "Treatment Plan", type: "textarea", placeholder: "Pharmacological and non-pharmacological management plan...", options: [] }],
+        fields: [{ id: "f11", label: "Treatment Plan", type: "multiselect", placeholder: "Select care management items…", allowOther: true, selectionStyle: "simple", options: [
+          "Behavioural Health Evaluation",
+          "Demonstration of Inhaler Technique and Use of Spacer Device",
+          "Demonstration of Nasal Spray Technique",
+          "Demonstration of Peak Flow Measurements and Documentation",
+          "Information on Allergen Avoidance of Dust Mite and Cockroach",
+          "Information on Allergy Vaccination, its Benefits and Risks",
+          "Instructions on Diagnostic Tests and Procedures Ordered",
+          "Instructions on ENT Specialist and Other Specialists Referral",
+          "Instructions on Family Medicine Referral",
+          "Instructions on Taking Prescription Medicines and Potential Side Effects",
+          "Nutritional Advice from Nutritionist",
+          "Patient Care Manager Contact Information",
+          "Visit Websites of The American Academy of Allergy and American College of Allergy",
+        ] }],
       },
       {
         id: "s11", title: "Specialist Referrals", description: "",
