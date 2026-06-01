@@ -108,6 +108,35 @@ export function loadForms(): SpecialtyForm[] {
             if (!f4.selectionStyle) f4.selectionStyle = "simple";
           }
         }
+        // Migration: merge History 1 + History 2 → single History multiselect
+        const s2 = asif.sections.find(s => s.id === "s2");
+        if (s2 && s2.title !== "History") {
+          s2.title = "History";
+          s2.description = "";
+          s2.fields = [{ id: "f2", label: "Patient History", type: "multiselect", placeholder: "Select patient history…", selectionStyle: "simple", options: [
+            "Allergy to Food", "Allergy to Medicine", "Anxiety", "Anxiety and Depression",
+            "Chest Congestion", "Cough With Clear Sputum", "Cough with Wheezing",
+            "Difficulty in Breathing", "Dry Cough Due to Throat Irritation", "Eczematous Rashes",
+            "Frequent Sore Throat", "Itchy and Red Eyes", "Itchy and Watery Eyes",
+            "Medicines Are Not Controlling the Symptoms", "Medicines Help But Not Completely",
+            "Nasal Polyps", "Nebulizer Treatment Helpful for the Chest Congestion",
+            "Plugged Ears", "Postnasal Drip and Sinus Congestion", "Repeated Ear Infection",
+            "Skin Rash", "Sneezing and Runny Nose", "Snoring and Sleep Apnea", "Swelling of the Skin",
+            "Symptoms are Aggravated by Pests", "Symptoms Are Present All Year Around",
+            "Symptoms Are Seasonal", "Symptoms Are Worse in Winter",
+            "Symptoms Occur All Year Around", "Symptoms Worse in Karachi",
+            "The Symptoms are Aggravated by Dust", "The Symptoms are Chronic",
+            "The Symptoms Have Been Present for Several Days",
+            "The Symptoms Have Been Present for Several Months",
+            "The Symptoms Have Been Present for Several Weeks",
+            "The Symptoms Have Been Present for Several Years",
+            "The Symptoms Have Improved Significantly", "The Symptoms Have Worsened Lately",
+            "There is a History of Smoking", "There is Wall to Wall Carpet in the Bedroom",
+            "Urticaria and Hives", "With Recent Aggravation",
+          ] }];
+        }
+        // Remove old s3 (History 2)
+        asif.sections = asif.sections.filter(s => s.id !== "s3");
         localStorage.setItem(LS_KEY, JSON.stringify(forms));
       }
       return forms;
@@ -159,12 +188,51 @@ const SEED_FORMS: SpecialtyForm[] = [
         }],
       },
       {
-        id: "s2", title: "History 1", description: "",
-        fields: [{ id: "f2", label: "History of Present Illness", type: "textarea", placeholder: "Onset, duration, severity, alleviating/aggravating factors...", options: [] }],
-      },
-      {
-        id: "s3", title: "History 2", description: "",
-        fields: [{ id: "f3", label: "Past Medical History", type: "textarea", placeholder: "Relevant past conditions, hospitalisations, surgeries...", options: [] }],
+        id: "s2", title: "History", description: "",
+        fields: [{ id: "f2", label: "Patient History", type: "multiselect", placeholder: "Select patient history…", selectionStyle: "simple", options: [
+          "Allergy to Food",
+          "Allergy to Medicine",
+          "Anxiety",
+          "Anxiety and Depression",
+          "Chest Congestion",
+          "Cough With Clear Sputum",
+          "Cough with Wheezing",
+          "Difficulty in Breathing",
+          "Dry Cough Due to Throat Irritation",
+          "Eczematous Rashes",
+          "Frequent Sore Throat",
+          "Itchy and Red Eyes",
+          "Itchy and Watery Eyes",
+          "Medicines Are Not Controlling the Symptoms",
+          "Medicines Help But Not Completely",
+          "Nasal Polyps",
+          "Nebulizer Treatment Helpful for the Chest Congestion",
+          "Plugged Ears",
+          "Postnasal Drip and Sinus Congestion",
+          "Repeated Ear Infection",
+          "Skin Rash",
+          "Sneezing and Runny Nose",
+          "Snoring and Sleep Apnea",
+          "Swelling of the Skin",
+          "Symptoms are Aggravated by Pests",
+          "Symptoms Are Present All Year Around",
+          "Symptoms Are Seasonal",
+          "Symptoms Are Worse in Winter",
+          "Symptoms Occur All Year Around",
+          "Symptoms Worse in Karachi",
+          "The Symptoms are Aggravated by Dust",
+          "The Symptoms are Chronic",
+          "The Symptoms Have Been Present for Several Days",
+          "The Symptoms Have Been Present for Several Months",
+          "The Symptoms Have Been Present for Several Weeks",
+          "The Symptoms Have Been Present for Several Years",
+          "The Symptoms Have Improved Significantly",
+          "The Symptoms Have Worsened Lately",
+          "There is a History of Smoking",
+          "There is Wall to Wall Carpet in the Bedroom",
+          "Urticaria and Hives",
+          "With Recent Aggravation",
+        ] }],
       },
       {
         id: "s4", title: "Current Medicine", description: "",
