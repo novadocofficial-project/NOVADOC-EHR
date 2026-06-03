@@ -36,7 +36,12 @@ animation:bounce 1.2s infinite ease-in-out both;}
     tab.document.close();
   }
 
-  const { jsPDF } = await import("jspdf");
+  const [{ jsPDF }, html2canvasModule] = await Promise.all([
+    import("jspdf"),
+    import("html2canvas"),
+  ]);
+  const html2canvas = html2canvasModule.default;
+
   const { patient, noteRow, visitType, noteKind } = p;
 
   const patientInfoHtml = buildPatientInfo(patient, noteRow, visitType);
@@ -58,42 +63,72 @@ animation:bounce 1.2s infinite ease-in-out both;}
   }
   const providerHtml = buildProviderBlock(noteRow, visitType);
 
-  // ── Inject flat (no position:fixed) container for html2canvas ───────────
+  // A4 layout constants (mm)
+  const A4_W = 210;
+  const A4_H = 297;
+  const ML = 16, MT = 22, MB = 20;
+  const contentW = 178; // A4_W - ML - MR (MR = 16)
+
+  // Container width = content width at 96 DPI: 178mm × 96 / 25.4 ≈ 673px
+  // Using 674px so the number is even; html2canvas renders at scale:2 → 1348px canvas width
+  const CONTAINER_PX = 674;
+  const H2C_SCALE    = 2;
+
+  // ── Inject content-only container for html2canvas (no page margins) ──────
   const container = document.createElement("div");
-  container.style.cssText = "position:absolute;left:-9999px;top:0;width:760px;background:#fff;margin:0;padding:0;overflow:visible";
+  container.style.cssText = `position:absolute;left:-9999px;top:0;width:${CONTAINER_PX}px;background:#fff;margin:0;padding:0;overflow:visible`;
   container.innerHTML = `<style>${PDF_CONTENT_CSS}</style><div class="pdf-content">${patientInfoHtml}${vitalsHtml}<hr class="divider"/>${clinicalHtml}${providerHtml}</div>`;
   document.body.appendChild(container);
 
-  const A4_W = 210;
-  const A4_H = 297;
-  const ML = 16, MR = 16, MT = 22, MB = 20;
-  const contentW = A4_W - ML - MR; // 178 mm
-
   try {
-    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const contentEl = container.querySelector(".pdf-content") as HTMLElement;
 
-    await new Promise<void>(resolve => {
-      pdf.html(contentEl, {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        callback: (doc: any) => {
-          const total = (doc as JSPDF).getNumberOfPages();
-          for (let pg = 1; pg <= total; pg++) {
-            (doc as JSPDF).setPage(pg);
-            pdfAddHeader(doc as JSPDF, p, A4_W, pg, total);
-            pdfAddFooter(doc as JSPDF, A4_W, A4_H);
-          }
-          resolve();
-        },
-        x: ML,
-        y: MT,
-        width: contentW,
-        windowWidth: 760,
-        margin: [MT, MR, MB, ML],
-        autoPaging: "text",
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-      });
+    // Render the full content to a single tall canvas
+    const canvas = await html2canvas(contentEl, {
+      scale:       H2C_SCALE,
+      useCORS:     true,
+      logging:     false,
+      width:       CONTAINER_PX,
+      windowWidth: CONTAINER_PX,
     });
+
+    const canvasW = canvas.width;  // CONTAINER_PX * H2C_SCALE = 1348
+    const canvasH = canvas.height; // full content height in canvas px
+
+    // px-per-mm derived from canvas width and content width in mm
+    const pxPerMm = canvasW / contentW;
+
+    // Available content height per A4 page (header + footer reserves deducted)
+    const pageContentHeightMm = A4_H - MT - MB; // 255mm
+    const pageContentHeightPx = Math.round(pageContentHeightMm * pxPerMm);
+
+    const totalPages = Math.ceil(canvasH / pageContentHeightPx);
+
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+    for (let pg = 0; pg < totalPages; pg++) {
+      if (pg > 0) pdf.addPage();
+
+      // Draw header and footer first (below the image layer)
+      pdfAddHeader(pdf, p, A4_W, pg + 1, totalPages);
+      pdfAddFooter(pdf, A4_W, A4_H);
+
+      // Slice the canvas for this page
+      const srcY = pg * pageContentHeightPx;
+      const srcH = Math.min(pageContentHeightPx, canvasH - srcY);
+
+      const slice = document.createElement("canvas");
+      slice.width  = canvasW;
+      slice.height = srcH;
+      const ctx = slice.getContext("2d")!;
+      ctx.drawImage(canvas, 0, srcY, canvasW, srcH, 0, 0, canvasW, srcH);
+
+      const sliceDataUrl  = slice.toDataURL("image/jpeg", 0.92);
+      const sliceHeightMm = srcH / pxPerMm;
+
+      // Place image in the content zone (below header, above footer)
+      pdf.addImage(sliceDataUrl, "JPEG", ML, MT, contentW, sliceHeightMm, undefined, "FAST");
+    }
 
     const blobUrl = URL.createObjectURL(pdf.output("blob"));
     if (tab && !tab.closed) {
@@ -167,16 +202,16 @@ const PDF_CONTENT_CSS = `
 }
 .patient-table { width:100%; border-collapse:collapse; margin-bottom:10pt; border:1px solid #e2e8f0; overflow:hidden; }
 .patient-table td { padding:5pt 8pt; font-size:9pt; border:1px solid #e2e8f0; vertical-align:top; }
-.patient-table .cell-label { font-weight:700; color:#64748b; font-size:7.5pt; text-transform:uppercase; letter-spacing:0.04em; background:#f8fafc; width:90pt; }
+.patient-table .cell-label { font-weight:700; color:#64748b; font-size:7.5pt; text-transform:uppercase; background:#f8fafc; width:90pt; }
 .patient-table .cell-value { color:#1e293b; font-weight:600; }
 .patient-name-row td { font-size:11pt; font-weight:900; color:#1e293b; background:#f0f6ff; border-bottom:2px solid #4982CF; }
 .vitals-grid { display:flex; flex-wrap:wrap; gap:6pt; margin-bottom:10pt; }
 .vital-chip { display:flex; align-items:baseline; gap:4pt; padding:4pt 8pt; border:1px solid #e2e8f0; border-radius:6pt; background:#fff; font-size:9pt; }
-.vital-label { font-size:7pt; font-weight:900; text-transform:uppercase; letter-spacing:0.06em; color:#64748b; }
+.vital-label { font-size:7pt; font-weight:900; text-transform:uppercase; color:#64748b; }
 .vital-value { font-weight:800; color:#1e293b; }
 .vital-unit { font-size:7pt; color:#94a3b8; }
 .sec { margin-bottom:8pt; }
-.sec-title { font-size:7.5pt; font-weight:900; text-transform:uppercase; letter-spacing:0.07em; color:#4982CF; border-bottom:1px solid #e2e8f0; padding-bottom:2pt; margin-bottom:5pt; }
+.sec-title { font-size:7.5pt; font-weight:900; text-transform:uppercase; color:#4982CF; border-bottom:1px solid #e2e8f0; padding-bottom:2pt; margin-bottom:5pt; }
 .sec-body { font-size:9.5pt; color:#334155; }
 .chips { display:flex; flex-wrap:wrap; gap:4pt; }
 .chip { display:inline-block; padding:2pt 7pt; border-radius:100pt; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; font-size:8.5pt; font-weight:600; }
@@ -197,7 +232,7 @@ const PDF_CONTENT_CSS = `
 .dx-badge { font-size:7pt; font-weight:900; padding:1pt 5pt; border-radius:100pt; background:#fefce8; border:1px solid #fde68a; color:#92400e; }
 .dx-badge-final { background:#f0fdf4; border-color:#bbf7d0; color:#166534; }
 .orders-table { width:100%; border-collapse:collapse; font-size:8.5pt; margin-bottom:4pt; }
-.orders-table th { text-align:left; font-size:7.5pt; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; border-bottom:2px solid #e2e8f0; padding:3pt 6pt; }
+.orders-table th { text-align:left; font-size:7.5pt; font-weight:700; color:#64748b; text-transform:uppercase; border-bottom:2px solid #e2e8f0; padding:3pt 6pt; }
 .orders-table td { padding:4pt 6pt; border-bottom:1px solid #f1f5f9; vertical-align:top; }
 .orders-table tr:last-child td { border-bottom:none; }
 .voided-row td { color:#94a3b8; text-decoration:line-through; }
@@ -207,7 +242,7 @@ const PDF_CONTENT_CSS = `
 .provider-sub { color:#64748b; margin-top:1pt; }
 .poc-row { display:flex; align-items:center; gap:8pt; border:1px solid; border-radius:5pt; padding:4pt 8pt; margin-bottom:3pt; font-size:8.5pt; }
 .divider { border:none; border-top:1px solid #e2e8f0; margin:10pt 0; }
-.sub-label { font-size:7pt; font-weight:900; text-transform:uppercase; letter-spacing:0.07em; color:#94a3b8; margin:4pt 0 3pt; }
+.sub-label { font-size:7pt; font-weight:900; text-transform:uppercase; color:#94a3b8; margin:4pt 0 3pt; }
 .narrative { border:1px solid #e2e8f0; border-radius:5pt; padding:6pt 9pt; background:#f8fafc; font-size:9pt; line-height:1.6; white-space:pre-wrap; }
 `;
 
