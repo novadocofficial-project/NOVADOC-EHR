@@ -1271,7 +1271,7 @@ function AppointmentCard({ state, isPaid, role, onClose, onView, onEdit, onStatu
   const nextStatuses: ApptStatus[] = (() => {
     if (appt.status === "booked")      return ["confirmed", "checked_in", "rescheduled", "cancelled", "no_show"];
     if (appt.status === "confirmed")   return ["checked_in", "rescheduled", "cancelled", "no_show"];
-    if (appt.status === "checked_in")  return ["checked_out", "rescheduled", "cancelled"];
+    if (appt.status === "checked_in")  return ["checked_out"];
     if (appt.status === "rescheduled") return ["booked", "confirmed", "cancelled"];
     return [];
   })();
