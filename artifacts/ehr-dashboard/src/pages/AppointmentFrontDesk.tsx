@@ -2385,6 +2385,7 @@ function NursingView({
                 <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Patient</th>
                 <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Doctor</th>
                 <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Appt ID</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Appt Type</th>
                 <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Priority</th>
                 <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Waiting</th>
                 <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Dr Queue</th>
@@ -2420,6 +2421,9 @@ function NursingView({
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs font-mono text-slate-500">APT-{appt.id.slice(-5).toUpperCase()}</span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-600">
+                      {appt.type || <span className="text-slate-300">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${pCfg.cls}`}>
