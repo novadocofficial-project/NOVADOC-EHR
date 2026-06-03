@@ -210,8 +210,8 @@ const PDF_CONTENT_CSS = `
 .vital-label { font-size:7pt; font-weight:900; text-transform:uppercase; color:#64748b; }
 .vital-value { font-weight:800; color:#1e293b; }
 .vital-unit { font-size:7pt; color:#94a3b8; }
-.sec { margin-bottom:8pt; }
-.sec-title { font-size:7.5pt; font-weight:900; text-transform:uppercase; color:#4982CF; border-bottom:1px solid #e2e8f0; padding-bottom:2pt; margin-bottom:5pt; }
+.sec { margin-bottom:12pt; }
+.sec-title { font-size:8.5pt; font-weight:900; text-transform:uppercase; color:#4982CF; border-bottom:1px solid #e2e8f0; padding-bottom:2pt; margin-bottom:5pt; }
 .sec-body { font-size:9.5pt; color:#334155; }
 .chips { display:flex; flex-wrap:wrap; gap:4pt; }
 .chip { display:inline-block; padding:2pt 7pt; border-radius:100pt; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; font-size:8.5pt; font-weight:600; }
@@ -409,14 +409,13 @@ body {
 
 /* ── Sections ── */
 .sec {
-  margin-bottom: 8pt;
+  margin-bottom: 12pt;
   page-break-inside: avoid;
 }
 .sec-title {
-  font-size: 7.5pt;
+  font-size: 8.5pt;
   font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
   color: #4982CF;
   border-bottom: 1px solid #e2e8f0;
   padding-bottom: 2pt;
@@ -665,9 +664,9 @@ function buildPatientInfo(
     </tr>
     <tr>
       <td class="cell-label">Physician</td>
-      <td class="cell-value">${esc(noteRow.doctor)}</td>
+      <td class="cell-value">${esc((() => { const parts = (visitType || "").split(" \u2014 "); return parts[0].startsWith("Dr.") ? parts[0] : noteRow.doctor; })())}</td>
       <td class="cell-label">Visit Type</td>
-      <td class="cell-value">${esc(visitType || noteRow.type)}</td>
+      <td class="cell-value">${esc((() => { const parts = (visitType || "").split(" \u2014 "); return parts[0].startsWith("Dr.") && parts.length > 1 ? parts.slice(1).join(" \u2014 ") : (visitType || noteRow.type); })())}</td>
     </tr>
   </table>`;
 }
@@ -957,7 +956,7 @@ function buildLiveClinical(note: NoteState): string {
     const body = rosEntries.map(sys => {
       const symptoms = (note.ros[sys.id] ?? []);
       return `<div style="margin-bottom:4pt">
-        <div style="font-size:7pt;font-weight:900;text-transform:uppercase;letter-spacing:0.07em;color:#0369a1;margin-bottom:2pt">${esc(sys.label)}</div>
+        <div style="font-size:7pt;font-weight:900;text-transform:uppercase;color:#0369a1;margin-bottom:2pt">${esc(sys.label)}</div>
         <div class="chips">${symptoms.map(s => `<span class="chip">${esc(s)}</span>`).join("")}</div>
       </div>`;
     }).join("");
@@ -970,7 +969,7 @@ function buildLiveClinical(note: NoteState): string {
       const saved = (note.peSavedData ?? {})[sys.id];
       const findings = saved ? Object.entries(saved).filter(([, v]) => v?.trim()) : [];
       return `<div style="margin-bottom:4pt">
-        <div style="font-size:7pt;font-weight:900;text-transform:uppercase;letter-spacing:0.07em;color:#7c3aed;margin-bottom:2pt">${esc(sys.label)}</div>
+        <div style="font-size:7pt;font-weight:900;text-transform:uppercase;color:#7c3aed;margin-bottom:2pt">${esc(sys.label)}</div>
         ${findings.length
           ? findings.map(([k, v]) => `<div style="font-size:8.5pt"><strong>${esc(k)}:</strong> ${esc(v)}</div>`).join("")
           : `<span style="font-size:8pt;color:#94a3b8;font-style:italic">No findings recorded</span>`}
@@ -1137,7 +1136,8 @@ function buildSpecialtyFormClinical(form: SpecialtyForm, note: NoteState): strin
 }
 
 function buildFormSectionHtml(sec: FormSection, formData: Record<string, unknown>): string {
-  const fieldParts: string[] = [];
+  type VisibleField = { label: string; rendered: string };
+  const visible: VisibleField[] = [];
   for (const field of sec.fields) {
     const val = formData[field.id];
     if (val == null || val === "" || (Array.isArray(val) && val.length === 0)) continue;
@@ -1155,13 +1155,15 @@ function buildFormSectionHtml(sec: FormSection, formData: Record<string, unknown
     } else {
       rendered = `<span style="font-size:9pt">${esc(String(val))}</span>`;
     }
-    fieldParts.push(`
+    visible.push({ label: field.label, rendered });
+  }
+  if (!visible.length) return "";
+  const showLabels = visible.length > 1;
+  const fieldParts = visible.map(({ label, rendered }) => `
       <div style="margin-bottom:5pt">
-        <div style="font-size:7.5pt;font-weight:700;color:#64748b;margin-bottom:2pt">${esc(field.label)}</div>
+        ${showLabels ? `<div style="font-size:7.5pt;font-weight:700;color:#64748b;margin-bottom:2pt">${esc(label)}</div>` : ""}
         ${rendered}
       </div>`);
-  }
-  if (!fieldParts.length) return "";
   return section(sec.title, fieldParts.join(""));
 }
 
@@ -1230,7 +1232,7 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
       const body = rosEntries.map(sys => {
         const symptoms = note.ros[sys.id] ?? [];
         return `<div style="margin-bottom:4pt">
-          <div style="font-size:7pt;font-weight:900;text-transform:uppercase;letter-spacing:0.07em;color:#0369a1;margin-bottom:2pt">${esc(sys.label)}</div>
+          <div style="font-size:7pt;font-weight:900;text-transform:uppercase;color:#0369a1;margin-bottom:2pt">${esc(sys.label)}</div>
           <div class="chips">${symptoms.map(s => `<span class="chip">${esc(s)}</span>`).join("")}</div>
         </div>`;
       }).join("");
@@ -1243,7 +1245,7 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
         const saved = (note.peSavedData ?? {})[sys.id];
         const findings = saved ? Object.entries(saved).filter(([, v]) => v?.trim()) : [];
         return `<div style="margin-bottom:4pt">
-          <div style="font-size:7pt;font-weight:900;text-transform:uppercase;letter-spacing:0.07em;color:#7c3aed;margin-bottom:2pt">${esc(sys.label)}</div>
+          <div style="font-size:7pt;font-weight:900;text-transform:uppercase;color:#7c3aed;margin-bottom:2pt">${esc(sys.label)}</div>
           ${findings.length
             ? findings.map(([k, v]) => `<div style="font-size:8.5pt"><strong>${esc(k)}:</strong> ${esc(v)}</div>`).join("")
             : `<span style="font-size:8pt;color:#94a3b8;font-style:italic">No findings recorded</span>`}
