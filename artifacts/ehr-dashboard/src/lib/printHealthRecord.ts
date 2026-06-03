@@ -723,8 +723,8 @@ function buildLiveClinical(note: NoteState): string {
     }
     if (hasSocial) {
       body += `<div class="sub-label" style="margin-top:5pt">Social History</div><div class="chips">`;
-      if (sh.tobacco.active) body += `<span class="chip chip-muted">Smoking${sh.tobacco.intake ? ": " + sh.tobacco.intake : ""}</span>`;
-      if (sh.alcohol.active) body += `<span class="chip chip-muted">Alcohol${sh.alcohol.units ? ": " + sh.alcohol.units : ""}</span>`;
+      if (sh.tobacco.active) body += `<span class="chip chip-muted">Smoking${sh.tobacco.intake ? ": " + esc(sh.tobacco.intake) : ""}</span>`;
+      if (sh.alcohol.active) body += `<span class="chip chip-muted">Alcohol${sh.alcohol.units ? ": " + esc(sh.alcohol.units) : ""}</span>`;
       if (sh.vaping?.active) body += `<span class="chip chip-muted">Vaping</span>`;
       if (sh.activity)       body += `<span class="chip chip-muted">Activity: ${esc(sh.activity)}</span>`;
       if (sh.sleep)          body += `<span class="chip chip-muted">Sleep: ${esc(sh.sleep)}</span>`;
@@ -996,8 +996,8 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
       }
       if (hasSocial) {
         body += `<div class="sub-label" style="margin-top:5pt">Social History</div><div class="chips">`;
-        if (sh.tobacco.active) body += `<span class="chip chip-muted">Smoking${sh.tobacco.intake ? ": " + sh.tobacco.intake : ""}</span>`;
-        if (sh.alcohol.active) body += `<span class="chip chip-muted">Alcohol${sh.alcohol.units ? ": " + sh.alcohol.units : ""}</span>`;
+        if (sh.tobacco.active) body += `<span class="chip chip-muted">Smoking${sh.tobacco.intake ? ": " + esc(sh.tobacco.intake) : ""}</span>`;
+        if (sh.alcohol.active) body += `<span class="chip chip-muted">Alcohol${sh.alcohol.units ? ": " + esc(sh.alcohol.units) : ""}</span>`;
         if (sh.vaping?.active) body += `<span class="chip chip-muted">Vaping</span>`;
         if (sh.activity)       body += `<span class="chip chip-muted">Activity: ${esc(sh.activity)}</span>`;
         if (sh.sleep)          body += `<span class="chip chip-muted">Sleep: ${esc(sh.sleep)}</span>`;

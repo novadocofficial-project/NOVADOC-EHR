@@ -1,0 +1,178 @@
+Print to Review
+
+Purpose
+
+Generate a clean, professional, A4-sized PDF version of the patient's health record for review, printing, sharing, and archival purposes.
+
+Document Layout
+Header Section
+Top Left
+NovaDoc Logo (existing system logo)
+Top Right
+Generated Date & Time
+Health Record Number (if available)
+Visit Type (OPD / Follow-up / Consultation)
+Patient Information
+
+Display within a professional bordered information panel.
+
+Patient Details
+Field	Value
+Patient Name	Patient Full Name
+MR Number	MR-XXXX
+Date of Birth	DD/MM/YYYY
+Age	Auto Calculated
+Gender	Male/Female
+Phone Number	Patient Phone
+Address	Patient Address
+Last Visit Date	DD/MM/YYYY
+Current Visit Date	DD/MM/YYYY
+Vital Signs
+
+Display as a dedicated section immediately below patient information.
+
+Vitals
+Vital	Value
+Blood Pressure	120/80 mmHg
+Pulse	72 bpm
+Temperature	98.6°F
+Respiratory Rate	16/min
+Oxygen Saturation	98%
+Height	170 cm
+Weight	70 kg
+BMI	24.2
+
+Only display vitals that contain values.
+
+Clinical Note
+
+The PDF should automatically render all completed note sections in the same sequence configured within the specialty form.
+
+For each section:
+
+Section Heading
+
+Large bold heading with subtle divider.
+
+Example:
+
+Chief Complaint
+
+Patient reports intermittent chest discomfort for the last 3 days.
+
+History of Present Illness
+
+Detailed narrative entered by clinician.
+
+Past Medical History
+Diabetes Mellitus
+Hypertension
+Allergies
+Penicillin
+Medications
+Metformin 500mg
+Amlodipine 5mg
+Physical Examination
+
+System-wise findings entered by clinician.
+
+Assessment
+
+Clinical assessment documented by provider.
+
+Plan
+
+Treatment plan, investigations, follow-up instructions, and recommendations.
+
+Dynamic Form Support
+
+The system must not hardcode SOAP sections.
+
+Instead:
+
+Read all configured specialty form sections.
+Render sections in configured order.
+Skip empty sections.
+Support:
+Rich text fields
+Checkboxes
+Radio selections
+Dropdown values
+Tables
+Multi-select values
+Repeatable records
+Structured templates
+
+This ensures future specialty forms automatically appear in the review document without development changes.
+
+Medications Section (If Available)
+
+Display prescriptions in a dedicated table.
+
+Medication	Dose	Frequency	Duration	Instructions
+Orders Section (If Available)
+Laboratory Orders
+
+List all ordered investigations.
+
+Radiology Orders
+
+List all imaging requests.
+
+Procedures
+
+List all requested procedures.
+
+Provider Information
+
+Display at the end of the clinical content.
+
+Treating Provider
+Doctor Name
+Specialty
+Facility Name
+Footer
+
+A thin divider line should separate the content from the footer.
+
+Left Side
+
+Confidential Medical Record
+
+This document contains confidential patient health information and should only be shared with authorized individuals.
+
+Right Side
+
+This is a system-generated health record and does not require a signature.
+
+novadoc.org
+
+Design Requirements
+Paper Size
+A4 Portrait
+Margins
+15–20 mm all sides
+Typography
+Section Headings: 16–18px Bold
+Sub Headings: 13–14px Bold
+Content: 11–12px
+Footer: 9–10px
+Styling
+Clean healthcare-style design
+Professional hospital-grade appearance
+Consistent spacing
+Light grey section separators
+High print readability
+Black & white printer friendly
+No excessive colours
+Proper page breaks between large sections
+Additional Requirements
+Multi-page support.
+Repeat header on every page.
+Repeat footer on every page.
+No data truncation.
+Long notes should automatically continue to next page.
+PDF should open in a new browser tab before printing/downloading.
+Generated PDF must look suitable for submission to hospitals, insurance companies, referral physicians, and official medical record requests.
+
+The overall appearance should resemble a professionally issued electronic health record rather than a system export or report.
