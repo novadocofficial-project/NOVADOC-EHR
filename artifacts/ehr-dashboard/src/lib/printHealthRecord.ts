@@ -19,7 +19,7 @@ export interface PrintHealthRecordParams {
 
 export function printHealthRecord(p: PrintHealthRecordParams): void {
   const html = buildHtml(p);
-  const w = window.open("", "_blank", "width=900,height=720");
+  const w = window.open("", "_blank");
   if (!w) return;
   w.document.open();
   w.document.write(html);
@@ -421,7 +421,6 @@ function buildHtml(p: PrintHealthRecordParams): string {
     ${clinicalHtml}
     ${providerHtml}
   </div>
-  <script>window.onload = function () { window.print(); }</script>
 </body>
 </html>`;
 }

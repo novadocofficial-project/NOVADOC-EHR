@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { loadForms } from "@/pages/SpecialtyFormsModule";
 import type { SpecialtyForm } from "@/pages/SpecialtyFormsModule";
+import { printHealthRecord } from "@/lib/printHealthRecord";
 import { CoughHistoryTemplate, CoughSummary, COUGH_EMPTY } from "@/pages/CoughHistoryTemplate";
 import type { CoughState } from "@/pages/CoughHistoryTemplate";
 import { AllergySelector } from "@/pages/AllergySelector";
@@ -2247,6 +2248,22 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
           )}
           <Button
             variant="outline"
+            onClick={() => {
+              const ts = faceSheetOpenedAt ? new Date(faceSheetOpenedAt) : new Date();
+              printHealthRecord({
+                patient: { name: patientName },
+                noteRow: {
+                  date: ts.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+                  time: ts.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+                  type: noteLabel ?? (assignedForm ? assignedForm.name : "Consultation Note"),
+                  doctor: doctorId ?? "",
+                },
+                visitType: noteLabel ?? (assignedForm ? assignedForm.name : "Consultation Note"),
+                noteKind: assignedForm
+                  ? { kind: "live", noteState: note, form: assignedForm }
+                  : { kind: "live", noteState: note },
+              });
+            }}
             className="h-9 px-4 text-xs font-bold gap-2 border-slate-200 text-slate-500 hover:bg-slate-50 flex-shrink-0">
             <Printer className="h-3.5 w-3.5" /> Print to Review
           </Button>
