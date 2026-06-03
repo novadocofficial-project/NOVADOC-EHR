@@ -2877,7 +2877,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
             >
               <Calendar className="h-3.5 w-3.5" /> Calendar
             </button>
-            {role !== "doctor" && (
+            {role === "frontdesk" && (
               <button
                 onClick={() => setLayoutMode("doctor")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors border-r border-slate-200 ${layoutMode === "doctor" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
