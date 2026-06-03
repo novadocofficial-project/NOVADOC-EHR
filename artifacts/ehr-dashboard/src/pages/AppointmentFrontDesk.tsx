@@ -2925,7 +2925,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
       </div>
 
       {/* Sub-bar: Type filters (left) + Date/View nav (right) — hidden in Counselling View */}
-      {layoutMode !== "counselling" && <div className="bg-white border-b border-slate-100 px-5 py-0 flex items-center gap-2 min-h-[40px]">
+      {layoutMode !== "counselling" && layoutMode !== "nursing" && <div className="bg-white border-b border-slate-100 px-5 py-0 flex items-center gap-2 min-h-[40px]">
         {/* Type filter chips — left side */}
         {allTypes.length > 0 ? (
           <div className="flex items-center gap-1.5 py-2 flex-shrink-0">
