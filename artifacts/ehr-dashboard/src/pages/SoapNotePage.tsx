@@ -1173,6 +1173,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
   const [showNoteDrawer, setShowNoteDrawer]     = useState(false);
   const [expandedIndex, setExpandedIndex]       = useState<number | null>(null);
   const [openMenuIdx, setOpenMenuIdx]           = useState<number | null>(null);
+  const [isPrinting,  setIsPrinting]            = useState(false);
   const [editingDummyIdx, setEditingDummyIdx]   = useState<number | null>(null);
   const [showAddendumDrawer, setShowAddendumDrawer] = useState(false);
   const [addendumRows, setAddendumRows]         = useState<AddendumRow[]>([]);
@@ -1556,7 +1557,9 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
                               {menuOpen && (
                                 <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
                                   <button
+                                    disabled={isPrinting}
                                     onClick={() => {
+                                      if (isPrinting) return;
                                       setOpenMenuIdx(null);
                                       const nk: PrintNoteKind = dummy
                                         ? { kind: "dummy", note: dummy }
@@ -1569,6 +1572,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
                                               return { kind: "live" as const, noteState: ns, form };
                                             })()
                                           : { kind: "empty" as const };
+                                      setIsPrinting(true);
                                       void printHealthRecord({
                                         patient: { name, mrn },
                                         noteRow: {
@@ -1579,10 +1583,11 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
                                         },
                                         visitType: noteLabel ?? note.type,
                                         noteKind: nk,
-                                      });
+                                      }).finally(() => setIsPrinting(false));
                                     }}
-                                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
-                                    <Printer className="h-3.5 w-3.5 text-slate-400" /> Print
+                                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50">
+                                    <Printer className="h-3.5 w-3.5 text-slate-400" />
+                                    {isPrinting ? "Generating…" : "Print"}
                                   </button>
                                   {!isAddendum && (
                                     <button

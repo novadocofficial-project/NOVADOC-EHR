@@ -19,6 +19,23 @@ export interface PrintHealthRecordParams {
 }
 
 export async function printHealthRecord(p: PrintHealthRecordParams): Promise<void> {
+  // ── Open blank tab synchronously (must be in the user-gesture stack) ─────
+  const tab = window.open("", "_blank");
+
+  // Show a loading placeholder so the user sees the tab immediately
+  if (tab) {
+    tab.document.write(`<!DOCTYPE html><html><head><title>Generating PDF…</title>
+<style>body{margin:0;display:flex;align-items:center;justify-content:center;height:100vh;
+font-family:-apple-system,sans-serif;color:#64748b;font-size:15px;background:#f8fafc;}
+.dot{width:8px;height:8px;border-radius:50%;background:#4982CF;display:inline-block;margin:0 4px;
+animation:bounce 1.2s infinite ease-in-out both;}
+.dot:nth-child(2){animation-delay:.16s}.dot:nth-child(3){animation-delay:.32s}
+@keyframes bounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}</style></head>
+<body><div><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+&nbsp;&nbsp;Generating PDF…</body></html>`);
+    tab.document.close();
+  }
+
   const { jsPDF } = await import("jspdf");
   const { patient, noteRow, visitType, noteKind } = p;
 
@@ -52,34 +69,48 @@ export async function printHealthRecord(p: PrintHealthRecordParams): Promise<voi
   const ML = 16, MR = 16, MT = 22, MB = 20;
   const contentW = A4_W - ML - MR; // 178 mm
 
-  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const contentEl = container.querySelector(".pdf-content") as HTMLElement;
+  try {
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const contentEl = container.querySelector(".pdf-content") as HTMLElement;
 
-  await new Promise<void>(resolve => {
-    pdf.html(contentEl, {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      callback: (doc: any) => {
-        const total = (doc as JSPDF).getNumberOfPages();
-        for (let pg = 1; pg <= total; pg++) {
-          (doc as JSPDF).setPage(pg);
-          pdfAddHeader(doc as JSPDF, p, A4_W, pg, total);
-          pdfAddFooter(doc as JSPDF, A4_W, A4_H);
-        }
-        resolve();
-      },
-      x: ML,
-      y: MT,
-      width: contentW,
-      windowWidth: 760,
-      margin: [MT, MR, MB, ML],
-      autoPaging: "text",
-      html2canvas: { scale: 2, useCORS: true, logging: false },
+    await new Promise<void>(resolve => {
+      pdf.html(contentEl, {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        callback: (doc: any) => {
+          const total = (doc as JSPDF).getNumberOfPages();
+          for (let pg = 1; pg <= total; pg++) {
+            (doc as JSPDF).setPage(pg);
+            pdfAddHeader(doc as JSPDF, p, A4_W, pg, total);
+            pdfAddFooter(doc as JSPDF, A4_W, A4_H);
+          }
+          resolve();
+        },
+        x: ML,
+        y: MT,
+        width: contentW,
+        windowWidth: 760,
+        margin: [MT, MR, MB, ML],
+        autoPaging: "text",
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+      });
     });
-  });
 
-  document.body.removeChild(container);
-  const blob = pdf.output("blob");
-  window.open(URL.createObjectURL(blob), "_blank");
+    const blobUrl = URL.createObjectURL(pdf.output("blob"));
+    if (tab && !tab.closed) {
+      tab.location.href = blobUrl;
+    } else {
+      window.open(blobUrl, "_blank");
+    }
+  } catch (err) {
+    if (tab && !tab.closed) {
+      tab.document.write(`<!DOCTYPE html><html><body style="font-family:sans-serif;padding:40px;color:#ef4444">
+        <h2>PDF generation failed</h2><p>Please try again.</p></body></html>`);
+      tab.document.close();
+    }
+    throw err;
+  } finally {
+    document.body.removeChild(container);
+  }
 }
 
 // ─── jsPDF per-page header ────────────────────────────────────────────────────
