@@ -194,56 +194,33 @@ function pdfAddFooter(doc: JSPDF, pageW: number, pageH: number): void {
 const PDF_CONTENT_CSS = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 .pdf-content {
-  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
-  font-size: 10.5pt;
-  color: #1e293b;
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  font-size: 10pt;
+  color: #000;
   background: #fff;
   line-height: 1.5;
 }
-.patient-table { width:100%; border-collapse:collapse; margin-bottom:10pt; border:1px solid #e2e8f0; overflow:hidden; }
-.patient-table td { padding:5pt 8pt; font-size:9pt; border:1px solid #e2e8f0; vertical-align:top; }
-.patient-table .cell-label { font-weight:700; color:#64748b; font-size:7.5pt; text-transform:uppercase; background:#f8fafc; width:90pt; }
-.patient-table .cell-value { color:#1e293b; font-weight:600; }
-.patient-name-row td { font-size:11pt; font-weight:900; color:#1e293b; background:#f0f6ff; border-bottom:2px solid #4982CF; }
-.vitals-grid { display:flex; flex-wrap:wrap; gap:6pt; margin-bottom:10pt; }
-.vital-chip { display:flex; align-items:baseline; gap:4pt; padding:4pt 8pt; border:1px solid #e2e8f0; border-radius:6pt; background:#fff; font-size:9pt; }
-.vital-label { font-size:7pt; font-weight:900; text-transform:uppercase; color:#64748b; }
-.vital-value { font-weight:800; color:#1e293b; }
-.vital-unit { font-size:7pt; color:#94a3b8; }
-.sec { margin-bottom:12pt; }
-.sec-title { font-size:8.5pt; font-weight:900; text-transform:uppercase; color:#4982CF; border-bottom:1px solid #e2e8f0; padding-bottom:2pt; margin-bottom:5pt; }
-.sec-body { font-size:9.5pt; color:#334155; }
-.chips { display:flex; flex-wrap:wrap; gap:4pt; }
-.chip { display:inline-block; padding:2pt 7pt; border-radius:100pt; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; font-size:8.5pt; font-weight:600; }
-.chip-warn { background:#fff7ed; border-color:#fed7aa; color:#c2410c; }
-.chip-muted { background:#f1f5f9; border-color:#cbd5e1; color:#475569; }
-.chip-red { background:#fef2f2; border-color:#fecaca; color:#b91c1c; }
-.allergy-row { display:flex; align-items:center; gap:8pt; border:1px solid; border-radius:5pt; padding:4pt 8pt; margin-bottom:3pt; font-size:8.5pt; }
-.alg-name { font-weight:800; flex-shrink:0; }
-.alg-sep { width:1px; align-self:stretch; background:currentColor; opacity:0.2; flex-shrink:0; }
-.alg-react { flex:1; }
-.alg-sev { font-size:7.5pt; font-weight:900; background:rgba(255,255,255,0.5); padding:1pt 4pt; border-radius:100pt; }
-.blist { padding-left:14pt; }
-.blist li { margin-bottom:2pt; font-size:9pt; }
-.dx-row { display:flex; align-items:center; gap:8pt; border:1px solid #e2e8f0; border-radius:5pt; padding:4pt 8pt; margin-bottom:3pt; background:#f8fafc; font-size:9pt; }
-.dx-code { font-weight:900; font-family:monospace; color:#475569; flex-shrink:0; }
-.dx-sep { width:1px; align-self:stretch; background:#e2e8f0; flex-shrink:0; }
-.dx-name { flex:1; font-weight:600; }
-.dx-badge { font-size:7pt; font-weight:900; padding:1pt 5pt; border-radius:100pt; background:#fefce8; border:1px solid #fde68a; color:#92400e; }
-.dx-badge-final { background:#f0fdf4; border-color:#bbf7d0; color:#166534; }
-.orders-table { width:100%; border-collapse:collapse; font-size:8.5pt; margin-bottom:4pt; }
-.orders-table th { text-align:left; font-size:7.5pt; font-weight:700; color:#64748b; text-transform:uppercase; border-bottom:2px solid #e2e8f0; padding:3pt 6pt; }
-.orders-table td { padding:4pt 6pt; border-bottom:1px solid #f1f5f9; vertical-align:top; }
-.orders-table tr:last-child td { border-bottom:none; }
-.voided-row td { color:#94a3b8; text-decoration:line-through; }
-.voided-badge { display:inline-block; font-size:6.5pt; font-weight:900; padding:1pt 4pt; border-radius:100pt; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; text-decoration:none !important; }
-.provider-block { margin-top:14pt; border-top:1px dashed #e2e8f0; padding-top:8pt; display:flex; justify-content:space-between; align-items:flex-start; font-size:8.5pt; }
-.provider-label { font-weight:900; color:#1e293b; }
-.provider-sub { color:#64748b; margin-top:1pt; }
-.poc-row { display:flex; align-items:center; gap:8pt; border:1px solid; border-radius:5pt; padding:4pt 8pt; margin-bottom:3pt; font-size:8.5pt; }
-.divider { border:none; border-top:1px solid #e2e8f0; margin:10pt 0; }
-.sub-label { font-size:7pt; font-weight:900; text-transform:uppercase; color:#94a3b8; margin:4pt 0 3pt; }
-.narrative { border:1px solid #e2e8f0; border-radius:5pt; padding:6pt 9pt; background:#f8fafc; font-size:9pt; line-height:1.6; white-space:pre-wrap; }
+.pt-header { margin-bottom: 10pt; border-bottom: 1.5pt solid #000; padding-bottom: 6pt; }
+.pt-name { font-size: 13pt; font-weight: 700; margin-bottom: 3pt; }
+.pt-row { display: flex; font-size: 9.5pt; margin-bottom: 2pt; }
+.pt-cell { flex: 1; }
+.pt-label { font-weight: 700; }
+.vitals-section { margin-bottom: 10pt; }
+.vitals-heading { font-size: 10pt; font-weight: 700; margin-bottom: 4pt; }
+.vitals-items { display: flex; flex-wrap: wrap; gap: 2pt 20pt; font-size: 9pt; }
+.sec { margin-bottom: 10pt; }
+.sec-title { font-size: 10pt; font-weight: 700; text-transform: uppercase; margin-bottom: 2pt; }
+.sec-body { font-size: 9.5pt; color: #000; }
+.sys-heading { font-size: 9pt; font-weight: 700; text-transform: uppercase; margin: 4pt 0 1pt; }
+.blist { padding-left: 14pt; margin: 0; }
+.blist li { margin-bottom: 1pt; font-size: 9pt; }
+.med-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-top: 2pt; }
+.med-table th { text-align: left; border: 1pt solid #000; padding: 3pt 5pt; font-weight: 700; }
+.med-table td { border: 1pt solid #000; padding: 3pt 5pt; vertical-align: top; }
+.voided-row td { color: #888; text-decoration: line-through; }
+.divider { border: none; border-top: 1pt solid #ccc; margin: 8pt 0; }
+.provider-block { margin-top: 10pt; border-top: 1pt solid #ccc; padding-top: 6pt; font-size: 9pt; }
+.narrative { border: 1pt solid #ccc; padding: 5pt 8pt; font-size: 9pt; line-height: 1.5; white-space: pre-wrap; }
 `;
 
 // ─── HTML escape ──────────────────────────────────────────────────────────────
@@ -267,7 +244,8 @@ function section(title: string, bodyHtml: string): string {
 }
 
 function chips(items: string[]): string {
-  return `<div class="chips">${items.map(c => `<span class="chip">${esc(c)}</span>`).join("")}</div>`;
+  if (!items.length) return "";
+  return `<span style="font-size:9.5pt">${items.map(s => esc(s)).join(", ")}</span>`;
 }
 
 function bulletList(items: string[]): string {
@@ -338,235 +316,55 @@ body {
   color: #94a3b8;
 }
 
-/* ── Patient info table ── */
-.patient-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 10pt;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  overflow: hidden;
-}
-.patient-table td {
-  padding: 5pt 8pt;
-  font-size: 9pt;
-  border: 1px solid #e2e8f0;
-  vertical-align: top;
-}
-.patient-table .cell-label {
-  font-weight: 700;
-  color: #64748b;
-  font-size: 7.5pt;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  background: #f8fafc;
-  width: 90pt;
-}
-.patient-table .cell-value {
-  color: #1e293b;
-  font-weight: 600;
-}
-.patient-name-row td {
-  font-size: 11pt;
-  font-weight: 900;
-  color: #1e293b;
-  background: #f0f6ff;
-  border-bottom: 2px solid #4982CF;
-}
+/* ── Patient header ── */
+.pt-header { margin-bottom: 10pt; border-bottom: 1.5pt solid #000; padding-bottom: 6pt; }
+.pt-name { font-size: 13pt; font-weight: 700; margin-bottom: 3pt; }
+.pt-row { display: flex; font-size: 9.5pt; margin-bottom: 2pt; }
+.pt-cell { flex: 1; }
+.pt-label { font-weight: 700; }
 
-/* ── Vitals grid ── */
-.vitals-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6pt;
-  margin-bottom: 10pt;
-}
-.vital-chip {
-  display: flex;
-  align-items: baseline;
-  gap: 4pt;
-  padding: 4pt 8pt;
-  border: 1px solid #e2e8f0;
-  border-radius: 6pt;
-  background: #fff;
-  font-size: 9pt;
-}
-.vital-label {
-  font-size: 7pt;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #64748b;
-}
-.vital-value {
-  font-weight: 800;
-  color: #1e293b;
-}
-.vital-unit {
-  font-size: 7pt;
-  color: #94a3b8;
-}
+/* ── Vitals ── */
+.vitals-section { margin-bottom: 10pt; }
+.vitals-heading { font-size: 10pt; font-weight: 700; margin-bottom: 4pt; }
+.vitals-items { display: flex; flex-wrap: wrap; gap: 2pt 20pt; font-size: 9pt; }
 
 /* ── Sections ── */
 .sec {
-  margin-bottom: 12pt;
+  margin-bottom: 10pt;
   page-break-inside: avoid;
 }
 .sec-title {
-  font-size: 8.5pt;
-  font-weight: 900;
+  font-size: 10pt;
+  font-weight: 700;
   text-transform: uppercase;
-  color: #4982CF;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 2pt;
-  margin-bottom: 5pt;
+  margin-bottom: 2pt;
 }
 .sec-body {
   font-size: 9.5pt;
-  color: #334155;
+  color: #000;
 }
 
-/* chips */
-.chips { display: flex; flex-wrap: wrap; gap: 4pt; }
-.chip {
-  display: inline-block;
-  padding: 2pt 7pt;
-  border-radius: 100pt;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1d4ed8;
-  font-size: 8.5pt;
-  font-weight: 600;
-}
-.chip-warn  { background:#fff7ed; border-color:#fed7aa; color:#c2410c; }
-.chip-muted { background:#f1f5f9; border-color:#cbd5e1; color:#475569; }
-.chip-red   { background:#fef2f2; border-color:#fecaca; color:#b91c1c; }
+/* ── Sub-system headings (ROS, PE) ── */
+.sys-heading { font-size: 9pt; font-weight: 700; text-transform: uppercase; margin: 4pt 0 1pt; }
 
-/* allergy rows */
-.allergy-row {
-  display: flex;
-  align-items: center;
-  gap: 8pt;
-  border: 1px solid;
-  border-radius: 5pt;
-  padding: 4pt 8pt;
-  margin-bottom: 3pt;
-  font-size: 8.5pt;
-}
-.alg-name  { font-weight: 800; flex-shrink: 0; }
-.alg-sep   { width: 1px; align-self: stretch; background: currentColor; opacity: 0.2; flex-shrink: 0; }
-.alg-react { flex: 1; }
-.alg-sev   { font-size: 7.5pt; font-weight: 900; background: rgba(255,255,255,0.5); padding: 1pt 4pt; border-radius: 100pt; }
+/* ── Bullet list ── */
+.blist { padding-left: 14pt; margin: 0; }
+.blist li { margin-bottom: 1pt; font-size: 9pt; }
 
-/* bullet list */
-.blist { padding-left: 14pt; }
-.blist li { margin-bottom: 2pt; font-size: 9pt; }
+/* ── Medication / orders table ── */
+.med-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-top: 2pt; }
+.med-table th { text-align: left; border: 1pt solid #000; padding: 3pt 5pt; font-weight: 700; }
+.med-table td { border: 1pt solid #000; padding: 3pt 5pt; vertical-align: top; }
+.voided-row td { color: #888; text-decoration: line-through; }
 
-/* diagnoses */
-.dx-row {
-  display: flex;
-  align-items: center;
-  gap: 8pt;
-  border: 1px solid #e2e8f0;
-  border-radius: 5pt;
-  padding: 4pt 8pt;
-  margin-bottom: 3pt;
-  background: #f8fafc;
-  font-size: 9pt;
-}
-.dx-code { font-weight: 900; font-family: monospace; color: #475569; flex-shrink: 0; }
-.dx-sep  { width: 1px; align-self: stretch; background: #e2e8f0; flex-shrink: 0; }
-.dx-name { flex: 1; font-weight: 600; }
-.dx-badge {
-  font-size: 7pt; font-weight: 900; padding: 1pt 5pt; border-radius: 100pt;
-  background: #fefce8; border: 1px solid #fde68a; color: #92400e;
-}
-.dx-badge-final { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+/* ── Divider ── */
+.divider { border: none; border-top: 1pt solid #ccc; margin: 8pt 0; }
 
-/* orders table */
-.orders-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 8.5pt;
-  margin-bottom: 4pt;
-}
-.orders-table th {
-  text-align: left;
-  font-size: 7.5pt;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 2px solid #e2e8f0;
-  padding: 3pt 6pt;
-}
-.orders-table td {
-  padding: 4pt 6pt;
-  border-bottom: 1px solid #f1f5f9;
-  vertical-align: top;
-}
-.orders-table tr:last-child td { border-bottom: none; }
-.voided-row td { color: #94a3b8; text-decoration: line-through; }
-.voided-badge {
-  display: inline-block;
-  font-size: 6.5pt;
-  font-weight: 900;
-  padding: 1pt 4pt;
-  border-radius: 100pt;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-  text-decoration: none !important;
-}
+/* ── Provider block ── */
+.provider-block { margin-top: 10pt; border-top: 1pt solid #ccc; padding-top: 6pt; font-size: 9pt; }
 
-/* provider block */
-.provider-block {
-  margin-top: 14pt;
-  border-top: 1px dashed #e2e8f0;
-  padding-top: 8pt;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  font-size: 8.5pt;
-}
-.provider-label { font-weight: 900; color: #1e293b; }
-.provider-sub   { color: #64748b; margin-top: 1pt; }
-
-/* poc labs */
-.poc-row {
-  display: flex;
-  align-items: center;
-  gap: 8pt;
-  border: 1px solid;
-  border-radius: 5pt;
-  padding: 4pt 8pt;
-  margin-bottom: 3pt;
-  font-size: 8.5pt;
-}
-
-/* divider */
-.divider { border: none; border-top: 1px solid #e2e8f0; margin: 10pt 0; }
-
-/* subsection label */
-.sub-label {
-  font-size: 7pt;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: #94a3b8;
-  margin: 4pt 0 3pt;
-}
-
-/* narrative text */
-.narrative {
-  border: 1px solid #e2e8f0;
-  border-radius: 5pt;
-  padding: 6pt 9pt;
-  background: #f8fafc;
-  font-size: 9pt;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
+/* ── Narrative text ── */
+.narrative { border: 1pt solid #ccc; padding: 5pt 8pt; font-size: 9pt; line-height: 1.5; white-space: pre-wrap; }
 
 /* screen only: add comfortable padding so fixed elements don't cover content */
 @media screen {
@@ -651,24 +449,24 @@ function buildPatientInfo(
   noteRow: { date: string; time: string; type: string; doctor: string },
   visitType: string,
 ): string {
+  const vtParts = (visitType || "").split(" \u2014 ");
+  const physician = vtParts[0].startsWith("Dr.") ? vtParts[0] : noteRow.doctor;
+  const vType = vtParts[0].startsWith("Dr.") && vtParts.length > 1
+    ? vtParts.slice(1).join(" \u2014 ")
+    : (visitType || noteRow.type);
+  const dateStr = noteRow.date + (noteRow.time ? " \u00b7 " + noteRow.time : "");
   return `
-  <table class="patient-table">
-    <tr class="patient-name-row">
-      <td colspan="4">${esc(patient.name)}</td>
-    </tr>
-    <tr>
-      <td class="cell-label">MR Number</td>
-      <td class="cell-value">${esc(patient.mrn ?? "—")}</td>
-      <td class="cell-label">Visit Date</td>
-      <td class="cell-value">${esc(noteRow.date)}${noteRow.time ? " &nbsp;·&nbsp; " + esc(noteRow.time) : ""}</td>
-    </tr>
-    <tr>
-      <td class="cell-label">Physician</td>
-      <td class="cell-value">${esc((() => { const parts = (visitType || "").split(" \u2014 "); return parts[0].startsWith("Dr.") ? parts[0] : noteRow.doctor; })())}</td>
-      <td class="cell-label">Visit Type</td>
-      <td class="cell-value">${esc((() => { const parts = (visitType || "").split(" \u2014 "); return parts[0].startsWith("Dr.") && parts.length > 1 ? parts.slice(1).join(" \u2014 ") : (visitType || noteRow.type); })())}</td>
-    </tr>
-  </table>`;
+  <div class="pt-header">
+    <div class="pt-name">${esc(patient.name)}</div>
+    <div class="pt-row">
+      <div class="pt-cell"><span class="pt-label">MR#:</span> ${esc(patient.mrn ?? "\u2014")}</div>
+      <div class="pt-cell"><span class="pt-label">Date:</span> ${esc(dateStr)}</div>
+    </div>
+    <div class="pt-row">
+      <div class="pt-cell"><span class="pt-label">Physician:</span> ${esc(physician)}</div>
+      <div class="pt-cell"><span class="pt-label">Visit Type:</span> ${esc(vType)}</div>
+    </div>
+  </div>`;
 }
 
 // ─── Vitals — dummy ───────────────────────────────────────────────────────────
@@ -677,19 +475,17 @@ function buildDummyVitals(note: SoapDummyNote): string {
   const items: { label: string; value: string; unit: string }[] = [
     { label: "BP",     value: note.vitals.bp,     unit: "mmHg" },
     { label: "Pulse",  value: note.vitals.pulse,  unit: "bpm"  },
-    { label: "Temp",   value: note.vitals.temp,   unit: "°C"   },
-    { label: "SpO₂",  value: note.vitals.spo2,   unit: "%"    },
+    { label: "Temp",   value: note.vitals.temp,   unit: "\u00b0C"   },
+    { label: "SpO\u2082",  value: note.vitals.spo2,   unit: "%"    },
     { label: "Weight", value: note.vitals.weight, unit: ""     },
   ].filter(v => v.value);
   if (!items.length) return "";
   return `
-  <div class="vitals-grid">
-    ${items.map(v => `
-    <div class="vital-chip">
-      <span class="vital-label">${v.label}</span>
-      <span class="vital-value">${esc(v.value)}</span>
-      ${v.unit ? `<span class="vital-unit">${esc(v.unit)}</span>` : ""}
-    </div>`).join("")}
+  <div class="vitals-section">
+    <div class="vitals-heading">Vitals</div>
+    <div class="vitals-items">
+      ${items.map(v => `<span>${esc(v.label)}: ${esc(v.value)}${v.unit ? " " + esc(v.unit) : ""}</span>`).join("")}
+    </div>
   </div>`;
 }
 
@@ -702,18 +498,16 @@ function buildLiveVitals(note: NoteState): string {
   const items: { label: string; value: string; unit: string }[] = [
     { label: "BP",    value: bp ?? "",                  unit: "mmHg" },
     { label: "Pulse", value: v.pulse   != null ? String(v.pulse)  : "", unit: "bpm" },
-    { label: "SpO₂", value: v.spo2    != null ? String(v.spo2)   : "", unit: "%"   },
-    { label: "Temp",  value: v.temp    != null ? String(v.temp)   : "", unit: "°C"  },
+    { label: "SpO\u2082", value: v.spo2    != null ? String(v.spo2)   : "", unit: "%"   },
+    { label: "Temp",  value: v.temp    != null ? String(v.temp)   : "", unit: "\u00b0C"  },
   ].filter(item => item.value);
   if (!items.length) return "";
   return `
-  <div class="vitals-grid">
-    ${items.map(item => `
-    <div class="vital-chip">
-      <span class="vital-label">${item.label}</span>
-      <span class="vital-value">${esc(item.value)}</span>
-      ${item.unit ? `<span class="vital-unit">${esc(item.unit)}</span>` : ""}
-    </div>`).join("")}
+  <div class="vitals-section">
+    <div class="vitals-heading">Vitals</div>
+    <div class="vitals-items">
+      ${items.map(item => `<span>${esc(item.label)}: ${esc(item.value)}${item.unit ? " " + esc(item.unit) : ""}</span>`).join("")}
+    </div>
   </div>`;
 }
 
@@ -729,18 +523,9 @@ function buildDummyClinical(note: SoapDummyNote): string {
     parts.push(section("History of Present Illness", `<div class="narrative">${esc(note.hpi)}</div>`));
 
   if (note.allergies.length)
-    parts.push(section("Allergies", note.allergies.map(a => {
-      const cls = a.severity === "Severe" ? "alg-row" : "";
-      const bg  = a.severity === "Severe"   ? "background:#fef2f2;border-color:#fca5a5;color:#991b1b"
-                : a.severity === "Moderate" ? "background:#fff7ed;border-color:#fed7aa;color:#c2410c"
-                :                            "background:#f0f9ff;border-color:#bae6fd;color:#0369a1";
-      return `<div class="allergy-row ${cls}" style="${bg}">
-        <span class="alg-name">${esc(a.name)}</span>
-        <div class="alg-sep"></div>
-        <span class="alg-react">${esc(a.reaction)}</span>
-        <span class="alg-sev">${esc(a.severity)}</span>
-      </div>`;
-    }).join("")));
+    parts.push(section("Allergies", note.allergies.map(a =>
+      `<div style="margin-bottom:2pt;font-size:9.5pt"><strong>${esc(a.name)}</strong>${a.reaction ? " \u2014 " + esc(a.reaction) : ""} (${esc(a.severity)})</div>`
+    ).join("")));
 
   if (note.medicalHistory.length)
     parts.push(section("Medical History", bulletList(note.medicalHistory)));
@@ -761,25 +546,14 @@ function buildDummyClinical(note: SoapDummyNote): string {
     parts.push(section("Physical Examination", bulletList(note.pe)));
 
   if (note.pocLabs.length)
-    parts.push(section("Point of Care Labs", note.pocLabs.map(l => {
-      const bg = l.status === "Abnormal"
-        ? "background:#fef2f2;border-color:#fca5a5;color:#991b1b"
-        : "background:#f0fdf4;border-color:#bbf7d0;color:#166534";
-      return `<div class="poc-row" style="${bg}">
-        <span style="font-weight:700;flex:1">${esc(l.test)}</span>
-        <span style="font-weight:800">${esc(l.result)}${l.unit ? " " + esc(l.unit) : ""}</span>
-        <span style="font-size:7.5pt;font-weight:900;background:rgba(255,255,255,0.5);padding:1pt 4pt;border-radius:100pt">${esc(l.status)}</span>
-      </div>`;
-    }).join("")));
+    parts.push(section("Point of Care Labs", note.pocLabs.map(l =>
+      `<div style="margin-bottom:2pt;font-size:9.5pt"><strong>${esc(l.test)}</strong>: ${esc(l.result)}${l.unit ? " " + esc(l.unit) : ""} (${esc(l.status)})</div>`
+    ).join("")));
 
   if (note.diagnoses.length)
-    parts.push(section("Assessment &amp; Diagnosis", note.diagnoses.map(d => `
-      <div class="dx-row">
-        <span class="dx-code">${esc(d.code)}</span>
-        <div class="dx-sep"></div>
-        <span class="dx-name">${esc(d.name)}</span>
-        <span class="chip chip-muted" style="font-size:7.5pt">${esc(d.severity)}</span>
-      </div>`).join("")));
+    parts.push(section("Assessment &amp; Diagnosis", note.diagnoses.map(d =>
+      `<div style="margin-bottom:2pt;font-size:9.5pt">${esc(d.code)} \u2014 ${esc(d.name)}${d.severity ? " (" + esc(d.severity) + ")" : ""}</div>`
+    ).join("")));
 
   const allLabs = [...(note.labOrders ?? []).flatMap(o => o.tests.map(t => t.name)), ...note.labs];
   if (allLabs.length)
@@ -787,10 +561,11 @@ function buildDummyClinical(note: SoapDummyNote): string {
 
   if (note.prescriptions.length)
     parts.push(section("Prescriptions", `
-      <table class="orders-table">
-        <thead><tr><th>Drug</th><th>Instructions</th><th>Qty</th></tr></thead>
+      <table class="med-table">
+        <thead><tr><th>Sr.</th><th>Drug</th><th>Instructions</th><th>Qty</th></tr></thead>
         <tbody>
-          ${note.prescriptions.map(rx => `<tr>
+          ${note.prescriptions.map((rx, i) => `<tr>
+            <td>${i + 1}</td>
             <td style="font-weight:700">${esc(rx.drug)}</td>
             <td>${esc(rx.sig)}</td>
             <td>${esc(String(rx.qty))}</td>
@@ -808,12 +583,9 @@ function buildDummyClinical(note: SoapDummyNote): string {
     parts.push(section("Care Plan", bulletList(note.carePlan)));
 
   if (note.referrals.length)
-    parts.push(section("Referrals", note.referrals.map(r => `
-      <div class="dx-row">
-        <span style="font-weight:700;color:#4982CF">${esc(r.specialty)}</span>
-        <div class="dx-sep"></div>
-        <span>${esc(r.reason)}</span>
-      </div>`).join("")));
+    parts.push(section("Referrals", note.referrals.map(r =>
+      `<div style="margin-bottom:2pt;font-size:9.5pt"><strong>${esc(r.specialty)}</strong> \u2014 ${esc(r.reason)}</div>`
+    ).join("")));
 
   if (note.patientGoals.length)
     parts.push(section("Patient Goals", bulletList(note.patientGoals)));
@@ -825,7 +597,7 @@ function buildDummyClinical(note: SoapDummyNote): string {
     parts.push(section("Visit Summary", `<div class="narrative">${esc(note.visitDescription)}</div>`));
 
   if (note.followUp)
-    parts.push(section("Follow-up", `<span class="chip">${esc(note.followUp)}</span>`));
+    parts.push(section("Follow-up", `<span style="font-size:9.5pt">${esc(note.followUp)}</span>`));
 
   return parts.join("\n");
 }
@@ -855,7 +627,7 @@ function buildLabOrdersTable(orders: LabOrderLike[]): string {
     </tr>`);
   });
   return `
-  <table class="orders-table">
+  <table class="med-table">
     <thead><tr><th>Test</th><th>Sent</th><th>Status</th></tr></thead>
     <tbody>${rows.join("")}</tbody>
   </table>`;
@@ -874,15 +646,16 @@ type MedEntry = {
 function buildMedsTable(meds: MedEntry[]): string {
   if (!meds.length) return "";
   return `
-  <table class="orders-table">
-    <thead><tr><th>Drug</th><th>Dose</th><th>Frequency</th><th>Duration</th><th>Instructions</th></tr></thead>
+  <table class="med-table">
+    <thead><tr><th>Sr.</th><th>Drug</th><th>Dose</th><th>Frequency</th><th>Duration</th><th>Route</th></tr></thead>
     <tbody>
-      ${meds.map(m => `<tr>
-        <td style="font-weight:700">${esc(m.brand)}${m.genericName ? `<br/><span style="font-size:7.5pt;font-weight:400;color:#64748b">${esc(m.genericName)}</span>` : ""}</td>
-        <td>${m.dose ? esc(m.dose) + (m.unit ? " " + esc(m.unit) : "") : "—"}</td>
-        <td>${esc(m.frequency ?? "—")}</td>
-        <td>${esc(m.duration ?? "—")}</td>
-        <td>${esc(m.route ?? "—")}</td>
+      ${meds.map((m, i) => `<tr>
+        <td>${i + 1}</td>
+        <td style="font-weight:700">${esc(m.brand)}${m.genericName ? `<br/><span style="font-size:8pt;font-weight:400">${esc(m.genericName)}</span>` : ""}</td>
+        <td>${m.dose ? esc(m.dose) + (m.unit ? " " + esc(m.unit) : "") : "\u2014"}</td>
+        <td>${esc(m.frequency ?? "\u2014")}</td>
+        <td>${esc(m.duration ?? "\u2014")}</td>
+        <td>${esc(m.route ?? "\u2014")}</td>
       </tr>`).join("")}
     </tbody>
   </table>`;
@@ -906,16 +679,9 @@ function buildLiveClinical(note: NoteState): string {
   }
 
   if (note.allergies.length)
-    parts.push(section("Allergies", note.allergies.map(a => {
-      const bg = a.severity === "severe"   ? "background:#fef2f2;border-color:#fca5a5;color:#991b1b"
-               : a.severity === "moderate" ? "background:#fff7ed;border-color:#fed7aa;color:#c2410c"
-               :                            "background:#f0f9ff;border-color:#bae6fd;color:#0369a1";
-      return `<div class="allergy-row" style="${bg}">
-        <span class="alg-name">${esc(a.name)}</span>
-        ${a.reaction ? `<div class="alg-sep"></div><span class="alg-react">${esc(a.reaction)}</span>` : ""}
-        <span class="alg-sev">${esc(a.severity)}</span>
-      </div>`;
-    }).join("")));
+    parts.push(section("Allergies", note.allergies.map(a =>
+      `<div style="margin-bottom:2pt;font-size:9.5pt"><strong>${esc(a.name)}</strong>${a.reaction ? " \u2014 " + esc(a.reaction) : ""} (${esc(a.severity)})</div>`
+    ).join("")));
 
   const hasPmh      = note.pmhActive.length > 0 || note.pmhResolved.length > 0;
   const hasSurgical = note.surgicalRows.length > 0;
@@ -926,27 +692,30 @@ function buildLiveClinical(note: NoteState): string {
   if (hasPmh || hasSurgical || hasFH || hasSocial) {
     let body = "";
     if (hasPmh) {
-      body += `<div class="sub-label">Past Medical History</div><div class="chips">`;
-      body += note.pmhActive.map(h => `<span class="chip">${esc(h)}</span>`).join("");
-      body += note.pmhResolved.map(h => `<span class="chip chip-muted" style="text-decoration:line-through">${esc(h)}</span>`).join("");
-      body += `</div>`;
+      body += `<div class="sys-heading">Past Medical History</div>`;
+      const pmhItems = [
+        ...note.pmhActive.map(h => esc(h)),
+        ...note.pmhResolved.map(h => `<span style="text-decoration:line-through">${esc(h)}</span>`),
+      ];
+      body += `<div style="font-size:9.5pt;margin-bottom:2pt">${pmhItems.join(", ")}</div>`;
     }
     if (hasSurgical) {
-      body += `<div class="sub-label" style="margin-top:5pt">Surgical History</div>`;
-      body += bulletList(note.surgicalRows.map(s => s.procedure + (s.date ? ` · ${s.date}` : "")));
+      body += `<div class="sys-heading">Surgical History</div>`;
+      body += bulletList(note.surgicalRows.map(s => s.procedure + (s.date ? ` \u00b7 ${s.date}` : "")));
     }
     if (hasFH) {
-      body += `<div class="sub-label" style="margin-top:5pt">Family History</div>`;
+      body += `<div class="sys-heading">Family History</div>`;
       body += bulletList(note.fhRows.map(f => `${f.relation}: ${f.condition}`));
     }
     if (hasSocial) {
-      body += `<div class="sub-label" style="margin-top:5pt">Social History</div><div class="chips">`;
-      if (sh.tobacco.active) body += `<span class="chip chip-muted">Smoking${sh.tobacco.intake ? ": " + esc(sh.tobacco.intake) : ""}</span>`;
-      if (sh.alcohol.active) body += `<span class="chip chip-muted">Alcohol${sh.alcohol.units ? ": " + esc(sh.alcohol.units) : ""}</span>`;
-      if (sh.vaping?.active) body += `<span class="chip chip-muted">Vaping</span>`;
-      if (sh.activity)       body += `<span class="chip chip-muted">Activity: ${esc(sh.activity)}</span>`;
-      if (sh.sleep)          body += `<span class="chip chip-muted">Sleep: ${esc(sh.sleep)}</span>`;
-      body += `</div>`;
+      body += `<div class="sys-heading">Social History</div>`;
+      const si: string[] = [];
+      if (sh.tobacco.active) si.push("Smoking" + (sh.tobacco.intake ? ": " + esc(sh.tobacco.intake) : ""));
+      if (sh.alcohol.active) si.push("Alcohol" + (sh.alcohol.units ? ": " + esc(sh.alcohol.units) : ""));
+      if (sh.vaping?.active) si.push("Vaping");
+      if (sh.activity)       si.push("Activity: " + esc(sh.activity));
+      if (sh.sleep)          si.push("Sleep: " + esc(sh.sleep));
+      body += `<div style="font-size:9.5pt">${si.join(", ")}</div>`;
     }
     parts.push(section("Medical, Surgical, Family &amp; Social History", body));
   }
@@ -956,8 +725,8 @@ function buildLiveClinical(note: NoteState): string {
     const body = rosEntries.map(sys => {
       const symptoms = (note.ros[sys.id] ?? []);
       return `<div style="margin-bottom:4pt">
-        <div style="font-size:7pt;font-weight:900;text-transform:uppercase;color:#0369a1;margin-bottom:2pt">${esc(sys.label)}</div>
-        <div class="chips">${symptoms.map(s => `<span class="chip">${esc(s)}</span>`).join("")}</div>
+        <div class="sys-heading">${esc(sys.label)}</div>
+        <div style="font-size:9.5pt">${symptoms.map(s => esc(s)).join(", ")}</div>
       </div>`;
     }).join("");
     parts.push(section("Review of Systems", body));
@@ -969,10 +738,10 @@ function buildLiveClinical(note: NoteState): string {
       const saved = (note.peSavedData ?? {})[sys.id];
       const findings = saved ? Object.entries(saved).filter(([, v]) => v?.trim()) : [];
       return `<div style="margin-bottom:4pt">
-        <div style="font-size:7pt;font-weight:900;text-transform:uppercase;color:#7c3aed;margin-bottom:2pt">${esc(sys.label)}</div>
+        <div class="sys-heading">${esc(sys.label)}</div>
         ${findings.length
-          ? findings.map(([k, v]) => `<div style="font-size:8.5pt"><strong>${esc(k)}:</strong> ${esc(v)}</div>`).join("")
-          : `<span style="font-size:8pt;color:#94a3b8;font-style:italic">No findings recorded</span>`}
+          ? findings.map(([k, v]) => `<div style="font-size:9.5pt"><strong>${esc(k)}:</strong> ${esc(v)}</div>`).join("")
+          : `<span style="font-size:9pt;font-style:italic">No findings recorded</span>`}
       </div>`;
     }).join("");
     parts.push(section("Physical Examination", body));
@@ -980,27 +749,15 @@ function buildLiveClinical(note: NoteState): string {
 
   const completedPoc = (note.pocTests ?? []).filter(t => t.status !== "pending");
   if (completedPoc.length) {
-    parts.push(section("Point of Care Labs", completedPoc.map(t => {
-      const isPos = t.status === "positive";
-      const bg = isPos
-        ? "background:#fef2f2;border-color:#fca5a5;color:#991b1b"
-        : "background:#f0fdf4;border-color:#bbf7d0;color:#166534";
-      return `<div class="poc-row" style="${bg}">
-        <span style="font-weight:700;flex:1">${esc(t.name)}</span>
-        <span style="font-size:7.5pt;font-weight:900;background:rgba(255,255,255,0.5);padding:1pt 4pt;border-radius:100pt">${esc(t.status.replace(/_/g, " "))}</span>
-      </div>`;
-    }).join("")));
+    parts.push(section("Point of Care Labs", completedPoc.map(t =>
+      `<div style="margin-bottom:2pt;font-size:9.5pt"><strong>${esc(t.name)}</strong>: ${esc(t.status.replace(/_/g, " "))}</div>`
+    ).join("")));
   }
 
   if (note.diagnoses.length)
-    parts.push(section("Assessment &amp; Diagnosis", note.diagnoses.map(d => `
-      <div class="dx-row">
-        <span class="dx-code">${esc(d.code)}</span>
-        <div class="dx-sep"></div>
-        <span class="dx-name">${esc(d.name)}</span>
-        ${d.isProvisional ? `<span class="dx-badge">Provisional</span>` : ""}
-        ${d.isFinal       ? `<span class="dx-badge dx-badge-final">Final</span>` : ""}
-      </div>`).join("")));
+    parts.push(section("Assessment &amp; Diagnosis", note.diagnoses.map(d =>
+      `<div style="margin-bottom:2pt;font-size:9.5pt">${d.code ? esc(d.code) + " \u2014 " : ""}${esc(d.name)}${d.isProvisional ? " (Provisional)" : ""}${d.isFinal ? " (Final)" : ""}</div>`
+    ).join("")));
 
   if (note.visitNote?.trim())
     parts.push(section("Assessment / Plan", `<div class="narrative">${esc(note.visitNote)}</div>`));
@@ -1040,10 +797,8 @@ function buildLiveClinical(note: NoteState): string {
                   : r.referralTarget === "Procedure"  ? r.procedureName
                   : r.referralTarget === "ER"         ? r.facilityName
                   :                                    r.customTarget;
-      return `<div class="dx-row">
-        <span style="font-weight:700;color:#4982CF">${esc(label ?? "")}</span>
-        ${r.consultantName && r.referralTarget === "Consultant" ? `<div class="dx-sep"></div><span>${esc(r.consultantName)}</span>` : ""}
-      </div>`;
+      const extra = r.consultantName && r.referralTarget === "Consultant" ? ` \u2014 ${esc(r.consultantName)}` : "";
+      return `<div style="margin-bottom:2pt;font-size:9.5pt"><strong>${esc(label ?? "")}</strong>${extra}</div>`;
     }).join("")));
   }
 
@@ -1052,7 +807,7 @@ function buildLiveClinical(note: NoteState): string {
     parts.push(section("Patient Goals", bulletList(goals.map(g => g.title + (g.targetDate ? ` (target: ${g.targetDate})` : "")))));
 
   if (note.followUpDate)
-    parts.push(section("Follow-up", `<span class="chip">${esc(note.followUpDate)}</span>`));
+    parts.push(section("Follow-up", `<span style="font-size:9.5pt">${esc(note.followUpDate)}</span>`));
 
   return parts.join("\n");
 }
@@ -1116,10 +871,8 @@ function buildSpecialtyFormClinical(form: SpecialtyForm, note: NoteState): strin
                     : r.referralTarget === "Procedure"  ? r.procedureName
                     : r.referralTarget === "ER"         ? r.facilityName
                     :                                    r.customTarget;
-        return `<div class="dx-row">
-          <span style="font-weight:700;color:#4982CF">${esc(label ?? "")}</span>
-          ${r.consultantName && r.referralTarget === "Consultant" ? `<div class="dx-sep"></div><span>${esc(r.consultantName)}</span>` : ""}
-        </div>`;
+        const extra = r.consultantName && r.referralTarget === "Consultant" ? ` \u2014 ${esc(r.consultantName)}` : "";
+        return `<div style="margin-bottom:2pt;font-size:9.5pt"><strong>${esc(label ?? "")}</strong>${extra}</div>`;
       }).join("")));
     }
   }
@@ -1130,7 +883,7 @@ function buildSpecialtyFormClinical(form: SpecialtyForm, note: NoteState): strin
   }
 
   if (note.followUpDate)
-    parts.push(section("Follow-up", `<span class="chip">${esc(note.followUpDate)}</span>`));
+    parts.push(section("Follow-up", `<span style="font-size:9.5pt">${esc(note.followUpDate)}</span>`));
 
   return parts.join("\n");
 }
@@ -1148,12 +901,12 @@ function buildFormSectionHtml(sec: FormSection, formData: Record<string, unknown
       const arr = Array.isArray(val) ? (val as unknown[]).map(String) : [String(val)];
       rendered = chips(arr);
     } else if (field.type === "radio-group" || field.type === "dropdown" || field.type === "yes-no") {
-      rendered = `<span class="chip">${esc(String(val))}</span>`;
+      rendered = `<span style="font-size:9.5pt">${esc(String(val))}</span>`;
     } else if (field.type === "rating") {
       const max = field.ratingMax ?? 5;
-      rendered = `<span class="chip">${esc(String(val))} / ${max}</span>`;
+      rendered = `<span style="font-size:9.5pt">${esc(String(val))} / ${max}</span>`;
     } else {
-      rendered = `<span style="font-size:9pt">${esc(String(val))}</span>`;
+      rendered = `<span style="font-size:9.5pt">${esc(String(val))}</span>`;
     }
     visible.push({ label: field.label, rendered });
   }
@@ -1161,7 +914,7 @@ function buildFormSectionHtml(sec: FormSection, formData: Record<string, unknown
   const showLabels = visible.length > 1;
   const fieldParts = visible.map(({ label, rendered }) => `
       <div style="margin-bottom:5pt">
-        ${showLabels ? `<div style="font-size:7.5pt;font-weight:700;color:#64748b;margin-bottom:2pt">${esc(label)}</div>` : ""}
+        ${showLabels ? `<div style="font-size:8pt;font-weight:700;margin-bottom:2pt">${esc(label)}</div>` : ""}
         ${rendered}
       </div>`);
   return section(sec.title, fieldParts.join(""));
@@ -1182,16 +935,9 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
     }
     case "allergies": {
       if (!note.allergies.length) return "";
-      return section("Allergies", note.allergies.map(a => {
-        const bg = a.severity === "severe"   ? "background:#fef2f2;border-color:#fca5a5;color:#991b1b"
-                 : a.severity === "moderate" ? "background:#fff7ed;border-color:#fed7aa;color:#c2410c"
-                 :                            "background:#f0f9ff;border-color:#bae6fd;color:#0369a1";
-        return `<div class="allergy-row" style="${bg}">
-          <span class="alg-name">${esc(a.name)}</span>
-          ${a.reaction ? `<div class="alg-sep"></div><span class="alg-react">${esc(a.reaction)}</span>` : ""}
-          <span class="alg-sev">${esc(a.severity)}</span>
-        </div>`;
-      }).join(""));
+      return section("Allergies", note.allergies.map(a =>
+        `<div style="margin-bottom:2pt;font-size:9.5pt"><strong>${esc(a.name)}</strong>${a.reaction ? " \u2014 " + esc(a.reaction) : ""} (${esc(a.severity)})</div>`
+      ).join(""));
     }
     case "medical-history": {
       const hasPmh      = note.pmhActive.length > 0 || note.pmhResolved.length > 0;
@@ -1202,27 +948,30 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
       if (!hasPmh && !hasSurgical && !hasFH && !hasSocial) return "";
       let body = "";
       if (hasPmh) {
-        body += `<div class="sub-label">Past Medical History</div><div class="chips">`;
-        body += note.pmhActive.map(h => `<span class="chip">${esc(h)}</span>`).join("");
-        body += note.pmhResolved.map(h => `<span class="chip chip-muted" style="text-decoration:line-through">${esc(h)}</span>`).join("");
-        body += `</div>`;
+        body += `<div class="sys-heading">Past Medical History</div>`;
+        const pmhItems = [
+          ...note.pmhActive.map(h => esc(h)),
+          ...note.pmhResolved.map(h => `<span style="text-decoration:line-through">${esc(h)}</span>`),
+        ];
+        body += `<div style="font-size:9.5pt;margin-bottom:2pt">${pmhItems.join(", ")}</div>`;
       }
       if (hasSurgical) {
-        body += `<div class="sub-label" style="margin-top:5pt">Surgical History</div>`;
-        body += bulletList(note.surgicalRows.map(s => s.procedure + (s.date ? ` · ${s.date}` : "")));
+        body += `<div class="sys-heading">Surgical History</div>`;
+        body += bulletList(note.surgicalRows.map(s => s.procedure + (s.date ? ` \u00b7 ${s.date}` : "")));
       }
       if (hasFH) {
-        body += `<div class="sub-label" style="margin-top:5pt">Family History</div>`;
+        body += `<div class="sys-heading">Family History</div>`;
         body += bulletList(note.fhRows.map(f => `${f.relation}: ${f.condition}`));
       }
       if (hasSocial) {
-        body += `<div class="sub-label" style="margin-top:5pt">Social History</div><div class="chips">`;
-        if (sh.tobacco.active) body += `<span class="chip chip-muted">Smoking${sh.tobacco.intake ? ": " + esc(sh.tobacco.intake) : ""}</span>`;
-        if (sh.alcohol.active) body += `<span class="chip chip-muted">Alcohol${sh.alcohol.units ? ": " + esc(sh.alcohol.units) : ""}</span>`;
-        if (sh.vaping?.active) body += `<span class="chip chip-muted">Vaping</span>`;
-        if (sh.activity)       body += `<span class="chip chip-muted">Activity: ${esc(sh.activity)}</span>`;
-        if (sh.sleep)          body += `<span class="chip chip-muted">Sleep: ${esc(sh.sleep)}</span>`;
-        body += `</div>`;
+        body += `<div class="sys-heading">Social History</div>`;
+        const si: string[] = [];
+        if (sh.tobacco.active) si.push("Smoking" + (sh.tobacco.intake ? ": " + esc(sh.tobacco.intake) : ""));
+        if (sh.alcohol.active) si.push("Alcohol" + (sh.alcohol.units ? ": " + esc(sh.alcohol.units) : ""));
+        if (sh.vaping?.active) si.push("Vaping");
+        if (sh.activity)       si.push("Activity: " + esc(sh.activity));
+        if (sh.sleep)          si.push("Sleep: " + esc(sh.sleep));
+        body += `<div style="font-size:9.5pt">${si.join(", ")}</div>`;
       }
       return section("Medical, Surgical, Family &amp; Social History", body);
     }
@@ -1232,8 +981,8 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
       const body = rosEntries.map(sys => {
         const symptoms = note.ros[sys.id] ?? [];
         return `<div style="margin-bottom:4pt">
-          <div style="font-size:7pt;font-weight:900;text-transform:uppercase;color:#0369a1;margin-bottom:2pt">${esc(sys.label)}</div>
-          <div class="chips">${symptoms.map(s => `<span class="chip">${esc(s)}</span>`).join("")}</div>
+          <div class="sys-heading">${esc(sys.label)}</div>
+          <div style="font-size:9.5pt">${symptoms.map(s => esc(s)).join(", ")}</div>
         </div>`;
       }).join("");
       return section("Review of Systems", body);
@@ -1245,10 +994,10 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
         const saved = (note.peSavedData ?? {})[sys.id];
         const findings = saved ? Object.entries(saved).filter(([, v]) => v?.trim()) : [];
         return `<div style="margin-bottom:4pt">
-          <div style="font-size:7pt;font-weight:900;text-transform:uppercase;color:#7c3aed;margin-bottom:2pt">${esc(sys.label)}</div>
+          <div class="sys-heading">${esc(sys.label)}</div>
           ${findings.length
-            ? findings.map(([k, v]) => `<div style="font-size:8.5pt"><strong>${esc(k)}:</strong> ${esc(v)}</div>`).join("")
-            : `<span style="font-size:8pt;color:#94a3b8;font-style:italic">No findings recorded</span>`}
+            ? findings.map(([k, v]) => `<div style="font-size:9.5pt"><strong>${esc(k)}:</strong> ${esc(v)}</div>`).join("")
+            : `<span style="font-size:9pt;font-style:italic">No findings recorded</span>`}
         </div>`;
       }).join("");
       return section("Physical Examination", body);
@@ -1256,27 +1005,15 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
     case "poc-labs": {
       const completed = (note.pocTests ?? []).filter(t => t.status !== "pending");
       if (!completed.length) return "";
-      return section("Point of Care Labs", completed.map(t => {
-        const isPos = t.status === "positive";
-        const bg = isPos
-          ? "background:#fef2f2;border-color:#fca5a5;color:#991b1b"
-          : "background:#f0fdf4;border-color:#bbf7d0;color:#166534";
-        return `<div class="poc-row" style="${bg}">
-          <span style="font-weight:700;flex:1">${esc(t.name)}</span>
-          <span style="font-size:7.5pt;font-weight:900;background:rgba(255,255,255,0.5);padding:1pt 4pt;border-radius:100pt">${esc(t.status.replace(/_/g, " "))}</span>
-        </div>`;
-      }).join(""));
+      return section("Point of Care Labs", completed.map(t =>
+        `<div style="margin-bottom:2pt;font-size:9.5pt"><strong>${esc(t.name)}</strong>: ${esc(t.status.replace(/_/g, " "))}</div>`
+      ).join(""));
     }
     case "diagnosis": {
       if (!note.diagnoses.length) return "";
-      return section("Assessment &amp; Diagnosis", note.diagnoses.map(d => `
-        <div class="dx-row">
-          <span class="dx-code">${esc(d.code)}</span>
-          <div class="dx-sep"></div>
-          <span class="dx-name">${esc(d.name)}</span>
-          ${d.isProvisional ? `<span class="dx-badge">Provisional</span>` : ""}
-          ${d.isFinal       ? `<span class="dx-badge dx-badge-final">Final</span>` : ""}
-        </div>`).join(""));
+      return section("Assessment &amp; Diagnosis", note.diagnoses.map(d =>
+        `<div style="margin-bottom:2pt;font-size:9.5pt">${d.code ? esc(d.code) + " \u2014 " : ""}${esc(d.name)}${d.isProvisional ? " (Provisional)" : ""}${d.isFinal ? " (Final)" : ""}</div>`
+      ).join(""));
     }
     case "lab-orders": {
       const labHtml = buildLabOrdersTable(note.labOrders);
@@ -1306,10 +1043,8 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
                     : r.referralTarget === "Procedure"  ? r.procedureName
                     : r.referralTarget === "ER"         ? r.facilityName
                     :                                    r.customTarget;
-        return `<div class="dx-row">
-          <span style="font-weight:700;color:#4982CF">${esc(label ?? "")}</span>
-          ${r.consultantName && r.referralTarget === "Consultant" ? `<div class="dx-sep"></div><span>${esc(r.consultantName)}</span>` : ""}
-        </div>`;
+        const extra = r.consultantName && r.referralTarget === "Consultant" ? ` \u2014 ${esc(r.consultantName)}` : "";
+        return `<div style="margin-bottom:2pt;font-size:9.5pt"><strong>${esc(label ?? "")}</strong>${extra}</div>`;
       }).join(""));
     }
     case "patient-goals": {
@@ -1328,19 +1063,10 @@ function buildProviderBlock(
   noteRow: { doctor: string; type: string },
   visitType: string,
 ): string {
+  const vtParts = (visitType || "").split(" \u2014 ");
+  const physician = vtParts[0].startsWith("Dr.") ? vtParts[0] : noteRow.doctor;
   return `
   <div class="provider-block">
-    <div>
-      <div class="provider-label">Attending Physician</div>
-      <div class="provider-sub">${esc(noteRow.doctor)}</div>
-    </div>
-    <div style="text-align:center">
-      <div class="provider-label">Visit Type</div>
-      <div class="provider-sub">${esc(visitType || noteRow.type)}</div>
-    </div>
-    <div style="text-align:right">
-      <div class="provider-label">Facility</div>
-      <div class="provider-sub">NovaDoc Health</div>
-    </div>
+    <strong>Attending Physician:</strong> ${esc(physician)} &nbsp;&middot;&nbsp; <strong>Facility:</strong> NovaDoc Health
   </div>`;
 }

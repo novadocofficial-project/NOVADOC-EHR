@@ -1,0 +1,1 @@
+- [PDF print CSS architecture](pdf-print-css.md) — two separate CSS constants must stay in sync: PDF_CONTENT_CSS (html2canvas) and CSS constant (HTML tab).
