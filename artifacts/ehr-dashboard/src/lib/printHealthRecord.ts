@@ -612,6 +612,64 @@ function buildDummyClinical(note: SoapDummyNote): string {
   return parts.join("\n");
 }
 
+// ─── Shared order-block renderers ────────────────────────────────────────────
+
+type LabOrderLike = {
+  voided?: boolean;
+  sentAt?: string;
+  returnedFromLab?: boolean;
+  tests: { id: string; name: string }[];
+};
+
+function buildLabOrdersTable(orders: LabOrderLike[]): string {
+  const nonVoided = orders.filter(o => !o.voided);
+  if (!nonVoided.length) return "";
+  const rows = nonVoided.flatMap(order => {
+    const sentStr = order.sentAt
+      ? new Date(order.sentAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+      : "—";
+    const status = order.returnedFromLab ? "Results Ready" : order.sentAt ? "Sent to Lab" : "Pending";
+    const statusColor = order.returnedFromLab ? "#166534" : order.sentAt ? "#b45309" : "#64748b";
+    return order.tests.map(t => `<tr>
+      <td style="font-weight:600">${esc(t.name)}</td>
+      <td style="color:#475569">${esc(sentStr)}</td>
+      <td><span style="font-size:7.5pt;font-weight:700;color:${statusColor}">${esc(status)}</span></td>
+    </tr>`);
+  });
+  return `
+  <table class="orders-table">
+    <thead><tr><th>Test</th><th>Sent</th><th>Status</th></tr></thead>
+    <tbody>${rows.join("")}</tbody>
+  </table>`;
+}
+
+type MedEntry = {
+  brand: string;
+  genericName?: string;
+  dose?: string;
+  unit?: string;
+  frequency?: string;
+  duration?: string;
+  route?: string;
+};
+
+function buildMedsTable(meds: MedEntry[]): string {
+  if (!meds.length) return "";
+  return `
+  <table class="orders-table">
+    <thead><tr><th>Drug</th><th>Dose</th><th>Frequency</th><th>Duration</th><th>Instructions</th></tr></thead>
+    <tbody>
+      ${meds.map(m => `<tr>
+        <td style="font-weight:700">${esc(m.brand)}${m.genericName ? `<br/><span style="font-size:7.5pt;font-weight:400;color:#64748b">${esc(m.genericName)}</span>` : ""}</td>
+        <td>${m.dose ? esc(m.dose) + (m.unit ? " " + esc(m.unit) : "") : "—"}</td>
+        <td>${esc(m.frequency ?? "—")}</td>
+        <td>${esc(m.duration ?? "—")}</td>
+        <td>${esc(m.route ?? "—")}</td>
+      </tr>`).join("")}
+    </tbody>
+  </table>`;
+}
+
 // ─── Clinical — live NoteState (standard SOAP) ────────────────────────────────
 
 function buildLiveClinical(note: NoteState): string {
@@ -738,43 +796,12 @@ function buildLiveClinical(note: NoteState): string {
   // ── Orders blocks ──────────────────────────────────────────────────────────
 
   const labOrders = note.labOrders ?? [];
-  if (labOrders.length)
-    parts.push(section("Lab Orders", labOrders.map((order, idx) => {
-      const isVoided = !!order.voided;
-      const sentStr = order.sentAt
-        ? new Date(order.sentAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
-        : "";
-      return `
-      <div style="border:1px solid ${isVoided ? "#fecaca" : "#fde68a"};border-radius:5pt;padding:5pt 8pt;margin-bottom:4pt;background:${isVoided ? "#fef2f2" : "#fffbeb"}">
-        <div style="display:flex;align-items:center;gap:6pt;flex-wrap:wrap;margin-bottom:3pt">
-          <span style="font-size:7.5pt;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;color:${isVoided ? "#f87171" : "#b45309"};${isVoided ? "text-decoration:line-through" : ""}">
-            Order ${idx + 1}${idx === 0 ? " · Original" : " · Follow-up"}
-          </span>
-          ${sentStr ? `<span style="font-size:7.5pt;color:#94a3b8">· ${esc(sentStr)}</span>` : ""}
-          ${isVoided ? `<span class="voided-badge">VOIDED</span>` : ""}
-        </div>
-        ${isVoided && order.voidReason ? `<div style="font-size:7.5pt;color:#f87171;font-style:italic;margin-bottom:3pt">Reason: ${esc(order.voidReason)}</div>` : ""}
-        <div class="chips">
-          ${order.tests.map(t => `<span class="chip${isVoided ? " chip-muted" : " chip-warn"}">${esc(t.name)}</span>`).join("")}
-        </div>
-      </div>`;
-    }).join("")));
+  const labTableHtml = buildLabOrdersTable(labOrders);
+  if (labTableHtml) parts.push(section("Lab Orders", labTableHtml));
 
   const meds = note.formulary?.medicines ?? [];
-  if (meds.length)
-    parts.push(section("Prescriptions / Medications", `
-      <table class="orders-table">
-        <thead><tr><th>Drug</th><th>Dose</th><th>Route</th><th>Frequency</th><th>Duration</th></tr></thead>
-        <tbody>
-          ${meds.map(m => `<tr>
-            <td style="font-weight:700">${esc(m.brand)}${m.genericName ? `<br/><span style="font-size:7.5pt;font-weight:400;color:#64748b">${esc(m.genericName)}</span>` : ""}</td>
-            <td>${m.dose ? esc(m.dose) + (m.unit ? " " + esc(m.unit) : "") : "—"}</td>
-            <td>${esc(m.route ?? "—")}</td>
-            <td>${esc(m.frequency ?? "—")}</td>
-            <td>${esc(m.duration ?? "—")}</td>
-          </tr>`).join("")}
-        </tbody>
-      </table>`));
+  const medsTableHtml = buildMedsTable(meds);
+  if (medsTableHtml) parts.push(section("Prescriptions / Medications", medsTableHtml));
 
   const imgOrders = note.imaging?.orders ?? [];
   if (imgOrders.length)
@@ -822,17 +849,70 @@ function buildSpecialtyFormClinical(form: SpecialtyForm, note: NoteState): strin
     ...(form.systemComponents ?? []).map(sc => ({ type: "sc" as const, item: sc, pos: sc.order })),
   ].sort((a, b) => a.pos - b.pos);
 
+  // Track which system-component order blocks were already rendered inline
+  const renderedOrderScs = new Set<string>();
   const parts: string[] = [];
 
   for (const entry of unified) {
     if (entry.type === "sc") {
-      const scHtml = buildSystemComponentHtml(entry.item.id, note);
+      const scId = entry.item.id;
+      if (["lab-orders", "formulary", "imaging", "care-plan", "referrals", "patient-goals"].includes(scId)) {
+        renderedOrderScs.add(scId);
+      }
+      const scHtml = buildSystemComponentHtml(scId, note);
       if (scHtml) parts.push(scHtml);
     } else {
       const sHtml = buildFormSectionHtml(entry.item as FormSection, formData);
       if (sHtml) parts.push(sHtml);
     }
   }
+
+  // ── Always append mandatory order blocks that weren't already rendered ──
+  if (!renderedOrderScs.has("lab-orders")) {
+    const labHtml = buildLabOrdersTable(note.labOrders);
+    if (labHtml) parts.push(section("Lab Orders", labHtml));
+  }
+  if (!renderedOrderScs.has("formulary")) {
+    const medsHtml = buildMedsTable(note.formulary?.medicines ?? []);
+    if (medsHtml) parts.push(section("Prescriptions / Medications", medsHtml));
+  }
+  if (!renderedOrderScs.has("imaging")) {
+    const imgOrders = note.imaging?.orders ?? [];
+    if (imgOrders.length)
+      parts.push(section("Imaging Orders", chips(imgOrders.map(o => o.testName + (o.category ? ` (${o.category})` : "")))));
+  }
+  const procOrders = (note.procedureOrders as { orders?: { uid: string; name: string }[] })?.orders ?? [];
+  if (procOrders.length)
+    parts.push(section("Procedure Orders", bulletList(procOrders.map(o => o.name))));
+
+  if (!renderedOrderScs.has("care-plan")) {
+    const cpTasks = (note.carePlan as { tasks?: { uid: string; title: string; assignee?: string; dueDate?: string }[] })?.tasks ?? [];
+    if (cpTasks.length)
+      parts.push(section("Care Plan", bulletList(cpTasks.map(t => t.title + (t.assignee ? ` · ${t.assignee}` : "") + (t.dueDate ? ` · ${t.dueDate}` : "")))));
+  }
+  if (!renderedOrderScs.has("referrals")) {
+    const refs = (note.referrals as { referrals?: { id: string; referralTarget?: string; speciality?: string; consultantName?: string; procedureName?: string; facilityName?: string; customTarget?: string }[] })?.referrals ?? [];
+    if (refs.length) {
+      parts.push(section("Referrals", refs.map(r => {
+        const label = r.referralTarget === "Consultant" ? (r.speciality || r.consultantName)
+                    : r.referralTarget === "Procedure"  ? r.procedureName
+                    : r.referralTarget === "ER"         ? r.facilityName
+                    :                                    r.customTarget;
+        return `<div class="dx-row">
+          <span style="font-weight:700;color:#4982CF">${esc(label ?? "")}</span>
+          ${r.consultantName && r.referralTarget === "Consultant" ? `<div class="dx-sep"></div><span>${esc(r.consultantName)}</span>` : ""}
+        </div>`;
+      }).join("")));
+    }
+  }
+  if (!renderedOrderScs.has("patient-goals")) {
+    const goals = (note.patientGoals as { goals?: { uid: string; title: string; targetDate?: string }[] })?.goals ?? [];
+    if (goals.length)
+      parts.push(section("Patient Goals", bulletList(goals.map(g => g.title + (g.targetDate ? ` (target: ${g.targetDate})` : "")))));
+  }
+
+  if (note.followUpDate)
+    parts.push(section("Follow-up", `<span class="chip">${esc(note.followUpDate)}</span>`));
 
   return parts.join("\n");
 }
@@ -978,44 +1058,14 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
         </div>`).join(""));
     }
     case "lab-orders": {
-      if (!note.labOrders.length) return "";
-      return section("Lab Orders", note.labOrders.map((order, idx) => {
-        const isVoided = !!order.voided;
-        const sentStr = order.sentAt
-          ? new Date(order.sentAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
-          : "";
-        return `
-        <div style="border:1px solid ${isVoided ? "#fecaca" : "#fde68a"};border-radius:5pt;padding:5pt 8pt;margin-bottom:4pt;background:${isVoided ? "#fef2f2" : "#fffbeb"}">
-          <div style="display:flex;align-items:center;gap:6pt;flex-wrap:wrap;margin-bottom:3pt">
-            <span style="font-size:7.5pt;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;color:${isVoided ? "#f87171" : "#b45309"};${isVoided ? "text-decoration:line-through" : ""}">
-              Order ${idx + 1}${idx === 0 ? " · Original" : " · Follow-up"}
-            </span>
-            ${sentStr ? `<span style="font-size:7.5pt;color:#94a3b8">· ${esc(sentStr)}</span>` : ""}
-            ${isVoided ? `<span class="voided-badge">VOIDED</span>` : ""}
-          </div>
-          ${isVoided && order.voidReason ? `<div style="font-size:7.5pt;color:#f87171;font-style:italic;margin-bottom:3pt">Reason: ${esc(order.voidReason)}</div>` : ""}
-          <div class="chips">
-            ${order.tests.map(t => `<span class="chip${isVoided ? " chip-muted" : " chip-warn"}">${esc(t.name)}</span>`).join("")}
-          </div>
-        </div>`;
-      }).join(""));
+      const labHtml = buildLabOrdersTable(note.labOrders);
+      if (!labHtml) return "";
+      return section("Lab Orders", labHtml);
     }
     case "formulary": {
-      const meds = note.formulary?.medicines ?? [];
-      if (!meds.length) return "";
-      return section("Prescriptions / Medications", `
-        <table class="orders-table">
-          <thead><tr><th>Drug</th><th>Dose</th><th>Route</th><th>Frequency</th><th>Duration</th></tr></thead>
-          <tbody>
-            ${meds.map(m => `<tr>
-              <td style="font-weight:700">${esc(m.brand)}${m.genericName ? `<br/><span style="font-size:7.5pt;font-weight:400;color:#64748b">${esc(m.genericName)}</span>` : ""}</td>
-              <td>${m.dose ? esc(m.dose) + (m.unit ? " " + esc(m.unit) : "") : "—"}</td>
-              <td>${esc(m.route ?? "—")}</td>
-              <td>${esc(m.frequency ?? "—")}</td>
-              <td>${esc(m.duration ?? "—")}</td>
-            </tr>`).join("")}
-          </tbody>
-        </table>`);
+      const medsHtml = buildMedsTable(note.formulary?.medicines ?? []);
+      if (!medsHtml) return "";
+      return section("Prescriptions / Medications", medsHtml);
     }
     case "imaging": {
       const orders = note.imaging?.orders ?? [];
