@@ -2273,10 +2273,255 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
   );
 }
 
+// ─── Nursing Priority View ────────────────────────────────────────────────────
+
+const NURSING_MAX_QUEUE = 10;
+const NURSING_QUEUE_WEIGHT = 5;
+const NURSING_TIME_WEIGHT = 1;
+const NURSING_MAX_WAIT_MIN = 120;
+
+const PRIORITY_BONUS: Record<Appointment["priority"], number> = {
+  emergency: 30,
+  urgent: 15,
+  normal: 0,
+};
+
+function computeNursingPriority(
+  appt: Appointment,
+  doctorQueueCount: number,
+  nowMs: number,
+): number | null {
+  if (getVitalsCompletedAt(appt.id) !== null) return null;
+  const waitMs = appt.checkedInAt ? Math.max(0, nowMs - appt.checkedInAt) : 0;
+  const waitMin = Math.min(waitMs / 60_000, NURSING_MAX_WAIT_MIN);
+  const queueUrgency = (NURSING_MAX_QUEUE - Math.min(doctorQueueCount, NURSING_MAX_QUEUE)) * NURSING_QUEUE_WEIGHT;
+  return queueUrgency + waitMin * NURSING_TIME_WEIGHT + PRIORITY_BONUS[appt.priority];
+}
+
+const NURSING_PRIORITY_CFG: Record<Appointment["priority"], { label: string; cls: string }> = {
+  emergency: { label: "Emergency", cls: "bg-red-50 text-red-700 border-red-300" },
+  urgent:    { label: "Urgent",    cls: "bg-amber-50 text-amber-700 border-amber-300" },
+  normal:    { label: "Normal",    cls: "bg-slate-50 text-slate-500 border-slate-200" },
+};
+
+function NursingView({
+  appointments,
+  doctors,
+  onOpenVitals,
+}: {
+  appointments: Appointment[];
+  doctors: Doctor[];
+  onOpenVitals: (appt: Appointment) => void;
+}) {
+  const todayCheckedIn = useMemo(
+    () => appointments.filter(a => a.date === todayStr() && a.status === "checked_in"),
+    [appointments],
+  );
+
+  const [now, setNow] = useState(() => Date.now());
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const secId = setInterval(() => setNow(Date.now()), 1000);
+    const sortId = setInterval(() => setTick(t => t + 1), 30_000);
+    return () => { clearInterval(secId); clearInterval(sortId); };
+  }, []);
+
+  const doctorMap = useMemo(
+    () => Object.fromEntries(doctors.map(d => [d.id, d.name])),
+    [doctors],
+  );
+
+  const { ranked, done } = useMemo(() => {
+    const vitalsSet = new Set(
+      todayCheckedIn.filter(a => getVitalsCompletedAt(a.id) !== null).map(a => a.id),
+    );
+    const queueCount: Record<string, number> = {};
+    for (const a of todayCheckedIn) {
+      if (!vitalsSet.has(a.id)) {
+        queueCount[a.doctorId] = (queueCount[a.doctorId] ?? 0) + 1;
+      }
+    }
+    const pending: Array<{ appt: Appointment; score: number }> = [];
+    const completed: Appointment[] = [];
+    for (const appt of todayCheckedIn) {
+      const score = computeNursingPriority(appt, queueCount[appt.doctorId] ?? 0, now);
+      if (score === null) { completed.push(appt); }
+      else { pending.push({ appt, score }); }
+    }
+    pending.sort((a, b) => b.score - a.score);
+    return { ranked: pending, done: completed };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayCheckedIn, tick, now]);
+
+  const [doneOpen, setDoneOpen] = useState(false);
+
+  if (todayCheckedIn.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center py-20">
+        <Activity className="h-12 w-12 text-slate-200 mb-4" />
+        <p className="text-lg font-bold text-slate-400">No checked-in patients</p>
+        <p className="text-sm text-slate-300 mt-1">Patients will appear here once they check in.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col gap-3 overflow-auto">
+      {/* Ranked table */}
+      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+          <Activity className="h-4 w-4 text-[#4982CF]" />
+          <span className="text-xs font-bold uppercase tracking-wide text-slate-600">Vitals Queue — Priority Order</span>
+          <span className="ml-auto text-xs text-slate-400">{ranked.length} waiting</span>
+        </div>
+        {ranked.length === 0 ? (
+          <div className="text-center py-10 text-slate-400 text-sm">All checked-in patients have vitals recorded.</div>
+        ) : (
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50">
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 w-10">#</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Patient</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Doctor</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Appt ID</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Priority</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Waiting</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Dr Queue</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Score</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ranked.map(({ appt, score }, idx) => {
+                const waitMs = appt.checkedInAt ? Math.max(0, now - appt.checkedInAt) : null;
+                const waitMin = waitMs !== null ? waitMs / 60_000 : null;
+                const waitColor = waitMin === null ? "text-slate-300"
+                  : waitMin > 45 ? "text-red-600 font-semibold"
+                  : waitMin > 20 ? "text-amber-600 font-semibold"
+                  : "text-emerald-600";
+                const pCfg = NURSING_PRIORITY_CFG[appt.priority];
+                return (
+                  <tr
+                    key={appt.id}
+                    className={`border-b border-slate-100 transition-colors hover:bg-slate-50/60 ${idx % 2 !== 0 ? "bg-slate-50/30" : ""}`}
+                  >
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${idx === 0 ? "bg-[#4982CF] text-white" : "bg-slate-100 text-slate-500"}`}>
+                        {idx + 1}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="font-semibold text-slate-800 leading-tight">{appt.patientName}</p>
+                      {appt.patientMrn && <p className="text-xs text-slate-400 mt-0.5 font-mono">{appt.patientMrn}</p>}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                      {doctorMap[appt.doctorId] ?? appt.doctorId}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-mono text-slate-500">APT-{appt.id.slice(-5).toUpperCase()}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${pCfg.cls}`}>
+                        {pCfg.label}
+                      </span>
+                    </td>
+                    <td className={`px-4 py-3 whitespace-nowrap text-xs ${waitColor}`}>
+                      {waitMs !== null ? (
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3 flex-none" />
+                          {formatElapsed(waitMs)}
+                        </span>
+                      ) : <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-center text-xs text-slate-600">
+                      {(() => {
+                        const count = ranked.filter(r => r.appt.doctorId === appt.doctorId).length;
+                        return (
+                          <span className={`font-semibold ${count >= 5 ? "text-red-500" : count >= 3 ? "text-amber-500" : "text-slate-600"}`}>
+                            {count}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="px-4 py-3 text-xs font-mono text-slate-500">{score.toFixed(1)}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => onOpenVitals(appt)}
+                        className="flex items-center gap-1.5 h-8 px-3 rounded-md border border-[#4982CF]/40 bg-white text-[#4982CF] hover:bg-blue-50 hover:border-[#4982CF] text-xs font-bold transition-colors whitespace-nowrap"
+                      >
+                        <Heart className="h-3.5 w-3.5" /> Call for Vitals
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Vitals Complete accordion */}
+      {done.length > 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+          <button
+            onClick={() => setDoneOpen(o => !o)}
+            className="w-full flex items-center gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-left"
+          >
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-600">Vitals Complete</span>
+            <span className="ml-1 text-xs text-slate-400">{done.length} patient{done.length !== 1 ? "s" : ""}</span>
+            <ChevronDown className={`h-3.5 w-3.5 text-slate-400 ml-auto transition-transform ${doneOpen ? "rotate-180" : ""}`} />
+          </button>
+          {doneOpen && (
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className="text-left px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-400">Patient</th>
+                  <th className="text-left px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-400">Doctor</th>
+                  <th className="text-left px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-400 whitespace-nowrap">Appt ID</th>
+                  <th className="text-left px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-400">Priority</th>
+                  <th className="text-left px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-400 whitespace-nowrap">Vitals At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {done.map((appt, idx) => {
+                  const vitalsAt = getVitalsCompletedAt(appt.id);
+                  const pCfg = NURSING_PRIORITY_CFG[appt.priority];
+                  return (
+                    <tr key={appt.id} className={`border-b border-slate-100 ${idx % 2 !== 0 ? "bg-slate-50/30" : ""}`}>
+                      <td className="px-4 py-2.5">
+                        <p className="font-semibold text-slate-700 leading-tight">{appt.patientName}</p>
+                        {appt.patientMrn && <p className="text-xs text-slate-400 font-mono">{appt.patientMrn}</p>}
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap text-xs">{doctorMap[appt.doctorId] ?? appt.doctorId}</td>
+                      <td className="px-4 py-2.5">
+                        <span className="text-xs font-mono text-slate-400">APT-{appt.id.slice(-5).toUpperCase()}</span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${pCfg.cls}`}>
+                          {pCfg.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-slate-400 whitespace-nowrap">
+                        {vitalsAt ? new Date(vitalsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 type ViewMode = "day" | "week" | "month";
-type LayoutMode = "calendar" | "doctor" | "counselling";
+type LayoutMode = "calendar" | "doctor" | "counselling" | "nursing";
 type Role = "frontdesk" | "nursing" | "doctor";
 
 interface ApptUiState {
@@ -2327,7 +2572,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
     saveUiState(role, { selectedDoctorId, selectedDate, viewMode });
   }, [role, selectedDoctorId, selectedDate, viewMode]);
 
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>("calendar");
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>(role === "nursing" ? "nursing" : "calendar");
   const [filterTypes, setFilterTypes] = useState<string[]>([]);
 
   // Booking drawer
@@ -2648,6 +2893,14 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
                 <ClipboardList className="h-3.5 w-3.5" /> Counselling View
               </button>
             )}
+            {role === "nursing" && (
+              <button
+                onClick={() => setLayoutMode("nursing")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors ${layoutMode === "nursing" ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                <Activity className="h-3.5 w-3.5" /> Priority View
+              </button>
+            )}
           </div>
 
           <Button
@@ -2758,6 +3011,12 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
             )}
             onOpenFacesheet={setFacesheetAppt}
           />
+        ) : layoutMode === "nursing" && role === "nursing" ? (
+          <NursingView
+            appointments={appointments}
+            doctors={appointmentDoctors}
+            onOpenVitals={setNursingAppt}
+          />
         ) : !selectedDoctor ? (
           <div className="text-center py-20 text-slate-400">Select a doctor to view their calendar.</div>
         ) : viewMode === "day" ? (
@@ -2819,7 +3078,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
           onView={appt => setFacesheetAppt(appt)}
           onEdit={appt => openBooking({}, appt)}
           onStatusChange={(id, status) => {
-            updateAppointment(id, { status });
+            updateAppointment(id, { status, ...(status === "checked_in" ? { checkedInAt: Date.now() } : {}) });
             toast({ title: "Status updated", description: STATUS_CONFIG[status].label });
           }}
           onInvoice={appt => {
