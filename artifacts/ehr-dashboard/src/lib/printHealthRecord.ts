@@ -106,11 +106,14 @@ animation:bounce 1.2s infinite ease-in-out both;}
 
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
+    // Preload logo for every page header
+    const logoInfo = await loadLogoDataUrl();
+
     for (let pg = 0; pg < totalPages; pg++) {
       if (pg > 0) pdf.addPage();
 
       // Draw header and footer first (below the image layer)
-      pdfAddHeader(pdf, p, A4_W, pg + 1, totalPages);
+      pdfAddHeader(pdf, p, A4_W, pg + 1, totalPages, logoInfo);
       pdfAddFooter(pdf, A4_W, A4_H);
 
       // Slice the canvas for this page
@@ -148,22 +151,55 @@ animation:bounce 1.2s infinite ease-in-out both;}
   }
 }
 
+// ─── Logo preloader ───────────────────────────────────────────────────────────
+
+async function loadLogoDataUrl(): Promise<{ dataUrl: string; aspect: number } | null> {
+  try {
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload  = () => resolve();
+      img.onerror = () => reject();
+      img.src = "/novadoc-logo.png";
+    });
+    const c = document.createElement("canvas");
+    c.width  = img.naturalWidth;
+    c.height = img.naturalHeight;
+    c.getContext("2d")!.drawImage(img, 0, 0);
+    return { dataUrl: c.toDataURL("image/png"), aspect: img.naturalWidth / img.naturalHeight };
+  } catch {
+    return null;
+  }
+}
+
 // ─── jsPDF per-page header ────────────────────────────────────────────────────
 
-function pdfAddHeader(doc: JSPDF, p: PrintHealthRecordParams, pageW: number, page: number, total: number): void {
+function pdfAddHeader(
+  doc: JSPDF,
+  p: PrintHealthRecordParams,
+  pageW: number,
+  page: number,
+  total: number,
+  logo: { dataUrl: string; aspect: number } | null,
+): void {
   // Blue separator line
   doc.setDrawColor(73, 130, 207);
   doc.setLineWidth(0.4);
   doc.line(0, 19, pageW, 19);
 
-  // Logo: "Nova" (blue) + "Doc" (dark)
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.setTextColor(73, 130, 207);
-  doc.text("Nova", 16, 13);
-  const novaW = doc.getTextWidth("Nova");
-  doc.setTextColor(30, 41, 59);
-  doc.text("Doc", 16 + novaW, 13);
+  // Logo image (or text fallback if image failed to load)
+  if (logo) {
+    const logoH = 9;
+    const logoW = logo.aspect * logoH;
+    doc.addImage(logo.dataUrl, "PNG", 14, 5, logoW, logoH);
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(73, 130, 207);
+    doc.text("Nova", 16, 13);
+    const novaW = doc.getTextWidth("Nova");
+    doc.setTextColor(30, 41, 59);
+    doc.text("Doc", 16 + novaW, 13);
+  }
 
   // Right: date · MR · page
   doc.setFont("helvetica", "normal");
@@ -284,13 +320,6 @@ body {
   justify-content: space-between;
   padding: 0 12mm;
 }
-.hdr-logo {
-  font-size: 16pt;
-  font-weight: 900;
-  color: #4982CF;
-  letter-spacing: -0.5px;
-}
-.hdr-logo span { color: #1e293b; }
 .hdr-meta {
   text-align: right;
   font-size: 7.5pt;
@@ -385,7 +414,7 @@ function buildHtml(p: PrintHealthRecordParams): string {
 
   const headerHtml = `
   <div class="page-header">
-    <div class="hdr-logo">Nova<span>Doc</span></div>
+    <img src="/novadoc-logo.png" alt="NovaDoc" style="height:28px;width:auto" />
     <div class="hdr-meta">
       <strong>Confidential Health Record</strong><br/>
       ${generatedAt} &nbsp;·&nbsp; MR: <strong>${esc(patient.mrn ?? "—")}</strong><br/>
