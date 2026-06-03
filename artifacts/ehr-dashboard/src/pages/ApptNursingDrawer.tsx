@@ -416,6 +416,78 @@ function VitalsFormVitalsOnly({ vitalValues, setVitalValues, configuredVitals }:
   { vitalValues: Record<string, string>; setVitalValues: (v: Record<string, string>) => void; configuredVitals: VitalConfig[] }) {
   const displayVitals = configuredVitals.filter(v => v.opd !== "skip" && v.id !== "pain");
   function setV(key: string, val: string) { setVitalValues({ ...vitalValues, [key]: val }); }
+
+  const [heightUnit, setHeightUnit] = useState<"cm" | "ft">("cm");
+
+  // Auto-calculate BMI whenever weight or height changes
+  useEffect(() => {
+    const w = parseFloat(vitalValues["weight"] ?? "");
+    const h = parseFloat(vitalValues["height"] ?? "");
+    const newBmi = (!isNaN(w) && !isNaN(h) && h > 0)
+      ? (w / ((h / 100) ** 2)).toFixed(1)
+      : "";
+    if ((vitalValues["bmi"] ?? "") !== newBmi) {
+      setVitalValues({ ...vitalValues, bmi: newBmi });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vitalValues["weight"], vitalValues["height"]]);
+
+  function numericOnly(val: string): string {
+    return val.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+  }
+
+  function getStatus(val: string, min: string, max: string): "normal" | "low" | "high" | "none" {
+    const n = parseFloat(val);
+    if (!val || isNaN(n)) return "none";
+    const lo = parseFloat(min);
+    const hi = parseFloat(max);
+    if (!isNaN(lo) && n < lo) return "low";
+    if (!isNaN(hi) && n > hi) return "high";
+    if (!isNaN(lo) || !isNaN(hi)) return "normal";
+    return "none";
+  }
+
+  const STATUS_CFG = {
+    normal: { cls: "text-emerald-600 bg-emerald-50 border-emerald-200", dot: "bg-emerald-500", label: "Normal", border: "border-emerald-400" },
+    low:    { cls: "text-amber-600  bg-amber-50  border-amber-200",     dot: "bg-amber-500",   label: "Low",    border: "border-amber-400"   },
+    high:   { cls: "text-red-600    bg-red-50    border-red-200",        dot: "bg-red-500",     label: "High",   border: "border-red-400"     },
+  } as const;
+
+  function renderStatus(status: "normal" | "low" | "high" | "none", refMin: string, refMax: string, unit: string) {
+    const refText = (refMin || refMax) ? `Ref: ${refMin || "—"} – ${refMax || "—"} ${unit}` : "";
+    if (status === "none") return refText ? <p className="text-[10px] text-slate-400 mt-0.5">{refText}</p> : null;
+    const c = STATUS_CFG[status];
+    return (
+      <div className="flex items-center gap-1.5 mt-1">
+        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold border ${c.cls}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />{c.label}
+        </span>
+        {refText && <span className="text-[10px] text-slate-400">{refText}</span>}
+      </div>
+    );
+  }
+
+  function inputBorder(status: "normal" | "low" | "high" | "none"): string {
+    return status !== "none" ? STATUS_CFG[status].border : "";
+  }
+
+  // Height ft/in conversion helpers
+  function cmToFtIn(cm: string): { ft: string; inches: string } {
+    const v = parseFloat(cm);
+    if (isNaN(v) || v <= 0) return { ft: "", inches: "" };
+    const totalIn = v / 2.54;
+    const ft = Math.floor(totalIn / 12);
+    const inches = parseFloat((totalIn % 12).toFixed(1));
+    return { ft: String(ft), inches: String(inches) };
+  }
+  function ftInToCm(ft: string, inches: string): string {
+    const ftN = parseFloat(ft) || 0;
+    const inN = parseFloat(inches) || 0;
+    if (ftN === 0 && inN === 0) return "";
+    return (ftN * 30.48 + inN * 2.54).toFixed(1);
+  }
+  const { ft: dispFt, inches: dispIn } = cmToFtIn(vitalValues["height"] ?? "");
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto px-5 py-4">
@@ -436,13 +508,31 @@ function VitalsFormVitalsOnly({ vitalValues, setVitalValues, configuredVitals }:
               displayVitals.forEach(v => {
                 if (v.id === "bp") {
                   flush();
+                  const sysVal = vitalValues["bp_sys"] ?? "";
+                  const diaVal = vitalValues["bp_dia"] ?? "";
+                  const sysMin = v.refMin.split("/")[0] ?? "";
+                  const sysMax = v.refMax.split("/")[0] ?? "";
+                  const diaMin = v.refMin.split("/")[1] ?? "";
+                  const diaMax = v.refMax.split("/")[1] ?? "";
+                  const sysSt  = getStatus(sysVal, sysMin, sysMax);
+                  const diaSt  = getStatus(diaVal, diaMin, diaMax);
+                  const combined: "normal" | "low" | "high" | "none" =
+                    sysSt === "high" || diaSt === "high" ? "high"
+                    : sysSt === "low"  || diaSt === "low"  ? "low"
+                    : sysSt === "normal" || diaSt === "normal" ? "normal" : "none";
                   rows.push(
                     <div key="bp">
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Blood Pressure {v.unit ? `(${v.unit})` : ""}:</label>
                       <div className="flex items-center gap-2">
-                        <Input value={vitalValues["bp_sys"] ?? ""} onChange={e => setV("bp_sys", e.target.value)} placeholder="Systolic" className="h-8 text-sm flex-1 min-w-0" />
+                        <Input value={sysVal} inputMode="decimal"
+                          onChange={e => setV("bp_sys", numericOnly(e.target.value))}
+                          placeholder="Systolic"
+                          className={`h-8 text-sm flex-1 min-w-0 ${inputBorder(sysSt)}`} />
                         <span className="text-slate-400 font-bold flex-shrink-0">/</span>
-                        <Input value={vitalValues["bp_dia"] ?? ""} onChange={e => setV("bp_dia", e.target.value)} placeholder="Diastolic" className="h-8 text-sm flex-1 min-w-0" />
+                        <Input value={diaVal} inputMode="decimal"
+                          onChange={e => setV("bp_dia", numericOnly(e.target.value))}
+                          placeholder="Diastolic"
+                          className={`h-8 text-sm flex-1 min-w-0 ${inputBorder(diaSt)}`} />
                         <Select value={vitalValues["bp_pos"] ?? ""} onValueChange={val => setV("bp_pos", val)}>
                           <SelectTrigger className="h-8 text-sm w-28 flex-shrink-0"><SelectValue placeholder="Position" /></SelectTrigger>
                           <SelectContent>
@@ -459,19 +549,73 @@ function VitalsFormVitalsOnly({ vitalValues, setVitalValues, configuredVitals }:
                           </SelectContent>
                         </Select>
                       </div>
+                      {renderStatus(combined, v.refMin, v.refMax, v.unit)}
                     </div>
                   );
+                } else if (v.id === "height") {
+                  flush();
+                  rows.push(
+                    <div key="height">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-slate-600">Height:</label>
+                        <div className="flex items-center rounded border border-slate-200 overflow-hidden">
+                          {(["cm", "ft"] as const).map(u => (
+                            <button key={u} type="button" onClick={() => setHeightUnit(u)}
+                              className={`px-2 py-0.5 text-[10px] font-bold transition-colors ${heightUnit === u ? "bg-[#4982CF] text-white" : "bg-white text-slate-400 hover:bg-slate-50"}`}>
+                              {u}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {heightUnit === "cm" ? (
+                        <Input value={vitalValues["height"] ?? ""} inputMode="decimal"
+                          onChange={e => setV("height", numericOnly(e.target.value))}
+                          placeholder="Enter Height (cm)" className="h-8 text-sm" />
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <Input value={dispFt} inputMode="numeric" placeholder="Feet"
+                              onChange={e => setV("height", ftInToCm(numericOnly(e.target.value), dispIn))}
+                              className="h-8 text-sm" />
+                            <p className="text-[10px] text-slate-400 mt-0.5">ft</p>
+                          </div>
+                          <div className="flex-1">
+                            <Input value={dispIn} inputMode="decimal" placeholder="Inches"
+                              onChange={e => setV("height", ftInToCm(dispFt, numericOnly(e.target.value)))}
+                              className="h-8 text-sm" />
+                            <p className="text-[10px] text-slate-400 mt-0.5">in</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                } else if (v.id === "bmi") {
+                  const bmiVal = vitalValues["bmi"] ?? "";
+                  const bmiSt  = getStatus(bmiVal, v.refMin, v.refMax);
+                  buffer.push(
+                    <div key="bmi">
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">BMI (kg/m²):</label>
+                      <Input value={bmiVal} readOnly disabled placeholder="Auto-calculated"
+                        className={`h-8 text-sm bg-slate-50 cursor-not-allowed ${inputBorder(bmiSt)}`} />
+                      {renderStatus(bmiSt, v.refMin, v.refMax, v.unit)}
+                    </div>
+                  );
+                  if (buffer.length === 2) flush();
                 } else {
                   const label = `${v.name}${v.unit ? ` (${v.unit})` : ""}`;
                   const isRequired = v.opd === "required";
+                  const val = vitalValues[v.id] ?? "";
+                  const status = getStatus(val, v.refMin, v.refMax);
                   buffer.push(
                     <div key={v.id}>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">
                         {label}{isRequired && <span className="text-rose-500 ml-0.5">*</span>}:
                       </label>
-                      <Input value={vitalValues[v.id] ?? ""} onChange={e => setV(v.id, e.target.value)} placeholder={`Enter ${v.name}`}
-                        className="h-8 text-sm" style={v.refMin || v.refMax ? { borderColor: `${v.color}40` } : undefined} />
-                      {(v.refMin || v.refMax) && <p className="text-[10px] text-slate-400 mt-0.5">Ref: {v.refMin || "—"} – {v.refMax || "—"} {v.unit}</p>}
+                      <Input value={val} inputMode="decimal"
+                        onChange={e => setV(v.id, numericOnly(e.target.value))}
+                        placeholder={`Enter ${v.name}`}
+                        className={`h-8 text-sm ${inputBorder(status)}`} />
+                      {renderStatus(status, v.refMin, v.refMax, v.unit)}
                     </div>
                   );
                   if (buffer.length === 2) flush();
