@@ -61,8 +61,6 @@ animation:bounce 1.2s infinite ease-in-out both;}
   } else {
     clinicalHtml = `<p style="color:#94a3b8;font-size:9pt;font-style:italic;">Note content not available for this record.</p>`;
   }
-  const providerHtml = buildProviderBlock(noteRow, visitType);
-
   // A4 layout constants (mm)
   const A4_W = 210;
   const A4_H = 297;
@@ -77,7 +75,7 @@ animation:bounce 1.2s infinite ease-in-out both;}
   // ── Inject content-only container for html2canvas (no page margins) ──────
   const container = document.createElement("div");
   container.style.cssText = `position:absolute;left:-9999px;top:0;width:${CONTAINER_PX}px;background:#fff;margin:0;padding:0;overflow:visible`;
-  container.innerHTML = `<style>${PDF_CONTENT_CSS}</style><div class="pdf-content">${patientInfoHtml}${vitalsHtml}<hr class="divider"/>${clinicalHtml}${providerHtml}</div>`;
+  container.innerHTML = `<style>${PDF_CONTENT_CSS}</style><div class="pdf-content">${patientInfoHtml}${vitalsHtml}<hr class="divider"/>${clinicalHtml}</div>`;
   document.body.appendChild(container);
 
   try {
@@ -104,7 +102,6 @@ animation:bounce 1.2s infinite ease-in-out both;}
 
     // ── Smart page boundaries — avoid slicing through protected blocks ────────
     // Only protect elements whose content would be visually damaged if split:
-    //   .provider-block — single-line summary at the end of the note
     //   .med-table      — table rows that should not be cut mid-row
     // Section headings (.sec) are intentionally excluded: they are short,
     // single-line, and protecting them caused a cascade of one-element pages.
@@ -113,7 +110,7 @@ animation:bounce 1.2s infinite ease-in-out both;}
     // element (elementTop < boundary < elementBottom).  The previous version
     // moved the boundary whenever the element merely *started* within the slice,
     // which caused every heading to become its own page.
-    const protectedSelectors = [".provider-block", ".med-table"];
+    const protectedSelectors = [".med-table"];
     const contentRect = contentEl.getBoundingClientRect();
     type ProtectedZone = { top: number; bottom: number };
     const protectedZones: ProtectedZone[] = protectedSelectors
@@ -301,7 +298,6 @@ const PDF_CONTENT_CSS = `
 .med-table td { border: 1pt solid #000; padding: 3pt 5pt; vertical-align: top; }
 .voided-row td { color: #888; text-decoration: line-through; }
 .divider { border: none; border-top: 1pt solid #ccc; margin: 8pt 0; }
-.provider-block { margin-top: 10pt; border-top: 1pt solid #ccc; padding-top: 6pt; font-size: 9pt; }
 .narrative { border: 1pt solid #ccc; padding: 5pt 8pt; font-size: 9pt; line-height: 1.5; white-space: pre-wrap; }
 `;
 
@@ -435,9 +431,6 @@ body {
 /* ── Divider ── */
 .divider { border: none; border-top: 1pt solid #ccc; margin: 8pt 0; }
 
-/* ── Provider block ── */
-.provider-block { margin-top: 10pt; border-top: 1pt solid #ccc; padding-top: 6pt; font-size: 9pt; }
-
 /* ── Narrative text ── */
 .narrative { border: 1pt solid #ccc; padding: 5pt 8pt; font-size: 9pt; line-height: 1.5; white-space: pre-wrap; }
 
@@ -493,8 +486,6 @@ function buildHtml(p: PrintHealthRecordParams): string {
     clinicalHtml = `<p style="color:#94a3b8;font-size:9pt;font-style:italic;">Note content not available for this record.</p>`;
   }
 
-  const providerHtml = buildProviderBlock(noteRow, visitType);
-
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -511,7 +502,6 @@ function buildHtml(p: PrintHealthRecordParams): string {
     ${vitalsHtml}
     <hr class="divider"/>
     ${clinicalHtml}
-    ${providerHtml}
   </div>
 </body>
 </html>`;
@@ -1132,16 +1122,3 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
   }
 }
 
-// ─── Provider block ───────────────────────────────────────────────────────────
-
-function buildProviderBlock(
-  noteRow: { doctor: string; type: string },
-  visitType: string,
-): string {
-  const vtParts = (visitType || "").split(" \u2014 ");
-  const physician = vtParts[0].startsWith("Dr.") ? vtParts[0] : noteRow.doctor;
-  return `
-  <div class="provider-block">
-    <strong>Attending Physician:</strong> ${esc(physician)} &nbsp;&middot;&nbsp; <strong>Facility:</strong> NovaDoc Health
-  </div>`;
-}
