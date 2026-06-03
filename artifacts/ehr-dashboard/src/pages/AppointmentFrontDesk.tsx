@@ -3145,7 +3145,15 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
                     phone: invoiceAppt.patientPhone || undefined,
                   },
                 }}
-                onComplete={r => { setInvoiceReceipt(r); if (invoiceAppt) saveInvoice(invoiceAppt.id, r); }}
+                onComplete={r => {
+                  setInvoiceReceipt(r);
+                  if (invoiceAppt) {
+                    saveInvoice(invoiceAppt.id, r);
+                    if (invoiceAppt.status === "booked" || invoiceAppt.status === "confirmed") {
+                      updateAppointment(invoiceAppt.id, { status: "checked_in", checkedInAt: Date.now() });
+                    }
+                  }
+                }}
                 isFullscreen={invoiceFullscreen}
               />
             </div>
