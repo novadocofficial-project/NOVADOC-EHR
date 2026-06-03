@@ -31,6 +31,8 @@ export { SOAP_DUMMY } from "@/data/soapDummy";
 import { ROS_SYSTEMS, BODY_SYSTEMS, PeSummary } from "@/pages/RosPeSection";
 import { loadForms } from "@/pages/SpecialtyFormsModule";
 import type { SpecialtyForm } from "@/pages/SpecialtyFormsModule";
+import { printHealthRecord } from "@/lib/printHealthRecord";
+import type { PrintNoteKind } from "@/lib/printHealthRecord";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1554,7 +1556,31 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
                               {menuOpen && (
                                 <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
                                   <button
-                                    onClick={() => { setOpenMenuIdx(null); window.open("about:blank", "_blank"); }}
+                                    onClick={() => {
+                                      setOpenMenuIdx(null);
+                                      const nk: PrintNoteKind = dummy
+                                        ? { kind: "dummy", note: dummy }
+                                        : (!isAddendum && note.isNew && "noteState" in note && note.noteState)
+                                          ? (() => {
+                                              const ns = (note as SignedRecord).noteState!;
+                                              const form = ns.specialtyFormId
+                                                ? loadForms().find(f => f.id === ns.specialtyFormId)
+                                                : undefined;
+                                              return { kind: "live" as const, noteState: ns, form };
+                                            })()
+                                          : { kind: "empty" as const };
+                                      printHealthRecord({
+                                        patient: { name, mrn },
+                                        noteRow: {
+                                          date: note.date,
+                                          time: note.time,
+                                          type: note.type,
+                                          doctor: note.doctor,
+                                        },
+                                        visitType: noteLabel ?? note.type,
+                                        noteKind: nk,
+                                      });
+                                    }}
                                     className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
                                     <Printer className="h-3.5 w-3.5 text-slate-400" /> Print
                                   </button>
