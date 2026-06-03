@@ -1628,17 +1628,19 @@ export function printThermalReceipt(r: ReceiptInfo) {
     return `${mainLine}${provLine}${discLine}`;
   }).join("\n");
   const html = `<!DOCTYPE html><html><head><title>Receipt ${r.invNo}</title><style>
-    body { font-family: 'Courier New', monospace; font-size: 11px; width: 72mm; margin: 0 auto; padding: 4mm; }
+    @page { size: 80mm auto; margin: 3mm; }
+    body { font-family: 'Courier New', monospace; font-size: 13px; width: 72mm; margin: 0 auto; padding: 2mm; }
     .center { text-align: center; } .bold { font-weight: bold; }
     .sep { border-top: 1px dashed #000; margin: 4px 0; }
-    .logo { font-size: 18px; font-weight: 900; letter-spacing: 1px; }
-    .total { font-size: 14px; font-weight: 900; }
+    .logo { font-size: 22px; font-weight: 900; letter-spacing: 1px; }
+    .total { font-size: 16px; font-weight: 900; }
+    pre { font-size: 13px; white-space: pre-wrap; word-break: break-word; margin: 2px 0; }
   </style></head><body>
     <div class="center logo">NovaDoc</div>
-    <div class="center" style="font-size:9px">EHR · Billing Receipt</div>
+    <div class="center" style="font-size:11px">EHR · Billing Receipt</div>
     <div class="sep"></div>
     <div>Invoice: <span class="bold">${r.invNo}</span></div>
-    <div class="center" style="font-size:36px;font-weight:900;letter-spacing:2px;margin:6px 0 2px">${r.tokenNumber}</div>
+    <div class="center" style="font-size:42px;font-weight:900;letter-spacing:2px;margin:6px 0 2px">${r.tokenNumber}</div>
     <div>Patient: <span class="bold">${r.patientName}</span></div>
     <div>${dt}</div>
     <div class="sep"></div>
@@ -1652,11 +1654,11 @@ export function printThermalReceipt(r: ReceiptInfo) {
     ${r.payType === "welfare" ? `<div>Co-Pay: Rs.${r.coPay.toLocaleString("en-PK")}</div><div>Welfare: Rs.${(r.total - r.coPay).toLocaleString("en-PK")}</div>` : ""}
     ${r.refNum ? `<div>Ref: ${r.refNum}</div>` : ""}
     <div class="sep"></div>
-    <div class="center" style="font-size:9px">Thank you · Please proceed to Vitals</div>
-    <div class="center" style="font-size:9px">novadoc.health</div>
+    <div class="center" style="font-size:11px">Thank you · Please proceed to Vitals</div>
+    <div class="center" style="font-size:11px">novadoc.health</div>
     <script>window.onload=function(){ window.print(); window.close(); }</script>
   </body></html>`;
-  const w = window.open("", "_blank", "width=340,height=600");
+  const w = window.open("", "_blank", "width=900,height=720");
   if (w) { w.document.write(html); w.document.close(); }
 }
 
