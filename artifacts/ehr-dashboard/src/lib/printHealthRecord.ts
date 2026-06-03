@@ -1,3 +1,4 @@
+import type { jsPDF as JSPDF } from "jspdf";
 import type { NoteState } from "@/pages/ClinicalNoteDrawer";
 import type { SoapDummyNote } from "@/data/soapDummy";
 import type { SpecialtyForm, FormSection } from "@/pages/SpecialtyFormsModule";
@@ -17,14 +18,167 @@ export interface PrintHealthRecordParams {
   noteKind:  PrintNoteKind;
 }
 
-export function printHealthRecord(p: PrintHealthRecordParams): void {
-  const html = buildHtml(p);
-  const w = window.open("", "_blank");
-  if (!w) return;
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+export async function printHealthRecord(p: PrintHealthRecordParams): Promise<void> {
+  const { jsPDF } = await import("jspdf");
+  const { patient, noteRow, visitType, noteKind } = p;
+
+  const patientInfoHtml = buildPatientInfo(patient, noteRow, visitType);
+
+  let vitalsHtml = "";
+  let clinicalHtml = "";
+  if (noteKind.kind === "dummy") {
+    vitalsHtml   = buildDummyVitals(noteKind.note);
+    clinicalHtml = buildDummyClinical(noteKind.note);
+  } else if (noteKind.kind === "live") {
+    vitalsHtml = buildLiveVitals(noteKind.noteState);
+    if (noteKind.form && noteKind.noteState.specialtyFormId) {
+      clinicalHtml = buildSpecialtyFormClinical(noteKind.form, noteKind.noteState);
+    } else {
+      clinicalHtml = buildLiveClinical(noteKind.noteState);
+    }
+  } else {
+    clinicalHtml = `<p style="color:#94a3b8;font-size:9pt;font-style:italic;">Note content not available for this record.</p>`;
+  }
+  const providerHtml = buildProviderBlock(noteRow, visitType);
+
+  // ── Inject flat (no position:fixed) container for html2canvas ───────────
+  const container = document.createElement("div");
+  container.style.cssText = "position:absolute;left:-9999px;top:0;width:760px;background:#fff;margin:0;padding:0;overflow:visible";
+  container.innerHTML = `<style>${PDF_CONTENT_CSS}</style><div class="pdf-content">${patientInfoHtml}${vitalsHtml}<hr class="divider"/>${clinicalHtml}${providerHtml}</div>`;
+  document.body.appendChild(container);
+
+  const A4_W = 210;
+  const A4_H = 297;
+  const ML = 16, MR = 16, MT = 22, MB = 20;
+  const contentW = A4_W - ML - MR; // 178 mm
+
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const contentEl = container.querySelector(".pdf-content") as HTMLElement;
+
+  await new Promise<void>(resolve => {
+    pdf.html(contentEl, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      callback: (doc: any) => {
+        const total = (doc as JSPDF).getNumberOfPages();
+        for (let pg = 1; pg <= total; pg++) {
+          (doc as JSPDF).setPage(pg);
+          pdfAddHeader(doc as JSPDF, p, A4_W, pg, total);
+          pdfAddFooter(doc as JSPDF, A4_W, A4_H);
+        }
+        resolve();
+      },
+      x: ML,
+      y: MT,
+      width: contentW,
+      windowWidth: 760,
+      margin: [MT, MR, MB, ML],
+      autoPaging: "text",
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+    });
+  });
+
+  document.body.removeChild(container);
+  const blob = pdf.output("blob");
+  window.open(URL.createObjectURL(blob), "_blank");
 }
+
+// ─── jsPDF per-page header ────────────────────────────────────────────────────
+
+function pdfAddHeader(doc: JSPDF, p: PrintHealthRecordParams, pageW: number, page: number, total: number): void {
+  // Blue separator line
+  doc.setDrawColor(73, 130, 207);
+  doc.setLineWidth(0.4);
+  doc.line(0, 19, pageW, 19);
+
+  // Logo: "Nova" (blue) + "Doc" (dark)
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(73, 130, 207);
+  doc.text("Nova", 16, 13);
+  const novaW = doc.getTextWidth("Nova");
+  doc.setTextColor(30, 41, 59);
+  doc.text("Doc", 16 + novaW, 13);
+
+  // Right: date · MR · page
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(100, 116, 139);
+  const rX = pageW - 16;
+  doc.text(`${p.noteRow.date} · ${p.noteRow.time}`, rX, 8, { align: "right" });
+  if (p.patient.mrn) doc.text(`MR: ${p.patient.mrn}`, rX, 12, { align: "right" });
+  doc.text(`Page ${page} / ${total}`, rX, 16, { align: "right" });
+}
+
+// ─── jsPDF per-page footer ────────────────────────────────────────────────────
+
+function pdfAddFooter(doc: JSPDF, pageW: number, pageH: number): void {
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.line(0, pageH - 18, pageW, pageH - 18);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6);
+  doc.setTextColor(148, 163, 184);
+  doc.text("Confidential Medical Record \u2014 For Authorised Use Only", 16, pageH - 12);
+  doc.text("System-generated \u00b7 novadoc.health", pageW - 16, pageH - 12, { align: "right" });
+}
+
+// ─── PDF content CSS (no @page, no position:fixed — for html2canvas) ─────────
+
+const PDF_CONTENT_CSS = `
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+.pdf-content {
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 10.5pt;
+  color: #1e293b;
+  background: #fff;
+  line-height: 1.5;
+}
+.patient-table { width:100%; border-collapse:collapse; margin-bottom:10pt; border:1px solid #e2e8f0; overflow:hidden; }
+.patient-table td { padding:5pt 8pt; font-size:9pt; border:1px solid #e2e8f0; vertical-align:top; }
+.patient-table .cell-label { font-weight:700; color:#64748b; font-size:7.5pt; text-transform:uppercase; letter-spacing:0.04em; background:#f8fafc; width:90pt; }
+.patient-table .cell-value { color:#1e293b; font-weight:600; }
+.patient-name-row td { font-size:11pt; font-weight:900; color:#1e293b; background:#f0f6ff; border-bottom:2px solid #4982CF; }
+.vitals-grid { display:flex; flex-wrap:wrap; gap:6pt; margin-bottom:10pt; }
+.vital-chip { display:flex; align-items:baseline; gap:4pt; padding:4pt 8pt; border:1px solid #e2e8f0; border-radius:6pt; background:#fff; font-size:9pt; }
+.vital-label { font-size:7pt; font-weight:900; text-transform:uppercase; letter-spacing:0.06em; color:#64748b; }
+.vital-value { font-weight:800; color:#1e293b; }
+.vital-unit { font-size:7pt; color:#94a3b8; }
+.sec { margin-bottom:8pt; }
+.sec-title { font-size:7.5pt; font-weight:900; text-transform:uppercase; letter-spacing:0.07em; color:#4982CF; border-bottom:1px solid #e2e8f0; padding-bottom:2pt; margin-bottom:5pt; }
+.sec-body { font-size:9.5pt; color:#334155; }
+.chips { display:flex; flex-wrap:wrap; gap:4pt; }
+.chip { display:inline-block; padding:2pt 7pt; border-radius:100pt; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; font-size:8.5pt; font-weight:600; }
+.chip-warn { background:#fff7ed; border-color:#fed7aa; color:#c2410c; }
+.chip-muted { background:#f1f5f9; border-color:#cbd5e1; color:#475569; }
+.chip-red { background:#fef2f2; border-color:#fecaca; color:#b91c1c; }
+.allergy-row { display:flex; align-items:center; gap:8pt; border:1px solid; border-radius:5pt; padding:4pt 8pt; margin-bottom:3pt; font-size:8.5pt; }
+.alg-name { font-weight:800; flex-shrink:0; }
+.alg-sep { width:1px; align-self:stretch; background:currentColor; opacity:0.2; flex-shrink:0; }
+.alg-react { flex:1; }
+.alg-sev { font-size:7.5pt; font-weight:900; background:rgba(255,255,255,0.5); padding:1pt 4pt; border-radius:100pt; }
+.blist { padding-left:14pt; }
+.blist li { margin-bottom:2pt; font-size:9pt; }
+.dx-row { display:flex; align-items:center; gap:8pt; border:1px solid #e2e8f0; border-radius:5pt; padding:4pt 8pt; margin-bottom:3pt; background:#f8fafc; font-size:9pt; }
+.dx-code { font-weight:900; font-family:monospace; color:#475569; flex-shrink:0; }
+.dx-sep { width:1px; align-self:stretch; background:#e2e8f0; flex-shrink:0; }
+.dx-name { flex:1; font-weight:600; }
+.dx-badge { font-size:7pt; font-weight:900; padding:1pt 5pt; border-radius:100pt; background:#fefce8; border:1px solid #fde68a; color:#92400e; }
+.dx-badge-final { background:#f0fdf4; border-color:#bbf7d0; color:#166534; }
+.orders-table { width:100%; border-collapse:collapse; font-size:8.5pt; margin-bottom:4pt; }
+.orders-table th { text-align:left; font-size:7.5pt; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; border-bottom:2px solid #e2e8f0; padding:3pt 6pt; }
+.orders-table td { padding:4pt 6pt; border-bottom:1px solid #f1f5f9; vertical-align:top; }
+.orders-table tr:last-child td { border-bottom:none; }
+.voided-row td { color:#94a3b8; text-decoration:line-through; }
+.voided-badge { display:inline-block; font-size:6.5pt; font-weight:900; padding:1pt 4pt; border-radius:100pt; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; text-decoration:none !important; }
+.provider-block { margin-top:14pt; border-top:1px dashed #e2e8f0; padding-top:8pt; display:flex; justify-content:space-between; align-items:flex-start; font-size:8.5pt; }
+.provider-label { font-weight:900; color:#1e293b; }
+.provider-sub { color:#64748b; margin-top:1pt; }
+.poc-row { display:flex; align-items:center; gap:8pt; border:1px solid; border-radius:5pt; padding:4pt 8pt; margin-bottom:3pt; font-size:8.5pt; }
+.divider { border:none; border-top:1px solid #e2e8f0; margin:10pt 0; }
+.sub-label { font-size:7pt; font-weight:900; text-transform:uppercase; letter-spacing:0.07em; color:#94a3b8; margin:4pt 0 3pt; }
+.narrative { border:1px solid #e2e8f0; border-radius:5pt; padding:6pt 9pt; background:#f8fafc; font-size:9pt; line-height:1.6; white-space:pre-wrap; }
+`;
 
 // ─── HTML escape ──────────────────────────────────────────────────────────────
 

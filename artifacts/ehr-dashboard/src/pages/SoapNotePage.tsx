@@ -1569,7 +1569,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
                                               return { kind: "live" as const, noteState: ns, form };
                                             })()
                                           : { kind: "empty" as const };
-                                      printHealthRecord({
+                                      void printHealthRecord({
                                         patient: { name, mrn },
                                         noteRow: {
                                           date: note.date,

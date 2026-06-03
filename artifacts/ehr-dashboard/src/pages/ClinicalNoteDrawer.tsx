@@ -1049,6 +1049,7 @@ interface ClinicalNoteDrawerProps {
 
 export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOpenedAt, awaitingLab = false, labResultsReady = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, onNoteChange, isAddendumMode = false, onAddendum, onCancel, noteLabel }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
+  const [isPrinting,        setIsPrinting]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(() => initialNote ?? EMPTY_NOTE);
   const [_sfInit] = useState<{ form: SpecialtyForm | null; mode: "soap" | "specialty" }>(() => {
     if (!doctorId) return { form: null, mode: "soap" };
@@ -2248,9 +2249,11 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
           )}
           <Button
             variant="outline"
+            disabled={isPrinting}
             onClick={() => {
               const ts = faceSheetOpenedAt ? new Date(faceSheetOpenedAt) : new Date();
-              printHealthRecord({
+              setIsPrinting(true);
+              void printHealthRecord({
                 patient: { name: patientName },
                 noteRow: {
                   date: ts.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
@@ -2262,10 +2265,11 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                 noteKind: assignedForm
                   ? { kind: "live", noteState: note, form: assignedForm }
                   : { kind: "live", noteState: note },
-              });
+              }).finally(() => setIsPrinting(false));
             }}
             className="h-9 px-4 text-xs font-bold gap-2 border-slate-200 text-slate-500 hover:bg-slate-50 flex-shrink-0">
-            <Printer className="h-3.5 w-3.5" /> Print to Review
+            <Printer className="h-3.5 w-3.5" />
+            {isPrinting ? "Generating…" : "Print to Review"}
           </Button>
           <div className="flex-1" />
           {!signed && (
