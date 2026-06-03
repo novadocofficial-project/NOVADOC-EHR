@@ -102,7 +102,35 @@ animation:bounce 1.2s infinite ease-in-out both;}
     const pageContentHeightMm = A4_H - MT - MB; // 255mm
     const pageContentHeightPx = Math.round(pageContentHeightMm * pxPerMm);
 
-    const totalPages = Math.ceil(canvasH / pageContentHeightPx);
+    // ── Smart page boundaries — avoid slicing through key blocks ────────────
+    // Measure the top of the provider block (and any other avoid-break elements)
+    // in canvas-pixel coordinates, then shift page boundaries to land before them.
+    const avoidBreakSelectors = [".provider-block", ".sec", ".med-table", ".vitals-section"];
+    const contentRect = contentEl.getBoundingClientRect();
+    const avoidBreakPx: number[] = avoidBreakSelectors
+      .flatMap(sel => Array.from(container.querySelectorAll(sel)))
+      .map(el => {
+        const r = (el as HTMLElement).getBoundingClientRect();
+        return Math.round((r.top - contentRect.top) * H2C_SCALE);
+      })
+      .filter(y => y > 0)
+      .sort((a, b) => a - b);
+
+    const pageStarts: number[] = [0];
+    {
+      let cursor = 0;
+      while (cursor + pageContentHeightPx < canvasH) {
+        let next = cursor + pageContentHeightPx;
+        // If any avoid-break element starts within this page's slice, move the
+        // boundary to just before that element so it starts on the next page.
+        for (const ab of avoidBreakPx) {
+          if (ab > cursor && ab < next) { next = ab; break; }
+        }
+        pageStarts.push(next);
+        cursor = next;
+      }
+    }
+    const totalPages = pageStarts.length;
 
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
@@ -117,8 +145,9 @@ animation:bounce 1.2s infinite ease-in-out both;}
       pdfAddFooter(pdf, A4_W, A4_H);
 
       // Slice the canvas for this page
-      const srcY = pg * pageContentHeightPx;
-      const srcH = Math.min(pageContentHeightPx, canvasH - srcY);
+      const srcY = pageStarts[pg];
+      const nextY = pg + 1 < totalPages ? pageStarts[pg + 1] : canvasH;
+      const srcH  = Math.min(nextY - srcY, pageContentHeightPx);
 
       const slice = document.createElement("canvas");
       slice.width  = canvasW;
