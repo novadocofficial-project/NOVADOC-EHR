@@ -603,18 +603,23 @@ function VitalsTrends() {
 function ApptVitalsSection({ appt }: { appt: Appointment }) {
   const configuredVitals = useMemo(() => loadVitalsConfig(), []);
 
+  const patientRef = appt.patientMrn || null;
   const [vitalsDrafts, setVitalsDrafts] = useState<VitalsDraft[]>(() => {
     const all = loadApptVitalsDrafts();
     const real = all.filter(d => !isVitalsDraftBlank(d));
     if (real.length !== all.length) persistApptVitalsDrafts(real);
-    return real;
+    return real.filter(d => d.patientRef === patientRef);
   });
   const [activeDraftId, setActiveDraftId] = useState<string | null>(() => {
-    const real = loadApptVitalsDrafts().filter(d => !isVitalsDraftBlank(d));
+    const real = loadApptVitalsDrafts().filter(d => !isVitalsDraftBlank(d) && d.patientRef === (appt.patientMrn || null));
     if (real.length === 0) return null;
     return [...real].sort((a, b) => b.updatedAt - a.updatedAt)[0].draftId;
   });
-  const [vitalsRecords, setVitalsRecords] = useState<VitalsRecord[]>(loadApptVitalsRecords);
+  const [vitalsRecords, setVitalsRecords] = useState<VitalsRecord[]>(() =>
+    loadApptVitalsRecords().filter(r =>
+      r.apptId === appt.id || (!r.apptId && r.patientRef === patientRef)
+    )
+  );
 
   const activeDraft = vitalsDrafts.find(d => d.draftId === activeDraftId) ?? null;
 
@@ -924,25 +929,28 @@ function ApptHistorySplitPanel({ appt }: { appt: Appointment }) {
   const { config } = useNursingConfig();
   const enabledTemplates = useMemo(() => config.templates.filter(t => t.enabled), [config.templates]);
 
+  const patientRef = appt.patientMrn || null;
   const [drafts, setDrafts] = useState<HistoryDraft[]>(() => {
     const all = loadApptHistoryDrafts();
     const real = all.filter(d => !isHistoryDraftBlank(d));
     if (real.length !== all.length) persistApptHistoryDrafts(real);
-    return real;
+    return real.filter(d => d.patientRef === patientRef);
   });
   const [activeDraftId, setActiveDraftId] = useState<string | null>(() => {
-    const real = loadApptHistoryDrafts().filter(d => !isHistoryDraftBlank(d));
+    const real = loadApptHistoryDrafts().filter(d => !isHistoryDraftBlank(d) && d.patientRef === (appt.patientMrn || null));
     if (real.length === 0) return null;
     return [...real].sort((a, b) => b.updatedAt - a.updatedAt)[0].draftId;
   });
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(() => {
-    const realDrafts = loadApptHistoryDrafts().filter(d => !isHistoryDraftBlank(d));
+    const realDrafts = loadApptHistoryDrafts().filter(d => !isHistoryDraftBlank(d) && d.patientRef === (appt.patientMrn || null));
     if (realDrafts.length > 0) return null;
     const templates = config.templates.filter(t => t.enabled);
     if (templates.length === 1) return templates[0].id;
     return null;
   });
-  const [records, setRecords] = useState<HistoryRecord[]>(loadApptHistoryRecords);
+  const [records, setRecords] = useState<HistoryRecord[]>(() =>
+    loadApptHistoryRecords().filter(r => r.patientRef === patientRef)
+  );
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
 
   const activeDraft = drafts.find(d => d.draftId === activeDraftId) ?? null;
@@ -1161,6 +1169,7 @@ interface BillingRow { id: string; name: string; qty: number; unitFee: number; }
 interface ProcDraft {
   draftId: string; templateId: string; templateName: string;
   startedAt: number; updatedAt: number;
+  apptId?: string; patientRef?: string | null;
   vitalsValues: Record<string, string>; medRows: MedRow[];
   consentData: ConsentData; billingRows: BillingRow[];
   customValues: Record<string, Record<string, string>[]>;
@@ -1168,6 +1177,7 @@ interface ProcDraft {
 interface ProcRecord {
   recordId: string; templateId: string; templateName: string;
   completedAt: number; componentNames: string[];
+  apptId?: string; patientRef?: string | null;
   vitalsValues: Record<string, string>; medRows: MedRow[];
   consentData: ConsentData; billingRows: BillingRow[];
   customValues: Record<string, Record<string, string>[]>;
@@ -1629,12 +1639,17 @@ function ProcedureWorkspace({ activeDraft, activeTemplate, templates, showGatewa
   );
 }
 
-function ApptProcedureSection() {
+function ApptProcedureSection({ appt }: { appt: Appointment }) {
   const { config } = useNursingConfig();
   const enabledTemplates = useMemo(() => config.procedureTemplates.filter(t => t.enabled), [config.procedureTemplates]);
 
-  const [drafts,        setDrafts]        = useState<ProcDraft[]>(loadApptProcDrafts);
-  const [records,       setRecords]       = useState<ProcRecord[]>(loadApptProcRecords);
+  const patientRef = appt.patientMrn || null;
+  const [drafts,        setDrafts]        = useState<ProcDraft[]>(() =>
+    loadApptProcDrafts().filter(d => d.apptId === appt.id || (!d.apptId && d.patientRef === patientRef))
+  );
+  const [records,       setRecords]       = useState<ProcRecord[]>(() =>
+    loadApptProcRecords().filter(r => r.apptId === appt.id || (!r.apptId && r.patientRef === patientRef))
+  );
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
   const [showGateway,   setShowGateway]   = useState(true);
 
@@ -1650,6 +1665,7 @@ function ApptProcedureSection() {
     const draft: ProcDraft = {
       draftId: genApptProcDraftId(), templateId, templateName: tmpl.name,
       startedAt: Date.now(), updatedAt: Date.now(),
+      apptId: appt.id, patientRef: appt.patientMrn || null,
       vitalsValues: { _date: new Date().toISOString().slice(0, 10) },
       medRows: [], consentData: { status: "", witness: "", date: new Date().toISOString().slice(0, 10), notes: "" },
       billingRows: [], customValues: {},
@@ -1670,6 +1686,7 @@ function ApptProcedureSection() {
       recordId: `apr-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       templateId: draft.templateId, templateName: draft.templateName, completedAt: Date.now(),
       componentNames: tmpl?.components.map(c => c.name) ?? [],
+      apptId: draft.apptId, patientRef: draft.patientRef,
       vitalsValues: draft.vitalsValues, medRows: draft.medRows,
       consentData: draft.consentData, billingRows: draft.billingRows, customValues: draft.customValues,
     };
@@ -2726,7 +2743,7 @@ export function ApptNursingDrawer({ appt, onClose, initialCategory }: { appt: Ap
         {/* ── BODY ── */}
         {activeCategory === "vitals"     && <ApptVitalsSection    appt={appt} />}
         {activeCategory === "history"    && <ApptHistorySplitPanel appt={appt} />}
-        {activeCategory === "procedures" && <ApptProcedureSection />}
+        {activeCategory === "procedures" && <ApptProcedureSection appt={appt} />}
         {activeCategory === "care-plan"  && <ApptCarePlanSection   appt={appt} />}
         {activeCategory === "goals"      && <ApptGoalsSection appt={appt} />}
         {activeCategory === "triage"     && <ApptTriageSplitPanel  appt={appt} />}
