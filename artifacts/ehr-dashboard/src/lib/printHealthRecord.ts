@@ -102,29 +102,43 @@ animation:bounce 1.2s infinite ease-in-out both;}
     const pageContentHeightMm = A4_H - MT - MB; // 255mm
     const pageContentHeightPx = Math.round(pageContentHeightMm * pxPerMm);
 
-    // ── Smart page boundaries — avoid slicing through key blocks ────────────
-    // Measure the top of the provider block (and any other avoid-break elements)
-    // in canvas-pixel coordinates, then shift page boundaries to land before them.
-    const avoidBreakSelectors = [".provider-block", ".sec", ".med-table", ".vitals-section"];
+    // ── Smart page boundaries — avoid slicing through protected blocks ────────
+    // Only protect elements whose content would be visually damaged if split:
+    //   .provider-block — single-line summary at the end of the note
+    //   .med-table      — table rows that should not be cut mid-row
+    // Section headings (.sec) are intentionally excluded: they are short,
+    // single-line, and protecting them caused a cascade of one-element pages.
+    //
+    // Correct condition: only move a page boundary when it falls *inside* an
+    // element (elementTop < boundary < elementBottom).  The previous version
+    // moved the boundary whenever the element merely *started* within the slice,
+    // which caused every heading to become its own page.
+    const protectedSelectors = [".provider-block", ".med-table"];
     const contentRect = contentEl.getBoundingClientRect();
-    const avoidBreakPx: number[] = avoidBreakSelectors
+    type ProtectedZone = { top: number; bottom: number };
+    const protectedZones: ProtectedZone[] = protectedSelectors
       .flatMap(sel => Array.from(container.querySelectorAll(sel)))
       .map(el => {
         const r = (el as HTMLElement).getBoundingClientRect();
-        return Math.round((r.top - contentRect.top) * H2C_SCALE);
+        return {
+          top:    Math.round((r.top    - contentRect.top) * H2C_SCALE),
+          bottom: Math.round((r.bottom - contentRect.top) * H2C_SCALE),
+        };
       })
-      .filter(y => y > 0)
-      .sort((a, b) => a - b);
+      .filter(z => z.top >= 0 && z.bottom > z.top);
 
     const pageStarts: number[] = [0];
     {
       let cursor = 0;
       while (cursor + pageContentHeightPx < canvasH) {
         let next = cursor + pageContentHeightPx;
-        // If any avoid-break element starts within this page's slice, move the
-        // boundary to just before that element so it starts on the next page.
-        for (const ab of avoidBreakPx) {
-          if (ab > cursor && ab < next) { next = ab; break; }
+        // Move boundary to before the element only when the naive cut would
+        // land *inside* it (top < boundary < bottom).
+        for (const z of protectedZones) {
+          if (z.top < next && z.bottom > next && z.top > cursor) {
+            next = z.top;
+            break;
+          }
         }
         pageStarts.push(next);
         cursor = next;
@@ -148,6 +162,9 @@ animation:bounce 1.2s infinite ease-in-out both;}
       const srcY = pageStarts[pg];
       const nextY = pg + 1 < totalPages ? pageStarts[pg + 1] : canvasH;
       const srcH  = Math.min(nextY - srcY, pageContentHeightPx);
+
+      // Skip degenerate slices (can happen if measurements are off)
+      if (srcH <= 0) continue;
 
       const slice = document.createElement("canvas");
       slice.width  = canvasW;
