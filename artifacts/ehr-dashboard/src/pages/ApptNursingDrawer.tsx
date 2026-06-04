@@ -800,7 +800,7 @@ function ApptVitalsSection({ appt }: { appt: Appointment }) {
   });
   const [vitalsRecords, setVitalsRecords] = useState<VitalsRecord[]>(() =>
     loadApptVitalsRecords().filter(r =>
-      r.apptId === appt.id || (!r.apptId && r.patientRef === patientRef)
+      r.apptId === appt.id || r.patientRef === patientRef
     )
   );
 
