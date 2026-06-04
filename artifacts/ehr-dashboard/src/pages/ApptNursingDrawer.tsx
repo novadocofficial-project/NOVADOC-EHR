@@ -878,7 +878,7 @@ function ApptVitalsSection({ appt }: { appt: Appointment }) {
       completedAt: Date.now(),
       apptId: appt.id,
     };
-    setVitalsRecords(prev => { const next = [...prev, record]; persistApptVitalsRecords(next); return next; });
+    setVitalsRecords(prev => { const allStored = loadApptVitalsRecords(); const next = [...allStored, record]; persistApptVitalsRecords(next); return [...prev, record]; });
     if (activeDraftId) mutateDrafts(prev => prev.filter(d => d.draftId !== activeDraftId));
     setActiveDraftId(null);
     setVitalValues(blankVitalValues());
