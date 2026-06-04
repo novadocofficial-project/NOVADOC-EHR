@@ -941,17 +941,6 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">Doctor</label>
-                <Select value={form.doctorId} onValueChange={v => { set("doctorId", v); set("slotStart", ""); set("slotEnd", ""); const doc = doctors.find(d => d.id === v); set("specialty", doc?.specialties[0] ?? ""); }}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select doctor..." /></SelectTrigger>
-                  <SelectContent>
-                    {doctors.filter(d => d.doctorType === "appointment" && d.status === "active").map(d => (
-                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
                 <label className="text-xs font-semibold text-slate-600 mb-1 block">Specialty</label>
                 {doctor && doctor.specialties.length > 0 ? (
                   <Select value={form.specialty} onValueChange={v => set("specialty", v)}>
@@ -965,6 +954,17 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
                 ) : (
                   <Input value={form.specialty} onChange={e => set("specialty", e.target.value)} className="h-9 text-sm" placeholder="Specialty..." />
                 )}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Doctor</label>
+                <Select value={form.doctorId} onValueChange={v => { set("doctorId", v); set("slotStart", ""); set("slotEnd", ""); const doc = doctors.find(d => d.id === v); set("specialty", doc?.specialties[0] ?? ""); }}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select doctor..." /></SelectTrigger>
+                  <SelectContent>
+                    {doctors.filter(d => d.doctorType === "appointment" && d.status === "active").map(d => (
+                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
