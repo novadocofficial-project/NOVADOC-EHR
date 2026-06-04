@@ -292,6 +292,32 @@ function VitalsLeftPanel({ drafts, records, activeDraftId, configuredVitals, onR
       return [{ label: `${v.name}${v.unit ? ` (${v.unit})` : ""}`, value: val, refMin: v.refMin, refMax: v.refMax }];
     });
   }
+  function vitalStatus(row: VitalsRow): "low" | "normal" | "high" | "none" {
+    if (!row.refMin && !row.refMax) return "none";
+    if (row.refMin.includes("/") || row.value.includes("/")) {
+      const rawNum = row.value.split(" ")[0];
+      const [sysVal, diaVal] = rawNum.split("/").map(Number);
+      const [sysMin, diaMin] = row.refMin.split("/").map(Number);
+      const [sysMax, diaMax] = row.refMax.split("/").map(Number);
+      if (isNaN(sysVal) || isNaN(diaVal)) return "none";
+      if (sysVal < sysMin || diaVal < diaMin) return "low";
+      if (sysVal > sysMax || diaVal > diaMax) return "high";
+      return "normal";
+    }
+    const val = parseFloat(row.value);
+    if (isNaN(val)) return "none";
+    const min = row.refMin ? parseFloat(row.refMin) : NaN;
+    const max = row.refMax ? parseFloat(row.refMax) : NaN;
+    if (!isNaN(min) && val < min) return "low";
+    if (!isNaN(max) && val > max) return "high";
+    return "normal";
+  }
+  const STATUS_VALUE_CLS: Record<ReturnType<typeof vitalStatus>, string> = {
+    normal: "text-green-600",
+    low:    "text-amber-600",
+    high:   "text-red-600",
+    none:   "text-slate-800",
+  };
 
   return (
     <div className="h-full flex flex-col overflow-y-auto bg-white">
@@ -367,23 +393,24 @@ function VitalsLeftPanel({ drafts, records, activeDraftId, configuredVitals, onR
                     <div>
                       <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Vital Signs</p>
                       <div className="rounded-lg overflow-hidden border border-slate-100">
-                        {vitalsRows.map((row, i) => (
-                          <div key={row.label} className={`px-2.5 py-1.5 ${i % 2 === 0 ? "bg-blue-50" : "bg-white"}`}>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-slate-500">{row.label}</span>
-                              <span className="text-xs font-semibold text-slate-800">{row.value}</span>
+                        {vitalsRows.map((row, i) => {
+                          const status = vitalStatus(row);
+                          const rangeParts: string[] = [];
+                          if (row.refMin) rangeParts.push(`Low < ${row.refMin}`);
+                          if (row.refMin && row.refMax) rangeParts.push(`Normal ${row.refMin}–${row.refMax}`);
+                          if (row.refMax) rangeParts.push(`High > ${row.refMax}`);
+                          return (
+                            <div key={row.label} className={`px-2.5 py-1.5 ${i % 2 === 0 ? "bg-blue-50" : "bg-white"}`}>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-500">{row.label}</span>
+                                <span className={`text-xs font-semibold ${STATUS_VALUE_CLS[status]}`}>{row.value}</span>
+                              </div>
+                              {rangeParts.length > 0 && (
+                                <p className="text-[10px] text-slate-400 mt-0.5">{rangeParts.join(" · ")}</p>
+                              )}
                             </div>
-                            {(row.refMin || row.refMax) && (
-                              <p className="text-[10px] text-slate-400 mt-0.5">
-                                {row.refMin ? `Low < ${row.refMin}` : ""}
-                                {row.refMin && row.refMax ? " · " : ""}
-                                {row.refMin && row.refMax ? `Normal ${row.refMin}–${row.refMax}` : ""}
-                                {row.refMax ? " · " : ""}
-                                {row.refMax ? `High > ${row.refMax}` : ""}
-                              </p>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
