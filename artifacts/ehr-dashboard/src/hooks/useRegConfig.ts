@@ -111,7 +111,7 @@ export const DEFAULT_REG_CONFIG: RegConfig = {
         { id: "last_name",         label: "Last Name",              type: "text",     required: false, enabled: true,  options: [], placeholder: "Last name",           isBuiltIn: true },
         { id: "dob",               label: "Date of Birth",          type: "date",     required: true,  enabled: true,  options: [], placeholder: "",                    isBuiltIn: true },
         { id: "phone",             label: "Phone Number",           type: "text",     required: true,  enabled: true,  options: [], placeholder: "+92 300 000-0000",     isBuiltIn: true },
-        { id: "cnic",              label: "CNIC",                   type: "text",     required: true,  enabled: true,  options: [], placeholder: "00000-0000000-0",      isBuiltIn: true },
+        { id: "cnic",              label: "CNIC",                   type: "text",     required: false, enabled: true,  options: [], placeholder: "00000-0000000-0",      isBuiltIn: true },
         { id: "referred_by",       label: "Referred By",            type: "text",     required: false, enabled: true,  options: [], placeholder: "Referrer name",        isBuiltIn: true },
         { id: "address",           label: "Complete Address",       type: "textarea", required: false, enabled: true,  options: [], placeholder: "Street, area, city...", isBuiltIn: true },
         { id: "relationship_type", label: "Relationship Type",      type: "dropdown", required: false, enabled: true,  options: ["self", "parent", "spouse", "guardian"], placeholder: "", isBuiltIn: true },

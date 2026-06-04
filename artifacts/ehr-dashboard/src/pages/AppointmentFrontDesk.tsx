@@ -217,8 +217,31 @@ function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
   const [drawing, setDrawing] = useState(false);
   const sigRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
   const mrBanner = useRef("MR-" + Math.floor(45100 + Math.random() * 900)).current;
+  const [dobMode, setDobMode] = useState<"dob" | "age">("dob");
+  const [ageY, setAgeY] = useState("");
+  const [ageM, setAgeM] = useState("");
+  const [ageD, setAgeD] = useState("");
 
   function setVal(id: string, v: string) { setValues(p => ({ ...p, [id]: v })); }
+
+  function ageToApproxDob(y: string, m: string, d: string): string {
+    const now = new Date();
+    now.setFullYear(now.getFullYear() - (parseInt(y) || 0));
+    now.setMonth(now.getMonth() - (parseInt(m) || 0));
+    now.setDate(now.getDate() - (parseInt(d) || 0));
+    return now.toISOString().slice(0, 10);
+  }
+
+  function handleAgeChange(field: "y" | "m" | "d", raw: string) {
+    const ny = field === "y" ? raw : ageY;
+    const nm = field === "m" ? raw : ageM;
+    const nd = field === "d" ? raw : ageD;
+    if (field === "y") setAgeY(raw);
+    if (field === "m") setAgeM(raw);
+    if (field === "d") setAgeD(raw);
+    if (ny || nm || nd) setVal("dob", ageToApproxDob(ny, nm, nd));
+    else setVal("dob", "");
+  }
 
   const orderedSections = [...config.sections]
     .filter(s => s.enabled)
@@ -300,6 +323,53 @@ function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
         {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
     );
+
+    if (field.id === "dob") {
+      const isAge = dobMode === "age";
+      return (
+        <div key={field.id}>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-slate-600">
+              {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+            </span>
+            <div className="flex rounded-md border border-slate-200 overflow-hidden text-[11px] font-semibold">
+              <button type="button"
+                onClick={() => { setDobMode("dob"); }}
+                className={`px-2.5 py-0.5 transition-colors ${!isAge ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                DOB
+              </button>
+              <button type="button"
+                onClick={() => { setDobMode("age"); }}
+                className={`px-2.5 py-0.5 transition-colors ${isAge ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                Age
+              </button>
+            </div>
+          </div>
+          {!isAge ? (
+            <div className="relative">
+              <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Input className="pl-8" type="date" value={val} onChange={e => setVal(field.id, e.target.value)} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Input type="number" min="0" max="120" placeholder="0" value={ageY} onChange={e => handleAgeChange("y", e.target.value)} className="text-center" />
+                <p className="text-[10px] text-slate-400 mt-0.5 text-center font-medium">Years</p>
+              </div>
+              <div>
+                <Input type="number" min="0" max="11" placeholder="0" value={ageM} onChange={e => handleAgeChange("m", e.target.value)} className="text-center" />
+                <p className="text-[10px] text-slate-400 mt-0.5 text-center font-medium">Months</p>
+              </div>
+              <div>
+                <Input type="number" min="0" max="30" placeholder="0" value={ageD} onChange={e => handleAgeChange("d", e.target.value)} className="text-center" />
+                <p className="text-[10px] text-slate-400 mt-0.5 text-center font-medium">Days</p>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     if (field.type === "text" || field.type === "number") {
       return <div key={field.id}>{lbl}<Input type={field.type === "number" ? "number" : "text"} placeholder={field.placeholder} value={val} onChange={e => setVal(field.id, e.target.value)} /></div>;
     }
