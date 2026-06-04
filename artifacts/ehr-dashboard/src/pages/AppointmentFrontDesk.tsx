@@ -2408,6 +2408,7 @@ function VitalsCounsellingCell({ vs }: { vs: VitalsSummary | null }) {
 }
 
 function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appointment[]; onOpenFacesheet: (appt: Appointment) => void }) {
+  const [, navTo] = useLocation();
   const sorted = [...appointments].sort((a, b) => a.slotStart.localeCompare(b.slotStart));
   const [now, setNow] = useState(() => Date.now());
   const [stopTimes, setStopTimes] = useState<Record<string, number>>(readWaitStopTimes);
@@ -2498,10 +2499,15 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
                   <span className="text-slate-500">{appt.slotEnd}</span>
                 </td>
                 <td className="px-4 py-3">
-                  <p className="font-semibold text-slate-800 leading-tight">{appt.patientName}</p>
-                  {appt.patientMrn && (
-                    <p className="text-xs text-slate-400 mt-0.5 font-mono">{appt.patientMrn}</p>
-                  )}
+                  <button
+                    onClick={() => appt.patientMrn && navTo(`/patients/${getPatientIdByMrn(appt.patientMrn)}`)}
+                    className="text-left group"
+                  >
+                    <p className="font-semibold text-slate-800 leading-tight group-hover:text-[#4982CF] group-hover:underline transition-colors">{appt.patientName}</p>
+                    {appt.patientMrn && (
+                      <p className="text-xs text-slate-400 mt-0.5 font-mono">{appt.patientMrn}</p>
+                    )}
+                  </button>
                 </td>
                 <td className="px-4 py-3">
                   <span className="text-xs font-mono text-slate-500">APT-{appt.id.slice(-5).toUpperCase()}</span>
@@ -2608,6 +2614,7 @@ function NursingView({
   doctors: Doctor[];
   onOpenVitals: (appt: Appointment) => void;
 }) {
+  const [, navTo] = useLocation();
   const todayCheckedIn = useMemo(
     () => appointments.filter(a => a.date === todayStr() && a.status === "checked_in"),
     [appointments],
@@ -2708,8 +2715,13 @@ function NursingView({
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-slate-800 leading-tight">{appt.patientName}</p>
-                      {appt.patientMrn && <p className="text-xs text-slate-400 mt-0.5 font-mono">{appt.patientMrn}</p>}
+                      <button
+                        onClick={() => appt.patientMrn && navTo(`/patients/${getPatientIdByMrn(appt.patientMrn)}`)}
+                        className="text-left group"
+                      >
+                        <p className="font-semibold text-slate-800 leading-tight group-hover:text-[#4982CF] group-hover:underline transition-colors">{appt.patientName}</p>
+                        {appt.patientMrn && <p className="text-xs text-slate-400 mt-0.5 font-mono">{appt.patientMrn}</p>}
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
                       {doctorMap[appt.doctorId] ?? appt.doctorId}
