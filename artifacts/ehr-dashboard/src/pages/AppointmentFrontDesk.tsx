@@ -958,7 +958,18 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-600 mb-1 block">Specialty</label>
-                <Input value={form.specialty} onChange={e => set("specialty", e.target.value)} className="h-9 text-sm" placeholder="Specialty..." />
+                {doctor && doctor.specialties.length > 0 ? (
+                  <Select value={form.specialty} onValueChange={v => set("specialty", v)}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select specialty..." /></SelectTrigger>
+                    <SelectContent>
+                      {doctor.specialties.map(s => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.specialty} onChange={e => set("specialty", e.target.value)} className="h-9 text-sm" placeholder="Specialty..." />
+                )}
               </div>
             </div>
 
