@@ -2209,7 +2209,7 @@ function getVitalsCompletedAt(apptId: string): number | null {
   } catch { return null; }
 }
 
-type VitalsSummary = { isAbnormal: boolean; hasVitals: boolean; painScore: number; mentalTotal: number };
+type VitalsSummary = { isAbnormal: boolean; hasVitals: boolean; painScore: number; mentalTotal: number; vitalValues: Record<string, string> };
 
 function getApptVitalsSummary(apptId: string): VitalsSummary | null {
   try {
@@ -2259,7 +2259,7 @@ function getApptVitalsSummary(apptId: string): VitalsSummary | null {
       if ((!isNaN(min) && val < min) || (!isNaN(max) && val > max)) isAbnormal = true;
     }
     const mentalTotal = (record.mentalAnswers ?? []).reduce((s: number, v: number) => s + v, 0);
-    return { isAbnormal, hasVitals, painScore: record.painScore ?? -1, mentalTotal };
+    return { isAbnormal, hasVitals, painScore: record.painScore ?? -1, mentalTotal, vitalValues: record.vitalValues ?? {} };
   } catch { return null; }
 }
 
@@ -2300,6 +2300,111 @@ function formatElapsed(ms: number): string {
   if (h > 0) return `${h}h ${m}m`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
+}
+
+function VitalsCounsellingCell({ vs }: { vs: VitalsSummary | null }) {
+  const [hovered, setHovered] = useState(false);
+  const config = useMemo(() => loadVitalsConfig(), []);
+  if (!vs) return <span className="text-slate-300 text-xs">—</span>;
+
+  function statusCls(id: string): string {
+    if (id === "bp") {
+      const sys = parseFloat(vs!.vitalValues["bp_sys"] ?? "");
+      const dia = parseFloat(vs!.vitalValues["bp_dia"] ?? "");
+      const vc = config.find(c => c.id === "bp");
+      if (!vc || isNaN(sys) || isNaN(dia)) return "text-slate-700";
+      if (vc.refMin.includes("/") && vc.refMax.includes("/")) {
+        const [sysMin, diaMin] = vc.refMin.split("/").map(Number);
+        const [sysMax, diaMax] = vc.refMax.split("/").map(Number);
+        if (sys < sysMin || dia < diaMin) return "text-amber-600";
+        if (sys > sysMax || dia > diaMax) return "text-red-600";
+        return "text-emerald-600";
+      }
+      return "text-slate-700";
+    }
+    const vc = config.find(c => c.id === id);
+    if (!vc) return "text-slate-700";
+    const val = parseFloat(vs!.vitalValues[id] ?? "");
+    if (isNaN(val)) return "text-slate-700";
+    const min = vc.refMin ? parseFloat(vc.refMin) : NaN;
+    const max = vc.refMax ? parseFloat(vc.refMax) : NaN;
+    if (!isNaN(min) && val < min) return "text-amber-600";
+    if (!isNaN(max) && val > max) return "text-red-600";
+    if (!isNaN(min) || !isNaN(max)) return "text-emerald-600";
+    return "text-slate-700";
+  }
+
+  const vitalRows = config.flatMap(vc => {
+    if (vc.id === "bp") {
+      const sys = vs.vitalValues["bp_sys"] ?? "";
+      const dia = vs.vitalValues["bp_dia"] ?? "";
+      if (!sys && !dia) return [];
+      return [{ label: vc.name, value: `${sys || "—"}/${dia || "—"} ${vc.unit}`, cls: statusCls("bp") }];
+    }
+    const val = vs.vitalValues[vc.id] ?? "";
+    if (!val.trim()) return [];
+    return [{ label: `${vc.name}${vc.unit ? ` (${vc.unit})` : ""}`, value: val, cls: statusCls(vc.id) }];
+  });
+
+  const hasPain = vs.painScore >= 0;
+  const hasMental = vs.mentalTotal > 0;
+  const hasDetail = vitalRows.length > 0 || hasPain || hasMental;
+
+  return (
+    <div
+      className="relative inline-block"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className={`space-y-1 ${hasDetail ? "cursor-help" : ""}`}>
+        {vs.hasVitals && (
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${vs.isAbnormal ? "bg-red-50 text-red-600 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+            {vs.isAbnormal ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+            {vs.isAbnormal ? "Abnormal" : "Normal"}
+          </span>
+        )}
+        <p className="text-xs text-slate-500">
+          <span className="font-medium text-slate-700">Pain:</span>{" "}
+          {hasPain ? `${vs.painScore}/10` : <span className="text-slate-300">—</span>}
+        </p>
+        <p className="text-xs text-slate-500">
+          <span className="font-medium text-slate-700">PHQ-4:</span>{" "}
+          {hasMental ? `${vs.mentalTotal}/16` : <span className="text-slate-300">—</span>}
+        </p>
+      </div>
+      {hovered && hasDetail && (
+        <div className="absolute left-0 bottom-full mb-2 z-50 w-56 bg-white border border-slate-200 rounded-xl shadow-xl p-3 pointer-events-none">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">Vitals Detail</p>
+          {vitalRows.length > 0 && (
+            <div className="space-y-1.5 mb-2">
+              {vitalRows.map(row => (
+                <div key={row.label} className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-slate-500 truncate">{row.label}</span>
+                  <span className={`text-xs font-semibold ${row.cls}`}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {(hasPain || hasMental) && (
+            <div className={`${vitalRows.length > 0 ? "border-t border-slate-100 pt-2 " : ""}space-y-1.5`}>
+              {hasPain && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-slate-500">Pain Score</span>
+                  <span className="text-xs font-semibold text-slate-700">{vs.painScore}/10</span>
+                </div>
+              )}
+              {hasMental && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-slate-500">PHQ-4</span>
+                  <span className="text-xs font-semibold text-slate-700">{vs.mentalTotal}/16</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appointment[]; onOpenFacesheet: (appt: Appointment) => void }) {
@@ -2444,28 +2549,7 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
                   })()}
                 </td>
                 <td className="px-4 py-3">
-                  {(() => {
-                    const vs = getApptVitalsSummary(appt.id);
-                    if (!vs) return <span className="text-slate-300 text-xs">—</span>;
-                    return (
-                      <div className="space-y-1">
-                        {vs.hasVitals && (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${vs.isAbnormal ? "bg-red-50 text-red-600 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
-                            {vs.isAbnormal ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
-                            {vs.isAbnormal ? "Abnormal" : "Normal"}
-                          </span>
-                        )}
-                        <p className="text-xs text-slate-500">
-                          <span className="font-medium text-slate-700">Pain:</span>{" "}
-                          {vs.painScore >= 0 ? `${vs.painScore}/10` : <span className="text-slate-300">—</span>}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          <span className="font-medium text-slate-700">PHQ-4:</span>{" "}
-                          {vs.mentalTotal > 0 ? `${vs.mentalTotal}/16` : <span className="text-slate-300">—</span>}
-                        </p>
-                      </div>
-                    );
-                  })()}
+                  <VitalsCounsellingCell vs={getApptVitalsSummary(appt.id)} />
                 </td>
                 <td className="px-4 py-3">
                   <button
