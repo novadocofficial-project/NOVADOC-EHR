@@ -795,13 +795,14 @@ function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
 
 interface BookingDrawerProps {
   doctors: Doctor[];
+  appointments: Appointment[];
   init: Partial<BookingForm>;
   editAppt?: Appointment | null;
   onSave: (form: BookingForm) => void;
   onClose: () => void;
 }
 
-function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDrawerProps) {
+function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose }: BookingDrawerProps) {
   const { patients, addPatient } = usePatients();
   const [showRegDrawer, setShowRegDrawer] = useState(false);
   const [form, setForm] = useState<BookingForm>(() => {
@@ -1028,11 +1029,26 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
                 <div className="flex flex-wrap gap-1.5">
                   {slotsForDay.map(slot => {
                     const active = form.slotStart === slot.start;
+                    const isFull = !slot.allowMultiple && appointments.some(a =>
+                      a.doctorId === form.doctorId &&
+                      a.date === form.date &&
+                      a.slotStart === slot.start &&
+                      a.status !== "cancelled" &&
+                      a.status !== "no_show" &&
+                      (!editAppt || a.id !== editAppt.id)
+                    );
                     return (
                       <button
                         key={slot.start}
-                        onClick={() => { set("slotStart", slot.start); set("slotEnd", slot.end); }}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${active ? "bg-[#4982CF] text-white border-[#4982CF]" : "bg-white text-slate-600 border-slate-200 hover:border-[#4982CF] hover:text-[#4982CF]"}`}
+                        disabled={isFull}
+                        onClick={() => { if (!isFull) { set("slotStart", slot.start); set("slotEnd", slot.end); } }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                          isFull
+                            ? "bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed line-through"
+                            : active
+                              ? "bg-[#4982CF] text-white border-[#4982CF]"
+                              : "bg-white text-slate-600 border-slate-200 hover:border-[#4982CF] hover:text-[#4982CF]"
+                        }`}
                       >
                         {slot.start}
                         {slot.allowMultiple && <span className="ml-1 opacity-60">+</span>}
@@ -3180,6 +3196,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
       {drawerOpen && (
         <BookingDrawer
           doctors={appointmentDoctors}
+          appointments={appointments}
           init={drawerInitForm}
           editAppt={editAppt}
           onSave={handleSave}
