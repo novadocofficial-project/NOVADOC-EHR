@@ -1655,7 +1655,7 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, paidIds, onClic
             return (
               <div
                 key={date}
-                className={`flex-1 min-w-0 border-r border-slate-200 last:border-0 px-2 py-3 text-center ${isToday ? "border-t-2 border-t-[#4982CF] bg-[#4982CF]/5" : ""}`}
+                className={`flex-1 min-w-0 border-r border-slate-200 last:border-0 px-2 py-3 text-center ${isToday ? "border-t-2 border-t-[#4982CF] bg-[#4982CF]/5" : !hasSlots ? "bg-rose-50/60" : ""}`}
               >
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{dayName}</p>
                 <p className={`text-2xl font-bold mt-0.5 leading-none ${isToday ? "text-[#4982CF]" : hasSlots ? "text-slate-800" : "text-slate-300"}`}>
@@ -1671,7 +1671,7 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, paidIds, onClic
                       <span className="font-bold text-emerald-600">{available}</span> free
                     </span>
                   ) : (
-                    <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-400">Off</span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-400 font-medium">Off</span>
                   )}
                 </p>
               </div>
@@ -1703,13 +1703,14 @@ function WeekView({ doctor, weekDays, appointments, filterTypes, paidIds, onClic
 
                 {/* ── Day cells for this time row ── */}
                 {dayData.map(({ date, slots, isToday }) => {
+                  const isOff = slots.length === 0;
                   const slot = slots.find(s => s.start === time);
                   if (!slot) {
-                    // This day has no slot at this time — grey band (off / outside schedule)
+                    // No slot at this time — tint differs for off days vs gaps in working days
                     return (
                       <div
                         key={date}
-                        className={`flex-1 min-w-0 min-h-[68px] border-r border-slate-200 last:border-0 ${isToday ? "bg-[#4982CF]/[0.04]" : "bg-slate-100/60"}`}
+                        className={`flex-1 min-w-0 min-h-[68px] border-r border-slate-200 last:border-0 ${isToday ? "bg-[#4982CF]/[0.04]" : isOff ? "bg-rose-50/40" : "bg-slate-100/60"}`}
                       />
                     );
                   }
