@@ -5,7 +5,7 @@ import {
   FileText, Folder, FlaskConical, Scan, Users, Receipt,
   AlertCircle, Activity, Pill, Maximize2, Minimize2, X,
   Printer, Upload, History, CalendarPlus, Ticket, Mail,
-  ChevronRight,
+  ChevronRight, GitBranch,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -584,7 +584,7 @@ function QuickActions({ onEdit, onComingSoon }: { onEdit: () => void; onComingSo
 
 type TabId =
   | "overview" | "health" | "labs" | "radiology" | "files"
-  | "medications" | "allergies" | "vitals" | "family" | "invoices";
+  | "medications" | "allergies" | "vitals" | "family" | "family-tree" | "invoices";
 
 export function PatientProfile() {
   const { id }        = useParams<{ id: string }>();
@@ -690,8 +690,9 @@ export function PatientProfile() {
     { id: "medications", label: "Medications",    icon: Pill,         color: "#8b5cf6", count: medicines.length || undefined },
     { id: "allergies",   label: "Allergies",      icon: AlertCircle,  color: "#ef4444", count: allergies.length || undefined },
     { id: "vitals",      label: "Vitals",         icon: Activity,     color: "#8b5cf6", count: vitals.length   || undefined },
-    { id: "family",      label: "Family History", icon: Users,        color: "#ec4899", count: filledFh.length || undefined },
-    { id: "invoices",    label: "Invoices",       icon: Receipt,      color: "#10b981", count: invoiceCount || undefined },
+    { id: "family",       label: "Family History", icon: Users,       color: "#ec4899", count: filledFh.length || undefined },
+    { id: "family-tree",  label: "Family Tree",    icon: GitBranch,   color: "#8b5cf6" },
+    { id: "invoices",     label: "Invoices",       icon: Receipt,     color: "#10b981", count: invoiceCount || undefined },
   ];
 
   return (
@@ -1049,6 +1050,16 @@ export function PatientProfile() {
             {activeTab === "family" && (
               <div className="h-full overflow-y-auto p-6 max-w-2xl">
                 <FamilyHistoryContent fhRows={fhRows} />
+              </div>
+            )}
+            {activeTab === "family-tree" && (
+              <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-8">
+                <div className="w-14 h-14 rounded-2xl bg-violet-50 flex items-center justify-center">
+                  <GitBranch className="h-7 w-7 text-violet-400" />
+                </div>
+                <p className="text-base font-semibold text-slate-700">Family Tree</p>
+                <p className="text-sm text-slate-400 max-w-xs">This feature is coming soon. You'll be able to visualise multi-generation family health relationships here.</p>
+                <span className="mt-1 px-3 py-1 rounded-full bg-violet-100 text-violet-500 text-xs font-semibold tracking-wide">Coming Soon</span>
               </div>
             )}
             {activeTab === "invoices" && (
