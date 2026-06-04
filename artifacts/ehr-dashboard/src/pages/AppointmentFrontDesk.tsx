@@ -2373,7 +2373,7 @@ function VitalsCounsellingCell({ vs }: { vs: VitalsSummary | null }) {
         </p>
       </div>
       {hovered && hasDetail && (
-        <div className="absolute left-0 bottom-full mb-2 z-50 w-56 bg-white border border-slate-200 rounded-xl shadow-xl p-3 pointer-events-none">
+        <div className="absolute left-0 top-full mt-2 z-50 w-56 bg-white border border-slate-200 rounded-xl shadow-xl p-3 pointer-events-none">
           <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">Vitals Detail</p>
           {vitalRows.length > 0 && (
             <div className="space-y-1.5 mb-2">
