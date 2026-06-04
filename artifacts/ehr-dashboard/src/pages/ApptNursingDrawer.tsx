@@ -279,16 +279,17 @@ function VitalsLeftPanel({ drafts, records, activeDraftId, configuredVitals, onR
   configuredVitals: VitalConfig[]; onResumeDraft: (draftId: string) => void; onDiscardDraft: (draftId: string) => void;
 }) {
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
-  function vitalsRowsFromValues(vitalValues: Record<string, string>): [string, string][] {
+  type VitalsRow = { label: string; value: string; refMin: string; refMax: string };
+  function vitalsRowsFromValues(vitalValues: Record<string, string>): VitalsRow[] {
     return configuredVitals.filter(v => v.opd !== "skip").flatMap(v => {
       if (v.id === "bp") {
         const sys = vitalValues["bp_sys"] ?? ""; const dia = vitalValues["bp_dia"] ?? "";
         if (!sys && !dia) return [];
-        return [[v.name, `${sys || "—"}/${dia || "—"} ${v.unit}`]] as [string, string][];
+        return [{ label: v.name, value: `${sys || "—"}/${dia || "—"} ${v.unit}`, refMin: v.refMin, refMax: v.refMax }];
       }
       const val = vitalValues[v.id] ?? "";
       if (!val.trim()) return [];
-      return [[`${v.name}${v.unit ? ` (${v.unit})` : ""}`, val]] as [string, string][];
+      return [{ label: `${v.name}${v.unit ? ` (${v.unit})` : ""}`, value: val, refMin: v.refMin, refMax: v.refMax }];
     });
   }
 
@@ -366,10 +367,21 @@ function VitalsLeftPanel({ drafts, records, activeDraftId, configuredVitals, onR
                     <div>
                       <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Vital Signs</p>
                       <div className="rounded-lg overflow-hidden border border-slate-100">
-                        {vitalsRows.map(([label, value], i) => (
-                          <div key={label} className={`flex items-center justify-between px-2.5 py-1.5 ${i % 2 === 0 ? "bg-blue-50" : "bg-white"}`}>
-                            <span className="text-xs text-slate-500">{label}</span>
-                            <span className="text-xs font-semibold text-slate-800">{value}</span>
+                        {vitalsRows.map((row, i) => (
+                          <div key={row.label} className={`px-2.5 py-1.5 ${i % 2 === 0 ? "bg-blue-50" : "bg-white"}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-slate-500">{row.label}</span>
+                              <span className="text-xs font-semibold text-slate-800">{row.value}</span>
+                            </div>
+                            {(row.refMin || row.refMax) && (
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                {row.refMin ? `Low < ${row.refMin}` : ""}
+                                {row.refMin && row.refMax ? " · " : ""}
+                                {row.refMin && row.refMax ? `Normal ${row.refMin}–${row.refMax}` : ""}
+                                {row.refMax ? " · " : ""}
+                                {row.refMax ? `High > ${row.refMax}` : ""}
+                              </p>
+                            )}
                           </div>
                         ))}
                       </div>
