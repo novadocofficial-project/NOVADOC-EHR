@@ -2883,7 +2883,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
     saveUiState(role, { selectedDoctorId, selectedDate, viewMode });
   }, [role, selectedDoctorId, selectedDate, viewMode]);
 
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>(role === "nursing" ? "nursing" : "calendar");
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("calendar");
   const [filterTypes, setFilterTypes] = useState<string[]>([]);
 
   // Booking drawer
