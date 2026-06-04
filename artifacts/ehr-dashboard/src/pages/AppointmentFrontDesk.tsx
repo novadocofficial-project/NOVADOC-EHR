@@ -822,6 +822,22 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
 
   const doctor = doctors.find(d => d.id === form.doctorId);
 
+  const apptDoctors = useMemo(
+    () => doctors.filter(d => d.doctorType === "appointment" && d.status === "active"),
+    [doctors]
+  );
+
+  const allSpecialties = useMemo(() => {
+    const acc = new Set<string>();
+    apptDoctors.forEach(d => d.specialties.forEach(s => acc.add(s)));
+    return Array.from(acc).sort();
+  }, [apptDoctors]);
+
+  const filteredDoctors = useMemo(() => {
+    if (!form.specialty) return apptDoctors;
+    return apptDoctors.filter(d => d.specialties.includes(form.specialty));
+  }, [apptDoctors, form.specialty]);
+
   const slotsForDay = useMemo(() => {
     if (!doctor || !form.date) return [];
     return doctor.timings.flatMap(t => generateSlots(t, form.date));
@@ -942,25 +958,28 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs font-semibold text-slate-600 mb-1 block">Specialty</label>
-                {doctor && doctor.specialties.length > 0 ? (
-                  <Select value={form.specialty} onValueChange={v => set("specialty", v)}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select specialty..." /></SelectTrigger>
-                    <SelectContent>
-                      {doctor.specialties.map(s => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input value={form.specialty} onChange={e => set("specialty", e.target.value)} className="h-9 text-sm" placeholder="Specialty..." />
-                )}
+                <Select
+                  value={form.specialty}
+                  onValueChange={v => { set("specialty", v); set("doctorId", ""); set("slotStart", ""); set("slotEnd", ""); }}
+                >
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select specialty..." /></SelectTrigger>
+                  <SelectContent>
+                    {allSpecialties.map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-600 mb-1 block">Doctor</label>
-                <Select value={form.doctorId} onValueChange={v => { set("doctorId", v); set("slotStart", ""); set("slotEnd", ""); const doc = doctors.find(d => d.id === v); set("specialty", doc?.specialties[0] ?? ""); }}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select doctor..." /></SelectTrigger>
+                <Select
+                  value={form.doctorId}
+                  onValueChange={v => { set("doctorId", v); set("slotStart", ""); set("slotEnd", ""); }}
+                  disabled={!form.specialty}
+                >
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={form.specialty ? "Select doctor..." : "Select specialty first"} /></SelectTrigger>
                   <SelectContent>
-                    {doctors.filter(d => d.doctorType === "appointment" && d.status === "active").map(d => (
+                    {filteredDoctors.map(d => (
                       <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                     ))}
                   </SelectContent>
