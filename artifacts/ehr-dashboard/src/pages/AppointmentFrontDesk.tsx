@@ -804,16 +804,30 @@ interface BookingDrawerProps {
 function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDrawerProps) {
   const { patients, addPatient } = usePatients();
   const [showRegDrawer, setShowRegDrawer] = useState(false);
-  const [form, setForm] = useState<BookingForm>(() => emptyForm(editAppt ? {
-    doctorId: editAppt.doctorId, date: editAppt.date,
-    slotStart: editAppt.slotStart, slotEnd: editAppt.slotEnd,
-    patientName: editAppt.patientName, patientMrn: editAppt.patientMrn,
-    patientPhone: editAppt.patientPhone, type: editAppt.type,
-    specialty: editAppt.specialty, priority: editAppt.priority,
-    contagious: editAppt.contagious, contagiousNote: editAppt.contagiousNote,
-    repeat: editAppt.repeat, repeatType: editAppt.repeatType || "weekly",
-    repeatNote: editAppt.repeatNote, comments: editAppt.comments,
-  } : init));
+  const [form, setForm] = useState<BookingForm>(() => {
+    if (editAppt) {
+      return emptyForm({
+        doctorId: editAppt.doctorId, date: editAppt.date,
+        slotStart: editAppt.slotStart, slotEnd: editAppt.slotEnd,
+        patientName: editAppt.patientName, patientMrn: editAppt.patientMrn,
+        patientPhone: editAppt.patientPhone, type: editAppt.type,
+        specialty: editAppt.specialty, priority: editAppt.priority,
+        contagious: editAppt.contagious, contagiousNote: editAppt.contagiousNote,
+        repeat: editAppt.repeat, repeatType: editAppt.repeatType || "weekly",
+        repeatNote: editAppt.repeatNote, comments: editAppt.comments,
+      });
+    }
+    const apptDocs = doctors.filter(d => d.doctorType === "appointment" && d.status === "active");
+    const preselectedDoc = init.doctorId ? apptDocs.find(d => d.id === init.doctorId) : null;
+    const specSet = new Set<string>();
+    apptDocs.forEach(d => d.specialties.forEach(s => specSet.add(s)));
+    const firstSpecialty = Array.from(specSet).sort()[0] ?? "";
+    return emptyForm({
+      specialty: preselectedDoc?.specialties[0] ?? firstSpecialty,
+      type: preselectedDoc?.services[0] ?? "Consultation",
+      ...init,
+    });
+  });
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
 
