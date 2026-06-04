@@ -2490,7 +2490,7 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
             return (
               <tr
                 key={appt.id}
-                className={`border-b border-slate-100 transition-colors hover:bg-slate-50/60 ${idx % 2 !== 0 ? "bg-slate-50/30" : ""}`}
+                className={`border-b border-slate-100 transition-colors hover:bg-blue-50/70 ${idx % 2 !== 0 ? "bg-blue-50/20" : ""}`}
               >
                 <td className="px-4 py-3 whitespace-nowrap">
                   <span className="font-semibold text-slate-700">{appt.slotStart}</span>
@@ -2700,7 +2700,7 @@ function NursingView({
                 return (
                   <tr
                     key={appt.id}
-                    className={`border-b border-slate-100 transition-colors hover:bg-slate-50/60 ${idx % 2 !== 0 ? "bg-slate-50/30" : ""}`}
+                    className={`border-b border-slate-100 transition-colors hover:bg-blue-50/70 ${idx % 2 !== 0 ? "bg-blue-50/20" : ""}`}
                   >
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${idx === 0 ? "bg-[#4982CF] text-white" : "bg-slate-100 text-slate-500"}`}>
