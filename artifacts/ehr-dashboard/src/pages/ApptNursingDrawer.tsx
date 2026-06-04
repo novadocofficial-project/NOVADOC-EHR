@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
-  X, ChevronRight, ChevronDown, AlertCircle, Heart, Activity,
+  X, ChevronRight, ChevronLeft, ChevronDown, AlertCircle, Heart, Activity,
   ClipboardList, Stethoscope, Target, CheckCircle2,
   Maximize2, Minimize2, Plus, Trash2, Pill, Receipt, ShieldCheck,
   DollarSign, Play, SkipForward, RotateCcw, Layers,
@@ -910,18 +910,35 @@ function ApptVitalsSection({ appt }: { appt: Appointment }) {
             </button>
           )}
         </div>
-        <div className="flex-shrink-0 flex items-center px-5 py-2 border-b border-slate-100 bg-white">
-          <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 overflow-hidden shadow-sm">
-            {(["vitals", "pain", "mental", "trends"] as const).map((tab, i) => {
-              const labels: Record<string, string> = { vitals: "Vitals", pain: "Pain Score", mental: "Mental Health", trends: "Trends" };
+        {/* ── Step indicator ── */}
+        <div className="flex-shrink-0 px-5 pt-4 pb-3 border-b border-slate-100 bg-white">
+          <div className="flex items-center">
+            {([
+              { key: "vitals" as const, label: "Vitals",        num: 1 },
+              { key: "pain"   as const, label: "Pain Score",    num: 2 },
+              { key: "mental" as const, label: "Mental Health", num: 3 },
+            ]).map((step, i) => {
+              const stepKeys = ["vitals", "pain", "mental"];
+              const activeIdx = stepKeys.indexOf(vitalsTab === "trends" ? "vitals" : vitalsTab);
+              const isDone   = i < activeIdx;
+              const isActive = i === activeIdx;
               return (
-                <button key={tab}
-                  onClick={() => setVitalsTab(tab)}
-                  className={`px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${i > 0 ? "border-l border-slate-200" : ""} ${vitalsTab === tab ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-                  {labels[tab]}
-                </button>
+                <div key={step.key} className="flex items-center flex-1 last:flex-none">
+                  <button onClick={() => setVitalsTab(step.key)} className="flex flex-col items-center gap-1 group">
+                    <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${isDone ? "bg-emerald-500 text-white" : isActive ? "bg-[#4982CF] text-white" : "bg-slate-100 text-slate-400 group-hover:bg-slate-200"}`}>
+                      {isDone ? "✓" : step.num}
+                    </span>
+                    <span className={`text-[10px] font-semibold whitespace-nowrap ${isActive ? "text-[#4982CF]" : isDone ? "text-emerald-600" : "text-slate-400"}`}>{step.label}</span>
+                  </button>
+                  {i < 2 && <div className={`flex-1 h-px mx-2 mb-4 ${i < activeIdx ? "bg-emerald-400" : "bg-slate-200"}`} />}
+                </div>
               );
             })}
+            <button
+              onClick={() => setVitalsTab("trends")}
+              className={`ml-4 mb-3 text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${vitalsTab === "trends" ? "border-[#4982CF] text-[#4982CF] bg-blue-50" : "border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300"}`}>
+              Trends
+            </button>
           </div>
         </div>
         {vitalsTab === "vitals"  && <VitalsFormVitalsOnly vitalValues={vitalValues} setVitalValues={setVitalValues} configuredVitals={configuredVitals} />}
@@ -929,10 +946,42 @@ function ApptVitalsSection({ appt }: { appt: Appointment }) {
         {vitalsTab === "mental"  && <VitalsMentalTab mentalAnswers={mentalAnswers} setMentalAnswers={setMentalAnswers} />}
         {vitalsTab === "trends"  && <VitalsTrends />}
         <div className="flex-shrink-0 border-t border-slate-200 px-5 py-3 bg-white">
-          <button onClick={handleVitalsComplete}
-            className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-[#4982CF] hover:bg-[#3a6fb8] text-white text-sm font-bold transition-colors">
-            <CheckCircle2 className="h-4 w-4" /> Save &amp; Complete
-          </button>
+          {vitalsTab === "vitals" && (
+            <button onClick={() => setVitalsTab("pain")}
+              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-[#4982CF] hover:bg-[#3a6fb8] text-white text-sm font-bold transition-colors">
+              Next: Pain Score <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+          {vitalsTab === "pain" && (
+            <div className="flex gap-2">
+              <button onClick={() => setVitalsTab("vitals")}
+                className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm font-semibold transition-colors">
+                <ChevronLeft className="h-4 w-4" /> Back
+              </button>
+              <button onClick={() => setVitalsTab("mental")}
+                className="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl bg-[#4982CF] hover:bg-[#3a6fb8] text-white text-sm font-bold transition-colors">
+                Next: Mental Health <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+          {vitalsTab === "mental" && (
+            <div className="flex gap-2">
+              <button onClick={() => setVitalsTab("pain")}
+                className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm font-semibold transition-colors">
+                <ChevronLeft className="h-4 w-4" /> Back
+              </button>
+              <button onClick={handleVitalsComplete}
+                className="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl bg-[#4982CF] hover:bg-[#3a6fb8] text-white text-sm font-bold transition-colors">
+                <CheckCircle2 className="h-4 w-4" /> Save &amp; Complete
+              </button>
+            </div>
+          )}
+          {vitalsTab === "trends" && (
+            <button onClick={() => setVitalsTab("vitals")}
+              className="w-full flex items-center justify-center gap-1.5 h-10 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm font-semibold transition-colors">
+              <ChevronLeft className="h-4 w-4" /> Back to Vitals
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -2906,12 +2955,6 @@ export function ApptNursingDrawer({ appt, onClose, initialCategory }: { appt: Ap
             ))}
           </div>
           <div className="flex items-center gap-2 px-3 flex-shrink-0">
-            <Button
-              onClick={() => setShowConfirm(true)}
-              className="h-8 px-4 text-xs font-bold bg-[#4982CF] hover:bg-[#3a6fb8] text-white gap-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Save
-            </Button>
-            <div className="w-px h-5 bg-slate-200" />
             <button onClick={() => setFullscreen(f => !f)}
               className="flex items-center gap-1.5 h-8 px-2.5 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
               {fullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
