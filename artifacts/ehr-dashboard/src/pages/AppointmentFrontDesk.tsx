@@ -2476,10 +2476,10 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Appointment ID</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Appointment Type</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Priority</th>
+            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Vitals</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Waiting Time</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Patient Status</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Health Record</th>
-            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Vitals</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Action</th>
           </tr>
         </thead>
@@ -2514,6 +2514,9 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
                     {priorityCfg.label}
                   </span>
                 </td>
+                <td className="px-4 py-3">
+                  <VitalsCounsellingCell vs={getApptVitalsSummary(appt.id)} />
+                </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   {(() => {
                     const vitalsAt = getVitalsCompletedAt(appt.id);
@@ -2547,9 +2550,6 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
                       </span>
                     );
                   })()}
-                </td>
-                <td className="px-4 py-3">
-                  <VitalsCounsellingCell vs={getApptVitalsSummary(appt.id)} />
                 </td>
                 <td className="px-4 py-3">
                   <button
