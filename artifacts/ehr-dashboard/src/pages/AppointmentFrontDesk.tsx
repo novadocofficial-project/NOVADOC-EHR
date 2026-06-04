@@ -939,26 +939,14 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
         <section>
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Appointment Details</label>
           <div className="space-y-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">Doctor</label>
-              <Select value={form.doctorId} onValueChange={v => { set("doctorId", v); set("slotStart", ""); set("slotEnd", ""); const doc = doctors.find(d => d.id === v); set("specialty", doc?.specialties[0] ?? ""); }}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select doctor..." /></SelectTrigger>
-                <SelectContent>
-                  {doctors.filter(d => d.doctorType === "appointment" && d.status === "active").map(d => (
-                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">Appointment Type</label>
-                <Select value={form.type} onValueChange={v => set("type", v)}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select type..." /></SelectTrigger>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Doctor</label>
+                <Select value={form.doctorId} onValueChange={v => { set("doctorId", v); set("slotStart", ""); set("slotEnd", ""); const doc = doctors.find(d => d.id === v); set("specialty", doc?.specialties[0] ?? ""); }}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select doctor..." /></SelectTrigger>
                   <SelectContent>
-                    {(doctor?.services ?? ["Consultation", "FollowUp", "Emergency", "Tele-consultation"]).map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    {doctors.filter(d => d.doctorType === "appointment" && d.status === "active").map(d => (
+                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -980,9 +968,22 @@ function BookingDrawer({ doctors, init, editAppt, onSave, onClose }: BookingDraw
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">Date</label>
-              <Input type="date" value={form.date} onChange={e => { set("date", e.target.value); set("slotStart", ""); set("slotEnd", ""); }} className="h-9 text-sm" />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Appointment Type</label>
+                <Select value={form.type} onValueChange={v => set("type", v)}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select type..." /></SelectTrigger>
+                  <SelectContent>
+                    {(doctor?.services ?? ["Consultation", "FollowUp", "Emergency", "Tele-consultation"]).map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Date</label>
+                <Input type="date" value={form.date} onChange={e => { set("date", e.target.value); set("slotStart", ""); set("slotEnd", ""); }} className="h-9 text-sm" />
+              </div>
             </div>
 
             {/* Time Slot blocks */}
