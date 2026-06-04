@@ -69,7 +69,7 @@ function makeDefaultSections(): SoapSection[] {
 const DEFAULT_VITALS: VitalConfig[] = [
   { id: "bp",     name: "Blood Pressure", unit: "mmHg",  custom: false, opd: "required", consult: "required", followup: "required",  emergency: "required",  refMin: "90/60",  refMax: "140/90", color: "#4982CF" },
   { id: "pulse",  name: "Pulse",          unit: "bpm",   custom: false, opd: "required", consult: "required", followup: "required",  emergency: "required",  refMin: "60",     refMax: "100",    color: "#ef4444" },
-  { id: "temp",   name: "Temperature",    unit: "°C",    custom: false, opd: "required", consult: "optional", followup: "optional",  emergency: "required",  refMin: "36.1",   refMax: "37.2",   color: "#f59e0b" },
+  { id: "temp",   name: "Temperature",    unit: "°F",    custom: false, opd: "required", consult: "optional", followup: "optional",  emergency: "required",  refMin: "97.0",   refMax: "99.0",   color: "#f59e0b" },
   { id: "spo2",   name: "SpO₂",           unit: "%",     custom: false, opd: "required", consult: "optional", followup: "optional",  emergency: "required",  refMin: "95",     refMax: "100",    color: "#10b981" },
   { id: "weight", name: "Weight",         unit: "kg",    custom: false, opd: "optional", consult: "optional", followup: "optional",  emergency: "optional",  refMin: "",       refMax: "",       color: "#8b5cf6" },
   { id: "height", name: "Height",         unit: "cm",    custom: false, opd: "optional", consult: "optional", followup: "skip",      emergency: "skip",      refMin: "",       refMax: "",       color: "#64748b" },

@@ -456,7 +456,7 @@ function VitalsFormVitalsOnly({ vitalValues, setVitalValues, configuredVitals }:
   const displayVitals = configuredVitals.filter(v => v.opd !== "skip" && v.id !== "pain");
   function setV(key: string, val: string) { setVitalValues({ ...vitalValues, [key]: val }); }
 
-  const [heightUnit, setHeightUnit] = useState<"cm" | "ft">("cm");
+  const [heightUnit, setHeightUnit] = useState<"cm" | "ft">("ft");
 
   // Auto-calculate BMI whenever weight or height changes
   useEffect(() => {
