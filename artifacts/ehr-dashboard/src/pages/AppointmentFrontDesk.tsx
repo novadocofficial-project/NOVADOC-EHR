@@ -20,6 +20,7 @@ import { QueueAppHeader } from "@/pages/QueuePageLayout";
 import { useAppointmentDoctors } from "@/hooks/useAppointmentDoctors";
 import { hasSoapDraft, readSignedRecords } from "@/hooks/useSoapNoteDraft";
 import { useAppointments, type Appointment, type ApptStatus } from "@/hooks/useAppointments";
+import { loadVitalsConfig } from "@/pages/SoapConfigModule";
 import { useApptInvoices } from "@/hooks/useApptInvoices";
 import { usePatients, getPatientIdByMrn } from "@/hooks/usePatients";
 import { useRegConfig, type RegField } from "@/hooks/useRegConfig";
@@ -2208,6 +2209,57 @@ function getVitalsCompletedAt(apptId: string): number | null {
   } catch { return null; }
 }
 
+type VitalsSummary = { isAbnormal: boolean; painScore: number; mentalTotal: number };
+
+function getApptVitalsSummary(apptId: string): VitalsSummary | null {
+  try {
+    const raw = localStorage.getItem("appt-vitals-records");
+    if (!raw) return null;
+    const today = todayStr();
+    const records = JSON.parse(raw) as Array<{
+      apptId?: string; vitalValues: Record<string, string>;
+      painScore: number; mentalAnswers: number[]; completedAt: number;
+    }>;
+    const todayRecords = records.filter(r => {
+      if (r.apptId !== apptId) return false;
+      const d = new Date(r.completedAt);
+      const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return ds === today;
+    });
+    if (todayRecords.length === 0) return null;
+    const record = todayRecords.reduce((a, b) => a.completedAt > b.completedAt ? a : b);
+    const config = loadVitalsConfig();
+    let isAbnormal = false;
+    for (const vc of config) {
+      if (!vc.refMin && !vc.refMax) continue;
+      if (vc.id === "bp") {
+        const sys = record.vitalValues["bp_sys"] ?? "";
+        const dia = record.vitalValues["bp_dia"] ?? "";
+        if (!sys && !dia) continue;
+        if (vc.refMin.includes("/") && vc.refMax.includes("/")) {
+          const sysVal = parseFloat(sys); const diaVal = parseFloat(dia);
+          const [sysMin, diaMin] = vc.refMin.split("/").map(Number);
+          const [sysMax, diaMax] = vc.refMax.split("/").map(Number);
+          if (!isNaN(sysVal) && !isNaN(diaVal) &&
+              (sysVal < sysMin || diaVal < diaMin || sysVal > sysMax || diaVal > diaMax)) {
+            isAbnormal = true;
+          }
+        }
+        continue;
+      }
+      const rawVal = record.vitalValues[vc.id] ?? "";
+      if (!rawVal.trim()) continue;
+      const val = parseFloat(rawVal);
+      if (isNaN(val)) continue;
+      const min = vc.refMin ? parseFloat(vc.refMin) : NaN;
+      const max = vc.refMax ? parseFloat(vc.refMax) : NaN;
+      if ((!isNaN(min) && val < min) || (!isNaN(max) && val > max)) isAbnormal = true;
+    }
+    const mentalTotal = (record.mentalAnswers ?? []).reduce((s: number, v: number) => s + v, 0);
+    return { isAbnormal, painScore: record.painScore ?? -1, mentalTotal };
+  } catch { return null; }
+}
+
 function readWaitStopTimes(): Record<string, number> {
   try {
     const raw = localStorage.getItem(WAIT_STOPPED_KEY);
@@ -2319,6 +2371,7 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Waiting Time</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Patient Status</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">Health Record</th>
+            <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Vitals</th>
             <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">Action</th>
           </tr>
         </thead>
@@ -2384,6 +2437,28 @@ function CounsellingView({ appointments, onOpenFacesheet }: { appointments: Appo
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${cls}`}>
                         <Icon className="h-3 w-3" />{label}
                       </span>
+                    );
+                  })()}
+                </td>
+                <td className="px-4 py-3">
+                  {(() => {
+                    const vs = getApptVitalsSummary(appt.id);
+                    if (!vs) return <span className="text-slate-300 text-xs">—</span>;
+                    return (
+                      <div className="space-y-1">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${vs.isAbnormal ? "bg-red-50 text-red-600 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                          {vs.isAbnormal ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                          {vs.isAbnormal ? "Abnormal" : "Normal"}
+                        </span>
+                        <p className="text-xs text-slate-500">
+                          <span className="font-medium text-slate-700">Pain:</span>{" "}
+                          {vs.painScore >= 0 ? `${vs.painScore}/10` : <span className="text-slate-300">—</span>}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          <span className="font-medium text-slate-700">PHQ-4:</span>{" "}
+                          {vs.mentalTotal > 0 ? `${vs.mentalTotal}/16` : <span className="text-slate-300">—</span>}
+                        </p>
+                      </div>
                     );
                   })()}
                 </td>
