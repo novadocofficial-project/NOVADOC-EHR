@@ -154,7 +154,7 @@ function PatientDetailsStep({ patient }: { patient: Patient | null }) {
       <div className="grid grid-cols-2 gap-3">
         {[
           ["Age", age !== null ? `${age} yrs` : "—"],
-          ["Gender", patient?.gender === "M" ? "Male" : patient?.gender === "F" ? "Female" : "—"],
+          ["Gender", patient?.gender === "M" ? "Male" : patient?.gender === "F" ? "Female" : patient?.gender === "O" ? "Other" : "—"],
           ["Phone", patient?.phone ?? "—"],
           ["Date of Birth", patient?.dob ?? "—"],
         ].map(([label, value]) => (

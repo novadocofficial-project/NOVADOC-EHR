@@ -211,14 +211,21 @@ function normalizeConfig(stored: Partial<RegConfig>): RegConfig {
   // Ensure top-level arrays exist
   const sections = Array.isArray(stored.sections) && stored.sections.length > 0
     ? stored.sections.map(s => {
-        const defaultSec = DEFAULT_REG_CONFIG.sections.find(d => d.id === s.id) ?? DEFAULT_REG_CONFIG.sections[0];
-        const storedFields: typeof defaultSec.fields = Array.isArray(s.fields) ? s.fields : [];
-        const storedIds = new Set(storedFields.map(f => f.id));
-        const newDefaults = defaultSec.fields.filter(f => f.isBuiltIn && !storedIds.has(f.id));
+        const defaultSec = DEFAULT_REG_CONFIG.sections.find(d => d.id === s.id);
+        const storedFields = Array.isArray(s.fields) ? s.fields : [];
+        // Only backfill missing built-in fields for known default sections.
+        // Custom sections (no matching default) keep their stored fields as-is.
+        const backfilled = defaultSec
+          ? (() => {
+              const storedIds = new Set(storedFields.map(f => f.id));
+              const missing = defaultSec.fields.filter(f => f.isBuiltIn && !storedIds.has(f.id));
+              return [...storedFields, ...missing];
+            })()
+          : storedFields;
         return {
-          ...defaultSec,
+          ...(defaultSec ?? {}),
           ...s,
-          fields: [...storedFields, ...newDefaults],
+          fields: backfilled,
           conditionalRules: Array.isArray(s.conditionalRules) ? s.conditionalRules : [],
         };
       })
