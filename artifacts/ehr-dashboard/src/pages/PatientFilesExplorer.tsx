@@ -194,7 +194,20 @@ function usePatientFiles(patientId: string) {
     }));
   }
 
-  return { ...state, addFiles, addFolder, moveFile, renameFile, renameFolder, deleteFile, deleteFolder, assignDoctor, bulkAssignDoctor };
+  function bulkDeleteFiles(ids: string[]) {
+    const idSet = new Set(ids);
+    persist(prev => ({ ...prev, files: prev.files.filter(f => !idSet.has(f.id)) }));
+  }
+
+  function bulkMoveFiles(ids: string[], targetFolderId: string | null) {
+    const idSet = new Set(ids);
+    persist(prev => ({
+      ...prev,
+      files: prev.files.map(f => idSet.has(f.id) ? { ...f, folderId: targetFolderId } : f),
+    }));
+  }
+
+  return { ...state, addFiles, addFolder, moveFile, renameFile, renameFolder, deleteFile, deleteFolder, assignDoctor, bulkAssignDoctor, bulkDeleteFiles, bulkMoveFiles };
 }
 
 // ─── File icon ────────────────────────────────────────────────────────────────
@@ -438,7 +451,7 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
   const {
     folders, files, addFiles, addFolder,
     moveFile, renameFile, renameFolder,
-    deleteFile, deleteFolder, assignDoctor, bulkAssignDoctor,
+    deleteFile, deleteFolder, assignDoctor, bulkAssignDoctor, bulkDeleteFiles, bulkMoveFiles,
   } = usePatientFiles(patientId);
 
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -455,8 +468,10 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
   const [assignTarget,    setAssignTarget]    = useState<string | null>(null);      // file id
   const [deleteTarget,    setDeleteTarget]    = useState<{ id: string; type: "file" | "folder"; name: string } | null>(null);
   const [previewFileId,   setPreviewFileId]   = useState<string | null>(null);
-  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(() => new Set());
-  const [bulkAssignOpen,  setBulkAssignOpen]  = useState(false);
+  const [selectedFileIds,   setSelectedFileIds]   = useState<Set<string>>(() => new Set());
+  const [bulkAssignOpen,    setBulkAssignOpen]    = useState(false);
+  const [bulkMoveOpen,      setBulkMoveOpen]      = useState(false);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const doctors = loadDoctors().filter(d => d.status === "active");
@@ -891,10 +906,22 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
             </button>
             <div className="flex-1" />
             <button
+              onClick={() => setBulkMoveOpen(true)}
+              className="flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors"
+            >
+              <Move className="h-3.5 w-3.5" /> Move to…
+            </button>
+            <button
               onClick={() => setBulkAssignOpen(true)}
-              className="flex items-center gap-1.5 h-7 px-3 text-xs font-bold rounded-lg bg-[#4982CF] hover:bg-[#3a6fb8] text-white transition-colors shadow-sm"
+              className="flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors"
             >
               <UserCircle className="h-3.5 w-3.5" /> Assign Doctor
+            </button>
+            <button
+              onClick={() => setBulkDeleteConfirm(true)}
+              className="flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-lg border border-red-200 bg-white hover:bg-red-50 text-red-500 transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete
             </button>
             <button
               onClick={clearSelection}
@@ -1050,6 +1077,46 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
         />
       )}
 
+      {/* Bulk Move */}
+      {bulkMoveOpen && (
+        <MoveModal
+          fileId=""
+          folders={folders}
+          currentFolderId={currentFolderId}
+          onMove={fid => {
+            bulkMoveFiles([...selectedFileIds], fid);
+            clearSelection();
+            setBulkMoveOpen(false);
+          }}
+          onClose={() => setBulkMoveOpen(false)}
+          title={`Move ${selectedFileIds.size} file${selectedFileIds.size !== 1 ? "s" : ""}`}
+        />
+      )}
+
+      {/* Bulk Delete confirm */}
+      {bulkDeleteConfirm && (
+        <ModalOverlay onClose={() => setBulkDeleteConfirm(false)}>
+          <ModalBox title="Delete Files" onClose={() => setBulkDeleteConfirm(false)}>
+            <p className="text-sm text-slate-600">
+              Permanently delete <strong>{selectedFileIds.size} file{selectedFileIds.size !== 1 ? "s" : ""}</strong>? This cannot be undone.
+            </p>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setBulkDeleteConfirm(false)} className="flex-1 h-9 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
+              <button
+                onClick={() => {
+                  bulkDeleteFiles([...selectedFileIds]);
+                  clearSelection();
+                  setBulkDeleteConfirm(false);
+                }}
+                className="flex-1 h-9 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-bold"
+              >
+                Delete {selectedFileIds.size} File{selectedFileIds.size !== 1 ? "s" : ""}
+              </button>
+            </div>
+          </ModalBox>
+        </ModalOverlay>
+      )}
+
       {/* Delete confirm */}
       {deleteTarget && (
         <ModalOverlay onClose={() => setDeleteTarget(null)}>
@@ -1117,12 +1184,13 @@ function RenameModal({ initialName, onConfirm, onClose }: { initialName: string;
   );
 }
 
-function MoveModal({ fileId, folders, currentFolderId, onMove, onClose }: {
+function MoveModal({ fileId: _fileId, folders, currentFolderId, onMove, onClose, title = "Move to Folder" }: {
   fileId: string;
   folders: PatientFolder[];
   currentFolderId: string | null;
   onMove: (folderId: string | null) => void;
   onClose: () => void;
+  title?: string;
 }) {
   const [selected, setSelected] = useState<string | null>(currentFolderId);
 
@@ -1145,7 +1213,7 @@ function MoveModal({ fileId, folders, currentFolderId, onMove, onClose }: {
 
   return (
     <ModalOverlay onClose={onClose}>
-      <ModalBox title="Move to Folder" onClose={onClose}>
+      <ModalBox title={title} onClose={onClose}>
         <div className="border border-slate-200 rounded-lg overflow-hidden max-h-56 overflow-y-auto">
           <button
             onClick={() => setSelected(null)}
