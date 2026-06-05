@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useSoapNoteDraft, saveRoutingSnapshot, savePendingLabOrders, savePatientClinicalSnapshot } from "@/hooks/useSoapNoteDraft";
+import { getPatientIdByMrn } from "@/hooks/usePatients";
 import { Button } from "@/components/ui/button";
 import { View360Drawer } from "@/pages/View360Drawer";
 import { LabsDrawer } from "@/pages/LabsDrawer";
@@ -1749,7 +1750,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
       {/* Scanned Documents drawer */}
       {!showNoteDrawer && openDrawer === "Scanned Documents" && (
         <ScannedDocumentsDrawer
-          patientId={entry.patient?.id ?? ""}
+          patientId={entry.patient?.mrn ? getPatientIdByMrn(entry.patient.mrn) : (entry.patient?.id ?? "")}
           doctorId={doctorId}
           fullscreen={drawerFullscreen}
           onToggleFullscreen={() => setDrawerFullscreen(f => !f)}
