@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Folder, FolderOpen, FileText, Image as ImageIcon, Upload, Camera,
   Plus, Search, LayoutGrid, List, MoreVertical, X, ChevronRight, ChevronLeft,
@@ -605,31 +606,57 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
 
   function ActionMenu({ id, type, file }: { id: string; type: "file" | "folder"; file?: PatientFile }) {
     const open = activeMenu === id;
+    const btnRef = useRef<HTMLButtonElement>(null);
+    const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+
+    function handleOpen(e: React.MouseEvent) {
+      e.stopPropagation();
+      if (!open && btnRef.current) {
+        const rect = btnRef.current.getBoundingClientRect();
+        const menuWidth = 172;
+        const menuHeight = type === "file" ? 200 : 100;
+        const left = Math.max(4, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 4));
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const top = spaceBelow >= menuHeight ? rect.bottom + 4 : rect.top - menuHeight - 4;
+        setMenuPos({ top, left });
+      }
+      setActiveMenu(open ? null : id);
+    }
+
+    const folderName = folders.find(f => f.id === id)?.name ?? "";
+
+    const menuContent = (
+      <div
+        className="fixed z-[9999] bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[172px]"
+        style={{ top: menuPos.top, left: menuPos.left }}
+        onMouseDown={e => e.stopPropagation()}
+      >
+        {type === "file" && (
+          <MenuItem icon={Eye} label="Preview" onClick={() => { setPreviewFileId(id); setActiveMenu(null); }} />
+        )}
+        <MenuItem icon={Edit2} label="Rename" onClick={() => { setRenameTarget({ id, type, name: file?.name ?? folderName }); setActiveMenu(null); }} />
+        {type === "file" && (
+          <>
+            <MenuItem icon={Move} label="Move to…" onClick={() => { setMoveTarget(id); setActiveMenu(null); }} />
+            <MenuItem icon={UserCircle} label="Assign Doctor" onClick={() => { setAssignTarget(id); setActiveMenu(null); }} />
+            <MenuItem icon={Download} label="Open" onClick={() => { if (file) handleDownload(file); setActiveMenu(null); }} />
+          </>
+        )}
+        <div className="my-1 border-t border-slate-100" />
+        <MenuItem icon={Trash2} label="Delete" danger onClick={() => { setDeleteTarget({ id, type, name: file?.name ?? folderName }); setActiveMenu(null); }} />
+      </div>
+    );
+
     return (
-      <div className="relative" onMouseDown={e => e.stopPropagation()}>
+      <div onMouseDown={e => e.stopPropagation()}>
         <button
-          onClick={e => { e.stopPropagation(); setActiveMenu(open ? null : id); }}
+          ref={btnRef}
+          onClick={handleOpen}
           className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
         >
           <MoreVertical className="h-3.5 w-3.5" />
         </button>
-        {open && (
-          <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[160px]">
-            {type === "file" && (
-              <MenuItem icon={Eye} label="Preview" onClick={() => { setPreviewFileId(id); setActiveMenu(null); }} />
-            )}
-            <MenuItem icon={Edit2} label="Rename" onClick={() => { setRenameTarget({ id, type, name: file?.name ?? folders.find(f=>f.id===id)?.name ?? "" }); setActiveMenu(null); }} />
-            {type === "file" && (
-              <>
-                <MenuItem icon={Move} label="Move to…" onClick={() => { setMoveTarget(id); setActiveMenu(null); }} />
-                <MenuItem icon={UserCircle} label="Assign Doctor" onClick={() => { setAssignTarget(id); setActiveMenu(null); }} />
-                <MenuItem icon={Download} label="Open" onClick={() => { if (file) handleDownload(file); setActiveMenu(null); }} />
-              </>
-            )}
-            <div className="my-1 border-t border-slate-100" />
-            <MenuItem icon={Trash2} label="Delete" danger onClick={() => { setDeleteTarget({ id, type, name: file?.name ?? folders.find(f=>f.id===id)?.name ?? "" }); setActiveMenu(null); }} />
-          </div>
-        )}
+        {open && createPortal(menuContent, document.body)}
       </div>
     );
   }
