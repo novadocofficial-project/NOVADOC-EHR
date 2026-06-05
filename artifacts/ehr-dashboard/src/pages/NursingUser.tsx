@@ -1815,7 +1815,7 @@ function VitalsFormVitalsOnly({ vitalValues, setVitalValues, configuredVitals }:
   function setV(key: string, val: string) { setVitalValues({ ...vitalValues, [key]: val }); }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex-1 flex flex-col min-h-0">
       <div className="flex-1 overflow-y-auto px-5 py-4">
         <Collapsible title="Patient Vitals" accent defaultOpen>
           <div className="space-y-3 pb-4">
