@@ -1,0 +1,74 @@
+We need to enhance the Scanned Documents section within the SOAP Note.
+
+Drawer Behavior
+
+Currently, clicking on Scanned Documents opens an empty drawer.
+
+The new behavior should be:
+
+When the user clicks Scanned Documents, a drawer should open from the side.
+The drawer should occupy approximately 50% of the screen width by default.
+The drawer should support a Full Screen mode, allowing the doctor to expand it when needed.
+The drawer should be resizable in the future if required.
+Data Source
+
+The Scanned Documents drawer should display only the files that have been assigned to the currently logged-in doctor from the Patient Profile → Files section.
+
+Since uploaded files are already stored in local storage, we can retrieve them directly from there and filter them based on:
+
+Current Patient
+Assigned Doctor
+File Organization
+
+Files should be grouped by upload date.
+
+Example:
+
+June 05, 2026
+
+Lab Report.pdf
+CBC Results.pdf
+Chest X-Ray.jpg
+
+June 03, 2026
+
+ECG Report.pdf
+Prescription Scan.jpg
+
+Each upload date should appear as a section heading, with all files uploaded on that date displayed beneath it.
+
+File Preview
+
+Doctors should be able to preview files directly from the drawer.
+
+The preview experience should be identical to the inline/full-screen preview functionality already implemented in the Patient Profile Files section.
+
+Available Actions
+
+Within the SOAP Note Scanned Documents drawer, the following actions should be available:
+
+Preview
+Download
+Close
+
+The following actions should not be available:
+
+Delete
+Assign Doctor
+Rename
+Move
+
+This section is intended to be read-only for doctors.
+
+Inline Preview Navigation
+
+To improve usability, the preview window should include navigation arrows.
+
+When a doctor opens a file preview, they should be able to:
+
+Navigate to the previous file.
+Navigate to the next file.
+
+using left and right arrow controls without closing the preview.
+
+This allows doctors to quickly review multiple scanned documents in sequence without repeatedly opening and closing individual files.
