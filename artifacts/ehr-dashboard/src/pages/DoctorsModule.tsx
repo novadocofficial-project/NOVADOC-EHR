@@ -127,9 +127,9 @@ export const INITIAL_DOCTORS: Doctor[] = [
     services: ["Consultation", "FollowUp", "Tele-consultation", "Procedures"],
     timings: [
       { id: "asif-t1", day: "Monday",    startTime: "10:00", endTime: "18:00", slotDuration: 30, allowMultiple: false },
-      { id: "asif-t2", day: "Tuesday",   startTime: "10:00", endTime: "18:00", slotDuration: 30, allowMultiple: false },
       { id: "asif-t3", day: "Wednesday", startTime: "10:00", endTime: "18:00", slotDuration: 30, allowMultiple: false },
       { id: "asif-t4", day: "Thursday",  startTime: "10:00", endTime: "18:00", slotDuration: 30, allowMultiple: false },
+      { id: "asif-t6", day: "Friday",    startTime: "10:00", endTime: "18:00", slotDuration: 30, allowMultiple: false },
       { id: "asif-t5", day: "Saturday",  startTime: "10:00", endTime: "16:00", slotDuration: 30, allowMultiple: false },
     ],
     faqs: [], status: "active",
