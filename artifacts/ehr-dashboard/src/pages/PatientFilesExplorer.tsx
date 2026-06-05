@@ -98,6 +98,11 @@ function loadDoctors(): Doctor[] {
 function usePatientFiles(patientId: string) {
   const [state, setState] = useState<FilesState>(() => loadFilesState(patientId));
 
+  // Reload when navigating between different patient profiles (SPA param change)
+  useEffect(() => {
+    setState(loadFilesState(patientId));
+  }, [patientId]);
+
   function persist(updater: (prev: FilesState) => FilesState) {
     setState(prev => {
       const next = updater(prev);
@@ -359,10 +364,7 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
   // ── Actions ──────────────────────────────────────────────────────────────────
 
   function handleDownload(file: PatientFile) {
-    const a = document.createElement("a");
-    a.href = file.dataUrl;
-    a.download = file.name;
-    a.click();
+    window.open(file.dataUrl, "_blank");
   }
 
   function confirmDelete() {
