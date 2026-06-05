@@ -1,9 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Folder, FolderOpen, FileText, Image as ImageIcon, Upload, Camera,
-  Plus, Search, LayoutGrid, List, MoreVertical, X, ChevronRight,
+  Plus, Search, LayoutGrid, List, MoreVertical, X, ChevronRight, ChevronLeft,
   Trash2, Edit2, ArrowRight, UserCircle, Download, ChevronDown,
-  FolderPlus, Move,
+  FolderPlus, Move, Eye, ZoomIn, ZoomOut, ExternalLink,
 } from "lucide-react";
 import { INITIAL_DOCTORS, type Doctor } from "@/pages/DoctorsModule";
 
@@ -255,6 +255,175 @@ function FolderTreeNode({
   );
 }
 
+// ─── File preview lightbox ────────────────────────────────────────────────────
+
+function FilePreviewModal({
+  file, allFiles, onClose, onNavigate, onOpenAssign,
+}: {
+  file: PatientFile;
+  allFiles: PatientFile[];
+  onClose: () => void;
+  onNavigate: (id: string) => void;
+  onOpenAssign: (id: string) => void;
+}) {
+  const isImage = file.mimeType.startsWith("image/");
+  const isPdf   = file.mimeType === "application/pdf";
+  const idx     = allFiles.findIndex(f => f.id === file.id);
+  const hasPrev = idx > 0;
+  const hasNext = idx < allFiles.length - 1;
+  const [zoom,  setZoom]  = useState(1);
+  const [dragging, setDragging] = useState(false);
+  const [offset, setOffset]     = useState({ x: 0, y: 0 });
+  const dragStart = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
+
+  // Reset zoom/pan when file changes
+  useEffect(() => { setZoom(1); setOffset({ x: 0, y: 0 }); }, [file.id]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key === "ArrowLeft"  && hasPrev) onNavigate(allFiles[idx - 1].id);
+      if (e.key === "ArrowRight" && hasNext) onNavigate(allFiles[idx + 1].id);
+      if (e.key === "+" || e.key === "=") setZoom(z => Math.min(z + 0.25, 4));
+      if (e.key === "-") setZoom(z => Math.max(z - 0.25, 0.25));
+      if (e.key === "0") { setZoom(1); setOffset({ x: 0, y: 0 }); }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [hasPrev, hasNext, idx, allFiles]);
+
+  function onMouseDown(e: React.MouseEvent) {
+    if (!isImage || zoom <= 1) return;
+    setDragging(true);
+    dragStart.current = { mx: e.clientX, my: e.clientY, ox: offset.x, oy: offset.y };
+  }
+  function onMouseMove(e: React.MouseEvent) {
+    if (!dragging || !dragStart.current) return;
+    setOffset({ x: dragStart.current.ox + e.clientX - dragStart.current.mx, y: dragStart.current.oy + e.clientY - dragStart.current.my });
+  }
+  function onMouseUp() { setDragging(false); dragStart.current = null; }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-black/92"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* Top bar */}
+      <div className="flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-black/60 backdrop-blur-sm border-b border-white/10">
+        <FileIcon mimeType={file.mimeType} size={32} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-white truncate">{file.name}</p>
+          <p className="text-[10px] text-slate-400">{fileTypeLabel(file.mimeType)} · {formatFileSize(file.size)} · {formatDateTime(file.uploadedAt)} · {file.uploadedBy}</p>
+        </div>
+        {/* Navigation counter */}
+        {allFiles.length > 1 && (
+          <span className="text-xs text-slate-400 flex-shrink-0">{idx + 1} / {allFiles.length}</span>
+        )}
+        {/* Zoom controls (images only) */}
+        {isImage && (
+          <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1 flex-shrink-0">
+            <button onClick={() => setZoom(z => Math.max(z - 0.25, 0.25))} disabled={zoom <= 0.25} className="p-1 rounded hover:bg-white/10 text-white disabled:opacity-30 transition-colors">
+              <ZoomOut className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }} className="px-2 py-0.5 text-[10px] font-bold text-white hover:bg-white/10 rounded transition-colors min-w-[42px] text-center">
+              {Math.round(zoom * 100)}%
+            </button>
+            <button onClick={() => setZoom(z => Math.min(z + 0.25, 4))} disabled={zoom >= 4} className="p-1 rounded hover:bg-white/10 text-white disabled:opacity-30 transition-colors">
+              <ZoomIn className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+        {/* Actions */}
+        <button
+          onClick={() => { onOpenAssign(file.id); onClose(); }}
+          className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors flex-shrink-0"
+        >
+          <UserCircle className="h-3.5 w-3.5" /> Assign Doctor
+        </button>
+        <button
+          onClick={() => window.open(file.dataUrl, "_blank")}
+          className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors flex-shrink-0"
+        >
+          <ExternalLink className="h-3.5 w-3.5" /> Open
+        </button>
+        <button onClick={onClose} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors flex-shrink-0">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Content area */}
+      <div
+        className="flex-1 relative flex items-center justify-center overflow-hidden"
+        style={{ cursor: isImage && zoom > 1 ? (dragging ? "grabbing" : "grab") : "default" }}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}
+      >
+        {/* Prev arrow */}
+        {hasPrev && (
+          <button
+            onClick={e => { e.stopPropagation(); onNavigate(allFiles[idx - 1].id); }}
+            className="absolute left-4 z-10 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        )}
+        {/* Next arrow */}
+        {hasNext && (
+          <button
+            onClick={e => { e.stopPropagation(); onNavigate(allFiles[idx + 1].id); }}
+            className="absolute right-4 z-10 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        )}
+
+        {/* Image */}
+        {isImage && (
+          <img
+            src={file.dataUrl}
+            alt={file.name}
+            draggable={false}
+            style={{
+              transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+              transformOrigin: "center",
+              maxHeight: "100%",
+              maxWidth: "100%",
+              objectFit: "contain",
+              transition: dragging ? "none" : "transform 0.15s ease",
+              userSelect: "none",
+            }}
+          />
+        )}
+
+        {/* PDF iframe */}
+        {isPdf && (
+          <iframe
+            src={file.dataUrl}
+            title={file.name}
+            className="w-full h-full border-none"
+            style={{ background: "#fff" }}
+          />
+        )}
+      </div>
+
+      {/* Bottom metadata bar */}
+      <div className="flex-shrink-0 flex items-center gap-4 px-4 py-2.5 bg-black/60 border-t border-white/10">
+        {file.assignedDoctorName && (
+          <span className="text-xs text-[#4982CF] font-semibold flex items-center gap-1.5">
+            <UserCircle className="h-3.5 w-3.5" /> {file.assignedDoctorName}
+          </span>
+        )}
+        <span className="text-xs text-slate-400 ml-auto">
+          {isImage && zoom !== 1 && "Drag to pan · "}Press Esc to close{allFiles.length > 1 && " · ← → to navigate"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function PatientFilesExplorer({ patientId }: { patientId: string }) {
@@ -277,6 +446,7 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
   const [moveTarget,      setMoveTarget]      = useState<string | null>(null);      // file id
   const [assignTarget,    setAssignTarget]    = useState<string | null>(null);      // file id
   const [deleteTarget,    setDeleteTarget]    = useState<{ id: string; type: "file" | "folder"; name: string } | null>(null);
+  const [previewFileId,   setPreviewFileId]   = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const doctors = loadDoctors().filter(d => d.status === "active");
@@ -400,12 +570,15 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
         </button>
         {open && (
           <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[160px]">
+            {type === "file" && (
+              <MenuItem icon={Eye} label="Preview" onClick={() => { setPreviewFileId(id); setActiveMenu(null); }} />
+            )}
             <MenuItem icon={Edit2} label="Rename" onClick={() => { setRenameTarget({ id, type, name: file?.name ?? folders.find(f=>f.id===id)?.name ?? "" }); setActiveMenu(null); }} />
             {type === "file" && (
               <>
                 <MenuItem icon={Move} label="Move to…" onClick={() => { setMoveTarget(id); setActiveMenu(null); }} />
                 <MenuItem icon={UserCircle} label="Assign Doctor" onClick={() => { setAssignTarget(id); setActiveMenu(null); }} />
-                <MenuItem icon={Download} label="Download" onClick={() => { if (file) handleDownload(file); setActiveMenu(null); }} />
+                <MenuItem icon={Download} label="Open" onClick={() => { if (file) handleDownload(file); setActiveMenu(null); }} />
               </>
             )}
             <div className="my-1 border-t border-slate-100" />
@@ -465,7 +638,10 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
     const isImage = file.mimeType.startsWith("image/");
     if (viewMode === "list") {
       return (
-        <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 rounded-lg group cursor-default border-b border-slate-100 last:border-0">
+        <div
+          onClick={() => setPreviewFileId(file.id)}
+          className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50/40 rounded-lg group cursor-pointer border-b border-slate-100 last:border-0 transition-colors"
+        >
           <FileIcon mimeType={file.mimeType} size={28} />
           <span className="text-sm text-slate-700 font-medium flex-1 truncate">{file.name}</span>
           <span className="text-xs text-slate-400 w-16 flex-shrink-0">{fileTypeLabel(file.mimeType)}</span>
@@ -480,17 +656,23 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
       );
     }
     return (
-      <div className="relative flex flex-col rounded-xl border border-slate-200 hover:border-[#4982CF]/40 hover:shadow-md bg-white cursor-default group transition-all overflow-hidden">
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 z-10">
+      <div
+        onClick={() => setPreviewFileId(file.id)}
+        className="relative flex flex-col rounded-xl border border-slate-200 hover:border-[#4982CF]/40 hover:shadow-md bg-white cursor-pointer group transition-all overflow-hidden"
+      >
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 z-10" onClick={e => e.stopPropagation()}>
           <ActionMenu id={file.id} type="file" file={file} />
         </div>
         {/* Thumbnail or icon */}
-        <div className="h-24 flex items-center justify-center bg-slate-50 border-b border-slate-100 overflow-hidden">
+        <div className="h-24 flex items-center justify-center bg-slate-50 border-b border-slate-100 overflow-hidden relative">
           {isImage ? (
             <img src={file.dataUrl} alt={file.name} className="h-full w-full object-cover" />
           ) : (
             <FileIcon mimeType={file.mimeType} size={44} />
           )}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 flex items-center justify-center transition-colors">
+            <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 drop-shadow transition-opacity" />
+          </div>
         </div>
         <div className="p-3 flex flex-col gap-1">
           <p className="text-xs font-semibold text-slate-700 leading-tight line-clamp-2">{file.name}</p>
@@ -692,6 +874,21 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
       </div>
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
+
+      {/* File preview lightbox */}
+      {previewFileId && (() => {
+        const previewFile = files.find(f => f.id === previewFileId);
+        if (!previewFile) return null;
+        return (
+          <FilePreviewModal
+            file={previewFile}
+            allFiles={visibleFiles}
+            onClose={() => setPreviewFileId(null)}
+            onNavigate={id => setPreviewFileId(id)}
+            onOpenAssign={id => { setAssignTarget(id); setPreviewFileId(null); }}
+          />
+        );
+      })()}
 
       {/* New Folder */}
       {newFolderName !== null && (
