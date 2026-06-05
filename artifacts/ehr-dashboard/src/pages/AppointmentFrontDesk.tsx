@@ -218,7 +218,7 @@ function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
   const [drawing, setDrawing] = useState(false);
   const sigRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
   const mrBanner = useRef("MR-" + Math.floor(45100 + Math.random() * 900)).current;
-  const [dobMode, setDobMode] = useState<"dob" | "age">("dob");
+  const [dobMode, setDobMode] = useState<"dob" | "age">("age");
   const [ageY, setAgeY] = useState("");
   const [ageM, setAgeM] = useState("");
   const [ageD, setAgeD] = useState("");
