@@ -458,7 +458,7 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [viewMode,        setViewMode]         = useState<"grid" | "list">("grid");
   const [searchQuery,     setSearchQuery]       = useState("");
-  const [activeMenu,      setActiveMenu]        = useState<string | null>(null);
+  const [activeMenu,      setActiveMenu]        = useState<{ id: string; top: number; left: number } | null>(null);
   const [isDragOver,      setIsDragOver]        = useState(false);
 
   // modals
@@ -604,59 +604,32 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
   // Render helpers
   // ─────────────────────────────────────────────────────────────────────────────
 
-  function ActionMenu({ id, type, file }: { id: string; type: "file" | "folder"; file?: PatientFile }) {
-    const open = activeMenu === id;
+  function ActionMenu({ id, type }: { id: string; type: "file" | "folder"; file?: PatientFile }) {
     const btnRef = useRef<HTMLButtonElement>(null);
-    const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+    const isOpen = activeMenu?.id === id;
 
-    function handleOpen(e: React.MouseEvent) {
+    function handleClick(e: React.MouseEvent) {
       e.stopPropagation();
-      if (!open && btnRef.current) {
-        const rect = btnRef.current.getBoundingClientRect();
-        const menuWidth = 172;
-        const menuHeight = type === "file" ? 200 : 100;
-        const left = Math.max(4, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 4));
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const top = spaceBelow >= menuHeight ? rect.bottom + 4 : rect.top - menuHeight - 4;
-        setMenuPos({ top, left });
-      }
-      setActiveMenu(open ? null : id);
+      if (isOpen) { setActiveMenu(null); return; }
+      if (!btnRef.current) return;
+      const rect = btnRef.current.getBoundingClientRect();
+      const menuWidth = 172;
+      const menuHeight = type === "file" ? 200 : 100;
+      const left = Math.max(4, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 4));
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const top = spaceBelow >= menuHeight ? rect.bottom + 4 : rect.top - menuHeight - 4;
+      setActiveMenu({ id, top, left });
     }
-
-    const folderName = folders.find(f => f.id === id)?.name ?? "";
-
-    const menuContent = (
-      <div
-        className="fixed z-[9999] bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[172px]"
-        style={{ top: menuPos.top, left: menuPos.left }}
-        onMouseDown={e => e.stopPropagation()}
-      >
-        {type === "file" && (
-          <MenuItem icon={Eye} label="Preview" onClick={() => { setPreviewFileId(id); setActiveMenu(null); }} />
-        )}
-        <MenuItem icon={Edit2} label="Rename" onClick={() => { setRenameTarget({ id, type, name: file?.name ?? folderName }); setActiveMenu(null); }} />
-        {type === "file" && (
-          <>
-            <MenuItem icon={Move} label="Move to…" onClick={() => { setMoveTarget(id); setActiveMenu(null); }} />
-            <MenuItem icon={UserCircle} label="Assign Doctor" onClick={() => { setAssignTarget(id); setActiveMenu(null); }} />
-            <MenuItem icon={Download} label="Open" onClick={() => { if (file) handleDownload(file); setActiveMenu(null); }} />
-          </>
-        )}
-        <div className="my-1 border-t border-slate-100" />
-        <MenuItem icon={Trash2} label="Delete" danger onClick={() => { setDeleteTarget({ id, type, name: file?.name ?? folderName }); setActiveMenu(null); }} />
-      </div>
-    );
 
     return (
       <div onMouseDown={e => e.stopPropagation()}>
         <button
           ref={btnRef}
-          onClick={handleOpen}
+          onClick={handleClick}
           className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
         >
           <MoreVertical className="h-3.5 w-3.5" />
         </button>
-        {open && createPortal(menuContent, document.body)}
       </div>
     );
   }
@@ -1159,6 +1132,37 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
           </ModalBox>
         </ModalOverlay>
       )}
+
+      {/* ── Action menu portal (rendered at body level to escape overflow-hidden) ── */}
+      {activeMenu && (() => {
+        const { id, top, left } = activeMenu;
+        const file = files.find(f => f.id === id);
+        const folder = folders.find(f => f.id === id);
+        const type: "file" | "folder" = file ? "file" : "folder";
+        const name = file?.name ?? folder?.name ?? "";
+        return createPortal(
+          <div
+            className="fixed z-[9999] bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[172px]"
+            style={{ top, left }}
+            onMouseDown={e => e.stopPropagation()}
+          >
+            {type === "file" && (
+              <MenuItem icon={Eye} label="Preview" onClick={() => { setPreviewFileId(id); setActiveMenu(null); }} />
+            )}
+            <MenuItem icon={Edit2} label="Rename" onClick={() => { setRenameTarget({ id, type, name }); setActiveMenu(null); }} />
+            {type === "file" && (
+              <>
+                <MenuItem icon={Move} label="Move to…" onClick={() => { setMoveTarget(id); setActiveMenu(null); }} />
+                <MenuItem icon={UserCircle} label="Assign Doctor" onClick={() => { setAssignTarget(id); setActiveMenu(null); }} />
+                <MenuItem icon={Download} label="Open" onClick={() => { if (file) handleDownload(file); setActiveMenu(null); }} />
+              </>
+            )}
+            <div className="my-1 border-t border-slate-100" />
+            <MenuItem icon={Trash2} label="Delete" danger onClick={() => { setDeleteTarget({ id, type, name }); setActiveMenu(null); }} />
+          </div>,
+          document.body
+        );
+      })()}
     </div>
   );
 }
