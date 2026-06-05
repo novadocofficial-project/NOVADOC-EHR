@@ -3,7 +3,7 @@ import {
   Folder, FolderOpen, FileText, Image as ImageIcon, Upload, Camera,
   Plus, Search, LayoutGrid, List, MoreVertical, X, ChevronRight, ChevronLeft,
   Trash2, Edit2, ArrowRight, UserCircle, Download, ChevronDown,
-  FolderPlus, Move, Eye, ZoomIn, ZoomOut, ExternalLink,
+  FolderPlus, Move, Eye, ZoomIn, ZoomOut, ExternalLink, Check,
 } from "lucide-react";
 import { INITIAL_DOCTORS, type Doctor } from "@/pages/DoctorsModule";
 
@@ -186,7 +186,15 @@ function usePatientFiles(patientId: string) {
     }));
   }
 
-  return { ...state, addFiles, addFolder, moveFile, renameFile, renameFolder, deleteFile, deleteFolder, assignDoctor };
+  function bulkAssignDoctor(ids: string[], doctorId: string | null, doctorName: string | null) {
+    const idSet = new Set(ids);
+    persist(prev => ({
+      ...prev,
+      files: prev.files.map(f => idSet.has(f.id) ? { ...f, assignedDoctorId: doctorId, assignedDoctorName: doctorName } : f),
+    }));
+  }
+
+  return { ...state, addFiles, addFolder, moveFile, renameFile, renameFolder, deleteFile, deleteFolder, assignDoctor, bulkAssignDoctor };
 }
 
 // ─── File icon ────────────────────────────────────────────────────────────────
@@ -430,7 +438,7 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
   const {
     folders, files, addFiles, addFolder,
     moveFile, renameFile, renameFolder,
-    deleteFile, deleteFolder, assignDoctor,
+    deleteFile, deleteFolder, assignDoctor, bulkAssignDoctor,
   } = usePatientFiles(patientId);
 
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -447,6 +455,8 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
   const [assignTarget,    setAssignTarget]    = useState<string | null>(null);      // file id
   const [deleteTarget,    setDeleteTarget]    = useState<{ id: string; type: "file" | "folder"; name: string } | null>(null);
   const [previewFileId,   setPreviewFileId]   = useState<string | null>(null);
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(() => new Set());
+  const [bulkAssignOpen,  setBulkAssignOpen]  = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const doctors = loadDoctors().filter(d => d.status === "active");
@@ -457,6 +467,9 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // clear selection when navigating folders or changing search
+  useEffect(() => { setSelectedFileIds(new Set()); }, [currentFolderId, searchQuery]);
 
   // ── Breadcrumb ───────────────────────────────────────────────────────────────
 
@@ -554,6 +567,23 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
     setRenameTarget(null);
   }
 
+  function toggleSelect(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setSelectedFileIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAllVisible() {
+    setSelectedFileIds(new Set(visibleFiles.map(f => f.id)));
+  }
+
+  function clearSelection() {
+    setSelectedFileIds(new Set());
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Render helpers
   // ─────────────────────────────────────────────────────────────────────────────
@@ -637,11 +667,21 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
   function FileCard({ file }: { file: PatientFile }) {
     const isImage = file.mimeType.startsWith("image/");
     if (viewMode === "list") {
+      const isSelected = selectedFileIds.has(file.id);
       return (
         <div
           onClick={() => setPreviewFileId(file.id)}
-          className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50/40 rounded-lg group cursor-pointer border-b border-slate-100 last:border-0 transition-colors"
+          className={`flex items-center gap-3 px-4 py-2.5 rounded-lg group cursor-pointer border-b border-slate-100 last:border-0 transition-colors ${isSelected ? "bg-[#4982CF]/6" : "hover:bg-blue-50/40"}`}
         >
+          {/* Checkbox */}
+          <div
+            className={`flex-shrink-0 transition-opacity ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+            onClick={e => toggleSelect(file.id, e)}
+          >
+            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center cursor-pointer transition-colors ${isSelected ? "bg-[#4982CF] border-[#4982CF]" : "bg-white border-slate-300 hover:border-[#4982CF]"}`}>
+              {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+            </div>
+          </div>
           <FileIcon mimeType={file.mimeType} size={28} />
           <span className="text-sm text-slate-700 font-medium flex-1 truncate">{file.name}</span>
           <span className="text-xs text-slate-400 w-16 flex-shrink-0">{fileTypeLabel(file.mimeType)}</span>
@@ -655,11 +695,21 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
         </div>
       );
     }
+    const isSelected = selectedFileIds.has(file.id);
     return (
       <div
         onClick={() => setPreviewFileId(file.id)}
-        className="relative flex flex-col rounded-xl border border-slate-200 hover:border-[#4982CF]/40 hover:shadow-md bg-white cursor-pointer group transition-all overflow-hidden"
+        className={`relative flex flex-col rounded-xl border bg-white cursor-pointer group transition-all overflow-hidden ${isSelected ? "border-[#4982CF]/60 shadow-md ring-1 ring-[#4982CF]/20" : "border-slate-200 hover:border-[#4982CF]/40 hover:shadow-md"}`}
       >
+        {/* Checkbox top-left */}
+        <div
+          className={`absolute top-2 left-2 z-10 transition-opacity ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+          onClick={e => toggleSelect(file.id, e)}
+        >
+          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer shadow-sm transition-colors ${isSelected ? "bg-[#4982CF] border-[#4982CF]" : "bg-white/90 border-slate-300 hover:border-[#4982CF]"}`}>
+            {isSelected && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+          </div>
+        </div>
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 z-10" onClick={e => e.stopPropagation()}>
           <ActionMenu id={file.id} type="file" file={file} />
         </div>
@@ -819,6 +869,42 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
           <span className="ml-1 text-slate-300">— {visibleFolders.length + visibleFiles.length} item{visibleFolders.length + visibleFiles.length !== 1 ? "s" : ""}</span>
         </div>
 
+        {/* Selection toolbar — slides in when ≥1 file selected */}
+        {selectedFileIds.size > 0 && (
+          <div className="flex-shrink-0 flex items-center gap-3 px-4 py-2 bg-[#4982CF]/8 border-b border-[#4982CF]/20 animate-in slide-in-from-top-1 duration-150">
+            <span className="text-xs font-bold text-[#4982CF]">
+              {selectedFileIds.size} file{selectedFileIds.size !== 1 ? "s" : ""} selected
+            </span>
+            {visibleFiles.length > selectedFileIds.size && (
+              <button
+                onClick={selectAllVisible}
+                className="text-xs text-slate-500 hover:text-[#4982CF] underline underline-offset-2 transition-colors"
+              >
+                Select all {visibleFiles.length}
+              </button>
+            )}
+            <button
+              onClick={clearSelection}
+              className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              Deselect all
+            </button>
+            <div className="flex-1" />
+            <button
+              onClick={() => setBulkAssignOpen(true)}
+              className="flex items-center gap-1.5 h-7 px-3 text-xs font-bold rounded-lg bg-[#4982CF] hover:bg-[#3a6fb8] text-white transition-colors shadow-sm"
+            >
+              <UserCircle className="h-3.5 w-3.5" /> Assign Doctor
+            </button>
+            <button
+              onClick={clearSelection}
+              className="p-1 rounded-lg hover:bg-[#4982CF]/10 text-slate-400 hover:text-[#4982CF] transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Content area */}
         <div
           className={`flex-1 overflow-y-auto p-4 transition-colors ${isDragOver ? "bg-[#4982CF]/5 ring-2 ring-[#4982CF]/30 ring-inset" : ""}`}
@@ -849,7 +935,8 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
             <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
               {/* List header */}
               <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                <span className="w-5 flex-shrink-0" />
+                <span className="w-4 flex-shrink-0" />
+                <span className="w-7 flex-shrink-0" />
                 <span className="flex-1">Name</span>
                 <span className="w-16 flex-shrink-0">Type</span>
                 <span className="w-20 flex-shrink-0">Size</span>
@@ -938,13 +1025,28 @@ export function PatientFilesExplorer({ patientId }: { patientId: string }) {
         />
       )}
 
-      {/* Assign Doctor */}
+      {/* Assign Doctor (single) */}
       {assignTarget && (
         <AssignDoctorModal
           doctors={doctors}
           currentDoctorId={files.find(f => f.id === assignTarget)?.assignedDoctorId ?? null}
           onAssign={(id, name) => { assignDoctor(assignTarget, id, name); setAssignTarget(null); }}
           onClose={() => setAssignTarget(null)}
+        />
+      )}
+
+      {/* Bulk Assign Doctor */}
+      {bulkAssignOpen && (
+        <AssignDoctorModal
+          doctors={doctors}
+          currentDoctorId={null}
+          onAssign={(id, name) => {
+            bulkAssignDoctor([...selectedFileIds], id, name);
+            clearSelection();
+            setBulkAssignOpen(false);
+          }}
+          onClose={() => setBulkAssignOpen(false)}
+          title={`Assign ${selectedFileIds.size} file${selectedFileIds.size !== 1 ? "s" : ""} to Doctor`}
         />
       )}
 
@@ -1067,18 +1169,19 @@ function MoveModal({ fileId, folders, currentFolderId, onMove, onClose }: {
   );
 }
 
-function AssignDoctorModal({ doctors, currentDoctorId, onAssign, onClose }: {
+function AssignDoctorModal({ doctors, currentDoctorId, onAssign, onClose, title = "Assign to Doctor" }: {
   doctors: Doctor[];
   currentDoctorId: string | null;
   onAssign: (id: string | null, name: string | null) => void;
   onClose: () => void;
+  title?: string;
 }) {
   const [selected, setSelected] = useState<string | null>(currentDoctorId);
   const selDoc = doctors.find(d => d.id === selected);
 
   return (
     <ModalOverlay onClose={onClose}>
-      <ModalBox title="Assign to Doctor" onClose={onClose}>
+      <ModalBox title={title} onClose={onClose}>
         <div className="border border-slate-200 rounded-lg overflow-hidden max-h-56 overflow-y-auto">
           <button
             onClick={() => setSelected(null)}
