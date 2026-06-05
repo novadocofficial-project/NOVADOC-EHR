@@ -7,6 +7,7 @@ import {
   Printer, Upload, History, CalendarPlus, Ticket, Mail,
   ChevronRight, GitBranch,
 } from "lucide-react";
+import { PatientFilesExplorer, loadPatientFilesLatest, formatFileSize } from "@/pages/PatientFilesExplorer";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
@@ -398,22 +399,6 @@ function VitalsContent({ vitals }: { vitals: VitalEntry[] }) {
   );
 }
 
-function FilesContent() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3">
-      <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center">
-        <Folder className="h-5 w-5 text-slate-300" />
-      </div>
-      <p className="text-sm font-semibold text-slate-500">No files uploaded yet.</p>
-      <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed">
-        Patient documents, consent forms, and attachments will appear here.
-      </p>
-      <button className="flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl border-2 border-dashed border-slate-300 text-slate-400 hover:border-[#4982CF]/50 hover:text-[#4982CF] transition-all mt-2">
-        <Upload className="h-3.5 w-3.5" /> Upload File
-      </button>
-    </div>
-  );
-}
 
 // ─── Section Card ─────────────────────────────────────────────────────────────
 
@@ -876,7 +861,17 @@ export function PatientProfile() {
                     </SectionCard>
 
                     <SectionCard title="Recent Files" icon={Folder} color="#f59e0b" onViewAll={() => setActiveTab("files")}>
-                      <p className="text-xs text-slate-400 text-center py-3">No files uploaded</p>
+                      {(() => {
+                        const recentFiles = loadPatientFilesLatest(id ?? "", 3);
+                        if (recentFiles.length === 0) return <p className="text-xs text-slate-400 text-center py-3">No files uploaded</p>;
+                        return recentFiles.map((f, i) => (
+                          <div key={i} className="flex items-center gap-2 py-0.5">
+                            <Folder className="h-3 w-3 text-amber-400 flex-shrink-0" />
+                            <p className="text-xs text-slate-600 truncate flex-1">{f.name}</p>
+                            <span className="text-[10px] text-slate-400 flex-shrink-0">{formatFileSize(f.size)}</span>
+                          </div>
+                        ));
+                      })()}
                     </SectionCard>
 
                     <SectionCard title="Laboratory Reports" icon={FlaskConical} color="#f59e0b" count={labCount || undefined} onViewAll={() => setActiveTab("labs")}>
@@ -1028,8 +1023,8 @@ export function PatientProfile() {
               </div>
             )}
             {activeTab === "files" && (
-              <div className="h-full overflow-y-auto p-6 max-w-2xl">
-                <FilesContent />
+              <div className="h-full p-4">
+                <PatientFilesExplorer patientId={id ?? ""} />
               </div>
             )}
             {activeTab === "medications" && (
