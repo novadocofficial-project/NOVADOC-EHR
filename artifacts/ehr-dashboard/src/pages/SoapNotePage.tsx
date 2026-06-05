@@ -15,6 +15,7 @@ import { useSoapNoteDraft, saveRoutingSnapshot, savePendingLabOrders, savePatien
 import { Button } from "@/components/ui/button";
 import { View360Drawer } from "@/pages/View360Drawer";
 import { LabsDrawer } from "@/pages/LabsDrawer";
+import { ScannedDocumentsDrawer } from "@/pages/ScannedDocumentsDrawer";
 import { ClinicalNoteDrawer, EMPTY_NOTE } from "@/pages/ClinicalNoteDrawer";
 import type { NoteState } from "@/pages/ClinicalNoteDrawer";
 import { EMPTY_FORMULARY } from "@/pages/FormularySection";
@@ -1739,6 +1740,17 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
       {!showNoteDrawer && openDrawer === "Labs" && (
         <LabsDrawer
           entry={entry}
+          fullscreen={drawerFullscreen}
+          onToggleFullscreen={() => setDrawerFullscreen(f => !f)}
+          onClose={closeDrawer}
+        />
+      )}
+
+      {/* Scanned Documents drawer */}
+      {!showNoteDrawer && openDrawer === "Scanned Documents" && (
+        <ScannedDocumentsDrawer
+          patientId={entry.patient?.id ?? ""}
+          doctorId={doctorId}
           fullscreen={drawerFullscreen}
           onToggleFullscreen={() => setDrawerFullscreen(f => !f)}
           onClose={closeDrawer}

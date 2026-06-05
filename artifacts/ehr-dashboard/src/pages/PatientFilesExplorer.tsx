@@ -41,7 +41,7 @@ function storageKey(patientId: string) {
   return `ehr-patient-files-${patientId}`;
 }
 
-function loadFilesState(patientId: string): FilesState {
+export function loadFilesState(patientId: string): FilesState {
   try {
     const raw = localStorage.getItem(storageKey(patientId));
     if (raw) return JSON.parse(raw) as FilesState;
@@ -68,7 +68,7 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatDateTime(iso: string): string {
+export function formatDateTime(iso: string): string {
   try {
     const d = new Date(iso);
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) +
@@ -76,7 +76,7 @@ function formatDateTime(iso: string): string {
   } catch { return iso; }
 }
 
-function fileTypeLabel(mimeType: string): string {
+export function fileTypeLabel(mimeType: string): string {
   if (mimeType === "application/pdf") return "PDF";
   if (mimeType.includes("jpeg") || mimeType.includes("jpg")) return "JPEG";
   if (mimeType.includes("png")) return "PNG";
@@ -213,7 +213,7 @@ function usePatientFiles(patientId: string) {
 
 // ─── File icon ────────────────────────────────────────────────────────────────
 
-function FileIcon({ mimeType, size = 24 }: { mimeType: string; size?: number }) {
+export function FileIcon({ mimeType, size = 24 }: { mimeType: string; size?: number }) {
   if (mimeType === "application/pdf") {
     return (
       <div className="flex items-center justify-center rounded-lg bg-red-50 text-red-500" style={{ width: size, height: size }}>
@@ -279,14 +279,14 @@ function FolderTreeNode({
 
 // ─── File preview lightbox ────────────────────────────────────────────────────
 
-function FilePreviewModal({
+export function FilePreviewModal({
   file, allFiles, onClose, onNavigate, onOpenAssign,
 }: {
   file: PatientFile;
   allFiles: PatientFile[];
   onClose: () => void;
   onNavigate: (id: string) => void;
-  onOpenAssign: (id: string) => void;
+  onOpenAssign?: (id: string) => void;
 }) {
   const isImage = file.mimeType.startsWith("image/");
   const isPdf   = file.mimeType === "application/pdf";
@@ -357,12 +357,14 @@ function FilePreviewModal({
           </div>
         )}
         {/* Actions */}
-        <button
-          onClick={() => { onOpenAssign(file.id); onClose(); }}
-          className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors flex-shrink-0"
-        >
-          <UserCircle className="h-3.5 w-3.5" /> Assign Doctor
-        </button>
+        {onOpenAssign && (
+          <button
+            onClick={() => { onOpenAssign(file.id); onClose(); }}
+            className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors flex-shrink-0"
+          >
+            <UserCircle className="h-3.5 w-3.5" /> Assign Doctor
+          </button>
+        )}
         <button
           onClick={() => window.open(file.dataUrl, "_blank")}
           className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors flex-shrink-0"
