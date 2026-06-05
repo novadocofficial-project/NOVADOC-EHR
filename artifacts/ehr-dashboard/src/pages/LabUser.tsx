@@ -676,7 +676,7 @@ function LabPanel({ entry, onClose, onComplete, onAllSamplesCollected, doctorCan
               <Collapsible title="Patient Info" defaultOpen={false}>
                 {p ? (
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-1.5 text-xs">
-                    {([["Name", p.name], ["MRN", p.mrn], ["Gender", p.gender === "M" ? "Male" : "Female"], ["DOB", p.dob], ["Phone", p.phone]] as [string, string][]).map(([l, v]) => (
+                    {([["Name", p.name], ["MRN", p.mrn], ["Gender", p.gender === "M" ? "Male" : p.gender === "O" ? "Other" : "Female"], ["DOB", p.dob], ["Phone", p.phone]] as [string, string][]).map(([l, v]) => (
                       <div key={l} className="flex justify-between">
                         <span className="text-slate-400">{l}</span>
                         <span className="font-semibold text-slate-800">{v}</span>
@@ -1354,7 +1354,7 @@ function LabDrawer({ entry, onClose, onComplete, onAllSamplesCollected, doctorCa
                 {p ? (
                   <>
                     <p className="text-sm font-bold text-slate-900">{p.name}</p>
-                    <p className="text-xs text-slate-500">{p.mrn} · {p.gender === "M" ? "Male" : "Female"}</p>
+                    <p className="text-xs text-slate-500">{p.mrn} · {p.gender === "M" ? "Male" : p.gender === "O" ? "Other" : "Female"}</p>
                   </>
                 ) : (
                   <p className="text-sm text-slate-400 italic">Walk-in / No MR</p>

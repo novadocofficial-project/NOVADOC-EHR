@@ -727,7 +727,7 @@ export function PatientProfile() {
             <div className="px-4 pb-4 space-y-2.5">
               <div className="flex items-center gap-2.5">
                 <User className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                <span className="text-xs text-slate-600">{patient.gender === "M" ? "Male" : "Female"} · {age}</span>
+                <span className="text-xs text-slate-600">{patient.gender === "M" ? "Male" : patient.gender === "O" ? "Other" : "Female"} · {age}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />

@@ -509,7 +509,7 @@ export function PatientFaceSheet({
   const mrn     = p?.mrn   ?? "—";
   const dob     = p?.dob   ?? "—";
   const phone   = p?.phone ?? "—";
-  const gender  = p?.gender === "F" ? "Female" : "Male";
+  const gender  = p?.gender === "F" ? "Female" : p?.gender === "O" ? "Other" : "Male";
   const address = "House 14, Street 7, DHA Phase 3, Lahore";
 
   // ── SOAP Note page navigation ─────────────────────────────────────────────

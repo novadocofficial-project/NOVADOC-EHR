@@ -47,7 +47,7 @@ export type Patient = {
   name: string;
   phone: string;
   dob: string;
-  gender: "M" | "F";
+  gender: "M" | "F" | "O";
 };
 
 export type VisitType = {

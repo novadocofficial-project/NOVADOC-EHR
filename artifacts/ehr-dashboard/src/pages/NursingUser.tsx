@@ -4096,7 +4096,7 @@ function NursingDrawer({ entry, onClose, onSave }: { entry: MultiEntry; onClose:
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-[#4982CF] font-bold">Vitals Step</span>
                 </div>
                 {p ? (
-                  <><p className="text-sm font-bold text-slate-900">{p.name}</p><p className="text-xs text-slate-500">{p.mrn} · {p.gender === "M" ? "Male" : "Female"}</p></>
+                  <><p className="text-sm font-bold text-slate-900">{p.name}</p><p className="text-xs text-slate-500">{p.mrn} · {p.gender === "M" ? "Male" : p.gender === "O" ? "Other" : "Female"}</p></>
                 ) : <p className="text-sm text-slate-400 italic">Walk-in / No MR</p>}
               </div>
             </div>

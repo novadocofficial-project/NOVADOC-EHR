@@ -371,6 +371,22 @@ function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
       );
     }
 
+    if (field.id === "gender") {
+      return (
+        <div key={field.id}>
+          {lbl}
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden text-sm font-semibold">
+            {(["Male", "Female", "Other"] as const).map(opt => (
+              <button key={opt} type="button" onClick={() => setVal(field.id, opt)}
+                className={`flex-1 py-2 transition-colors ${val === opt ? "bg-[#4982CF] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     if (field.type === "text" || field.type === "number") {
       return <div key={field.id}>{lbl}<Input type={field.type === "number" ? "number" : "text"} placeholder={field.placeholder} value={val} onChange={e => setVal(field.id, e.target.value)} /></div>;
     }
@@ -459,12 +475,13 @@ function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
   }
 
   const SHORT_TYPES = new Set<string>(["text", "number", "date", "dropdown"]);
+  const canPair = (f: RegField) => SHORT_TYPES.has(f.type) && f.id !== "gender";
   function renderFieldsInGrid(fields: RegField[], keyPrefix = ""): React.ReactNode[] {
     const rows: React.ReactNode[] = [];
     let i = 0;
     while (i < fields.length) {
       const f = fields[i], next = fields[i + 1];
-      if (SHORT_TYPES.has(f.type) && next && SHORT_TYPES.has(next.type)) {
+      if (canPair(f) && next && canPair(next)) {
         rows.push(<div key={`${keyPrefix}g-${i}`} className="grid grid-cols-2 gap-3">{renderField(f)}{renderField(next)}</div>);
         i += 2;
       } else {
@@ -670,7 +687,7 @@ function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
       name:   `${firstName} ${lastName}`.trim() || "Patient",
       phone:  values["phone"] ?? "",
       dob:    values["dob"]   ?? "",
-      gender: "M",
+      gender: values["gender"] === "Female" ? "F" : values["gender"] === "Other" ? "O" : "M",
     });
   }
 

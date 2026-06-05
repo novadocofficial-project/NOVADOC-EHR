@@ -259,7 +259,7 @@ export function QueueTokenMultiStep() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-semibold text-slate-900 leading-tight">{p.name}</p>
-                              <p className="text-[10px] text-slate-400 leading-tight">{p.mrn} · {p.gender === "M" ? "Male" : "Female"}</p>
+                              <p className="text-[10px] text-slate-400 leading-tight">{p.mrn} · {p.gender === "M" ? "Male" : p.gender === "O" ? "Other" : "Female"}</p>
                             </div>
                             <ChevronRight className="h-3.5 w-3.5 text-slate-300 flex-shrink-0" />
                           </button>

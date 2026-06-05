@@ -110,6 +110,7 @@ export const DEFAULT_REG_CONFIG: RegConfig = {
         { id: "first_name",        label: "First Name",             type: "text",     required: true,  enabled: true,  options: [], placeholder: "First name",          isBuiltIn: true },
         { id: "last_name",         label: "Last Name",              type: "text",     required: false, enabled: true,  options: [], placeholder: "Last name",           isBuiltIn: true },
         { id: "dob",               label: "Date of Birth",          type: "date",     required: true,  enabled: true,  options: [], placeholder: "",                    isBuiltIn: true },
+        { id: "gender",            label: "Gender",                 type: "dropdown", required: false, enabled: true,  options: ["Male", "Female", "Other"], placeholder: "", isBuiltIn: true },
         { id: "phone",             label: "Phone Number",           type: "text",     required: true,  enabled: true,  options: [], placeholder: "+92 300 000-0000",     isBuiltIn: true },
         { id: "cnic",              label: "CNIC",                   type: "text",     required: false, enabled: true,  options: [], placeholder: "00000-0000000-0",      isBuiltIn: true },
         { id: "referred_by",       label: "Referred By",            type: "text",     required: false, enabled: true,  options: [], placeholder: "Referrer name",        isBuiltIn: true },
@@ -209,12 +210,18 @@ const STORAGE_KEY = "ehr-reg-config-v1";
 function normalizeConfig(stored: Partial<RegConfig>): RegConfig {
   // Ensure top-level arrays exist
   const sections = Array.isArray(stored.sections) && stored.sections.length > 0
-    ? stored.sections.map(s => ({
-        ...DEFAULT_REG_CONFIG.sections.find(d => d.id === s.id) ?? DEFAULT_REG_CONFIG.sections[0],
-        ...s,
-        fields: Array.isArray(s.fields) ? s.fields : [],
-        conditionalRules: Array.isArray(s.conditionalRules) ? s.conditionalRules : [],
-      }))
+    ? stored.sections.map(s => {
+        const defaultSec = DEFAULT_REG_CONFIG.sections.find(d => d.id === s.id) ?? DEFAULT_REG_CONFIG.sections[0];
+        const storedFields: typeof defaultSec.fields = Array.isArray(s.fields) ? s.fields : [];
+        const storedIds = new Set(storedFields.map(f => f.id));
+        const newDefaults = defaultSec.fields.filter(f => f.isBuiltIn && !storedIds.has(f.id));
+        return {
+          ...defaultSec,
+          ...s,
+          fields: [...storedFields, ...newDefaults],
+          conditionalRules: Array.isArray(s.conditionalRules) ? s.conditionalRules : [],
+        };
+      })
     : DEFAULT_REG_CONFIG.sections;
 
   const patientTypes = Array.isArray(stored.patientTypes) && stored.patientTypes.length > 0
