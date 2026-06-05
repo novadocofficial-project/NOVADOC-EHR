@@ -93,13 +93,23 @@ export function ScannedDocumentsDrawer({
   const [files, setFiles] = useState<PatientFile[]>([]);
   const [previewId, setPreviewId] = useState<string | null>(null);
 
-  useEffect(() => {
+  function reload() {
     const state = loadFilesState(patientId);
     const filtered = doctorId
       ? state.files.filter(f => f.assignedDoctorId === doctorId)
       : [];
     setFiles(filtered.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt)));
-  }, [patientId, doctorId]);
+  }
+
+  useEffect(() => {
+    reload();
+    const storageKey = `ehr-patient-files-${patientId}`;
+    function onStorage(e: StorageEvent) {
+      if (e.key === storageKey) reload();
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [patientId, doctorId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const groups = groupByDate(files);
   const previewFile = previewId ? (files.find(f => f.id === previewId) ?? null) : null;

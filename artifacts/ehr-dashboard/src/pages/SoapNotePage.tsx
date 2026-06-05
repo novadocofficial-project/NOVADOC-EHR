@@ -1726,7 +1726,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
       {/* ═══════════════════════════════════════════════════════════════════════
           MODULE DRAWER (right-side overlay)
       ═══════════════════════════════════════════════════════════════════════ */}
-      {!showNoteDrawer && openDrawer && openDrawer !== "360 View" && openDrawer !== "Labs" && activeTabMeta && (
+      {!showNoteDrawer && openDrawer && openDrawer !== "360 View" && openDrawer !== "Labs" && openDrawer !== "Scanned Documents" && activeTabMeta && (
         <ModuleDrawer
           label={openDrawer}
           Icon={activeTabMeta.Icon}
