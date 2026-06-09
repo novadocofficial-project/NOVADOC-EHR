@@ -329,7 +329,7 @@ interface LabDrawerProps {
 }
 
 export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsReady = false, onSave, onClose }: LabDrawerProps) {
-  const [tab,               setTab]               = useState<"sets" | "browse">("sets");
+  const [tab,               setTab]               = useState<"sets" | "browse">("browse");
   const [search,            setSearch]            = useState("");
   const [selectedCategory,  setSelectedCategory]  = useState(LAB_CATEGORIES[0]);
 
@@ -448,8 +448,8 @@ export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsRead
       {/* ── Mode tabs ── */}
       <div className="flex border-b border-slate-100 flex-shrink-0">
         {([
-          { key: "sets",   label: "Order Sets",    Icon: Layers     },
           { key: "browse", label: "Browse Tests",  Icon: ListChecks },
+          { key: "sets",   label: "Order Sets",    Icon: Layers     },
         ] as const).map(({ key, label, Icon }) => (
           <button
             key={key}
