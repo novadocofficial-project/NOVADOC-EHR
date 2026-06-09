@@ -707,7 +707,7 @@ export function ApptFaceSheet({
                     <p className="text-xs font-bold text-slate-800">{a.name}</p>
                     <SeverityBadge severity={a.severity} />
                   </div>
-                  <p className="text-[10px] text-slate-500 font-medium">{a.reaction}</p>
+                  <p className="text-xs text-slate-700 font-semibold">{a.reaction}</p>
                 </div>
               ))}
             </div>
