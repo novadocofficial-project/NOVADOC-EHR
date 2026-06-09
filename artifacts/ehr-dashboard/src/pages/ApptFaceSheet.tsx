@@ -43,11 +43,13 @@ const VITALS_TREND = [...SOAP_DUMMY].reverse().map(r => {
 
 const _v = SOAP_DUMMY[0].vitals;
 const VITALS_TODAY = [
-  { label: "BP",     value: _v.bp,                     unit: "mmHg", icon: <Activity className="h-4 w-4" />,   color: "#4982CF" },
-  { label: "Pulse",  value: _v.pulse,                   unit: "bpm",  icon: <Heart className="h-4 w-4" />,       color: "#ef4444" },
-  { label: "Temp",   value: _v.temp,                    unit: "°C",   icon: <Thermometer className="h-4 w-4" />, color: "#f59e0b" },
-  { label: "O₂ Sat", value: _v.spo2 + "%",              unit: "SpO₂", icon: <Droplets className="h-4 w-4" />,   color: "#10b981" },
-  { label: "Weight", value: _v.weight.replace(" kg",""), unit: "kg",   icon: <User className="h-4 w-4" />,       color: "#8b5cf6" },
+  { label: "BP",     value: _v.bp,                     unit: "mmHg",  icon: <Activity className="h-4 w-4" />,   color: "#4982CF" },
+  { label: "Pulse",  value: _v.pulse,                   unit: "bpm",   icon: <Heart className="h-4 w-4" />,       color: "#ef4444" },
+  { label: "Temp",   value: _v.temp,                    unit: "°C",    icon: <Thermometer className="h-4 w-4" />, color: "#f59e0b" },
+  { label: "O₂ Sat", value: _v.spo2 + "%",              unit: "SpO₂",  icon: <Droplets className="h-4 w-4" />,   color: "#10b981" },
+  { label: "Weight", value: _v.weight.replace(" kg",""), unit: "kg",    icon: <User className="h-4 w-4" />,       color: "#8b5cf6" },
+  { label: "Pain",   value: "6/10",                     unit: "Score",  icon: <Zap className="h-4 w-4" />,        color: "#f97316" },
+  { label: "PHQ-4",  value: "7",                        unit: "Mental", icon: <Brain className="h-4 w-4" />,      color: "#7c3aed" },
 ];
 
 const CRITICAL_CONDITIONS = SOAP_DUMMY
