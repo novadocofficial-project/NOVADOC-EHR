@@ -812,6 +812,18 @@ export function PatientFaceSheet({
                 sub={`${h.answer} · ${h.by} · ${h.date}`}
               />
             ))}
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 pt-3 pb-1 border-t border-slate-100 mt-1 flex items-center gap-1.5">
+              <Scissors className="h-3 w-3" /> Surgical Procedures
+            </p>
+            {SURGICAL_PROCEDURES.map((s, i) => (
+              <ActionRow key={i} label={s.procedure} sub={`${s.date} · ${s.diagnosis} · ${s.status}`} />
+            ))}
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 pt-3 pb-1 border-t border-slate-100 mt-1 flex items-center gap-1.5">
+              <ShieldCheck className="h-3 w-3" /> Vaccinations
+            </p>
+            {VACCINATIONS.map((v, i) => (
+              <ActionRow key={i} label={v.vaccine} sub={`${v.schedule} · ${v.administeredOn} · ${v.administeredBy}`} />
+            ))}
           </SectionCard>
 
           <SectionCard title="Current Medications" icon={<Pill className="h-4 w-4" />} badge={3} accentColor="#10b981">
@@ -884,10 +896,8 @@ export function PatientFaceSheet({
           </SectionCard>
         </div>
 
-        {/* ── ROW 4: Referrals + Surgical Procedures + Vaccination ─────────── */}
-        <div className="grid grid-cols-3 gap-4 pb-6">
-
-          {/* Referrals */}
+        {/* ── ROW 4: Referrals ─────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 gap-4 pb-6">
           <SectionCard title="Referrals" icon={<ArrowUpRight className="h-4 w-4" />} badge={REFERRALS.length} accentColor="#6366f1">
             <TableHeader cols={["Date", "Type", "Location", "Status"]} />
             {REFERRALS.map((r, i) => (
@@ -903,31 +913,6 @@ export function PatientFaceSheet({
               />
             ))}
           </SectionCard>
-
-          {/* Surgical Procedures */}
-          <SectionCard title="Surgical Procedures" icon={<Scissors className="h-4 w-4" />} badge={SURGICAL_PROCEDURES.length} accentColor="#ec4899">
-            <TableHeader cols={["Date", "Diagnosis", "Procedure", "Status"]} />
-            {SURGICAL_PROCEDURES.map((s, i) => (
-              <TableRow
-                key={i}
-                last={i === SURGICAL_PROCEDURES.length - 1}
-                cells={[s.date, s.diagnosis, s.procedure, <StatusPill status={s.status} />]}
-              />
-            ))}
-          </SectionCard>
-
-          {/* Vaccination */}
-          <SectionCard title="Vaccination" icon={<ShieldCheck className="h-4 w-4" />} badge={VACCINATIONS.length} accentColor="#10b981">
-            <TableHeader cols={["Schedule", "Vaccine", "Administered On", "By"]} />
-            {VACCINATIONS.map((v, i) => (
-              <TableRow
-                key={i}
-                last={i === VACCINATIONS.length - 1}
-                cells={[v.schedule, v.vaccine, v.administeredOn, v.administeredBy]}
-              />
-            ))}
-          </SectionCard>
-
         </div>
       </div>
 
