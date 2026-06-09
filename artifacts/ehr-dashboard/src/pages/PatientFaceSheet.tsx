@@ -9,6 +9,7 @@ import {
   Maximize2, Minimize2, ChevronDown,
 } from "lucide-react";
 import { SOAP_DUMMY } from "@/data/soapDummy";
+import { printHealthRecord } from "@/lib/printHealthRecord";
 import { Button } from "@/components/ui/button";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
 import { SoapNotePage } from "@/pages/SoapNotePage";
@@ -110,6 +111,9 @@ const HEALTH_RECORDS = SOAP_DUMMY.map(r => ({
   noteType: "Comprehensive Note",
   by: r.signedBy,
   date: longDate(r.signedAt),
+  rawDate: r.signedAt.split(", ")[0] ?? r.signedAt,
+  rawTime: r.signedAt.split(", ")[1] ?? "",
+  note: r,
 }));
 
 // Patient History Q&A — social / family / medical history from SOAP records
@@ -900,7 +904,15 @@ export function PatientFaceSheet({
                 label={r.noteType}
                 sub={`${r.by} · ${r.date}`}
                 right={
-                  <button className="flex items-center gap-1 text-[10px] font-bold text-sky-500 hover:text-sky-700 transition-colors whitespace-nowrap">
+                  <button
+                    className="flex items-center gap-1 text-[10px] font-bold text-sky-500 hover:text-sky-700 transition-colors whitespace-nowrap"
+                    onClick={() => void printHealthRecord({
+                      patient: { name, mrn },
+                      noteRow: { date: r.rawDate, time: r.rawTime, type: r.noteType, doctor: r.by },
+                      visitType: r.noteType,
+                      noteKind: { kind: "dummy", note: r.note },
+                    })}
+                  >
                     <ExternalLink className="h-3 w-3" /> View
                   </button>
                 }
