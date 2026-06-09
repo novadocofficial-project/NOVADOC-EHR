@@ -717,20 +717,8 @@ export function ApptFaceSheet({
             {HISTORY_RECORDS.map((h, i) => (
               <ActionRow key={i} label={h.question} sub={`${h.answer} · ${h.by} · ${h.date}`} />
             ))}
-            <div className="flex items-center gap-1.5 px-4 pt-3 pb-1 border-t border-slate-100 mt-1">
-              <Scissors className="h-3 w-3 text-slate-400" />
-              <p className="text-xs font-semibold text-slate-800">Surgical Procedures</p>
-            </div>
-            {SURGICAL_PROCEDURES.map((s, i) => (
-              <ActionRow key={i} label={s.procedure} sub={`${s.date} · ${s.diagnosis} · ${s.status}`} />
-            ))}
-            <div className="flex items-center gap-1.5 px-4 pt-3 pb-1 border-t border-slate-100 mt-1">
-              <ShieldCheck className="h-3 w-3 text-slate-400" />
-              <p className="text-xs font-semibold text-slate-800">Vaccinations</p>
-            </div>
-            {VACCINATIONS.map((v, i) => (
-              <ActionRow key={i} label={v.vaccine} sub={`${v.schedule} · ${v.administeredOn} · ${v.administeredBy}`} />
-            ))}
+            <ActionRow label="Surgical Procedures" sub={SURGICAL_PROCEDURES.map(s => `${s.procedure} · ${s.date} · ${s.status}`).join(" | ")} />
+            <ActionRow label="Vaccinations" sub={VACCINATIONS.map(v => `${v.vaccine} · ${v.schedule} · ${v.administeredOn}`).join(" | ")} />
           </SectionCard>
 
           <SectionCard
