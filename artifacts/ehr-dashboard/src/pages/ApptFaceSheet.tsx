@@ -732,7 +732,7 @@ export function ApptFaceSheet({
             icon={<ClipboardList className="h-4 w-4" />}
             badge={3}
             accentColor="#f59e0b"
-            onViewAll={() => setShowComplaintsDrawer(true)}>
+            >
             {PRESENTING_COMPLAINTS.map((pc, i) => (
               <ActionRow key={i} label={pc.complaint} sub={`${pc.date} · ${pc.time} · ${pc.by}`} />
             ))}
