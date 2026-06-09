@@ -147,6 +147,16 @@ const MED_CATEGORY_DATA = [
 ];
 
 const PAIN_DATA = [{ name: "Pain", value: 50, fill: "#f59e0b" }];
+const PAIN_TREND = [
+  { visit: "10 Nov", score: 7 },
+  { visit: "25 Nov", score: 5 },
+  { visit: "10 Dec", score: 5 },
+];
+const MENTAL_TREND = [
+  { visit: "10 Nov", score: 6 },
+  { visit: "25 Nov", score: 9 },
+  { visit: "10 Dec", score: 8 },
+];
 
 // ─── Presenting Complaints Drawer data ────────────────────────────────────────
 
@@ -653,17 +663,21 @@ export function ApptFaceSheet({
               <Zap className="h-4 w-4 text-amber-500" />
               <p className="text-sm font-bold text-slate-800">Pain Score</p>
             </div>
-            <div className="flex flex-col items-center justify-center p-3">
-              <ResponsiveContainer width="100%" height={120}>
-                <RadialBarChart cx="50%" cy="65%" innerRadius="50%" outerRadius="85%" startAngle={180} endAngle={0} data={PAIN_DATA}>
-                  <RadialBar dataKey="value" cornerRadius={4} background={{ fill: "#f1f5f9" }} />
-                </RadialBarChart>
-              </ResponsiveContainer>
-              <div className="text-center -mt-3">
-                <p className="text-3xl font-black text-amber-600">5</p>
-                <p className="text-[10px] text-slate-400 font-semibold">out of 10</p>
-                <p className="text-[10px] font-bold text-amber-600 mt-0.5">Moderate</p>
+            <div className="flex flex-col p-3 gap-1">
+              <div className="flex items-end justify-between px-1">
+                <p className="text-[10px] text-slate-400 font-semibold">Last 3 readings</p>
+                <p className="text-xl font-black text-amber-600">5 <span className="text-[10px] font-semibold text-slate-400">/10</span></p>
               </div>
+              <ResponsiveContainer width="100%" height={90}>
+                <LineChart data={PAIN_TREND} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="visit" tick={{ fontSize: 9, fill: "#94a3b8" }} />
+                  <YAxis tick={{ fontSize: 9, fill: "#94a3b8" }} domain={[0, 10]} ticks={[0, 5, 10]} />
+                  <Tooltip contentStyle={{ fontSize: 10, borderRadius: 8 }} formatter={(v: number) => [`${v}/10`, "Pain"]} />
+                  <Line type="monotone" dataKey="score" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3, fill: "#f59e0b" }} activeDot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+              <p className="text-[10px] font-bold text-amber-600 text-center">Moderate</p>
             </div>
           </div>
 
@@ -673,11 +687,21 @@ export function ApptFaceSheet({
               <Brain className="h-4 w-4 text-violet-500" />
               <p className="text-sm font-bold text-slate-800">Mental Health</p>
             </div>
-            <div className="flex flex-col items-center justify-center p-4 gap-1">
-              <p className="text-3xl font-black text-violet-600">8</p>
-              <p className="text-[10px] text-slate-400 font-semibold">out of 16</p>
-              <p className="text-[10px] font-bold text-violet-600 mt-0.5">Mild</p>
-              <p className="text-[9px] text-slate-400 mt-1 text-center leading-tight">PHQ-4 Screen</p>
+            <div className="flex flex-col p-3 gap-1">
+              <div className="flex items-end justify-between px-1">
+                <p className="text-[10px] text-slate-400 font-semibold">PHQ-4 · Last 3</p>
+                <p className="text-xl font-black text-violet-600">8 <span className="text-[10px] font-semibold text-slate-400">/16</span></p>
+              </div>
+              <ResponsiveContainer width="100%" height={90}>
+                <LineChart data={MENTAL_TREND} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="visit" tick={{ fontSize: 9, fill: "#94a3b8" }} />
+                  <YAxis tick={{ fontSize: 9, fill: "#94a3b8" }} domain={[0, 16]} ticks={[0, 8, 16]} />
+                  <Tooltip contentStyle={{ fontSize: 10, borderRadius: 8 }} formatter={(v: number) => [`${v}/16`, "PHQ-4"]} />
+                  <Line type="monotone" dataKey="score" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+              <p className="text-[10px] font-bold text-violet-600 text-center">Mild</p>
             </div>
           </div>
         </div>
