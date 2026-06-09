@@ -922,7 +922,7 @@ export function PatientFaceSheet({
         </div>
 
         {/* ── ROW 4: Referrals ─────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 gap-4 pb-6">
+        <div className="grid grid-cols-3 gap-4 pb-6">
           <SectionCard title="Referrals" icon={<ArrowUpRight className="h-4 w-4" />} badge={REFERRALS.length} accentColor="#6366f1" onViewAll={() => {}}>
             <TableHeader cols={["Date", "Type", "Location", "Status"]} />
             {REFERRALS.map((r, i) => (
