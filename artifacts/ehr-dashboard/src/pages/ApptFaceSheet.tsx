@@ -282,9 +282,11 @@ function SectionCard({
             <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: accentColor }}>{badge}</span>
           )}
         </div>
-        <button onClick={onViewAll} className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          <Eye className="h-3 w-3" /> View All
-        </button>
+        {onViewAll !== undefined && (
+          <button onClick={onViewAll} className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
+            <Eye className="h-3 w-3" /> View All
+          </button>
+        )}
       </div>
       <div className="flex-1 p-4">{children}</div>
     </div>
@@ -766,13 +768,13 @@ export function ApptFaceSheet({
 
         {/* ── ROW 4: Investigations + Scanned Documents + Health Records ──────── */}
         <div className="grid grid-cols-3 gap-4">
-          <SectionCard title="Investigations" icon={<FlaskConical className="h-4 w-4" />} badge={3} accentColor="#06b6d4">
+          <SectionCard title="Investigations" icon={<FlaskConical className="h-4 w-4" />} badge={3} accentColor="#06b6d4" onViewAll={() => {}}>
             {INVESTIGATIONS.map((inv, i) => (
               <ActionRow key={i} label={inv.type} sub={`${inv.date} · Advised by ${inv.advisor}`} />
             ))}
           </SectionCard>
 
-          <SectionCard title="Scanned Documents" icon={<FolderOpen className="h-4 w-4" />} badge={3} accentColor="#f59e0b">
+          <SectionCard title="Scanned Documents" icon={<FolderOpen className="h-4 w-4" />} badge={3} accentColor="#f59e0b" onViewAll={() => {}}>
             {DOCUMENTS.map((d, i) => (
               <ActionRow key={i} label={d.folder} sub={`${d.desc} · ${d.date}`} />
             ))}
@@ -796,7 +798,7 @@ export function ApptFaceSheet({
 
         {/* ── ROW 5: Referrals ─────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 pb-6">
-          <SectionCard title="Referrals" icon={<ArrowUpRight className="h-4 w-4" />} badge={REFERRALS.length} accentColor="#6366f1">
+          <SectionCard title="Referrals" icon={<ArrowUpRight className="h-4 w-4" />} badge={REFERRALS.length} accentColor="#6366f1" onViewAll={() => {}}>
             <TableHeader cols={["Date", "Type", "Location", "Status"]} />
             {REFERRALS.map((r, i) => (
               <TableRow
