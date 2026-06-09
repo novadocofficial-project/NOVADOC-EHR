@@ -127,11 +127,10 @@ const HISTORY_RECORDS = [
 
 // Referrals — all referrals from all records with status by visit recency
 const REFERRALS = SOAP_DUMMY
-  .flatMap((r, ri) => r.referrals.map(ref => ({
+  .flatMap(r => r.referrals.map(ref => ({
     date: longDate(r.signedAt),
     type: ref.specialty,
-    location: "—",
-    status: (ri === 0 ? "Pending" : ri === 1 ? "Scheduled" : "Completed") as "Pending" | "Scheduled" | "Completed",
+    reason: ref.reason,
   })))
   .slice(0, 4);
 
@@ -926,12 +925,12 @@ export function PatientFaceSheet({
         {/* ── ROW 4: Referrals ─────────────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-4 pb-6">
           <SectionCard title="Referrals" icon={<ArrowUpRight className="h-4 w-4" />} badge={REFERRALS.length} accentColor="#6366f1" onViewAll={() => {}}>
-            <TableHeader cols={["Date", "Type", "Location", "Status"]} />
+            <TableHeader cols={["Date", "Type", "Reason"]} />
             {REFERRALS.map((r, i) => (
               <TableRow
                 key={i}
                 last={i === REFERRALS.length - 1}
-                cells={[r.date, r.type, r.location, <StatusPill status={r.status} />]}
+                cells={[r.date, r.type, r.reason]}
               />
             ))}
           </SectionCard>
