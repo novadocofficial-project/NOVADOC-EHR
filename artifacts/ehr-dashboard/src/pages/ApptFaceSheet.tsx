@@ -92,6 +92,13 @@ const DOCUMENTS = [
   { date: longDate(SOAP_DUMMY[2].signedAt), folder: "Ophthalmology", desc: "Fundus photography report"            },
 ];
 
+const HEALTH_RECORDS = SOAP_DUMMY.map(r => ({
+  date: longDate(r.signedAt),
+  cc: r.cc.slice(0, 2).join(", "),
+  diagnosis: r.diagnoses[0]?.name ?? "—",
+  by: r.signedBy,
+}));
+
 const HISTORY_RECORDS = [
   { date: longDate(SOAP_DUMMY[0].signedAt), by: SOAP_DUMMY[0].signedBy, question: "Social History",  answer: SOAP_DUMMY[0].socialHistory.join("; ") },
   { date: longDate(SOAP_DUMMY[0].signedAt), by: SOAP_DUMMY[0].signedBy, question: "Family History",  answer: SOAP_DUMMY[0].familyHistory.join("; ") },
@@ -758,8 +765,8 @@ export function ApptFaceSheet({
           </SectionCard>
         </div>
 
-        {/* ── ROW 4: Investigations + Documents ─────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* ── ROW 4: Investigations + Scanned Documents + Health Records ──────── */}
+        <div className="grid grid-cols-3 gap-4">
           <SectionCard title="Investigations" icon={<FlaskConical className="h-4 w-4" />} badge={3} accentColor="#06b6d4">
             {INVESTIGATIONS.map((inv, i) => (
               <ActionRow key={i} label={inv.type} sub={`${inv.date} · Advised by ${inv.advisor}`} />
@@ -769,6 +776,21 @@ export function ApptFaceSheet({
           <SectionCard title="Scanned Documents" icon={<FolderOpen className="h-4 w-4" />} badge={3} accentColor="#f59e0b">
             {DOCUMENTS.map((d, i) => (
               <ActionRow key={i} label={d.folder} sub={`${d.desc} · ${d.date}`} />
+            ))}
+          </SectionCard>
+
+          <SectionCard title="Health Records" icon={<FileText className="h-4 w-4" />} badge={HEALTH_RECORDS.length} accentColor="#0ea5e9">
+            {HEALTH_RECORDS.map((r, i) => (
+              <ActionRow
+                key={i}
+                label={r.cc}
+                sub={`${r.diagnosis} · ${r.by} · ${r.date}`}
+                right={
+                  <button className="flex items-center gap-1 text-[10px] font-bold text-sky-500 hover:text-sky-700 transition-colors whitespace-nowrap">
+                    <ExternalLink className="h-3 w-3" /> View
+                  </button>
+                }
+              />
             ))}
           </SectionCard>
         </div>
