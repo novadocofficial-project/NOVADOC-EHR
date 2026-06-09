@@ -664,10 +664,7 @@ export function ApptFaceSheet({
               <p className="text-sm font-bold text-slate-800">Pain Score</p>
             </div>
             <div className="flex flex-col p-3 gap-1">
-              <div className="flex items-end justify-between px-1">
-                <p className="text-[10px] text-slate-400 font-semibold">Last 3 readings</p>
-                <p className="text-xl font-black text-amber-600">5 <span className="text-[10px] font-semibold text-slate-400">/10</span></p>
-              </div>
+              <p className="text-[10px] text-slate-400 font-semibold px-1">Last 3 readings</p>
               <ResponsiveContainer width="100%" height={90}>
                 <LineChart data={PAIN_TREND} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -678,6 +675,7 @@ export function ApptFaceSheet({
                 </LineChart>
               </ResponsiveContainer>
               <p className="text-[10px] font-bold text-amber-600 text-center">Moderate</p>
+              <p className="text-xl font-black text-amber-600 text-center">5 <span className="text-[10px] font-semibold text-slate-400">/10</span></p>
             </div>
           </div>
 
@@ -688,10 +686,7 @@ export function ApptFaceSheet({
               <p className="text-sm font-bold text-slate-800">Mental Health</p>
             </div>
             <div className="flex flex-col p-3 gap-1">
-              <div className="flex items-end justify-between px-1">
-                <p className="text-[10px] text-slate-400 font-semibold">PHQ-4 · Last 3</p>
-                <p className="text-xl font-black text-violet-600">8 <span className="text-[10px] font-semibold text-slate-400">/16</span></p>
-              </div>
+              <p className="text-[10px] text-slate-400 font-semibold px-1">PHQ-4 · Last 3</p>
               <ResponsiveContainer width="100%" height={90}>
                 <LineChart data={MENTAL_TREND} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -702,6 +697,7 @@ export function ApptFaceSheet({
                 </LineChart>
               </ResponsiveContainer>
               <p className="text-[10px] font-bold text-violet-600 text-center">Mild</p>
+              <p className="text-xl font-black text-violet-600 text-center">8 <span className="text-[10px] font-semibold text-slate-400">/16</span></p>
             </div>
           </div>
         </div>
