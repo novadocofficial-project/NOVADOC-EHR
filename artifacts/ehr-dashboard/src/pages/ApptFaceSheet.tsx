@@ -817,11 +817,6 @@ export function ApptFaceSheet({
                 key={i}
                 last={i === REFERRALS.length - 1}
                 cells={[r.date, r.type, r.location, <StatusPill status={r.status} />]}
-                action={
-                  <button className="flex items-center gap-1 text-[10px] font-bold text-indigo-500 hover:text-indigo-700 transition-colors whitespace-nowrap">
-                    <ExternalLink className="h-3 w-3" /> View
-                  </button>
-                }
               />
             ))}
           </SectionCard>
