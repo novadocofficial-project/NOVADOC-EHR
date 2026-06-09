@@ -618,8 +618,8 @@ export function ApptFaceSheet({
         {/* ── ROW 1: Vitals Chart + Donut + Pain ──────────────────────────── */}
         <div className="grid grid-cols-12 gap-4">
 
-          {/* Vitals Trend Chart — 7 cols */}
-          <div className="col-span-7 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          {/* Vitals Trend Chart — 6 cols */}
+          <div className="col-span-6 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100" style={{ borderLeftColor: ACCENT, borderLeftWidth: 3 }}>
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4" style={{ color: ACCENT }} />
@@ -667,8 +667,8 @@ export function ApptFaceSheet({
             </div>
           </div>
 
-          {/* Mental Health Score — 2 cols */}
-          <div className="col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          {/* Mental Health Score — 3 cols */}
+          <div className="col-span-3 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100" style={{ borderLeftColor: "#8b5cf6", borderLeftWidth: 3 }}>
               <Brain className="h-4 w-4 text-violet-500" />
               <p className="text-sm font-bold text-slate-800">Mental Health</p>
