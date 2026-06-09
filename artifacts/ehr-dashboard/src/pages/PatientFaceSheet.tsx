@@ -826,18 +826,6 @@ export function PatientFaceSheet({
             ))}
           </SectionCard>
 
-          <SectionCard title="Current Medications" icon={<Pill className="h-4 w-4" />} badge={3} accentColor="#10b981">
-            {MEDICATIONS.map((m, i) => (
-              <ActionRow key={i}
-                label={m.name}
-                sub={`${m.desc} · Since ${m.start}`}
-              />
-            ))}
-          </SectionCard>
-        </div>
-
-        {/* ── ROW 2: Presenting Complaint + Physical Examination + Diagnosis ── */}
-        <div className="grid grid-cols-3 gap-4">
           <SectionCard
             title="Presenting Complaint"
             icon={<ClipboardList className="h-4 w-4" />}
@@ -855,6 +843,18 @@ export function PatientFaceSheet({
           {showComplaintsDrawer && (
             <PresentingComplaintsDrawer onClose={() => setShowComplaintsDrawer(false)} />
           )}
+        </div>
+
+        {/* ── ROW 2: Current Medications + Physical Examination + Diagnosis ── */}
+        <div className="grid grid-cols-3 gap-4">
+          <SectionCard title="Current Medications" icon={<Pill className="h-4 w-4" />} badge={3} accentColor="#10b981">
+            {MEDICATIONS.map((m, i) => (
+              <ActionRow key={i}
+                label={m.name}
+                sub={`${m.desc} · Since ${m.start}`}
+              />
+            ))}
+          </SectionCard>
 
           <SectionCard title="Physical Examination" icon={<Stethoscope className="h-4 w-4" />} badge={3}>
             {PHYSICAL_EXAMS.map((pe, i) => (
@@ -886,7 +886,7 @@ export function PatientFaceSheet({
             ))}
           </SectionCard>
 
-          <SectionCard title="Documents" icon={<FolderOpen className="h-4 w-4" />} badge={3} accentColor="#f59e0b">
+          <SectionCard title="Scanned Documents" icon={<FolderOpen className="h-4 w-4" />} badge={3} accentColor="#f59e0b">
             {DOCUMENTS.map((d, i) => (
               <ActionRow key={i}
                 label={d.folder}
