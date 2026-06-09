@@ -93,10 +93,9 @@ const DOCUMENTS = [
 ];
 
 const HEALTH_RECORDS = SOAP_DUMMY.map(r => ({
-  date: longDate(r.signedAt),
-  cc: r.cc.slice(0, 2).join(", "),
-  diagnosis: r.diagnoses[0]?.name ?? "—",
+  noteType: "Comprehensive Note",
   by: r.signedBy,
+  date: longDate(r.signedAt),
 }));
 
 const HISTORY_RECORDS = [
@@ -783,8 +782,8 @@ export function ApptFaceSheet({
             {HEALTH_RECORDS.map((r, i) => (
               <ActionRow
                 key={i}
-                label={r.cc}
-                sub={`${r.diagnosis} · ${r.by} · ${r.date}`}
+                label={r.noteType}
+                sub={`${r.by} · ${r.date}`}
                 right={
                   <button className="flex items-center gap-1 text-[10px] font-bold text-sky-500 hover:text-sky-700 transition-colors whitespace-nowrap">
                     <ExternalLink className="h-3 w-3" /> View
