@@ -61,11 +61,6 @@ const ALLERGIES = SOAP_DUMMY
   .filter((a, i, arr) => arr.findIndex(x => x.name === a.name) === i)
   .map(a => ({ name: a.name, reaction: a.reaction, severity: a.severity }));
 
-const PREVIOUS_VISITS = SOAP_DUMMY.map(r => ({
-  type: r.cc.slice(0, 2).join(", "),
-  doctor: r.signedBy,
-  date: longDate(r.signedAt),
-}));
 
 const PHYSICAL_EXAMS = SOAP_DUMMY.map(r => ({
   date: longDate(r.signedAt),
@@ -761,8 +756,8 @@ export function ApptFaceSheet({
           </SectionCard>
         </div>
 
-        {/* ── ROW 4: Investigations + Documents + Previous Visits ───────────── */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* ── ROW 4: Investigations + Documents ─────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-4">
           <SectionCard title="Investigations" icon={<FlaskConical className="h-4 w-4" />} badge={3} accentColor="#06b6d4">
             {INVESTIGATIONS.map((inv, i) => (
               <ActionRow key={i} label={inv.type} sub={`${inv.date} · Advised by ${inv.advisor}`} />
@@ -772,12 +767,6 @@ export function ApptFaceSheet({
           <SectionCard title="Documents" icon={<FolderOpen className="h-4 w-4" />} badge={3} accentColor="#f59e0b">
             {DOCUMENTS.map((d, i) => (
               <ActionRow key={i} label={d.folder} sub={`${d.desc} · ${d.date}`} />
-            ))}
-          </SectionCard>
-
-          <SectionCard title="Previous Visits" icon={<CalendarDays className="h-4 w-4" />} badge={3} accentColor="#8b5cf6">
-            {PREVIOUS_VISITS.map((v, i) => (
-              <ActionRow key={i} label={v.type} sub={`${v.doctor} · ${v.date}`} />
             ))}
           </SectionCard>
         </div>
