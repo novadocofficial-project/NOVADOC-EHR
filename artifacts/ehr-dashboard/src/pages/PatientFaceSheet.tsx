@@ -423,7 +423,7 @@ function ActionRow({ label, sub, right }: { label: string; sub?: string; right?:
     <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0 gap-3">
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-slate-800 leading-tight truncate">{label}</p>
-        {sub && <p className="text-[10px] text-slate-400 leading-tight">{sub}</p>}
+        {sub && <p className="text-[11px] text-slate-600 leading-tight">{sub}</p>}
       </div>
       {right}
     </div>
