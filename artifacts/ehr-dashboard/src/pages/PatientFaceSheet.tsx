@@ -4,7 +4,7 @@ import {
   ArrowLeft, FileEdit, AlertTriangle, Eye,
   Activity, Heart, Thermometer, Droplets, User, Phone, MapPin,
   CalendarDays, Stethoscope, Pill, FlaskConical, FileText,
-  FolderOpen, ClipboardList, CheckCircle2, Syringe, Zap,
+  FolderOpen, ClipboardList, CheckCircle2, Syringe, Zap, Brain,
   ArrowUpRight, Scissors, ShieldCheck, ExternalLink, X, Clock,
   Maximize2, Minimize2, ChevronDown,
 } from "lucide-react";
@@ -740,52 +740,37 @@ export function PatientFaceSheet({
             </div>
           </div>
 
-          {/* Medication Donut — 3 cols */}
+          {/* Pain Score — 3 cols */}
           <div className="col-span-3 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100" style={{ borderLeftColor: "#10b981", borderLeftWidth: 3 }}>
-              <Pill className="h-4 w-4 text-emerald-500" />
-              <p className="text-sm font-bold text-slate-800">Medications</p>
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100" style={{ borderLeftColor: "#f59e0b", borderLeftWidth: 3 }}>
+              <Zap className="h-4 w-4 text-amber-500" />
+              <p className="text-sm font-bold text-slate-800">Pain Score</p>
             </div>
-            <div className="p-3 flex flex-col items-center">
+            <div className="flex flex-col items-center justify-center p-3">
               <ResponsiveContainer width="100%" height={120}>
-                <PieChart>
-                  <Pie data={MED_CATEGORY_DATA} cx="50%" cy="50%" innerRadius={35} outerRadius={55} dataKey="value" paddingAngle={3}>
-                    {MED_CATEGORY_DATA.map((d, i) => <Cell key={i} fill={d.color} />)}
-                  </Pie>
-                  <Tooltip formatter={(v: any, n: any) => [v, n]} contentStyle={{ fontSize: 10, borderRadius: 8 }} />
-                </PieChart>
+                <RadialBarChart cx="50%" cy="65%" innerRadius="50%" outerRadius="85%" startAngle={180} endAngle={0} data={PAIN_DATA}>
+                  <RadialBar dataKey="value" cornerRadius={4} background={{ fill: "#f1f5f9" }} />
+                </RadialBarChart>
               </ResponsiveContainer>
-              <div className="w-full space-y-1 mt-1">
-                {MED_CATEGORY_DATA.map(d => (
-                  <div key={d.name} className="flex items-center justify-between text-[10px]">
-                    <div className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
-                      <span className="text-slate-600 font-semibold">{d.name}</span>
-                    </div>
-                    <span className="font-black text-slate-700">{d.value}</span>
-                  </div>
-                ))}
+              <div className="text-center -mt-3">
+                <p className="text-3xl font-black text-amber-600">5</p>
+                <p className="text-[10px] text-slate-400 font-semibold">out of 10</p>
+                <p className="text-[10px] font-bold text-amber-600 mt-0.5">Moderate</p>
               </div>
             </div>
           </div>
 
-          {/* Pain Score Radial — 2 cols */}
+          {/* Mental Health Score — 2 cols */}
           <div className="col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100" style={{ borderLeftColor: "#f59e0b", borderLeftWidth: 3 }}>
-              <Zap className="h-4 w-4 text-amber-500" />
-              <p className="text-sm font-bold text-slate-800">Pain</p>
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100" style={{ borderLeftColor: "#8b5cf6", borderLeftWidth: 3 }}>
+              <Brain className="h-4 w-4 text-violet-500" />
+              <p className="text-sm font-bold text-slate-800">Mental Health</p>
             </div>
-            <div className="flex flex-col items-center justify-center p-3">
-              <ResponsiveContainer width="100%" height={100}>
-                <RadialBarChart cx="50%" cy="60%" innerRadius="55%" outerRadius="90%" startAngle={180} endAngle={0} data={PAIN_DATA}>
-                  <RadialBar dataKey="value" cornerRadius={4} background={{ fill: "#f1f5f9" }} />
-                </RadialBarChart>
-              </ResponsiveContainer>
-              <div className="text-center -mt-2">
-                <p className="text-2xl font-black text-amber-600">5</p>
-                <p className="text-[10px] text-slate-400 font-semibold">out of 10</p>
-                <p className="text-[10px] font-bold text-amber-600 mt-0.5">Moderate</p>
-              </div>
+            <div className="flex flex-col items-center justify-center p-4 gap-1">
+              <p className="text-3xl font-black text-violet-600">8</p>
+              <p className="text-[10px] text-slate-400 font-semibold">out of 16</p>
+              <p className="text-[10px] font-bold text-violet-600 mt-0.5">Mild</p>
+              <p className="text-[9px] text-slate-400 mt-1 text-center leading-tight">PHQ-4 Screen</p>
             </div>
           </div>
         </div>
