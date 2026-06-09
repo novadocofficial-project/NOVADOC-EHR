@@ -651,7 +651,7 @@ export function ApptFaceSheet({
                   <Line name="Systolic"  type="monotone" dataKey="systolic"  stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                   <Line name="Diastolic" type="monotone" dataKey="diastolic" stroke="#4982CF" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                   <Line name="Pulse"     type="monotone" dataKey="pulse"     stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                  <Line name="O₂%"       type="monotone" dataKey="o2"        stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} strokeDasharray="4 2" />
+                  <Line name="O2 Stat"   type="monotone" dataKey="o2"        stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} strokeDasharray="4 2" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
