@@ -705,9 +705,9 @@ export function ApptFaceSheet({
                 <div key={a.name} className="flex items-center justify-between rounded-xl bg-red-50 border border-red-100 px-3 py-2">
                   <div>
                     <p className="text-xs font-bold text-slate-800">{a.name}</p>
-                    <p className="text-[10px] text-slate-400">{a.reaction}</p>
+                    <SeverityBadge severity={a.severity} />
                   </div>
-                  <SeverityBadge severity={a.severity} />
+                  <p className="text-[10px] text-slate-500 font-medium">{a.reaction}</p>
                 </div>
               ))}
             </div>
