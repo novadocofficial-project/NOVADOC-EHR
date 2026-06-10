@@ -1261,6 +1261,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
     setLabOrders(nextOrders);
     setLabDone(true);
     setLabDrawerMode(null);
+    closeDrawer("lab");
     setEditingOrderId(null);
     setNote(prev => ({ ...prev, labOrders: nextOrders, labOrderDone: true }));
   }
@@ -1471,7 +1472,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
           <Section key="sc-lab" title="Lab Orders" icon={FlaskConical} color="#f59e0b" filled={labDone}>
             {labOrders.length === 0 ? (
               <button
-                onClick={() => { setLabDrawerMode("add"); setEditingOrderId(null); }}
+                onClick={() => { setLabDrawerMode("add"); openDrawer("lab"); setEditingOrderId(null); }}
                 className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl bg-amber-50/60 border-2 border-dashed border-amber-200 text-amber-600 font-bold text-xs hover:border-amber-400 hover:bg-amber-50 transition-all">
                 <Plus className="h-4 w-4 flex-shrink-0" />Order Lab Tests…
               </button>
@@ -1503,7 +1504,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                           {isUnsent && !hasActiveSent && (
                             <button onClick={() => handleSendToLab(order.id)} className="flex items-center gap-1 text-[9px] font-semibold px-2 py-1 rounded-md bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100"><Send className="h-2.5 w-2.5" /> Send to Lab</button>
                           )}
-                          {isUnsent && <button onClick={() => { setEditingOrderId(order.id); setLabDrawerMode("edit"); }} className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md text-amber-600 hover:text-amber-800 hover:bg-amber-50"><PenLine className="h-2.5 w-2.5" /> Edit</button>}
+                          {isUnsent && <button onClick={() => { setEditingOrderId(order.id); setLabDrawerMode("edit"); openDrawer("lab"); }} className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md text-amber-600 hover:text-amber-800 hover:bg-amber-50"><PenLine className="h-2.5 w-2.5" /> Edit</button>}
                           {isUnsent && <button onClick={() => handleRemoveOrder(order.id)} className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50"><Trash2 className="h-2.5 w-2.5" /> Remove</button>}
                         </div>
                       </div>
@@ -1511,7 +1512,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                     </div>
                   );
                 })}
-                <button onClick={() => { setLabDrawerMode("add"); setEditingOrderId(null); }} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border-2 border-dashed border-amber-200 text-amber-600 text-xs font-bold hover:border-amber-400 hover:bg-amber-50/40 transition-all">
+                <button onClick={() => { setLabDrawerMode("add"); openDrawer("lab"); setEditingOrderId(null); }} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border-2 border-dashed border-amber-200 text-amber-600 text-xs font-bold hover:border-amber-400 hover:bg-amber-50/40 transition-all">
                   <Plus className="h-3.5 w-3.5" /> Add Lab Order
                 </button>
               </div>
@@ -1993,7 +1994,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               {labOrders.length === 0 ? (
                 /* Empty state — "Order Lab Tests" trigger */
                 <button
-                  onClick={() => { setLabDrawerMode("add"); setEditingOrderId(null); }}
+                  onClick={() => { setLabDrawerMode("add"); openDrawer("lab"); setEditingOrderId(null); }}
                   className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl bg-amber-50/60 border-2 border-dashed border-amber-200 text-amber-600 font-bold text-xs hover:border-amber-400 hover:bg-amber-50 transition-all">
                   <Plus className="h-4 w-4 flex-shrink-0" />
                   Order Lab Tests…
@@ -2082,7 +2083,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                               {/* Edit — only for unsent orders */}
                               {isUnsent && (
                                 <button
-                                  onClick={() => { setEditingOrderId(order.id); setLabDrawerMode("edit"); }}
+                                  onClick={() => { setEditingOrderId(order.id); setLabDrawerMode("edit"); openDrawer("lab"); }}
                                   title="Edit this order"
                                   className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md transition-colors text-amber-600 hover:text-amber-800 hover:bg-amber-50">
                                   <PenLine className="h-2.5 w-2.5" /> Edit
@@ -2111,7 +2112,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
 
                   {/* Add Lab Order button — always shown once at least one order exists */}
                   <button
-                    onClick={() => { setLabDrawerMode("add"); setEditingOrderId(null); }}
+                    onClick={() => { setLabDrawerMode("add"); openDrawer("lab"); setEditingOrderId(null); }}
                     className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border-2 border-dashed border-amber-200 text-amber-600 text-xs font-bold hover:border-amber-400 hover:bg-amber-50/40 transition-all">
                     <Plus className="h-3.5 w-3.5" /> Add Lab Order
                   </button>
@@ -2471,28 +2472,24 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                 onClose={() => closeDrawer("referral")}
               />
             );
+            case "lab": return labDrawerMode ? (
+              <LabDrawer key="lab"
+                mode={labDrawerMode}
+                savedData={
+                  labDrawerMode === "edit"
+                    ? (labOrders.find(o => o.id === editingOrderId) ?? null)
+                    : (labOrders.find(o => !!o.sentAt && !o.voided) ?? null)
+                }
+                awaitingLab={awaitingLab && !activeOrderIsVoided}
+                labResultsReady={labResultsReady && !activeOrderIsVoided}
+                onSave={handleLabSave}
+                onClose={() => { setLabDrawerMode(null); closeDrawer("lab"); setEditingOrderId(null); }}
+              />
+            ) : null;
             default: return null;
           }
         })}
 
-        {/* ── Lab Order Drawer ── (always renders above the stack) */}
-        {labDrawerMode && (
-          <LabDrawer
-            mode={labDrawerMode}
-            savedData={
-              labDrawerMode === "edit"
-                // edit mode: pre-populate the drawer with the order being edited
-                ? (labOrders.find(o => o.id === editingOrderId) ?? null)
-                // add/second-order mode: pass the last sent order so LabDrawer can
-                // compute previousTestIds and show completed-badge locks
-                : (labOrders.find(o => !!o.sentAt && !o.voided) ?? null)
-            }
-            awaitingLab={awaitingLab && !activeOrderIsVoided}
-            labResultsReady={labResultsReady && !activeOrderIsVoided}
-            onSave={handleLabSave}
-            onClose={() => { setLabDrawerMode(null); setEditingOrderId(null); }}
-          />
-        )}
 
         {/* ── POC Labs Drawer ── */}
         {pocOpen && (
