@@ -11,6 +11,7 @@ import {
   GripVertical, Check, Search, Plus, Send,
   ArrowRight, ClipboardCheck, ChevronLeft, Pill, ScanLine,
   BookmarkPlus, RotateCcw, AlertTriangle, Layers,
+  Mic, Sparkles, Radio, CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { loadForms } from "@/pages/SpecialtyFormsModule";
@@ -1112,6 +1113,9 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
   const [discardConfirm,    setDiscardConfirm]    = useState(false);
   const [formDropOpen,      setFormDropOpen]      = useState(false);
   const formDropRef = useRef<HTMLDivElement>(null);
+  const [aiScribeOpen,     setAiScribeOpen]      = useState(false);
+  const [micCheckDone,     setMicCheckDone]      = useState(false);
+  const [selectedMic,      setSelectedMic]       = useState("default");
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -1578,11 +1582,18 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         {/* ── Top action bar ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100 flex-shrink-0 bg-white">
 
-          {/* Left: Template */}
+          {/* Left: Template + AI Scribing */}
           <button
             onClick={() => { setTemplateMode("browse"); setTemplateOpen(true); }}
             className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors flex-shrink-0">
             <FileText className="h-3.5 w-3.5" style={{ color: ACCENT }} /> Add Template
+          </button>
+          <button
+            onClick={() => setAiScribeOpen(true)}
+            title="AI Scribing"
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-500 transition-colors flex-shrink-0">
+            <Mic className="h-3.5 w-3.5" />
+            <Sparkles className="h-2.5 w-2.5 text-violet-400" />
           </button>
           <button
             onClick={() => { setTemplateMode("save"); setTemplateOpen(true); }}
@@ -2473,6 +2484,105 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             onSave={v => set("referrals", v)}
             onClose={() => setReferralOpen(false)}
           />
+        )}
+
+        {/* ── AI Scribing Drawer ── */}
+        {aiScribeOpen && (
+          <div className="absolute inset-y-0 right-0 w-[68%] bg-white shadow-2xl border-l border-slate-200 flex flex-col z-20">
+            {/* Header */}
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
+              <button
+                onClick={() => { setAiScribeOpen(false); setMicCheckDone(false); }}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">SOAP Note</p>
+                <p className="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-violet-500" /> AI Scribing
+                </p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-5 py-6 space-y-6">
+
+              {/* Welcome hero */}
+              <div className="flex flex-col items-center text-center pt-2 pb-2">
+                <div className="h-16 w-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg"
+                  style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>
+                  <Mic className="h-8 w-8 text-white" />
+                </div>
+                <h2 className="text-base font-black text-slate-800 mb-1.5">Welcome to AI Scribing</h2>
+                <p className="text-[11px] text-slate-500 leading-relaxed max-w-[240px]">
+                  Speak naturally during your consultation. The AI will transcribe and structure your clinical note in real time.
+                </p>
+              </div>
+
+              {/* Microphone Check */}
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2.5">Microphone Check</p>
+                <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/60">
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                    micCheckDone ? "bg-emerald-100" : "bg-white border border-slate-200"
+                  }`}>
+                    {micCheckDone
+                      ? <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      : <Radio className="h-4 w-4 text-slate-400" />
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-slate-700">
+                      {micCheckDone ? "Microphone ready" : "Test your microphone"}
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      {micCheckDone ? "Input detected successfully" : "Run a quick check before starting"}
+                    </p>
+                  </div>
+                  {micCheckDone ? (
+                    <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex-shrink-0">
+                      ✓ Ready
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setMicCheckDone(true)}
+                      className="text-[10px] font-black px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition-colors flex-shrink-0">
+                      Test
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Microphone Selection */}
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2.5">Select Microphone</p>
+                <div className="relative">
+                  <select
+                    value={selectedMic}
+                    onChange={e => setSelectedMic(e.target.value)}
+                    className="w-full appearance-none text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2.5 pr-8 outline-none focus:border-violet-400/50 focus:ring-1 focus:ring-violet-400/20 transition-all">
+                    <option value="default">Default — System Microphone</option>
+                    <option value="builtin">Built-in Microphone</option>
+                    <option value="external">External Microphone</option>
+                    <option value="headset">Headset Microphone</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Start Listening */}
+              <button
+                className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-black text-sm text-white shadow-md transition-opacity hover:opacity-90"
+                style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>
+                <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-300 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-400" />
+                </span>
+                Start Listening
+              </button>
+
+            </div>
+          </div>
         )}
 
         {/* ── Void Reason Modal ── */}
