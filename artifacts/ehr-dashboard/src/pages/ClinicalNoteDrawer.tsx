@@ -1051,12 +1051,15 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
   const [fullscreen,        setFullscreen]        = useState(false);
   const [isPrinting,        setIsPrinting]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(() => initialNote ?? EMPTY_NOTE);
-  const [_sfInit] = useState<{ form: SpecialtyForm | null; mode: "soap" | "specialty" }>(() => {
-    if (!doctorId) return { form: null, mode: "soap" };
-    const form = loadForms().find(f => f.status === "published" && f.assignedDoctorIds.includes(doctorId)) ?? null;
-    return { form, mode: form ? "specialty" : "soap" };
+  const [_sfInit] = useState<{ forms: SpecialtyForm[]; activeFormId: string | null; mode: "soap" | "specialty" }>(() => {
+    if (!doctorId) return { forms: [], activeFormId: null, mode: "soap" };
+    const forms = loadForms().filter(f => f.status === "published" && f.assignedDoctorIds.includes(doctorId));
+    const first = forms[0] ?? null;
+    return { forms, activeFormId: first?.id ?? null, mode: forms.length > 0 ? "specialty" : "soap" };
   });
-  const assignedForm = _sfInit.form;
+  const assignedForms = _sfInit.forms;
+  const [activeFormId,      setActiveFormId]      = useState<string | null>(_sfInit.activeFormId);
+  const assignedForm = activeFormId ? (assignedForms.find(f => f.id === activeFormId) ?? null) : null;
   const [activeMode,        setActiveMode]        = useState<"soap" | "specialty">(_sfInit.mode);
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
   const [hpiDoneComplaints, setHpiDoneComplaints] = useState<string[]>(() => initialNote?.hpiDoneComplaints ?? []);
@@ -1577,27 +1580,43 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             <BookmarkPlus className="h-3.5 w-3.5 text-blue-400" /> Save Template
           </button>
 
+          {/* Form selector dropdown — shown when ≥1 specialty form is assigned */}
+          {assignedForms.length > 0 && (
+            <div className="relative flex-shrink-0">
+              <select
+                value={activeMode === "soap" ? "soap" : (activeFormId ?? "soap")}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val === "soap") {
+                    setActiveMode("soap");
+                  } else {
+                    setActiveFormId(val);
+                    setActiveMode("specialty");
+                  }
+                }}
+                className="appearance-none text-[11px] font-bold pl-2.5 pr-7 py-1.5 rounded-lg border transition-all outline-none cursor-pointer"
+                style={activeMode === "specialty"
+                  ? { backgroundColor: "#4982CF15", borderColor: "#4982CF50", color: "#4982CF" }
+                  : { backgroundColor: "white", borderColor: "#e2e8f0", color: "#64748b" }}>
+                <option value="soap">SOAP Note</option>
+                {assignedForms.map(f => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+              <Layers
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none"
+                style={{ color: activeMode === "specialty" ? "#4982CF" : "#94a3b8" }}
+              />
+            </div>
+          )}
+
           {/* Center: Timers */}
           <div className="flex-1 flex items-center justify-center gap-3">
             <TimerPill label="Time with Patient"   timer={patientTimer}  />
             <TimerPill label="Time Documenting"    timer={documentTimer} />
           </div>
 
-          {/* Right: Switch Form (when specialty form assigned) + Fullscreen + Close */}
-          {assignedForm && (
-            <button
-              onClick={() => setActiveMode(m => m === "soap" ? "specialty" : "soap")}
-              title={activeMode === "specialty" ? "Switch to SOAP Note" : "Switch to Specialty Form"}
-              className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border transition-all flex-shrink-0"
-              style={activeMode === "specialty"
-                ? { backgroundColor: "#4982CF15", borderColor: "#4982CF40", color: "#4982CF" }
-                : { borderColor: "#e2e8f0", color: "#64748b" }}>
-              <Layers className="h-3.5 w-3.5" />
-              {activeMode === "specialty"
-                ? "SOAP Note"
-                : assignedForm.name.length > 24 ? assignedForm.name.slice(0, 22) + "…" : assignedForm.name}
-            </button>
-          )}
+          {/* Right: Fullscreen + Close */}
           <button
             onClick={() => setFullscreen(f => !f)}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors flex-shrink-0"
