@@ -1110,6 +1110,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
   const [templateOpen,      setTemplateOpen]      = useState(false);
   const [templateMode,      setTemplateMode]      = useState<"browse" | "save">("browse");
   const [discardConfirm,    setDiscardConfirm]    = useState(false);
+  const [formDropOpen,      setFormDropOpen]      = useState(false);
+  const formDropRef = useRef<HTMLDivElement>(null);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -1138,6 +1140,15 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
       );
     }
   }, [assignedForm, activeMode]);
+
+  useEffect(() => {
+    if (!formDropOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (!formDropRef.current?.contains(e.target as Node)) setFormDropOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [formDropOpen]);
 
   function togglePlanTag(tag: string) {
     set("planTags", note.planTags.includes(tag)
@@ -1582,31 +1593,43 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
 
           {/* Form selector dropdown — shown when ≥1 specialty form is assigned */}
           {assignedForms.length > 0 && (
-            <div className="relative flex-shrink-0">
-              <select
-                value={activeMode === "soap" ? "soap" : (activeFormId ?? "soap")}
-                onChange={e => {
-                  const val = e.target.value;
-                  if (val === "soap") {
-                    setActiveMode("soap");
-                  } else {
-                    setActiveFormId(val);
-                    setActiveMode("specialty");
-                  }
-                }}
-                className="appearance-none text-[11px] font-bold pl-2.5 pr-7 py-1.5 rounded-lg border transition-all outline-none cursor-pointer"
+            <div ref={formDropRef} className="relative flex-shrink-0">
+              <button
+                onClick={() => setFormDropOpen(o => !o)}
+                className="flex items-center gap-1.5 text-[11px] font-bold pl-2.5 pr-2.5 py-1.5 rounded-lg border transition-all"
                 style={activeMode === "specialty"
                   ? { backgroundColor: "#4982CF15", borderColor: "#4982CF50", color: "#4982CF" }
                   : { backgroundColor: "white", borderColor: "#e2e8f0", color: "#64748b" }}>
-                <option value="soap">SOAP Note</option>
-                {assignedForms.map(f => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
-              <Layers
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none"
-                style={{ color: activeMode === "specialty" ? "#4982CF" : "#94a3b8" }}
-              />
+                {activeMode === "specialty" && assignedForm
+                  ? (assignedForm.name.length > 22 ? assignedForm.name.slice(0, 20) + "…" : assignedForm.name)
+                  : "SOAP Note"}
+                <ChevronDown
+                  className={`h-3 w-3 flex-shrink-0 transition-transform duration-150 ${formDropOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {formDropOpen && (
+                <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+                  <button
+                    onClick={() => { setActiveMode("soap"); setFormDropOpen(false); }}
+                    className={`w-full text-left px-3 py-2 text-[11px] font-bold transition-colors ${
+                      activeMode === "soap" ? "bg-slate-50 text-slate-800" : "text-slate-600 hover:bg-slate-50"
+                    }`}>
+                    SOAP Note
+                  </button>
+                  {assignedForms.map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => { setActiveFormId(f.id); setActiveMode("specialty"); setFormDropOpen(false); }}
+                      className={`w-full text-left px-3 py-2 text-[11px] font-bold transition-colors ${
+                        activeMode === "specialty" && activeFormId === f.id
+                          ? "bg-blue-50 text-[#4982CF]"
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}>
+                      {f.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
