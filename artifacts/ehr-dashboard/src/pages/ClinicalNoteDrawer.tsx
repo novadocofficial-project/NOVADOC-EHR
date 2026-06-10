@@ -1117,7 +1117,6 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
   const [micCheckDone,     setMicCheckDone]      = useState(false);
   const [selectedMic,      setSelectedMic]       = useState("default");
   const [isTranscribing,   setIsTranscribing]    = useState(false);
-  const [aiAlreadyMsg,     setAiAlreadyMsg]      = useState(false);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -1156,11 +1155,6 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
     return () => document.removeEventListener("mousedown", handleClick);
   }, [formDropOpen]);
 
-  useEffect(() => {
-    if (!aiAlreadyMsg) return;
-    const t = setTimeout(() => setAiAlreadyMsg(false), 2500);
-    return () => clearTimeout(t);
-  }, [aiAlreadyMsg]);
 
   function togglePlanTag(tag: string) {
     set("planTags", note.planTags.includes(tag)
@@ -1593,7 +1587,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
           {/* Left: AI Scribing + Template */}
           <button
             onClick={() => {
-              if (isTranscribing) { setAiAlreadyMsg(true); return; }
+              if (isTranscribing) return;
               setAiScribeOpen(true);
             }}
             title={isTranscribing ? "Already transcribing" : "AI Scribing"}
@@ -1609,13 +1603,6 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
             )}
           </button>
-
-          {/* Already-transcribing tooltip */}
-          {aiAlreadyMsg && (
-            <span className="text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-lg flex-shrink-0 whitespace-nowrap">
-              Already transcribing
-            </span>
-          )}
 
           <button
             onClick={() => { setTemplateMode("browse"); setTemplateOpen(true); }}
