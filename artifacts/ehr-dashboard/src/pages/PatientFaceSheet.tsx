@@ -913,8 +913,8 @@ export function PatientFaceSheet({
           </SectionCard>
         </div>
 
-        {/* ── ROW 3: Investigations + Scanned Documents ────────────────────── */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* ── ROW 3: Investigations + Scanned Documents + Referrals ─────────── */}
+        <div className="grid grid-cols-3 gap-4 pb-6">
           <SectionCard title="Investigations" icon={<FlaskConical className="h-4 w-4" />} badge={3} accentColor="#06b6d4" onViewAll={() => {}}>
             {INVESTIGATIONS.map((inv, i) => (
               <ActionRow key={i}
@@ -932,10 +932,7 @@ export function PatientFaceSheet({
               />
             ))}
           </SectionCard>
-        </div>
 
-        {/* ── ROW 4: Referrals ─────────────────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-4 pb-6">
           <SectionCard title="Referrals" icon={<ArrowUpRight className="h-4 w-4" />} badge={REFERRALS.length} accentColor="#6366f1" onViewAll={() => {}}>
             <TableHeader cols={["Date", "Type", "Reason"]} />
             {REFERRALS.map((r, i) => (
