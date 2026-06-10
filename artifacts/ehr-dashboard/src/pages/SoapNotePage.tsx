@@ -59,10 +59,10 @@ const CONDITIONS = [
 ];
 
 const ALLERGIES_LIST = [
-  { name: "Penicillin",   severity: "Severe"   },
-  { name: "NSAIDs",       severity: "Moderate" },
-  { name: "Sulfonamides", severity: "Moderate" },
-  { name: "Latex",        severity: "Mild"      },
+  { name: "Penicillin",   severity: "Severe",   reaction: "Anaphylaxis"       },
+  { name: "NSAIDs",       severity: "Moderate", reaction: "GI upset, rash"    },
+  { name: "Sulfonamides", severity: "Moderate", reaction: "Rash, urticaria"   },
+  { name: "Latex",        severity: "Mild",     reaction: "Contact dermatitis" },
 ];
 
 const NAV_TABS: { label: string; Icon: React.ElementType }[] = [
@@ -1292,8 +1292,11 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
           {ALLERGIES_LIST.map(a => (
             <span
               key={a.name}
-              className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
-              {a.name} · {a.severity}
+              title={`Reaction: ${a.reaction}`}
+              className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+              {a.name}
+              <span className="font-normal opacity-75">— {a.reaction}</span>
+              <span className="ml-0.5 text-[9px] font-black opacity-60">· {a.severity}</span>
             </span>
           ))}
         </div>
