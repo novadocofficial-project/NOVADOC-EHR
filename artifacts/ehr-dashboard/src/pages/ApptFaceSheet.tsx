@@ -736,8 +736,31 @@ export function ApptFaceSheet({
           </div>
         </div>
 
-        {/* ── ROW 2: Patient History + Presenting Complaint ────────────────── */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* ── ROW 2: Health Records + Patient History + Presenting Complaint ── */}
+        <div className="grid grid-cols-3 gap-4">
+          <SectionCard title="Health Records" icon={<FileText className="h-4 w-4" />} badge={HEALTH_RECORDS.length} accentColor="#0ea5e9">
+            {HEALTH_RECORDS.map((r, i) => (
+              <ActionRow
+                key={i}
+                label={r.noteType}
+                sub={`${r.by} · ${r.date}`}
+                right={
+                  <button
+                    className="flex items-center gap-1 text-[10px] font-bold text-sky-500 hover:text-sky-700 transition-colors whitespace-nowrap"
+                    onClick={() => void printHealthRecord({
+                      patient: { name, mrn },
+                      noteRow: { date: r.rawDate, time: r.rawTime, type: r.noteType, doctor: r.by },
+                      visitType: r.noteType,
+                      noteKind: { kind: "dummy", note: r.note },
+                    })}
+                  >
+                    <ExternalLink className="h-3 w-3" /> View
+                  </button>
+                }
+              />
+            ))}
+          </SectionCard>
+
           <SectionCard title="Patient History" icon={<ClipboardList className="h-4 w-4" />} badge={3} accentColor="#8b5cf6">
             {HISTORY_RECORDS.map((h, i) => (
               <ActionRow key={i} label={h.question} sub={`${h.answer} · ${h.by} · ${h.date}`} />
@@ -783,8 +806,8 @@ export function ApptFaceSheet({
           </SectionCard>
         </div>
 
-        {/* ── ROW 4: Investigations + Scanned Documents + Health Records ──────── */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* ── ROW 4: Investigations + Scanned Documents ────────────────────── */}
+        <div className="grid grid-cols-2 gap-4">
           <SectionCard title="Investigations" icon={<FlaskConical className="h-4 w-4" />} badge={3} accentColor="#06b6d4" onViewAll={() => {}}>
             {INVESTIGATIONS.map((inv, i) => (
               <ActionRow key={i} label={inv.type} sub={`${inv.date} · Advised by ${inv.advisor}`} />
@@ -794,29 +817,6 @@ export function ApptFaceSheet({
           <SectionCard title="Scanned Documents" icon={<FolderOpen className="h-4 w-4" />} badge={3} accentColor="#f59e0b" onViewAll={() => {}}>
             {DOCUMENTS.map((d, i) => (
               <ActionRow key={i} label={d.folder} sub={`${d.desc} · ${d.date}`} />
-            ))}
-          </SectionCard>
-
-          <SectionCard title="Health Records" icon={<FileText className="h-4 w-4" />} badge={HEALTH_RECORDS.length} accentColor="#0ea5e9">
-            {HEALTH_RECORDS.map((r, i) => (
-              <ActionRow
-                key={i}
-                label={r.noteType}
-                sub={`${r.by} · ${r.date}`}
-                right={
-                  <button
-                    className="flex items-center gap-1 text-[10px] font-bold text-sky-500 hover:text-sky-700 transition-colors whitespace-nowrap"
-                    onClick={() => void printHealthRecord({
-                      patient: { name, mrn },
-                      noteRow: { date: r.rawDate, time: r.rawTime, type: r.noteType, doctor: r.by },
-                      visitType: r.noteType,
-                      noteKind: { kind: "dummy", note: r.note },
-                    })}
-                  >
-                    <ExternalLink className="h-3 w-3" /> View
-                  </button>
-                }
-              />
             ))}
           </SectionCard>
         </div>
