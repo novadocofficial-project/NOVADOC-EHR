@@ -1,0 +1,164 @@
+### Imaging Drawer Enhancement – SOAP Note (Assessment & Plan Section)
+
+We need to update the **Imaging Drawer** functionality within the **Assessment & Plan** section of the SOAP Note.
+
+#### Current Requirement
+
+The existing imaging ordering workflow should be replaced with a structured imaging catalog based on the following hierarchy:
+
+**Modality → Body Part → Protocol/View**
+
+This structure will cover the majority of outpatient, urgent care, and hospital imaging orders.
+
+Examples:
+
+* **X-Ray → Chest → PA & Lateral (2 Views)**
+* **X-Ray → Chest → AP Portable**
+* **CT → Chest → With Contrast**
+* **MRI → Knee → Without Contrast**
+* **Ultrasound → Abdomen → Complete**
+
+The imaging catalog should include all supported modalities, body parts, and protocol/view options as defined in the provided imaging master list (X-Ray, CT, MRI, Ultrasound, Mammography, Nuclear Medicine, etc.).
+
+---
+
+### UI Changes
+
+The Imaging Drawer should contain the following fields:
+
+#### 1. Modality Dropdown
+
+The first dropdown will allow the user to select the imaging modality.
+
+Examples:
+
+* X-Ray
+* CT
+* MRI
+* Ultrasound
+* Mammography
+* Nuclear Medicine
+
+#### 2. Body Part Dropdown
+
+The second dropdown will be dynamically populated based on the selected modality.
+
+Examples:
+
+For X-Ray:
+
+* Chest
+* Abdomen
+* Cervical Spine
+* Lumbar Spine
+* Knee
+* Shoulder
+* Wrist
+* Foot
+* etc.
+
+For CT:
+
+* Head/Brain
+* Chest
+* Abdomen
+* Pelvis
+* Spine
+* etc.
+
+#### 3. Protocol/View Dropdown
+
+The third dropdown will be dynamically populated based on the selected body part.
+
+Examples:
+
+For X-Ray → Chest:
+
+* Single View
+* AP Portable
+* PA View
+* PA & Lateral (2 Views)
+* 3 Views
+* Decubitus
+* Rib Series
+
+For CT → Chest:
+
+* Without Contrast
+* With Contrast
+* Pulmonary Angiography (CTPA)
+
+For MRI → Knee:
+
+* Without Contrast
+
+#### 4. Special Instructions
+
+A free-text field should be available for entering any additional instructions or clinical notes related to the imaging request.
+
+Examples:
+
+* Rule out fracture
+* Evaluate chronic knee pain
+* Follow-up chest infection
+* Urgent study required
+
+---
+
+### Save Imaging Requisition
+
+Once the required fields are completed, the user should be able to save the imaging order.
+
+Each saved imaging requisition should display:
+
+* Modality
+* Body Part
+* Protocol/View
+* Special Instructions
+* Date/Time Created
+* Ordering Provider
+
+---
+
+### Multiple Imaging Orders
+
+The system must support ordering multiple imaging studies within a single requisition/session.
+
+Example:
+
+1. X-Ray → Chest → PA & Lateral (2 Views)
+2. Ultrasound → Abdomen → Complete
+3. CT → Head/Brain → Without Contrast
+
+All selected studies should be displayed in a list/grid before final submission.
+
+---
+
+### Edit & Delete Functionality
+
+Users must be able to manage saved imaging orders.
+
+#### Edit
+
+Allow users to modify:
+
+* Modality
+* Body Part
+* Protocol/View
+* Special Instructions
+
+#### Delete
+
+Allow users to remove an imaging order from the requisition before finalization.
+
+Appropriate confirmation should be displayed before deletion.
+
+---
+
+### Expected Outcome
+
+The updated Imaging Drawer will provide a standardized and scalable imaging ordering workflow using a three-level hierarchy:
+
+**Modality → Body Part → Protocol/View**
+
+This will improve usability, ensure consistency in imaging orders, and support future integration with radiology systems, RIS, and PACS platforms.
