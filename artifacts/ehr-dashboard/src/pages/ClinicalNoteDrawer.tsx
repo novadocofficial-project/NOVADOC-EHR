@@ -1601,7 +1601,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             {isTranscribing && (
               <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
             )}
-            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-[10px] font-semibold text-white shadow-lg z-50">
+            <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-[10px] font-semibold text-white shadow-lg z-50">
               {isTranscribing ? "Already transcribing" : "AI Scribing"}
             </span>
           </button>
