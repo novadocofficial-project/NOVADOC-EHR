@@ -1590,9 +1590,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               if (isTranscribing) return;
               setAiScribeOpen(true);
             }}
-            title={isTranscribing ? "Already transcribing" : "AI Scribing"}
             className={[
-              "relative flex items-center gap-1 px-2 py-1.5 rounded-lg border transition-colors flex-shrink-0",
+              "group relative flex items-center gap-1 px-2 py-1.5 rounded-lg border transition-colors flex-shrink-0",
               isTranscribing
                 ? "border-violet-300 bg-violet-50 text-violet-600"
                 : "border-slate-200 text-slate-400 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-500",
@@ -1602,6 +1601,9 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             {isTranscribing && (
               <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
             )}
+            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-[10px] font-semibold text-white shadow-lg z-50">
+              {isTranscribing ? "Already transcribing" : "AI Scribing"}
+            </span>
           </button>
 
           <button
