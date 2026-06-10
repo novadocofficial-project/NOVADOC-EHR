@@ -410,10 +410,17 @@ function SpecialtyNotePreview({ form, data, note }: { form: SpecialtyForm; data:
           <Section key="sc-img" icon={<Eye className="h-3.5 w-3.5" />} title="Imaging Orders" color="#0ea5e9">
             <div className="space-y-1.5">
               {orders.map(o => (
-                <div key={o.uid} className="flex items-center gap-2 text-[11px] text-sky-700 bg-sky-50 border border-sky-200 rounded-lg px-3 py-2">
-                  <ScanLine className="h-3 w-3 flex-shrink-0" />
-                  <span className="font-semibold flex-1">{o.testName}</span>
-                  {o.category && <span className="text-[9px] text-sky-500">{o.category}</span>}
+                <div key={o.uid} className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <ScanLine className="h-3 w-3 text-sky-500 flex-shrink-0" />
+                    <span className="text-[11px] font-black text-sky-800 flex-1">
+                      {o.modality} → {o.bodyPart}
+                    </span>
+                    <span className="text-[9px] font-bold text-sky-500 flex-shrink-0">{o.protocol}</span>
+                  </div>
+                  {o.specialInstructions && (
+                    <p className="text-[10px] text-sky-600 mt-0.5 pl-5 italic">{o.specialInstructions}</p>
+                  )}
                 </div>
               ))}
             </div>

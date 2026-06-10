@@ -186,8 +186,8 @@ function RadiologyContent({ imagingOrders }: { imagingOrders: ImagingOrder[] }) 
           <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white">
             <Scan className="h-4 w-4 text-sky-500 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-slate-800">{io.testName}</p>
-              <p className="text-xs text-slate-500">{io.category}{io.reason ? ` · ${io.reason}` : ""}</p>
+              <p className="text-sm font-bold text-slate-800">{io.modality} → {io.bodyPart}</p>
+              <p className="text-xs text-slate-500">{io.protocol}{io.specialInstructions ? ` · ${io.specialInstructions}` : ""}</p>
             </div>
           </div>
         ))
@@ -892,7 +892,7 @@ export function PatientProfile() {
                         : imagingOrders.slice(0, 3).map((io, i) => (
                           <div key={i} className="flex items-center gap-2 py-0.5">
                             <div className="h-1.5 w-1.5 rounded-full bg-sky-400 flex-shrink-0" />
-                            <p className="text-xs text-slate-600 truncate">{io.testName}</p>
+                            <p className="text-xs text-slate-600 truncate">{io.modality} → {io.bodyPart}</p>
                           </div>
                         ))
                       }

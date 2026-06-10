@@ -1,108 +1,176 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import {
-  ChevronLeft, X, Search, CheckCircle2, ClipboardCheck,
-  Plus, Star, Pencil, ChevronDown, ScanLine,
+  ChevronLeft, X, CheckCircle2, ClipboardCheck,
+  Plus, ScanLine, Pencil, Trash2, ChevronDown, AlertTriangle,
 } from "lucide-react";
 
-// ─── Imaging Test Database ────────────────────────────────────────────────────
+// ─── Hierarchical Imaging Catalog ────────────────────────────────────────────
 
-interface ImagingTestDef {
-  id:       string;
-  name:     string;
-  category: string;
+interface CatalogBodyPart {
+  name:      string;
+  protocols: string[];
 }
 
-const IMAGING_TESTS: ImagingTestDef[] = [
-  // X-Ray
-  { id: "xray-chest",         name: "X-Ray Chest",               category: "X-Ray"           },
-  { id: "xray-abdomen",       name: "X-Ray Abdomen",             category: "X-Ray"           },
-  { id: "xray-knee",          name: "X-Ray Knee",                category: "X-Ray"           },
-  { id: "xray-spine-ls",      name: "X-Ray Spine (LS)",          category: "X-Ray"           },
-  { id: "xray-spine-cx",      name: "X-Ray Spine (Cervical)",    category: "X-Ray"           },
-  { id: "xray-pelvis",        name: "X-Ray Pelvis",              category: "X-Ray"           },
-  { id: "xray-shoulder",      name: "X-Ray Shoulder",            category: "X-Ray"           },
-  { id: "xray-ankle",         name: "X-Ray Ankle",               category: "X-Ray"           },
-  { id: "xray-wrist",         name: "X-Ray Wrist",               category: "X-Ray"           },
-  { id: "xray-hand",          name: "X-Ray Hand",                category: "X-Ray"           },
-  // CT Scan
-  { id: "ct-brain",           name: "CT Brain",                  category: "CT Scan"         },
-  { id: "ct-chest",           name: "CT Chest",                  category: "CT Scan"         },
-  { id: "ct-abdo-pelvis",     name: "CT Abdomen & Pelvis",       category: "CT Scan"         },
-  { id: "ct-angio",           name: "CT Angiography",            category: "CT Scan"         },
-  { id: "ct-kub",             name: "CT KUB",                    category: "CT Scan"         },
-  { id: "ct-coronary",        name: "CT Coronary Angiography",   category: "CT Scan"         },
-  { id: "ct-spine",           name: "CT Spine",                  category: "CT Scan"         },
-  // MRI
-  { id: "mri-brain",          name: "MRI Brain",                 category: "MRI"             },
-  { id: "mri-spine-ls",       name: "MRI Spine (LS)",            category: "MRI"             },
-  { id: "mri-spine-cx",       name: "MRI Spine (Cervical)",      category: "MRI"             },
-  { id: "mri-knee",           name: "MRI Knee",                  category: "MRI"             },
-  { id: "mri-shoulder",       name: "MRI Shoulder",              category: "MRI"             },
-  { id: "mri-abdomen",        name: "MRI Abdomen",               category: "MRI"             },
-  { id: "mri-pelvis",         name: "MRI Pelvis",                category: "MRI"             },
-  { id: "mri-whole-body",     name: "MRI Whole Body",            category: "MRI"             },
-  // Ultrasound
-  { id: "us-abdomen",         name: "Ultrasound Abdomen",        category: "Ultrasound"      },
-  { id: "us-pelvis",          name: "Ultrasound Pelvis",         category: "Ultrasound"      },
-  { id: "us-thyroid",         name: "Ultrasound Thyroid",        category: "Ultrasound"      },
-  { id: "us-renal",           name: "Ultrasound Renal",          category: "Ultrasound"      },
-  { id: "us-scrotal",         name: "Ultrasound Scrotal",        category: "Ultrasound"      },
-  { id: "us-breast",          name: "Ultrasound Breast",         category: "Ultrasound"      },
-  { id: "us-doppler-carotid", name: "Doppler Carotid",           category: "Ultrasound"      },
-  { id: "us-doppler-le",      name: "Doppler Lower Limbs",       category: "Ultrasound"      },
-  // Echocardiography
-  { id: "echo-2d",            name: "2D Echocardiography",       category: "Echocardiography"},
-  { id: "echo-stress",        name: "Stress Echocardiography",   category: "Echocardiography"},
-  { id: "echo-tee",           name: "Trans-Esophageal Echo (TEE)",category:"Echocardiography"},
-  // Nuclear Medicine
-  { id: "nuc-bone-scan",      name: "Bone Scan",                 category: "Nuclear Medicine"},
-  { id: "nuc-pet-ct",         name: "PET-CT Scan",               category: "Nuclear Medicine"},
-  { id: "nuc-thyroid-scan",   name: "Thyroid Scan",              category: "Nuclear Medicine"},
-  // Fluoroscopy
-  { id: "fluoro-barium",      name: "Barium Swallow",            category: "Fluoroscopy"     },
-  { id: "fluoro-hsg",         name: "Hysterosalpingography (HSG)",category:"Fluoroscopy"     },
-  { id: "fluoro-ercp",        name: "ERCP",                      category: "Fluoroscopy"     },
-  // Mammography
-  { id: "mammo",              name: "Mammography",               category: "Mammography"     },
-  { id: "mammo-bilateral",    name: "Bilateral Mammography",     category: "Mammography"     },
-];
-
-const REASON_TEMPLATES = [
-  "Rule out infection",
-  "Trauma evaluation",
-  "Chronic pain assessment",
-  "Rule out malignancy",
-  "Post-operative follow-up",
-  "Rule out fracture",
-  "Monitoring disease progression",
-  "Pre-operative assessment",
-  "Rule out pulmonary embolism",
-  "Evaluate soft tissue injury",
-  "Rule out intracranial pathology",
-  "Assess joint pathology",
-  "Rule out renal calculi",
-  "Cardiac evaluation",
-  "Routine follow-up",
-];
-
-// ─── Favourites (localStorage) ────────────────────────────────────────────────
-
-const FAVS_KEY = "imaging_fav_testIds";
-function loadFavs(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(FAVS_KEY) ?? "[]")); } catch { return new Set(); }
+interface CatalogModality {
+  name:      string;
+  bodyParts: CatalogBodyPart[];
 }
-function persistFavs(s: Set<string>) {
-  localStorage.setItem(FAVS_KEY, JSON.stringify([...s]));
+
+const IMAGING_CATALOG: CatalogModality[] = [
+  {
+    name: "X-Ray",
+    bodyParts: [
+      { name: "Chest",           protocols: ["Single View", "AP Portable", "PA View", "PA & Lateral (2 Views)", "3 Views", "Decubitus", "Rib Series"] },
+      { name: "Abdomen",         protocols: ["Supine", "Erect", "Supine & Erect"] },
+      { name: "Cervical Spine",  protocols: ["AP & Lateral", "Flexion & Extension", "3 Views", "4 Views"] },
+      { name: "Lumbar Spine",    protocols: ["AP & Lateral", "Flexion & Extension", "3 Views", "4 Views"] },
+      { name: "Thoracic Spine",  protocols: ["AP & Lateral", "3 Views"] },
+      { name: "Pelvis",          protocols: ["AP View", "AP & Lateral"] },
+      { name: "Knee",            protocols: ["AP & Lateral", "Sunrise View", "3 Views", "Weight Bearing"] },
+      { name: "Shoulder",        protocols: ["AP View", "Y-View", "AP & Axillary (2 Views)"] },
+      { name: "Wrist",           protocols: ["AP & Lateral", "3 Views"] },
+      { name: "Hand",            protocols: ["AP & Oblique", "3 Views"] },
+      { name: "Ankle",           protocols: ["AP & Lateral", "3 Views"] },
+      { name: "Foot",            protocols: ["AP & Lateral", "3 Views", "Weight Bearing"] },
+      { name: "Hip",             protocols: ["AP View", "AP & Lateral"] },
+      { name: "Elbow",           protocols: ["AP & Lateral", "3 Views"] },
+      { name: "Forearm",         protocols: ["AP & Lateral"] },
+      { name: "Tibia/Fibula",    protocols: ["AP & Lateral"] },
+      { name: "Skull",           protocols: ["AP & Lateral", "Towne's View", "3 Views"] },
+      { name: "Facial Bones",    protocols: ["Standard Views", "Waters View"] },
+      { name: "Sinuses",         protocols: ["Waters View", "Paranasal Sinus Series"] },
+    ],
+  },
+  {
+    name: "CT",
+    bodyParts: [
+      { name: "Head/Brain",       protocols: ["Without Contrast", "With Contrast", "With & Without Contrast"] },
+      { name: "Chest",            protocols: ["Without Contrast", "With Contrast", "Pulmonary Angiography (CTPA)", "High Resolution (HRCT)"] },
+      { name: "Abdomen",          protocols: ["Without Contrast", "With Contrast", "With & Without Contrast"] },
+      { name: "Pelvis",           protocols: ["Without Contrast", "With Contrast", "With & Without Contrast"] },
+      { name: "Abdomen & Pelvis", protocols: ["Without Contrast", "With Contrast", "With & Without Contrast", "Triple Phase"] },
+      { name: "Spine (Cervical)", protocols: ["Without Contrast", "With Contrast"] },
+      { name: "Spine (Lumbar)",   protocols: ["Without Contrast", "With Contrast"] },
+      { name: "Spine (Thoracic)", protocols: ["Without Contrast", "With Contrast"] },
+      { name: "Coronary",         protocols: ["CT Coronary Angiography (CTCA)", "Calcium Score"] },
+      { name: "Peripheral Angiography", protocols: ["Standard Protocol"] },
+      { name: "KUB / Urogram",    protocols: ["Non-Contrast (NCCT KUB)", "With Contrast (IVU)"] },
+      { name: "Neck/Soft Tissue", protocols: ["Without Contrast", "With Contrast"] },
+      { name: "Sinuses",          protocols: ["Without Contrast"] },
+      { name: "Orbits",           protocols: ["Without Contrast", "With Contrast"] },
+    ],
+  },
+  {
+    name: "MRI",
+    bodyParts: [
+      { name: "Brain",            protocols: ["Without Contrast", "With Contrast", "With & Without Contrast", "Spectroscopy", "Diffusion (DWI)"] },
+      { name: "Spine (Cervical)", protocols: ["Without Contrast", "With Contrast"] },
+      { name: "Spine (Lumbar)",   protocols: ["Without Contrast", "With Contrast"] },
+      { name: "Spine (Thoracic)", protocols: ["Without Contrast", "With Contrast"] },
+      { name: "Knee",             protocols: ["Without Contrast"] },
+      { name: "Shoulder",         protocols: ["Without Contrast", "With Contrast (Arthrogram)"] },
+      { name: "Hip",              protocols: ["Without Contrast", "With Contrast"] },
+      { name: "Wrist",            protocols: ["Without Contrast"] },
+      { name: "Ankle/Foot",       protocols: ["Without Contrast"] },
+      { name: "Abdomen",          protocols: ["Without Contrast", "With Contrast", "With & Without Contrast"] },
+      { name: "Pelvis",           protocols: ["Without Contrast", "With Contrast"] },
+      { name: "Prostate",         protocols: ["Multi-parametric (mpMRI)"] },
+      { name: "Breast",           protocols: ["Bilateral With Contrast"] },
+      { name: "Cardiac (CMR)",    protocols: ["Standard Protocol", "Stress Protocol", "Viability Protocol"] },
+      { name: "Whole Body",       protocols: ["Without Contrast"] },
+      { name: "MRCP",             protocols: ["Standard Protocol"] },
+    ],
+  },
+  {
+    name: "Ultrasound",
+    bodyParts: [
+      { name: "Abdomen",             protocols: ["Complete", "Limited", "Focused"] },
+      { name: "Pelvis",              protocols: ["Transabdominal", "Transvaginal (TVS)"] },
+      { name: "Thyroid & Neck",      protocols: ["Standard"] },
+      { name: "Renal",               protocols: ["Bilateral Kidneys", "Single Kidney", "KUB"] },
+      { name: "Testicular/Scrotal",  protocols: ["Standard with Doppler"] },
+      { name: "Breast",              protocols: ["Bilateral", "Unilateral Right", "Unilateral Left"] },
+      { name: "Doppler – Carotid",   protocols: ["Bilateral Carotid Doppler"] },
+      { name: "Doppler – Lower Limb Veins",    protocols: ["Bilateral DVT Screen", "Unilateral Right", "Unilateral Left"] },
+      { name: "Doppler – Lower Limb Arteries", protocols: ["Bilateral", "Unilateral Right", "Unilateral Left"] },
+      { name: "Doppler – Upper Limb Veins",    protocols: ["Bilateral", "Unilateral"] },
+      { name: "Obstetric (Dating)",  protocols: ["Standard Dating Scan"] },
+      { name: "Obstetric (Anatomy)", protocols: ["Detailed Anomaly Scan (18–22 weeks)"] },
+      { name: "Shoulder",            protocols: ["Standard"] },
+      { name: "Soft Tissue / Mass",  protocols: ["Standard"] },
+      { name: "Guided Procedure",    protocols: ["Aspiration", "Biopsy", "Drainage"] },
+    ],
+  },
+  {
+    name: "Mammography",
+    bodyParts: [
+      { name: "Bilateral",       protocols: ["Standard Screening (2 Views Each)", "Diagnostic", "Tomosynthesis (3D)"] },
+      { name: "Unilateral Right",protocols: ["Standard", "Diagnostic", "Tomosynthesis (3D)"] },
+      { name: "Unilateral Left", protocols: ["Standard", "Diagnostic", "Tomosynthesis (3D)"] },
+    ],
+  },
+  {
+    name: "Echocardiography",
+    bodyParts: [
+      { name: "Transthoracic (TTE)",    protocols: ["2D Echo with Doppler", "M-Mode", "Bubble Study"] },
+      { name: "Stress Echo",            protocols: ["Exercise Stress", "Dobutamine Stress"] },
+      { name: "Trans-Esophageal (TEE)", protocols: ["Standard Protocol"] },
+    ],
+  },
+  {
+    name: "Nuclear Medicine",
+    bodyParts: [
+      { name: "Bone Scan",      protocols: ["Whole Body", "3-Phase", "SPECT/CT"] },
+      { name: "Thyroid Scan",   protocols: ["Technetium-99m", "Iodine I-131"] },
+      { name: "PET-CT",         protocols: ["Whole Body FDG", "Brain FDG", "Cardiac Viability"] },
+      { name: "Renal Scan",     protocols: ["MAG3 (Dynamic)", "DMSA (Static)"] },
+      { name: "Hepatobiliary",  protocols: ["HIDA Scan", "Cholecystokinin (CCK) HIDA"] },
+      { name: "Ventilation/Perfusion (V/Q)", protocols: ["Standard Protocol"] },
+    ],
+  },
+  {
+    name: "Fluoroscopy",
+    bodyParts: [
+      { name: "Oesophagus",    protocols: ["Barium Swallow"] },
+      { name: "Stomach",       protocols: ["Barium Meal", "Upper GI Series"] },
+      { name: "Colon",         protocols: ["Barium Enema", "Water-Soluble Enema"] },
+      { name: "Uterus/Tubes",  protocols: ["HSG (Hysterosalpingogram)"] },
+      { name: "Bladder",       protocols: ["VCUG (Voiding Cystourethrogram)", "Cystogram"] },
+      { name: "Bile Ducts",    protocols: ["ERCP", "T-Tube Cholangiogram"] },
+    ],
+  },
+];
+
+// ─── Modality colour map ──────────────────────────────────────────────────────
+
+const MODALITY_COLORS: Record<string, string> = {
+  "X-Ray":          "bg-sky-100 text-sky-700",
+  "CT":             "bg-purple-100 text-purple-700",
+  "MRI":            "bg-indigo-100 text-indigo-700",
+  "Ultrasound":     "bg-teal-100 text-teal-700",
+  "Mammography":    "bg-pink-100 text-pink-700",
+  "Echocardiography": "bg-rose-100 text-rose-700",
+  "Nuclear Medicine": "bg-orange-100 text-orange-700",
+  "Fluoroscopy":    "bg-amber-100 text-amber-700",
+};
+
+function ModalityBadge({ modality }: { modality: string }) {
+  return (
+    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded flex-shrink-0 ${MODALITY_COLORS[modality] ?? "bg-slate-100 text-slate-500"}`}>
+      {modality}
+    </span>
+  );
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ImagingOrder {
-  uid:      string;
-  testId:   string;
-  testName: string;
-  category: string;
-  reason:   string;
+  uid:                 string;
+  modality:            string;
+  bodyPart:            string;
+  protocol:            string;
+  specialInstructions: string;
+  createdAt:           string;
 }
 
 export interface ImagingData {
@@ -112,135 +180,10 @@ export interface ImagingData {
 
 export const EMPTY_IMAGING: ImagingData = { orders: [], instructions: "" };
 
-// ─── Category colour chips ────────────────────────────────────────────────────
+// ─── Helper: format order label ───────────────────────────────────────────────
 
-const CAT_COLORS: Record<string, string> = {
-  "X-Ray":            "bg-sky-100 text-sky-600",
-  "CT Scan":          "bg-purple-100 text-purple-600",
-  "MRI":              "bg-indigo-100 text-indigo-600",
-  "Ultrasound":       "bg-teal-100 text-teal-600",
-  "Echocardiography": "bg-rose-100 text-rose-600",
-  "Nuclear Medicine": "bg-orange-100 text-orange-600",
-  "Fluoroscopy":      "bg-amber-100 text-amber-700",
-  "Mammography":      "bg-pink-100 text-pink-600",
-};
-
-function CatBadge({ cat }: { cat: string }) {
-  return (
-    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded flex-shrink-0 ${CAT_COLORS[cat] ?? "bg-slate-100 text-slate-500"}`}>
-      {cat}
-    </span>
-  );
-}
-
-// ─── Search Dropdown ──────────────────────────────────────────────────────────
-
-function TestSearch({
-  favs, onToggleFav, onSelect,
-}: {
-  favs: Set<string>;
-  onToggleFav: (id: string, fav: boolean) => void;
-  onSelect: (t: ImagingTestDef) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const [open,  setOpen]  = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function h(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-
-  const q = query.toLowerCase().trim();
-
-  const favTests = IMAGING_TESTS.filter(t => favs.has(t.id));
-  const matched  = q ? IMAGING_TESTS.filter(t => t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q)) : IMAGING_TESTS;
-
-  const grouped = matched.reduce<Record<string, ImagingTestDef[]>>((acc, t) => {
-    (acc[t.category] ??= []).push(t);
-    return acc;
-  }, {});
-
-  function pick(t: ImagingTestDef) {
-    onSelect(t);
-    setQuery("");
-    setOpen(false);
-  }
-
-  return (
-    <div ref={ref} className="relative">
-      <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl focus-within:border-cyan-400/50 focus-within:ring-1 focus-within:ring-cyan-400/20 transition-all">
-        <Search className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-        <input
-          value={query}
-          onChange={e => { setQuery(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          placeholder="Search imaging test…"
-          className="flex-1 text-xs text-slate-700 outline-none placeholder:text-slate-400"
-        />
-        {query && (
-          <button onClick={() => { setQuery(""); setOpen(false); }} className="text-slate-300 hover:text-slate-500">
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
-
-      {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-64 overflow-y-auto">
-
-          {/* Favourites */}
-          {!q && favTests.length > 0 && (
-            <div>
-              <p className="px-3 pt-2.5 pb-1 text-[9px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1">
-                <Star className="h-3 w-3 fill-amber-400 text-amber-400" /> Favourites
-              </p>
-              {favTests.map(t => (
-                <TestRow key={t.id} test={t} favs={favs} onToggleFav={onToggleFav} onPick={() => pick(t)} />
-              ))}
-              <div className="border-t border-slate-100 mx-3 my-1" />
-            </div>
-          )}
-
-          {/* Grouped by category */}
-          {Object.entries(grouped).map(([cat, tests]) => (
-            <div key={cat}>
-              <p className="px-3 pt-2.5 pb-1 text-[9px] font-black uppercase tracking-widest text-cyan-500">{cat}</p>
-              {tests.map(t => (
-                <TestRow key={t.id} test={t} favs={favs} onToggleFav={onToggleFav} onPick={() => pick(t)} />
-              ))}
-            </div>
-          ))}
-
-          {Object.keys(grouped).length === 0 && (
-            <p className="px-4 py-4 text-xs text-slate-400 italic text-center">No test found</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TestRow({ test, favs, onToggleFav, onPick }: {
-  test: ImagingTestDef;
-  favs: Set<string>;
-  onToggleFav: (id: string, fav: boolean) => void;
-  onPick: () => void;
-}) {
-  const isFav = favs.has(test.id);
-  return (
-    <div className="flex items-center gap-1 px-3 hover:bg-cyan-50 transition-colors group border-b border-slate-50 last:border-0">
-      <button onClick={e => { e.stopPropagation(); onToggleFav(test.id, !isFav); }} className="p-1 flex-shrink-0">
-        <Star className={`h-3 w-3 transition-colors ${isFav ? "fill-amber-400 text-amber-400" : "text-slate-200 group-hover:text-slate-300"}`} />
-      </button>
-      <button onClick={onPick} className="flex-1 flex items-center justify-between py-2 text-left gap-2">
-        <span className="text-xs font-semibold text-slate-800">{test.name}</span>
-        <CatBadge cat={test.category} />
-      </button>
-    </div>
-  );
+export function formatImagingLabel(o: Pick<ImagingOrder, "modality" | "bodyPart" | "protocol">): string {
+  return `${o.modality} → ${o.bodyPart} → ${o.protocol}`;
 }
 
 // ─── Chips Panel ──────────────────────────────────────────────────────────────
@@ -263,16 +206,19 @@ export function ImagingChipsPanel({ data, onOpen }: { data: ImagingData; onOpen:
           <ScanLine className="h-3.5 w-3.5 text-cyan-500 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="text-[11px] font-black text-cyan-800">{o.testName}</p>
-              <CatBadge cat={o.category} />
+              <p className="text-[11px] font-black text-cyan-800">{o.modality} → {o.bodyPart}</p>
+              <ModalityBadge modality={o.modality} />
             </div>
-            {o.reason && <p className="text-[10px] text-slate-500 mt-0.5 truncate">{o.reason}</p>}
+            <p className="text-[10px] text-slate-600 mt-0.5">{o.protocol}</p>
+            {o.specialInstructions && (
+              <p className="text-[10px] text-slate-400 mt-0.5 italic truncate">{o.specialInstructions}</p>
+            )}
           </div>
         </div>
       ))}
       {data.instructions && (
         <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-100">
-          <p className="text-[9px] font-black text-amber-600 uppercase tracking-wide">Instructions</p>
+          <p className="text-[9px] font-black text-amber-600 uppercase tracking-wide">Requisition Instructions</p>
           <p className="text-[10px] text-amber-700 mt-0.5">{data.instructions}</p>
         </div>
       )}
@@ -285,65 +231,171 @@ export function ImagingChipsPanel({ data, onOpen }: { data: ImagingData; onOpen:
   );
 }
 
+// ─── Cascading Dropdown Form ──────────────────────────────────────────────────
+
+interface OrderForm {
+  modality:            string;
+  bodyPart:            string;
+  protocol:            string;
+  specialInstructions: string;
+}
+
+const EMPTY_FORM: OrderForm = { modality: "", bodyPart: "", protocol: "", specialInstructions: "" };
+
+function CascadeForm({
+  value,
+  onChange,
+}: {
+  value:    OrderForm;
+  onChange: (v: OrderForm) => void;
+}) {
+  const selectedModality = IMAGING_CATALOG.find(m => m.name === value.modality);
+  const selectedBodyPart = selectedModality?.bodyParts.find(b => b.name === value.bodyPart);
+
+  const selectClass =
+    "w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/20 transition-all appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed";
+
+  return (
+    <div className="space-y-3">
+      {/* Modality */}
+      <div>
+        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">
+          Modality <span className="text-red-400">*</span>
+        </label>
+        <div className="relative">
+          <select
+            value={value.modality}
+            onChange={e => onChange({ ...EMPTY_FORM, modality: e.target.value })}
+            className={selectClass}
+          >
+            <option value="">Select modality…</option>
+            {IMAGING_CATALOG.map(m => (
+              <option key={m.name} value={m.name}>{m.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+        </div>
+      </div>
+
+      {/* Body Part */}
+      <div>
+        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">
+          Body Part <span className="text-red-400">*</span>
+        </label>
+        <div className="relative">
+          <select
+            value={value.bodyPart}
+            onChange={e => onChange({ ...value, bodyPart: e.target.value, protocol: "" })}
+            disabled={!selectedModality}
+            className={selectClass}
+          >
+            <option value="">Select body part…</option>
+            {(selectedModality?.bodyParts ?? []).map(b => (
+              <option key={b.name} value={b.name}>{b.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+        </div>
+      </div>
+
+      {/* Protocol/View */}
+      <div>
+        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">
+          Protocol / View <span className="text-red-400">*</span>
+        </label>
+        <div className="relative">
+          <select
+            value={value.protocol}
+            onChange={e => onChange({ ...value, protocol: e.target.value })}
+            disabled={!selectedBodyPart}
+            className={selectClass}
+          >
+            <option value="">Select protocol…</option>
+            {(selectedBodyPart?.protocols ?? []).map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+        </div>
+      </div>
+
+      {/* Special Instructions */}
+      <div>
+        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">
+          Special Instructions
+        </label>
+        <textarea
+          value={value.specialInstructions}
+          onChange={e => onChange({ ...value, specialInstructions: e.target.value })}
+          rows={2}
+          placeholder="e.g. Rule out fracture · Evaluate chronic knee pain · Urgent study required"
+          className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/20 transition-all resize-none placeholder:text-slate-300"
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── Imaging Drawer ───────────────────────────────────────────────────────────
 
 interface ImagingDrawerProps {
   savedData:  ImagingData;
   onSave:     (data: ImagingData) => void;
   onClose:    () => void;
+  doctorName?: string;
 }
 
-export function ImagingDrawer({ savedData, onSave, onClose }: ImagingDrawerProps) {
+export function ImagingDrawer({ savedData, onSave, onClose, doctorName = "Dr. Attending" }: ImagingDrawerProps) {
   const [orders,       setOrders]       = useState<ImagingOrder[]>(savedData.orders);
   const [instructions, setInstructions] = useState(savedData.instructions);
-  const [favs,         setFavs]         = useState<Set<string>>(loadFavs);
-  const [selTest,      setSelTest]      = useState<ImagingTestDef | null>(null);
-  const [reason,       setReason]       = useState("");
-  const [showTemplates,setShowTemplates]= useState(false);
+  const [form,         setForm]         = useState<OrderForm>(EMPTY_FORM);
   const [editingUid,   setEditingUid]   = useState<string | null>(null);
+  const [confirmUid,   setConfirmUid]   = useState<string | null>(null);
 
-  const canAdd = selTest !== null && reason.trim() !== "";
-
-  function toggleFav(id: string, fav: boolean) {
-    setFavs(prev => {
-      const next = new Set(prev);
-      fav ? next.add(id) : next.delete(id);
-      persistFavs(next);
-      return next;
-    });
-  }
-
-  function selectTest(t: ImagingTestDef) {
-    setSelTest(t);
-    setReason("");
-    setEditingUid(null);
-    setShowTemplates(false);
-  }
+  const canAdd = form.modality !== "" && form.bodyPart !== "" && form.protocol !== "";
 
   function handleAdd() {
-    if (!selTest || !canAdd) return;
+    if (!canAdd) return;
+    const now = new Date().toLocaleString(undefined, {
+      day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
     const entry: ImagingOrder = {
-      uid:      editingUid ?? `img-${Date.now()}`,
-      testId:   selTest.id,
-      testName: selTest.name,
-      category: selTest.category,
-      reason:   reason.trim(),
+      uid:                 editingUid ?? `img-${Date.now()}`,
+      modality:            form.modality,
+      bodyPart:            form.bodyPart,
+      protocol:            form.protocol,
+      specialInstructions: form.specialInstructions.trim(),
+      createdAt:           now,
     };
-    setOrders(prev => editingUid ? prev.map(o => o.uid === editingUid ? entry : o) : [...prev, entry]);
-    setSelTest(null); setReason(""); setEditingUid(null); setShowTemplates(false);
+    setOrders(prev => editingUid
+      ? prev.map(o => o.uid === editingUid ? entry : o)
+      : [...prev, entry],
+    );
+    setForm(EMPTY_FORM);
+    setEditingUid(null);
   }
 
   function startEdit(o: ImagingOrder) {
-    const def = IMAGING_TESTS.find(t => t.id === o.testId) ?? { id: o.testId, name: o.testName, category: o.category };
-    setSelTest(def);
-    setReason(o.reason);
+    setForm({
+      modality:            o.modality,
+      bodyPart:            o.bodyPart,
+      protocol:            o.protocol,
+      specialInstructions: o.specialInstructions,
+    });
     setEditingUid(o.uid);
-    setShowTemplates(false);
+    setConfirmUid(null);
   }
 
-  function removeOrder(uid: string) {
+  function cancelEdit() {
+    setForm(EMPTY_FORM);
+    setEditingUid(null);
+  }
+
+  function confirmDelete(uid: string) {
     setOrders(prev => prev.filter(o => o.uid !== uid));
-    if (editingUid === uid) { setSelTest(null); setReason(""); setEditingUid(null); }
+    setConfirmUid(null);
+    if (editingUid === uid) cancelEdit();
   }
 
   function saveAndClose() {
@@ -356,7 +408,8 @@ export function ImagingDrawer({ savedData, onSave, onClose }: ImagingDrawerProps
 
       {/* ── Header ── */}
       <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
-        <button onClick={saveAndClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0">
+        <button onClick={saveAndClose}
+          className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0">
           <ChevronLeft className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
@@ -379,72 +432,35 @@ export function ImagingDrawer({ savedData, onSave, onClose }: ImagingDrawerProps
       {/* ── Body ── */}
       <div className="flex-1 overflow-y-auto">
 
-        {/* Add/Edit form */}
+        {/* ── Add / Edit form ── */}
         <div className="px-4 pt-4 pb-3">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2.5">
-            {editingUid ? "Edit Order" : "Add Imaging Test"}
+            {editingUid ? "Edit Imaging Order" : "Add Imaging Study"}
           </p>
 
-          <TestSearch favs={favs} onToggleFav={toggleFav} onSelect={selectTest} />
+          <CascadeForm value={form} onChange={setForm} />
 
-          {selTest && (
-            <div className="mt-3 border border-cyan-100 rounded-xl bg-cyan-50/30 p-3 space-y-3">
-              {/* Selected test header */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-xs font-black text-slate-800">{selTest.name}</p>
-                  <CatBadge cat={selTest.category} />
-                </div>
-                <button onClick={() => { setSelTest(null); setReason(""); setEditingUid(null); }}
-                  className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors flex-shrink-0">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-
-              {/* Reason field */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-wide">
-                    Reason for Ordering <span className="text-red-400">*</span>
-                  </label>
-                  <button onClick={() => setShowTemplates(v => !v)}
-                    className="flex items-center gap-1 text-[9px] font-bold text-cyan-500 hover:text-cyan-600 transition-colors">
-                    <ChevronDown className={`h-3 w-3 transition-transform ${showTemplates ? "rotate-180" : ""}`} />
-                    Templates
-                  </button>
-                </div>
-                <textarea
-                  value={reason}
-                  onChange={e => setReason(e.target.value)}
-                  rows={2}
-                  placeholder="Why is this test being ordered?"
-                  className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/20 transition-all resize-none placeholder:text-slate-300"
-                />
-                {showTemplates && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {REASON_TEMPLATES.map(t => (
-                      <button key={t} onClick={() => { setReason(t); setShowTemplates(false); }}
-                        className="text-[9px] px-2 py-1 rounded-full bg-slate-100 text-slate-500 hover:bg-cyan-50 hover:text-cyan-600 border border-slate-200 hover:border-cyan-200 transition-colors font-medium">
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Add button */}
-              <div className="flex justify-end">
-                <button onClick={handleAdd} disabled={!canAdd}
-                  className="flex items-center gap-1.5 text-xs font-black px-4 py-2 rounded-xl bg-cyan-500 text-white hover:bg-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  <Plus className="h-3.5 w-3.5" />
-                  {editingUid ? "Update Order" : "Add to Requisition"}
-                </button>
-              </div>
-            </div>
-          )}
+          <div className="flex items-center gap-2 mt-3">
+            <button
+              onClick={handleAdd}
+              disabled={!canAdd}
+              className="flex items-center gap-1.5 text-xs font-black px-4 py-2 rounded-xl bg-cyan-500 text-white hover:bg-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {editingUid ? "Update Order" : "Add Study"}
+            </button>
+            {editingUid && (
+              <button
+                onClick={cancelEdit}
+                className="text-xs font-bold text-slate-400 hover:text-slate-600 px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Orders list */}
+        {/* ── Staged orders list ── */}
         {orders.length > 0 && (
           <>
             <div className="border-t border-slate-100 mx-4" />
@@ -453,30 +469,82 @@ export function ImagingDrawer({ savedData, onSave, onClose }: ImagingDrawerProps
                 Imaging Orders ({orders.length})
               </p>
               <div className="space-y-2">
-                {orders.map(o => {
+                {orders.map((o, idx) => {
                   const isEditing = editingUid === o.uid;
+                  const isConfirm = confirmUid === o.uid;
                   return (
-                    <div key={o.uid}
-                      className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl border transition-all"
-                      style={{ borderColor: isEditing ? "#67e8f9" : "#cffafe", backgroundColor: isEditing ? "#ecfeff" : "#f0fdfe" }}>
-                      <ScanLine className="h-3.5 w-3.5 text-cyan-500 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-[11px] font-black text-slate-800">{o.testName}</p>
-                          <CatBadge cat={o.category} />
+                    <div
+                      key={o.uid}
+                      className="rounded-xl border transition-all"
+                      style={{
+                        borderColor: isEditing ? "#67e8f9" : isConfirm ? "#fca5a5" : "#cffafe",
+                        backgroundColor: isEditing ? "#ecfeff" : isConfirm ? "#fff1f2" : "#f0fdfe",
+                      }}
+                    >
+                      <div className="flex items-start gap-2.5 px-3 py-2.5">
+                        {/* Index + icon */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                          <span className="text-[9px] font-black text-slate-400 w-4 text-right">{idx + 1}.</span>
+                          <ScanLine className="h-3.5 w-3.5 text-cyan-500" />
                         </div>
-                        {o.reason && <p className="text-[10px] text-slate-500 mt-0.5">{o.reason}</p>}
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-[11px] font-black text-slate-800">
+                              {o.modality} → {o.bodyPart}
+                            </p>
+                            <ModalityBadge modality={o.modality} />
+                          </div>
+                          <p className="text-[10px] text-slate-600 mt-0.5">{o.protocol}</p>
+                          {o.specialInstructions && (
+                            <p className="text-[10px] text-slate-400 mt-0.5 italic">{o.specialInstructions}</p>
+                          )}
+                          <p className="text-[9px] text-slate-300 mt-1">
+                            {o.createdAt} · {doctorName}
+                          </p>
+                        </div>
+
+                        {/* Actions */}
+                        {!isConfirm && (
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => startEdit(o)}
+                              title="Edit"
+                              className="h-7 w-7 flex items-center justify-center rounded-lg border border-transparent hover:border-cyan-100 hover:bg-cyan-50 text-slate-300 hover:text-cyan-500 transition-colors"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmUid(o.uid)}
+                              title="Delete"
+                              className="h-7 w-7 flex items-center justify-center rounded-lg border border-transparent hover:border-red-100 hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <button onClick={() => startEdit(o)}
-                          className="h-7 w-7 flex items-center justify-center rounded-lg border border-transparent hover:border-cyan-100 hover:bg-cyan-50 text-slate-300 hover:text-cyan-500 transition-colors">
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                        <button onClick={() => removeOrder(o.uid)}
-                          className="h-7 w-7 flex items-center justify-center rounded-lg border border-transparent hover:border-red-100 hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+
+                      {/* Inline delete confirmation */}
+                      {isConfirm && (
+                        <div className="px-3 pb-2.5 flex items-center gap-2">
+                          <AlertTriangle className="h-3 w-3 text-rose-400 flex-shrink-0" />
+                          <p className="text-[10px] text-rose-600 font-bold flex-1">Remove this order?</p>
+                          <button
+                            onClick={() => confirmDelete(o.uid)}
+                            className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-rose-500 text-white hover:bg-rose-600 transition-colors"
+                          >
+                            Remove
+                          </button>
+                          <button
+                            onClick={() => setConfirmUid(null)}
+                            className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -485,11 +553,12 @@ export function ImagingDrawer({ savedData, onSave, onClose }: ImagingDrawerProps
           </>
         )}
 
-        {/* Global Instructions */}
+        {/* ── Global Requisition Instructions ── */}
         <div className="border-t border-slate-100 mx-4" />
         <div className="px-4 pt-3 pb-5">
           <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">
-            Instructions <span className="font-normal text-slate-400 normal-case tracking-normal">(applies to entire requisition)</span>
+            Requisition Instructions{" "}
+            <span className="font-normal text-slate-400 normal-case tracking-normal">(applies to entire order)</span>
           </label>
           <textarea
             value={instructions}

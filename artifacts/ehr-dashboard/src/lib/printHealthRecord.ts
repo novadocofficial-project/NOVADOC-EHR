@@ -845,7 +845,7 @@ function buildLiveClinical(note: NoteState): string {
 
   const imgOrders = note.imaging?.orders ?? [];
   if (imgOrders.length)
-    parts.push(section("Imaging Orders", chips(imgOrders.map(o => o.testName + (o.category ? ` (${o.category})` : "")))));
+    parts.push(section("Imaging Orders", chips(imgOrders.map(o => `${o.modality} → ${o.bodyPart} → ${o.protocol}${o.specialInstructions ? ` (${o.specialInstructions})` : ""}`))));
 
   const procOrders = (note.procedureOrders as { orders?: { uid: string; name: string }[] })?.orders ?? [];
   if (procOrders.length)
@@ -917,7 +917,7 @@ function buildSpecialtyFormClinical(form: SpecialtyForm, note: NoteState): strin
   if (!renderedOrderScs.has("imaging")) {
     const imgOrders = note.imaging?.orders ?? [];
     if (imgOrders.length)
-      parts.push(section("Imaging Orders", chips(imgOrders.map(o => o.testName + (o.category ? ` (${o.category})` : "")))));
+      parts.push(section("Imaging Orders", chips(imgOrders.map(o => `${o.modality} → ${o.bodyPart} → ${o.protocol}${o.specialInstructions ? ` (${o.specialInstructions})` : ""}`))));
   }
   const procOrders = (note.procedureOrders as { orders?: { uid: string; name: string }[] })?.orders ?? [];
   if (procOrders.length)
@@ -1093,7 +1093,7 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
     case "imaging": {
       const orders = note.imaging?.orders ?? [];
       if (!orders.length) return "";
-      return section("Imaging Orders", chips(orders.map(o => o.testName + (o.category ? ` (${o.category})` : ""))));
+      return section("Imaging Orders", chips(orders.map(o => `${o.modality} → ${o.bodyPart} → ${o.protocol}${o.specialInstructions ? ` (${o.specialInstructions})` : ""}`)));
     }
     case "care-plan": {
       const tasks = (note.carePlan as { tasks?: { uid: string; title: string; assignee?: string; dueDate?: string }[] })?.tasks ?? [];
