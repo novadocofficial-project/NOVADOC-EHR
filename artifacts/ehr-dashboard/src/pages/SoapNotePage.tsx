@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   ArrowLeft, RefreshCw, ChevronDown, MoreHorizontal, ChevronRight, ChevronUp,
-  AlertTriangle, Activity, Heart, Thermometer, User, Ruler, Zap,
+  AlertTriangle, Activity, Heart, Thermometer, User, Ruler, Zap, Brain, Scale,
   Edit3, FileText, CheckCircle2, Clock, X, Maximize2, Minimize2,
   BarChart2, Calendar, Pill, FlaskConical, Stethoscope, PenLine,
   ClipboardList, Users, FileBarChart, ScanLine, TrendingUp,
@@ -43,12 +43,14 @@ const ACCENT = "#4982CF";
 // ─── Static mock data ─────────────────────────────────────────────────────────
 
 const VITALS = [
-  { label: "BP",     value: "121/77", unit: "mmHg",  Icon: Activity,    color: "#4982CF" },
-  { label: "Pulse",  value: "76",     unit: "bpm",   Icon: Heart,       color: "#ef4444" },
-  { label: "Temp",   value: "37.0",   unit: "°C",    Icon: Thermometer, color: "#f59e0b" },
-  { label: "Weight", value: "72",     unit: "kg",    Icon: User,        color: "#8b5cf6" },
-  { label: "Height", value: "168",    unit: "cm",    Icon: Ruler,       color: "#10b981" },
-  { label: "Pain",   value: "5/10",   unit: "score", Icon: Zap,         color: "#ec4899" },
+  { label: "BP",      value: "121/77", unit: "mmHg",  Icon: Activity,    color: "#4982CF" },
+  { label: "Pulse",   value: "76",     unit: "bpm",   Icon: Heart,       color: "#ef4444" },
+  { label: "Temp",    value: "37.0",   unit: "°C",    Icon: Thermometer, color: "#f59e0b" },
+  { label: "Weight",  value: "72",     unit: "kg",    Icon: User,        color: "#8b5cf6" },
+  { label: "Height",  value: "168",    unit: "cm",    Icon: Ruler,       color: "#10b981" },
+  { label: "BMI",     value: "25.5",   unit: "kg/m²", Icon: Scale,       color: "#14b8a6" },
+  { label: "Pain",    value: "5/10",   unit: "score", Icon: Zap,         color: "#ec4899" },
+  { label: "PHQ-4",   value: "7",      unit: "Mental", Icon: Brain,      color: "#7c3aed" },
 ];
 
 const CONDITIONS = [
