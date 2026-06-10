@@ -6,7 +6,7 @@ import {
   CalendarDays, Stethoscope, Pill, FlaskConical, FileText,
   FolderOpen, ClipboardList, CheckCircle2, Syringe, Zap, Brain,
   ArrowUpRight, Scissors, ShieldCheck, ExternalLink, X, Clock,
-  Maximize2, Minimize2, ChevronDown,
+  Maximize2, Minimize2, ChevronDown, Ruler, Scale,
 } from "lucide-react";
 import { SOAP_DUMMY } from "@/data/soapDummy";
 import { printHealthRecord } from "@/lib/printHealthRecord";
@@ -42,14 +42,20 @@ const VITALS_TREND = [...SOAP_DUMMY].reverse().map(r => {
 
 // Today's Vitals — from most recent SOAP record (SOAP_DUMMY[0] = Dec 10)
 const _v = SOAP_DUMMY[0].vitals;
+const _weightKg  = parseFloat(_v.weight);          // e.g. 72
+const _heightCm  = 168;                            // cm (standard dummy height)
+const _heightM   = _heightCm / 100;
+const _bmi       = (_weightKg / (_heightM * _heightM)).toFixed(1); // e.g. 25.5
 const VITALS_TODAY = [
-  { label: "BP",     value: _v.bp,               unit: "mmHg", icon: <Activity className="h-4 w-4" />,   color: "#4982CF" },
-  { label: "Pulse",  value: _v.pulse,             unit: "bpm",  icon: <Heart className="h-4 w-4" />,       color: "#ef4444" },
-  { label: "Temp",   value: _v.temp,              unit: "°C",   icon: <Thermometer className="h-4 w-4" />, color: "#f59e0b" },
-  { label: "O₂ Sat", value: _v.spo2 + "%",        unit: "SpO₂", icon: <Droplets className="h-4 w-4" />,   color: "#10b981" },
-  { label: "Weight", value: _v.weight.replace(" kg",""), unit: "kg", icon: <User className="h-4 w-4" />,   color: "#8b5cf6" },
-  { label: "Pain",   value: "6/10",               unit: "Score", icon: <Zap className="h-4 w-4" />,        color: "#f97316" },
-  { label: "PHQ-4",  value: "7",                  unit: "Mental", icon: <Brain className="h-4 w-4" />,     color: "#7c3aed" },
+  { label: "BP",      value: _v.bp,                          unit: "mmHg",  icon: <Activity className="h-4 w-4" />,    color: "#4982CF" },
+  { label: "Pulse",   value: _v.pulse,                       unit: "bpm",   icon: <Heart className="h-4 w-4" />,        color: "#ef4444" },
+  { label: "Temp",    value: _v.temp,                        unit: "°C",    icon: <Thermometer className="h-4 w-4" />,  color: "#f59e0b" },
+  { label: "O₂ Sat",  value: _v.spo2 + "%",                  unit: "SpO₂",  icon: <Droplets className="h-4 w-4" />,    color: "#10b981" },
+  { label: "Weight",  value: _v.weight.replace(" kg", ""),   unit: "kg",    icon: <User className="h-4 w-4" />,         color: "#8b5cf6" },
+  { label: "Height",  value: String(_heightCm),              unit: "cm",    icon: <Ruler className="h-4 w-4" />,        color: "#0ea5e9" },
+  { label: "BMI",     value: _bmi,                           unit: "kg/m²", icon: <Scale className="h-4 w-4" />,        color: "#14b8a6" },
+  { label: "Pain",    value: "5/10",                         unit: "Score", icon: <Zap className="h-4 w-4" />,          color: "#f97316" },
+  { label: "PHQ-4",   value: "7",                            unit: "Mental", icon: <Brain className="h-4 w-4" />,       color: "#7c3aed" },
 ];
 
 // Critical Conditions — High-severity diagnoses, deduplicated, across all records
@@ -684,9 +690,9 @@ export function PatientFaceSheet({
           </div>
 
           {/* Today's Vitals quick view */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto max-w-[520px] flex-shrink-0 pb-0.5">
             {VITALS_TODAY.map(v => (
-              <div key={v.label} className="flex flex-col items-center rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 min-w-[60px]">
+              <div key={v.label} className="flex flex-col items-center rounded-xl border border-slate-100 bg-slate-50 px-2.5 py-2 min-w-[58px] flex-shrink-0">
                 <span style={{ color: v.color }}>{v.icon}</span>
                 <p className="text-sm font-black text-slate-800 mt-1 leading-tight">{v.value}</p>
                 <p className="text-[9px] text-slate-400 uppercase tracking-wide leading-tight">{v.unit}</p>
