@@ -725,6 +725,32 @@ export function PatientFaceSheet({
           </div>
         )}
 
+        {/* Allergies Alert */}
+        {ALLERGIES.length > 0 && (
+          <div className="rounded-2xl border-2 border-orange-300 bg-orange-50 px-5 py-3.5 flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="h-8 w-8 rounded-xl bg-orange-500 flex items-center justify-center">
+                <Syringe className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-orange-700">Allergies</p>
+                <p className="text-[10px] text-orange-500">Review before prescribing</p>
+              </div>
+            </div>
+            <div className="w-px h-8 bg-orange-200 flex-shrink-0" />
+            <div className="flex items-center gap-3 flex-wrap">
+              {ALLERGIES.map(a => (
+                <div key={a.name} className="flex items-center gap-2 rounded-xl bg-white border border-orange-200 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full flex-shrink-0 bg-orange-400" />
+                  <span className="text-xs font-bold text-slate-800">{a.name}</span>
+                  <span className="text-[10px] text-slate-500">{a.reaction}</span>
+                  <SeverityBadge severity={a.severity} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── ROW 1: Vitals Chart + Donut + Pain ──────────────────────────── */}
         <div className="grid grid-cols-12 gap-4">
 
@@ -802,22 +828,8 @@ export function PatientFaceSheet({
           </div>
         </div>
 
-        {/* ── ROW 1: Allergies + Patient History + Current Medications ─────── */}
-        <div className="grid grid-cols-3 gap-4">
-          <SectionCard title="Allergies" icon={<Syringe className="h-4 w-4" />} badge={ALLERGIES.length} accentColor="#ef4444">
-            <div className="space-y-2">
-              {ALLERGIES.map(a => (
-                <div key={a.name} className="flex items-center justify-between rounded-xl bg-red-50 border border-red-100 px-3 py-2">
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">{a.name}</p>
-                    <SeverityBadge severity={a.severity} />
-                  </div>
-                  <p className="text-xs text-slate-700 font-semibold">{a.reaction}</p>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-
+        {/* ── ROW 1: Patient History + Presenting Complaint ────────────────── */}
+        <div className="grid grid-cols-2 gap-4">
           <SectionCard title="Patient History" icon={<ClipboardList className="h-4 w-4" />} badge={3} accentColor="#8b5cf6">
             {HISTORY_RECORDS.map((h, i) => (
               <ActionRow key={i}
