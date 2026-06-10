@@ -1102,12 +1102,15 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
   const [labDrawerMode,     setLabDrawerMode]     = useState<"add" | "edit" | null>(null);
   const [editingOrderId,    setEditingOrderId]    = useState<string | null>(null);
   const [pocOpen,           setPocOpen]           = useState(false);
-  const [formularyOpen,     setFormularyOpen]     = useState(false);
-  const [imagingOpen,       setImagingOpen]       = useState(false);
-  const [healthEdOpen,      setHealthEdOpen]      = useState(false);
-  const [referralOpen,      setReferralOpen]      = useState(false);
-  const [procOrdersOpen,    setProcOrdersOpen]    = useState(false);
-  const [patientGoalsOpen,  setPatientGoalsOpen]  = useState(false);
+  // ── Drawer stack: last entry is the top-most visible drawer ──────────────
+  const [drawerStack,       setDrawerStack]       = useState<string[]>([]);
+  function openDrawer(id: string) {
+    setDrawerStack(s => [...s.filter(x => x !== id), id]);
+  }
+  function closeDrawer(id: string) {
+    setDrawerStack(s => s.filter(x => x !== id));
+  }
+  function isOpen(id: string) { return drawerStack.includes(id); }
   const [templateOpen,      setTemplateOpen]      = useState(false);
   const [templateMode,      setTemplateMode]      = useState<"browse" | "save">("browse");
   const [discardConfirm,    setDiscardConfirm]    = useState(false);
@@ -1239,7 +1242,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
   function handleDiagnosisSave(entries: DiagnosisEntry[]) {
     setDiagnosisSaved(entries);
     setDiagnosisDone(true);
-    setDiagnosisOpen(false);
+    closeDrawer("diagnosis");
     setNote(prev => ({ ...prev, diagnoses: entries, diagnosisDone: true }));
   }
 
@@ -1458,7 +1461,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                 <CheckCircle2 className="h-2.5 w-2.5" /> {diagnosisSaved.length} code{diagnosisSaved.length !== 1 ? "s" : ""}
               </span>
             )}
-            <DiagnosisChipsPanel diagnoses={diagnosisSaved} onOpen={() => setDiagnosisOpen(true)} />
+            <DiagnosisChipsPanel diagnoses={diagnosisSaved} onOpen={() => openDrawer("diagnosis")} />
           </Section>
         );
 
@@ -1520,14 +1523,14 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
       case "formulary":
         return (
           <Section key="sc-rx" title="Prescriptions / Formulary" icon={Pill} color="#8b5cf6" filled={(note.formulary?.medicines?.length ?? 0) > 0}>
-            <FormularyChipsPanel data={note.formulary ?? EMPTY_FORMULARY} onOpen={() => setFormularyOpen(true)} />
+            <FormularyChipsPanel data={note.formulary ?? EMPTY_FORMULARY} onOpen={() => openDrawer("formulary")} />
           </Section>
         );
 
       case "imaging":
         return (
           <Section key="sc-img" title="Imaging" icon={Scan} color="#0ea5e9" filled={(note.imaging?.orders?.length ?? 0) > 0}>
-            <ImagingChipsPanel data={note.imaging ?? EMPTY_IMAGING} onOpen={() => setImagingOpen(true)} />
+            <ImagingChipsPanel data={note.imaging ?? EMPTY_IMAGING} onOpen={() => openDrawer("imaging")} />
           </Section>
         );
 
@@ -1547,14 +1550,14 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
       case "referrals":
         return (
           <Section key="sc-ref" title="Referrals" icon={Users} color="#6366f1" filled={(note.referrals?.referrals?.length ?? 0) > 0}>
-            <ReferralChipsPanel data={note.referrals ?? EMPTY_REFERRAL_DATA} onOpen={() => setReferralOpen(true)} />
+            <ReferralChipsPanel data={note.referrals ?? EMPTY_REFERRAL_DATA} onOpen={() => openDrawer("referral")} />
           </Section>
         );
 
       case "patient-goals":
         return (
           <Section key="sc-pg" title="Patient Goals" icon={CheckCircle2} color="#ec4899" filled={(note.patientGoals?.goals?.length ?? 0) > 0}>
-            <PatientGoalsChipsPanel data={note.patientGoals ?? EMPTY_PATIENT_GOALS} onOpen={() => setPatientGoalsOpen(true)} />
+            <PatientGoalsChipsPanel data={note.patientGoals ?? EMPTY_PATIENT_GOALS} onOpen={() => openDrawer("patientGoals")} />
           </Section>
         );
 
@@ -1964,7 +1967,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               </p>
               <DiagnosisChipsPanel
                 diagnoses={diagnosisSaved}
-                onOpen={() => setDiagnosisOpen(true)}
+                onOpen={() => openDrawer("diagnosis")}
               />
             </div>
 
@@ -2129,7 +2132,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               </p>
               <FormularyChipsPanel
                 data={note.formulary ?? EMPTY_FORMULARY}
-                onOpen={() => setFormularyOpen(true)}
+                onOpen={() => openDrawer("formulary")}
               />
             </div>
 
@@ -2146,7 +2149,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               </p>
               <ImagingChipsPanel
                 data={note.imaging ?? EMPTY_IMAGING}
-                onOpen={() => setImagingOpen(true)}
+                onOpen={() => openDrawer("imaging")}
               />
             </div>
 
@@ -2163,7 +2166,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               </p>
               <ProcedureOrdersChipsPanel
                 data={note.procedureOrders ?? EMPTY_PROCEDURE_ORDERS}
-                onOpen={() => setProcOrdersOpen(true)}
+                onOpen={() => openDrawer("procOrders")}
               />
             </div>
 
@@ -2180,7 +2183,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               </p>
               <ReferralChipsPanel
                 data={note.referrals ?? EMPTY_REFERRAL_DATA}
-                onOpen={() => setReferralOpen(true)}
+                onOpen={() => openDrawer("referral")}
               />
             </div>
 
@@ -2197,7 +2200,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               </p>
               <PatientGoalsChipsPanel
                 data={note.patientGoals ?? EMPTY_PATIENT_GOALS}
-                onOpen={() => setPatientGoalsOpen(true)}
+                onOpen={() => openDrawer("patientGoals")}
               />
             </div>
 
@@ -2214,7 +2217,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               </p>
               <HealthEdChipsPanel
                 data={note.healthEd ?? EMPTY_HEALTH_ED}
-                onOpen={() => setHealthEdOpen(true)}
+                onOpen={() => openDrawer("healthEd")}
               />
             </div>
 
@@ -2404,17 +2407,75 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
           />
         )}
 
-        {/* ── Diagnosis ICD Drawer ── */}
-        {diagnosisOpen && (
-          <DiagnosisDrawer
-            isDone={diagnosisDone}
-            savedData={diagnosisSaved}
-            onSave={handleDiagnosisSave}
-            onClose={() => setDiagnosisOpen(false)}
-          />
-        )}
+        {/* ── Stacked A&P Drawers ── rendered in stack order; last = on top ── */}
+        {drawerStack.map(id => {
+          switch (id) {
+            case "diagnosis": return (
+              <DiagnosisDrawer key="diagnosis"
+                isDone={diagnosisDone}
+                savedData={diagnosisSaved}
+                onSave={handleDiagnosisSave}
+                onClose={() => closeDrawer("diagnosis")}
+              />
+            );
+            case "formulary": return (
+              <FormularyDrawer key="formulary"
+                savedData={note.formulary ?? EMPTY_FORMULARY}
+                patientAllergies={note.allergies ?? []}
+                onSave={v => set("formulary", v)}
+                onClose={() => closeDrawer("formulary")}
+              />
+            );
+            case "imaging": return (
+              <ImagingDrawer key="imaging"
+                savedData={note.imaging ?? EMPTY_IMAGING}
+                onSave={v => set("imaging", v)}
+                onClose={() => closeDrawer("imaging")}
+              />
+            );
+            case "healthEd": return (
+              <HealthEdDrawer key="healthEd"
+                savedData={note.healthEd ?? EMPTY_HEALTH_ED}
+                onSave={v => set("healthEd", v)}
+                onClose={() => closeDrawer("healthEd")}
+              />
+            );
+            case "patientGoals": return (
+              <PatientGoalsDrawer key="patientGoals"
+                savedData={note.patientGoals ?? EMPTY_PATIENT_GOALS}
+                onSave={v => set("patientGoals", v)}
+                onClose={() => closeDrawer("patientGoals")}
+              />
+            );
+            case "procOrders": return (
+              <ProcedureOrdersDrawer key="procOrders"
+                savedData={note.procedureOrders ?? EMPTY_PROCEDURE_ORDERS}
+                onSave={v => set("procedureOrders", v)}
+                onClose={() => closeDrawer("procOrders")}
+              />
+            );
+            case "referral": return (
+              <ReferralDrawer key="referral"
+                savedData={note.referrals ?? EMPTY_REFERRAL_DATA}
+                patientAllergies={note.allergies ?? []}
+                patientMeds={(note.formulary?.medicines ?? []).map(m => ({
+                  id:        m.brandId,
+                  brand:     m.brand,
+                  generic:   m.genericName,
+                  strength:  m.strength,
+                  frequency: m.frequency,
+                  duration:  m.duration,
+                  qty:       1,
+                } as ReferralMed))}
+                onSave={v => set("referrals", v)}
+                onClose={() => closeDrawer("referral")}
+              />
+            );
+            default: return null;
+          }
+        })}
 
-        {/* ── Lab Order Drawer ── */}
+        {/* ── Lab Order Drawer ── (always renders above the stack) */}
         {labDrawerMode && (
           <LabDrawer
             mode={labDrawerMode}
@@ -2442,36 +2503,6 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
           />
         )}
 
-        {/* ── Formulary Drawer ── */}
-        {formularyOpen && (
-          <FormularyDrawer
-            savedData={note.formulary ?? EMPTY_FORMULARY}
-            patientAllergies={note.allergies ?? []}
-            onSave={v => set("formulary", v)}
-            onClose={() => setFormularyOpen(false)}
-          />
-        )}
-
-        {/* ── Imaging Drawer ── */}
-        {imagingOpen && (
-          <ImagingDrawer
-            savedData={note.imaging ?? EMPTY_IMAGING}
-            onSave={v => set("imaging", v)}
-            onClose={() => setImagingOpen(false)}
-          />
-        )}
-
-        {/* ── Care Plan Drawer ── (temporarily hidden) */}
-
-        {/* ── Health Education Drawer ── */}
-        {healthEdOpen && (
-          <HealthEdDrawer
-            savedData={note.healthEd ?? EMPTY_HEALTH_ED}
-            onSave={v => set("healthEd", v)}
-            onClose={() => setHealthEdOpen(false)}
-          />
-        )}
-
         {/* ── Template Drawer ── */}
         {templateOpen && (
           <TemplateDrawer
@@ -2482,42 +2513,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
           />
         )}
 
-        {/* ── Patient Goals Drawer ── */}
-        {patientGoalsOpen && (
-          <PatientGoalsDrawer
-            savedData={note.patientGoals ?? EMPTY_PATIENT_GOALS}
-            onSave={v => set("patientGoals", v)}
-            onClose={() => setPatientGoalsOpen(false)}
-          />
-        )}
-
-        {/* ── Procedure Orders Drawer ── */}
-        {procOrdersOpen && (
-          <ProcedureOrdersDrawer
-            savedData={note.procedureOrders ?? EMPTY_PROCEDURE_ORDERS}
-            onSave={v => set("procedureOrders", v)}
-            onClose={() => setProcOrdersOpen(false)}
-          />
-        )}
-
-        {/* ── Referral Drawer ── */}
-        {referralOpen && (
-          <ReferralDrawer
-            savedData={note.referrals ?? EMPTY_REFERRAL_DATA}
-            patientAllergies={note.allergies ?? []}
-            patientMeds={(note.formulary?.medicines ?? []).map(m => ({
-              id:        m.brandId,
-              brand:     m.brand,
-              generic:   m.genericName,
-              strength:  m.strength,
-              frequency: m.frequency,
-              duration:  m.duration,
-              qty:       1,
-            } as ReferralMed))}
-            onSave={v => set("referrals", v)}
-            onClose={() => setReferralOpen(false)}
-          />
-        )}
+        {/* ── Care Plan Drawer ── (temporarily hidden) */}
 
         {/* ── AI Scribing Drawer ── */}
         {aiScribeOpen && (
