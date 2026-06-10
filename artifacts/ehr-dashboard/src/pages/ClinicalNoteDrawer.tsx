@@ -2064,22 +2064,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               />
             </div>
 
-            {/* 7e. Care Plan */}
-            <div className="mb-4">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
-                <ClipboardList className="h-3 w-3 text-emerald-500" />
-                Care Plan
-              </p>
-              <textarea
-                value={note.carePlan?.instructions ?? ""}
-                onChange={e => set("carePlan", { ...(note.carePlan ?? EMPTY_CARE_PLAN), instructions: e.target.value })}
-                rows={4}
-                placeholder="Care plan instructions…"
-                className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2.5 outline-none resize-none placeholder:text-slate-400 focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/20 transition-all"
-              />
-            </div>
-
-            {/* 7f. Procedure Orders */}
+            {/* 7e. Procedure Orders */}
             <div className="mb-4">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <Stethoscope className="h-3 w-3 text-teal-500" />
@@ -2096,7 +2081,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               />
             </div>
 
-            {/* 7g. Referrals */}
+            {/* 7f. Referrals */}
             <div className="mb-4">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <Users className="h-3 w-3 text-indigo-500" />
@@ -2113,7 +2098,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               />
             </div>
 
-            {/* 7h. Patient Goals */}
+            {/* 7g. Patient Goals */}
             <div className="mb-4">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <CheckCircle2 className="h-3 w-3 text-pink-500" />
@@ -2130,7 +2115,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               />
             </div>
 
-            {/* 7i. Health Education */}
+            {/* 7h. Health Education */}
             <div className="mb-4">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <BookOpen className="h-3 w-3 text-violet-500" />
@@ -2144,6 +2129,21 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               <HealthEdChipsPanel
                 data={note.healthEd ?? EMPTY_HEALTH_ED}
                 onOpen={() => setHealthEdOpen(true)}
+              />
+            </div>
+
+            {/* 7i. Care Plan */}
+            <div className="mb-4">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <ClipboardList className="h-3 w-3 text-emerald-500" />
+                Care Plan
+              </p>
+              <textarea
+                value={note.carePlan?.instructions ?? ""}
+                onChange={e => set("carePlan", { ...(note.carePlan ?? EMPTY_CARE_PLAN), instructions: e.target.value })}
+                rows={4}
+                placeholder="Care plan instructions…"
+                className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2.5 outline-none resize-none placeholder:text-slate-400 focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/20 transition-all"
               />
             </div>
 
