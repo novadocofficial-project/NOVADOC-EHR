@@ -1116,6 +1116,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
   const [aiScribeOpen,     setAiScribeOpen]      = useState(false);
   const [micCheckDone,     setMicCheckDone]      = useState(false);
   const [selectedMic,      setSelectedMic]       = useState("default");
+  const [isTranscribing,   setIsTranscribing]    = useState(false);
+  const [aiAlreadyMsg,     setAiAlreadyMsg]      = useState(false);
   const elapsedOnOpen  = faceSheetOpenedAt ? Math.floor((Date.now() - faceSheetOpenedAt) / 1000) : 0;
   const patientTimer   = useTimer(elapsedOnOpen);
   const documentTimer  = useTimer();
@@ -1153,6 +1155,12 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [formDropOpen]);
+
+  useEffect(() => {
+    if (!aiAlreadyMsg) return;
+    const t = setTimeout(() => setAiAlreadyMsg(false), 2500);
+    return () => clearTimeout(t);
+  }, [aiAlreadyMsg]);
 
   function togglePlanTag(tag: string) {
     set("planTags", note.planTags.includes(tag)
@@ -1582,18 +1590,37 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         {/* ── Top action bar ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100 flex-shrink-0 bg-white">
 
-          {/* Left: Template + AI Scribing */}
+          {/* Left: AI Scribing + Template */}
+          <button
+            onClick={() => {
+              if (isTranscribing) { setAiAlreadyMsg(true); return; }
+              setAiScribeOpen(true);
+            }}
+            title={isTranscribing ? "Already transcribing" : "AI Scribing"}
+            className={[
+              "relative flex items-center gap-1 px-2 py-1.5 rounded-lg border transition-colors flex-shrink-0",
+              isTranscribing
+                ? "border-violet-300 bg-violet-50 text-violet-600"
+                : "border-slate-200 text-slate-400 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-500",
+            ].join(" ")}>
+            <Mic className="h-3.5 w-3.5" />
+            <Sparkles className={`h-2.5 w-2.5 ${isTranscribing ? "text-violet-500" : "text-violet-400"}`} />
+            {isTranscribing && (
+              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+            )}
+          </button>
+
+          {/* Already-transcribing tooltip */}
+          {aiAlreadyMsg && (
+            <span className="text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-lg flex-shrink-0 whitespace-nowrap">
+              Already transcribing
+            </span>
+          )}
+
           <button
             onClick={() => { setTemplateMode("browse"); setTemplateOpen(true); }}
             className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors flex-shrink-0">
             <FileText className="h-3.5 w-3.5" style={{ color: ACCENT }} /> Add Template
-          </button>
-          <button
-            onClick={() => setAiScribeOpen(true)}
-            title="AI Scribing"
-            className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-500 transition-colors flex-shrink-0">
-            <Mic className="h-3.5 w-3.5" />
-            <Sparkles className="h-2.5 w-2.5 text-violet-400" />
           </button>
           <button
             onClick={() => { setTemplateMode("save"); setTemplateOpen(true); }}
@@ -1688,6 +1715,23 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             </span>
           )}
         </div>
+
+        {/* ── AI transcription indicator ─────────────────────────────────── */}
+        {isTranscribing && (
+          <div className="flex items-center gap-2.5 px-4 py-2 bg-violet-50 border-b border-violet-200 flex-shrink-0">
+            <span className="relative flex h-2 w-2 flex-shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+            </span>
+            <Sparkles className="h-3 w-3 text-violet-500 flex-shrink-0" />
+            <p className="text-[11px] font-bold text-violet-700 flex-1">AI is listening and transcribing…</p>
+            <button
+              onClick={() => setIsTranscribing(false)}
+              className="flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg bg-white border border-violet-200 text-violet-600 hover:bg-violet-100 transition-colors flex-shrink-0">
+              <StopCircle className="h-3 w-3" /> Stop
+            </button>
+          </div>
+        )}
 
         {/* ── Scrollable content ────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -2572,6 +2616,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
 
               {/* Start Listening */}
               <button
+                onClick={() => { setIsTranscribing(true); setAiScribeOpen(false); }}
                 className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-black text-sm text-white shadow-md transition-opacity hover:opacity-90"
                 style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>
                 <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
