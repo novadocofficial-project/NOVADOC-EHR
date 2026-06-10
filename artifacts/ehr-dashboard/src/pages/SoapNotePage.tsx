@@ -964,16 +964,13 @@ function SoapNotePreview({ note }: { note: SoapDummyNote }) {
           )}
 
           {/* Care Plan */}
-          <Section icon={<BookOpen className="h-3.5 w-3.5" />} title="Care Plan" color="#10b981">
-            <div className="space-y-1.5">
-              {note.carePlan.map((c, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-slate-600">{c}</p>
-                </div>
-              ))}
-            </div>
-          </Section>
+          {note.carePlan.length > 0 && (
+            <Section icon={<BookOpen className="h-3.5 w-3.5" />} title="Care Plan" color="#10b981">
+              <p className="text-[11px] leading-relaxed text-slate-600 bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 whitespace-pre-wrap">
+                {note.carePlan.join("\n")}
+              </p>
+            </Section>
+          )}
 
           {/* Procedure Orders */}
           {note.procedureOrders.length > 0 && (
