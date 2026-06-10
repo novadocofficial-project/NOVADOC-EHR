@@ -97,9 +97,10 @@ export interface CarePlanTask {
 
 export interface CarePlanData {
   tasks: CarePlanTask[];
+  instructions?: string;
 }
 
-export const EMPTY_CARE_PLAN: CarePlanData = { tasks: [] };
+export const EMPTY_CARE_PLAN: CarePlanData = { tasks: [], instructions: "" };
 
 // ─── Priority Badge ───────────────────────────────────────────────────────────
 

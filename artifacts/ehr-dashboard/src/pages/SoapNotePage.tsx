@@ -429,23 +429,11 @@ function SpecialtyNotePreview({ form, data, note }: { form: SpecialtyForm; data:
       }
 
       case "care-plan": {
-        const tasks = note.carePlan?.tasks ?? [];
-        if (!tasks.length) return null;
+        const instructions = note.carePlan?.instructions?.trim() ?? "";
+        if (!instructions) return null;
         return (
           <Section key="sc-cp" icon={<BookOpen className="h-3.5 w-3.5" />} title="Care Plan" color="#10b981">
-            <div className="space-y-1.5">
-              {tasks.map(t => (
-                <div key={t.uid} className="flex items-start gap-2">
-                  <CheckCircle2 className={`h-3 w-3 flex-shrink-0 mt-0.5 ${t.priority === "Urgent" ? "text-red-400" : "text-emerald-500"}`} />
-                  <div>
-                    <p className="text-[11px] text-slate-700 font-medium">{t.title}</p>
-                    {(t.assignee || t.dueDate) && (
-                      <p className="text-[9px] text-slate-400 mt-0.5">{[t.assignee, t.dueDate].filter(Boolean).join(" · ")}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="text-[11px] leading-relaxed text-slate-600 bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 whitespace-pre-wrap">{instructions}</p>
           </Section>
         );
       }

@@ -32,7 +32,7 @@ import { FormularyChipsPanel, FormularyDrawer, EMPTY_FORMULARY } from "@/pages/F
 import type { FormularyData } from "@/pages/FormularySection";
 import { ImagingChipsPanel, ImagingDrawer, EMPTY_IMAGING } from "@/pages/ImagingSection";
 import type { ImagingData } from "@/pages/ImagingSection";
-import { CarePlanChipsPanel, CarePlanDrawer, EMPTY_CARE_PLAN } from "@/pages/CarePlanSection";
+import { EMPTY_CARE_PLAN } from "@/pages/CarePlanSection";
 import type { CarePlanData } from "@/pages/CarePlanSection";
 import { HealthEdChipsPanel, HealthEdDrawer, EMPTY_HEALTH_ED } from "@/pages/HealthEdSection";
 import type { HealthEdSelection } from "@/pages/HealthEdSection";
@@ -1100,7 +1100,6 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
   const [pocOpen,           setPocOpen]           = useState(false);
   const [formularyOpen,     setFormularyOpen]     = useState(false);
   const [imagingOpen,       setImagingOpen]       = useState(false);
-  const [carePlanOpen,      setCarePlanOpen]      = useState(false);
   const [healthEdOpen,      setHealthEdOpen]      = useState(false);
   const [referralOpen,      setReferralOpen]      = useState(false);
   const [procOrdersOpen,    setProcOrdersOpen]    = useState(false);
@@ -1514,8 +1513,14 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
 
       case "care-plan":
         return (
-          <Section key="sc-cp" title="Care Plan" icon={ClipboardList} color="#10b981" filled={(note.carePlan?.tasks?.length ?? 0) > 0}>
-            <CarePlanChipsPanel data={note.carePlan ?? EMPTY_CARE_PLAN} onOpen={() => setCarePlanOpen(true)} />
+          <Section key="sc-cp" title="Care Plan" icon={ClipboardList} color="#10b981" filled={!!note.carePlan?.instructions?.trim()}>
+            <textarea
+              value={note.carePlan?.instructions ?? ""}
+              onChange={e => set("carePlan", { ...(note.carePlan ?? EMPTY_CARE_PLAN), instructions: e.target.value })}
+              rows={4}
+              placeholder="Care plan instructions…"
+              className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2.5 outline-none resize-none placeholder:text-slate-400 focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/20 transition-all"
+            />
           </Section>
         );
 
@@ -2064,15 +2069,13 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <ClipboardList className="h-3 w-3 text-emerald-500" />
                 Care Plan
-                {(note.carePlan?.tasks?.length ?? 0) > 0 && (
-                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center gap-1">
-                    <CheckCircle2 className="h-2.5 w-2.5" /> {note.carePlan.tasks.length} task{note.carePlan.tasks.length !== 1 ? "s" : ""}
-                  </span>
-                )}
               </p>
-              <CarePlanChipsPanel
-                data={note.carePlan ?? EMPTY_CARE_PLAN}
-                onOpen={() => setCarePlanOpen(true)}
+              <textarea
+                value={note.carePlan?.instructions ?? ""}
+                onChange={e => set("carePlan", { ...(note.carePlan ?? EMPTY_CARE_PLAN), instructions: e.target.value })}
+                rows={4}
+                placeholder="Care plan instructions…"
+                className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2.5 outline-none resize-none placeholder:text-slate-400 focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/20 transition-all"
               />
             </div>
 
@@ -2372,14 +2375,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
           />
         )}
 
-        {/* ── Care Plan Drawer ── */}
-        {carePlanOpen && (
-          <CarePlanDrawer
-            savedData={note.carePlan ?? EMPTY_CARE_PLAN}
-            onSave={v => set("carePlan", v)}
-            onClose={() => setCarePlanOpen(false)}
-          />
-        )}
+        {/* ── Care Plan Drawer ── (temporarily hidden) */}
 
         {/* ── Health Education Drawer ── */}
         {healthEdOpen && (
