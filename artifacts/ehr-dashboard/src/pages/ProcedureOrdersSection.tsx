@@ -460,6 +460,9 @@ export function ProcedureOrdersDrawer({ savedData, onSave, onClose }: ProcedureO
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 flex-shrink-0"
         style={{ background: "linear-gradient(135deg, #0d948810 0%, #10b98110 100%)" }}>
+        <button className="text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0" onClick={onClose}>
+          <ChevronLeft className="h-5 w-5" />
+        </button>
         <div className="h-8 w-8 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ background: "#0d9488" }}>
           <Stethoscope className="h-4 w-4 text-white" />
@@ -468,9 +471,6 @@ export function ProcedureOrdersDrawer({ savedData, onSave, onClose }: ProcedureO
           <p className="text-sm font-black text-slate-800">Procedure Orders</p>
           <p className="text-[10px] text-slate-500">Doctor → Nursing / Clinical Staff Instructions</p>
         </div>
-        <button className="text-slate-400 hover:text-slate-600 transition-colors" onClick={onClose}>
-          <ChevronLeft className="h-5 w-5" />
-        </button>
       </div>
 
       {/* Body */}
