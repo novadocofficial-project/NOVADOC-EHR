@@ -128,7 +128,7 @@ const STATUS_CONFIG: Record<ApptStatus, { label: string; text: string; bg: strin
 const ALL_STATUSES = Object.keys(STATUS_CONFIG) as ApptStatus[];
 
 const PRIORITY_CONFIG = {
-  normal:    { label: "Normal",    text: "text-slate-600",  bg: "bg-slate-100"   },
+  routine:   { label: "Routine",   text: "text-slate-600",  bg: "bg-slate-100"   },
   urgent:    { label: "Urgent",    text: "text-amber-700",  bg: "bg-amber-50"    },
   emergency: { label: "Emergency", text: "text-red-700",    bg: "bg-red-50"      },
 };
@@ -182,7 +182,7 @@ interface BookingForm {
   patientPhone: string;
   type: string;
   specialty: string;
-  priority: "normal" | "urgent" | "emergency";
+  priority: "routine" | "urgent" | "emergency";
   contagious: boolean;
   contagiousNote: string;
   repeat: boolean;
@@ -196,7 +196,7 @@ function emptyForm(init?: Partial<BookingForm>): BookingForm {
   return {
     doctorId: "", date: todayStr(), slotStart: "", slotEnd: "",
     patientName: "", patientMrn: "", patientPhone: "",
-    type: "", specialty: "", priority: "normal",
+    type: "", specialty: "", priority: "routine",
     contagious: false, contagiousNote: "",
     repeat: false, repeatType: "weekly", repeatNote: "",
     comments: "", ...init,
@@ -1085,11 +1085,11 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
         <section>
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Priority</label>
           <div className="flex gap-2">
-            {(["normal", "urgent", "emergency"] as const).map(p => (
+            {(["routine", "urgent", "emergency"] as const).map(p => (
               <button
                 key={p}
                 onClick={() => set("priority", p)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all capitalize ${form.priority === p ? (p === "normal" ? "bg-slate-600 text-white border-slate-600" : p === "urgent" ? "bg-amber-500 text-white border-amber-500" : "bg-red-500 text-white border-red-500") : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"}`}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all capitalize ${form.priority === p ? (p === "routine" ? "bg-slate-600 text-white border-slate-600" : p === "urgent" ? "bg-amber-500 text-white border-amber-500" : "bg-red-500 text-white border-red-500") : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"}`}
               >
                 {p === "emergency" && <AlertCircle className="h-3 w-3 inline mr-1" />}
                 {p === "urgent" && <AlertTriangle className="h-3 w-3 inline mr-1" />}
@@ -1370,7 +1370,7 @@ function ApptChip({ appt, isPaid, onClick }: ChipProps) {
         >
           {appt.patientName}
         </button>
-        {appt.priority !== "normal" && (
+        {appt.priority !== "routine" && (
           <span className={`ml-auto text-[9px] font-black uppercase px-1.5 py-0.5 rounded flex-shrink-0 ${pc.bg} ${pc.text}`}>
             {appt.priority === "urgent" ? "URG" : "EMR"}
           </span>
@@ -1473,7 +1473,7 @@ function AppointmentCard({ state, isPaid, role, onClose, onView, onEdit, onStatu
               <span className="text-slate-700 font-semibold">{appt.specialty}</span>
             </div>
           )}
-          {appt.priority !== "normal" && (
+          {appt.priority !== "routine" && (
             <div className="flex justify-between text-xs">
               <span className="text-slate-400">Priority</span>
               <span className={`font-bold capitalize ${PRIORITY_CONFIG[appt.priority].text}`}>{appt.priority}</span>
@@ -2207,8 +2207,8 @@ const COUNSELLING_STATUS_CONFIG: Record<ApptStatus, { label: string; cls: string
   checked_out: { label: "Checked Out", cls: "bg-violet-50  text-violet-700  border-violet-200"  },
 };
 
-const COUNSELLING_PRIORITY_CONFIG: Record<"normal" | "urgent" | "emergency", { label: string; cls: string }> = {
-  normal:    { label: "Normal",    cls: "bg-slate-100 text-slate-500 border-slate-200" },
+const COUNSELLING_PRIORITY_CONFIG: Record<"routine" | "urgent" | "emergency", { label: string; cls: string }> = {
+  routine:   { label: "Routine",   cls: "bg-slate-100 text-slate-500 border-slate-200" },
   urgent:    { label: "Urgent",    cls: "bg-amber-50  text-amber-700 border-amber-200" },
   emergency: { label: "Emergency", cls: "bg-red-50    text-red-600   border-red-200"   },
 };
@@ -2601,7 +2601,7 @@ const NURSING_MAX_WAIT_MIN = 120;
 const PRIORITY_BONUS: Record<Appointment["priority"], number> = {
   emergency: 30,
   urgent: 15,
-  normal: 0,
+  routine: 0,
 };
 
 function computeNursingPriority(
@@ -2619,7 +2619,7 @@ function computeNursingPriority(
 const NURSING_PRIORITY_CFG: Record<Appointment["priority"], { label: string; cls: string }> = {
   emergency: { label: "Emergency", cls: "bg-red-50 text-red-700 border-red-300" },
   urgent:    { label: "Urgent",    cls: "bg-amber-50 text-amber-700 border-amber-300" },
-  normal:    { label: "Normal",    cls: "bg-slate-50 text-slate-500 border-slate-200" },
+  routine:   { label: "Routine",   cls: "bg-slate-50 text-slate-500 border-slate-200" },
 };
 
 function NursingView({

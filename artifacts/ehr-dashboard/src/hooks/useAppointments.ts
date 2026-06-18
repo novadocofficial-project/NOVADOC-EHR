@@ -20,7 +20,7 @@ export interface Appointment {
   slotEnd: string;
   type: string;
   specialty: string;
-  priority: "normal" | "urgent" | "emergency";
+  priority: "routine" | "urgent" | "emergency";
   contagious: boolean;
   contagiousNote: string;
   repeat: boolean;
@@ -39,7 +39,20 @@ const CHANNEL_NAME = "ehr-appointments-v1";
 function load(): Appointment[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as Appointment[];
+    if (!raw) return [];
+    const appts = JSON.parse(raw) as Appointment[];
+    let migrated = false;
+    const result = appts.map(a => {
+      if ((a.priority as string) === "normal") {
+        migrated = true;
+        return { ...a, priority: "routine" as const };
+      }
+      return a;
+    });
+    if (migrated) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(result)); } catch {}
+    }
+    return result;
   } catch {}
   return [];
 }
