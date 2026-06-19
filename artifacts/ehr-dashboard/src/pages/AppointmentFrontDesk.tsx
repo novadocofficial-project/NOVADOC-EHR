@@ -1978,6 +1978,15 @@ function AppointmentCard({ state, isPaid, role, onClose, onView, onEdit, onStatu
               <span className="text-slate-700 font-semibold">{appt.specialty}</span>
             </div>
           )}
+          {(() => {
+            const consent = localStorage.getItem(`ehr-appt-consent-${appt.id}`);
+            return consent ? (
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Consent</span>
+                <span className="text-slate-700 font-semibold">{consent}</span>
+              </div>
+            ) : null;
+          })()}
           {appt.priority !== "routine" && (
             <div className="flex justify-between text-xs">
               <span className="text-slate-400">Priority</span>
