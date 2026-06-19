@@ -190,11 +190,41 @@ interface BookingForm {
   repeatNote: string;
   comments: string;
   referralProvider?: string;
-  additionalServices: string[];
+  serviceItem: string;
 }
 
 const BOOKING_CONSULT_SERVICES = ["Consultation", "FollowUp", "Emergency", "Tele-consultation"];
 const BOOKING_OTHER_SERVICES   = ["Vaccinations", "Procedures", "Consumables", "Pharmacy", "Imaging", "Lab"];
+
+function getServiceItems(serviceType: string): string[] {
+  try {
+    if (serviceType === "Lab") {
+      const raw = localStorage.getItem("ehr-lab-sections-v1");
+      if (raw) return (JSON.parse(raw) as { tests: { name: string }[] }[]).flatMap(s => s.tests.map(t => t.name));
+    }
+    if (serviceType === "Procedures") {
+      const raw = localStorage.getItem("ehr-procedure-sections-v1");
+      if (raw) return (JSON.parse(raw) as { procedures: { name: string }[] }[]).flatMap(s => s.procedures.map(p => p.name));
+    }
+    if (serviceType === "Vaccinations") {
+      const raw = localStorage.getItem("ehr-vaccine-sections-v1");
+      if (raw) return (JSON.parse(raw) as { vaccines: { name: string }[] }[]).flatMap(s => s.vaccines.map(v => v.name));
+    }
+    if (serviceType === "Imaging") {
+      const raw = localStorage.getItem("ehr-imaging-catalogue-v1");
+      if (raw) return (JSON.parse(raw) as { name: string; enabled: boolean; deleted: boolean }[]).filter(i => i.enabled && !i.deleted).map(i => i.name);
+    }
+    if (serviceType === "Consumables") {
+      const raw = localStorage.getItem("ehr-consumables-catalogue-v1");
+      if (raw) return (JSON.parse(raw) as { name: string; enabled: boolean; deleted: boolean }[]).filter(i => i.enabled && !i.deleted).map(i => i.name);
+    }
+    if (serviceType === "Pharmacy") {
+      const raw = localStorage.getItem("ehr-formulary-catalogue-v1");
+      if (raw) return (JSON.parse(raw) as { generic: string; enabled: boolean; deleted: boolean }[]).filter(i => i.enabled && !i.deleted).map(i => i.generic);
+    }
+  } catch { /**/ }
+  return [];
+}
 
 function emptyForm(init?: Partial<BookingForm>): BookingForm {
   return {
@@ -203,7 +233,7 @@ function emptyForm(init?: Partial<BookingForm>): BookingForm {
     type: "", specialty: "", priority: "routine",
     contagious: false, contagiousNote: "",
     repeat: false, repeatType: "weekly", repeatNote: "",
-    comments: "", additionalServices: [], ...init,
+    comments: "", serviceItem: "", ...init,
   };
 }
 
@@ -1260,7 +1290,7 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
         contagious: editAppt.contagious, contagiousNote: editAppt.contagiousNote,
         repeat: editAppt.repeat, repeatType: editAppt.repeatType || "weekly",
         repeatNote: editAppt.repeatNote, comments: editAppt.comments,
-        additionalServices: editAppt.additionalServices ?? [],
+        serviceItem: editAppt.serviceItem ?? "",
       });
     }
     const apptDocs = doctors.filter(d => d.doctorType === "appointment" && d.status === "active");
@@ -1455,15 +1485,36 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs font-semibold text-slate-600 mb-1 block">Appointment Type</label>
-                <Select value={form.type} onValueChange={v => set("type", v)}>
+                <Select
+                  value={form.type}
+                  onValueChange={v => {
+                    set("type", v);
+                    if (!BOOKING_OTHER_SERVICES.includes(v)) set("serviceItem", "");
+                  }}
+                >
                   <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select type..." /></SelectTrigger>
                   <SelectContent>
-                    {(doctor
-                      ? doctor.services.filter(s => BOOKING_CONSULT_SERVICES.includes(s))
-                      : BOOKING_CONSULT_SERVICES
-                    ).map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
+                    {(() => {
+                      const allServices = doctor?.services ?? BOOKING_CONSULT_SERVICES;
+                      const consult = allServices.filter(s => BOOKING_CONSULT_SERVICES.includes(s));
+                      const other   = allServices.filter(s => BOOKING_OTHER_SERVICES.includes(s));
+                      return (
+                        <>
+                          {consult.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-2 py-1">Consultation</SelectLabel>
+                              {consult.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectGroup>
+                          )}
+                          {other.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-2 py-1">Other Services</SelectLabel>
+                              {other.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectGroup>
+                          )}
+                        </>
+                      );
+                    })()}
                   </SelectContent>
                 </Select>
               </div>
@@ -1512,33 +1563,27 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
               )}
             </div>
 
-            {/* Additional Services */}
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Additional Services</label>
-              <div className="flex flex-wrap gap-1.5">
-                {BOOKING_OTHER_SERVICES.map(svc => {
-                  const active = form.additionalServices.includes(svc);
-                  return (
-                    <button
-                      key={svc}
-                      type="button"
-                      onClick={() => set("additionalServices",
-                        active
-                          ? form.additionalServices.filter(s => s !== svc)
-                          : [...form.additionalServices, svc]
-                      )}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
-                        active
-                          ? "bg-[#4982CF] text-white border-[#4982CF]"
-                          : "bg-white text-slate-500 border-slate-200 hover:border-[#4982CF] hover:text-[#4982CF]"
-                      }`}
-                    >
-                      {svc}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Secondary dropdown — shown when an Other Service is selected */}
+            {BOOKING_OTHER_SERVICES.includes(form.type) && (() => {
+              const items = getServiceItems(form.type);
+              return (
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                    {form.type} Item
+                  </label>
+                  <Select value={form.serviceItem} onValueChange={v => set("serviceItem", v)}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder={items.length ? `Choose ${form.type.toLowerCase()} item...` : `No items in ${form.type} catalog`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {items.map(item => (
+                        <SelectItem key={item} value={item}>{item}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })()}
           </div>
         </section>
 
