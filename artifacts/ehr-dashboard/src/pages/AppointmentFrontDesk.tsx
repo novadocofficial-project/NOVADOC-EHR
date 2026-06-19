@@ -981,26 +981,32 @@ function ConsentPdfModal({ patientName, patientMrn, patientPhone, onDownloaded, 
             </p>
           </div>
           {(patientName || patientMrn || patientPhone) && (
-            <div className="bg-slate-50 rounded-xl px-4 py-3 grid grid-cols-3 gap-x-4 gap-y-1.5">
+            <div className="bg-slate-50 rounded-xl px-4 py-3 flex flex-col divide-y divide-slate-100">
               {patientName && (
-                <div className="col-span-3 flex items-center gap-2">
-                  <User className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                  <span className="text-[11px] text-slate-400">Patient Name</span>
-                  <span className="text-xs font-bold text-slate-700 ml-auto">{patientName}</span>
+                <div className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
+                  <div className="flex items-center gap-2">
+                    <User className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                    <span className="text-[11px] text-slate-400">Patient Name</span>
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">{patientName}</span>
                 </div>
               )}
               {patientMrn && (
-                <div className="flex items-center gap-2 col-span-3 sm:col-span-1">
-                  <Hash className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                  <span className="text-[11px] text-slate-400">MR No.</span>
-                  <span className="text-xs font-bold text-slate-700 ml-auto">{patientMrn}</span>
+                <div className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                    <span className="text-[11px] text-slate-400">MR Number</span>
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">{patientMrn}</span>
                 </div>
               )}
               {patientPhone && (
-                <div className="flex items-center gap-2 col-span-3 sm:col-span-2">
-                  <Phone className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                  <span className="text-[11px] text-slate-400">Phone</span>
-                  <span className="text-xs font-bold text-slate-700 ml-auto">{patientPhone}</span>
+                <div className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                    <span className="text-[11px] text-slate-400">Phone</span>
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">{patientPhone}</span>
                 </div>
               )}
             </div>
