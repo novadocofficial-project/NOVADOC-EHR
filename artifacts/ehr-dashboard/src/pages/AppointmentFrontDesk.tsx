@@ -1210,6 +1210,7 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
   const [showOnlineConsentModal, setShowOnlineConsentModal] = useState(false);
   const [consentPdfDownloaded, setConsentPdfDownloaded] = useState(false);
   const [onlineConsentSigned, setOnlineConsentSigned] = useState(false);
+  const [consentRequired, setConsentRequired] = useState(false);
   const [form, setForm] = useState<BookingForm>(() => {
     if (editAppt) {
       return emptyForm({
@@ -1546,8 +1547,18 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
 
         {/* Consent */}
         <section>
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-3">Consent</label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Consent</label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">{consentRequired ? "Yes" : "No"}</span>
+              <Switch
+                checked={consentRequired}
+                onCheckedChange={v => { setConsentRequired(v); if (!v) { setConsentPdfDownloaded(false); setOnlineConsentSigned(false); } }}
+                className="data-[state=checked]:bg-[#4982CF]"
+              />
+            </div>
+          </div>
+          {consentRequired && <div className="grid grid-cols-2 gap-3">
             {/* Consent Form PDF */}
             <button
               type="button"
@@ -1593,7 +1604,7 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
                 <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">Electronic signature · Instant confirmation</p>
               </div>
             </button>
-          </div>
+          </div>}
         </section>
 
         {/* Repeat Appointment */}
