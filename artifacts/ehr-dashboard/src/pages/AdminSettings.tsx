@@ -36,6 +36,7 @@ import {
   Sparkles,
   Stethoscope,
   Store,
+  Syringe,
   Tag,
   Target,
   Ticket,
@@ -75,6 +76,7 @@ import type { ConsumableProvider } from "@/pages/ConsumablesModule";
 import { LabCatalogModule, SEED_SECTIONS as LAB_SEED_SECTIONS, SEED_PROVIDERS as LAB_SEED_PROVIDERS, type LabSection, type LabProvider } from "@/pages/LabCatalogModule";
 import { LabResultTemplatesModule } from "@/pages/LabResultTemplatesModule";
 import { ProcedureCatalogModule, INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS, type ProcedureSection, type ProcedurePartner } from "@/pages/ProcedureCatalogModule";
+import { VaccineCatalogModule, SEED_VACCINE_SECTIONS, SEED_VACCINE_PARTNERS, type VaccineSection, type VaccinePartner } from "@/pages/VaccineCatalogModule";
 import { QueueModule } from "@/pages/QueueModule";
 import type { QueueSection } from "@/pages/QueueModule";
 import { NursingConfigModule } from "@/pages/NursingConfigModule";
@@ -237,6 +239,7 @@ type ActiveModule =
   | "care-plan-library" | "goals-library" | "referral-destinations" | "comorbidities"
   | "lab-master" | "lab-providers" | "lab-result-templates"
   | "proc-master" | "proc-partners"
+  | "vacc-master" | "vacc-partners"
   | "permissions" | "signing-rules"
   | "formulary-catalogue" | "formulary-defaults" | "formulary-partners"
   | "imaging-tests" | "imaging-reasons" | "imaging-partners"
@@ -266,6 +269,7 @@ export function AdminSettings() {
     clinicalLibraries: false,
     labCatalog: false,
     procedureCatalog: false,
+    vaccineCatalog: false,
     formulary: false,
     imagingCatalog: false,
     consumables: false,
@@ -304,6 +308,14 @@ export function AdminSettings() {
   const [procPartners, setProcPartners] = useState<ProcedurePartner[]>(() => {
     try { const r = localStorage.getItem("ehr-procedure-partners-v1"); if (r) return JSON.parse(r) as ProcedurePartner[]; } catch { /**/ }
     return INITIAL_PROC_PARTNERS;
+  });
+  const [vaccSections, setVaccSections] = useState<VaccineSection[]>(() => {
+    try { const r = localStorage.getItem("ehr-vaccine-sections-v1"); if (r) return JSON.parse(r) as VaccineSection[]; } catch { /**/ }
+    return SEED_VACCINE_SECTIONS;
+  });
+  const [vaccPartners, setVaccPartners] = useState<VaccinePartner[]>(() => {
+    try { const r = localStorage.getItem("ehr-vaccine-partners-v1"); if (r) return JSON.parse(r) as VaccinePartner[]; } catch { /**/ }
+    return SEED_VACCINE_PARTNERS;
   });
   const [imagingPartners, setImagingPartners] = useState<ImagingPartner[]>(() => {
     try {
@@ -381,6 +393,8 @@ export function AdminSettings() {
   useEffect(() => { try { localStorage.setItem("ehr-lab-providers-v1",      JSON.stringify(labProviders)); } catch { /**/ } }, [labProviders]);
   useEffect(() => { try { localStorage.setItem("ehr-procedure-sections-v1", JSON.stringify(procSections)); } catch { /**/ } }, [procSections]);
   useEffect(() => { try { localStorage.setItem("ehr-procedure-partners-v1", JSON.stringify(procPartners)); } catch { /**/ } }, [procPartners]);
+  useEffect(() => { try { localStorage.setItem("ehr-vaccine-sections-v1",   JSON.stringify(vaccSections)); } catch { /**/ } }, [vaccSections]);
+  useEffect(() => { try { localStorage.setItem("ehr-vaccine-partners-v1",   JSON.stringify(vaccPartners)); } catch { /**/ } }, [vaccPartners]);
   useEffect(() => { try { localStorage.setItem("ehr-doctor-fees-v1",        JSON.stringify(doctorFees));   } catch { /**/ } }, [doctorFees]);
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
@@ -780,6 +794,23 @@ export function AdminSettings() {
               </div>
             )}
 
+            {/* ── Vaccine Catalog Group ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("vaccineCatalog")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Syringe className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Vaccine Catalog</span>
+              {navExpanded.vaccineCatalog ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.vaccineCatalog && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("vacc-master",   <FileText className="h-3.5 w-3.5" />, "Vaccine Master List")}
+                {subNavItem("vacc-partners", <Syringe className="h-3.5 w-3.5" />,  "Vaccine Partners")}
+              </div>
+            )}
+
             {/* ── Formulary Management Group ── */}
             <button
               type="button"
@@ -1034,6 +1065,17 @@ export function AdminSettings() {
               partners={procPartners}
               setPartners={setProcPartners}
               initialView={activeModule === "proc-partners" ? "partners" : "master"}
+            />
+          )}
+
+          {(activeModule === "vacc-master" || activeModule === "vacc-partners") && (
+            <VaccineCatalogModule
+              key={activeModule}
+              sections={vaccSections}
+              setSections={setVaccSections}
+              partners={vaccPartners}
+              setPartners={setVaccPartners}
+              initialView={activeModule === "vacc-partners" ? "partners" : "master"}
             />
           )}
 
