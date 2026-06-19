@@ -1547,10 +1547,8 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
                     onClick={() => { setSvcOpen(o => !o); if (svcOpen) setServiceSearch(""); }}
                     className={`w-full h-9 flex items-center justify-between px-3 rounded-lg border text-sm transition-colors ${svcOpen ? "border-[#4982CF] ring-1 ring-[#4982CF]/30 bg-white" : "border-slate-200 bg-white hover:border-slate-300"}`}
                   >
-                    <span className={form.serviceItems.length > 0 ? "text-slate-700 text-xs" : "text-slate-400 text-xs"}>
-                      {form.serviceItems.length > 0
-                        ? form.serviceItems.join(", ")
-                        : `Select ${form.type.toLowerCase()} items...`}
+                    <span className="text-slate-400 text-xs">
+                      {`Select ${form.type.toLowerCase()} items...`}
                     </span>
                     <ChevronDown className={`h-4 w-4 text-slate-400 flex-shrink-0 transition-transform ${svcOpen ? "rotate-180" : ""}`} />
                   </button>
@@ -1607,12 +1605,12 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
 
                   {/* Selected chips — always visible when items chosen */}
                   {form.serviceItems.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
+                    <div className="mt-2 flex flex-wrap gap-1.5">
                       {form.serviceItems.map(item => (
-                        <span key={item} className="inline-flex items-center gap-1 rounded-full bg-[#4982CF]/10 px-2 py-0.5 text-[11px] font-medium text-[#4982CF]">
+                        <span key={item} className="inline-flex items-center gap-1.5 rounded-full bg-[#4982CF]/10 border border-[#4982CF]/20 px-3 py-1 text-xs font-semibold text-[#4982CF]">
                           {item}
-                          <button type="button" onClick={() => set("serviceItems", form.serviceItems.filter(s => s !== item))}>
-                            <X className="h-2.5 w-2.5" />
+                          <button type="button" onClick={() => set("serviceItems", form.serviceItems.filter(s => s !== item))} className="hover:opacity-70 transition-opacity">
+                            <X className="h-3 w-3" />
                           </button>
                         </span>
                       ))}
