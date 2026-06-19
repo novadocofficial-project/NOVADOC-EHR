@@ -98,6 +98,7 @@ export const INITIAL_SERVICES: Service[] = [
   { id: "svc-41", name: "IV Infusion (per hour)",      serviceTypeId: "st-3", basePrice: 800,   providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
   { id: "svc-42", name: "Nebulisation",                serviceTypeId: "st-3", basePrice: 350,   providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
   { id: "svc-43", name: "Suture Removal",              serviceTypeId: "st-3", basePrice: 400,   providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-44", name: "Skin Testing",                serviceTypeId: "st-3", basePrice: 25000, providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
 
   // ── Imaging ───────────────────────────────────────────────────────────────
   { id: "svc-31", name: "X-Ray Chest (PA View)",               serviceTypeId: "st-6", basePrice: 900,   providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
