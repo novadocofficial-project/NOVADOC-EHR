@@ -144,6 +144,10 @@ function buildSeedDocServices(): Record<string, DocServiceRow[]> {
       row("svc-11", "800",  "percentage", "20"),
       row("svc-31", "900",  "percentage", "15"),
     ],
+    // Dr. Asif Imam — Skin Testing
+    "doc-asif": [
+      row("svc-44", "25000", "percentage", "60"),
+    ],
   };
 }
 
