@@ -1307,6 +1307,7 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [serviceSearch, setServiceSearch] = useState("");
+  const [svcOpen, setSvcOpen] = useState(false);
 
   const set = (k: keyof BookingForm, v: BookingForm[typeof k]) =>
     setForm(p => ({ ...p, [k]: v }));
@@ -1490,7 +1491,8 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
                   value={form.type}
                   onValueChange={v => {
                     set("type", v);
-                    if (!BOOKING_OTHER_SERVICES.includes(v)) { set("serviceItems", []); setServiceSearch(""); }
+                    if (!BOOKING_OTHER_SERVICES.includes(v)) { set("serviceItems", []); setServiceSearch(""); setSvcOpen(false); }
+                    else { setSvcOpen(false); setServiceSearch(""); }
                   }}
                 >
                   <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select type..." /></SelectTrigger>
@@ -1538,64 +1540,84 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
                       <span className="ml-1.5 font-normal text-[#4982CF]">({form.serviceItems.length} selected)</span>
                     )}
                   </label>
-                  <div className="rounded-lg border border-slate-200 overflow-hidden">
-                    {/* Search bar */}
-                    <div className="flex items-center gap-2 px-2.5 py-2 border-b border-slate-100 bg-slate-50/60">
-                      <Search className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                      <input
-                        value={serviceSearch}
-                        onChange={e => setServiceSearch(e.target.value)}
-                        placeholder={`Search ${form.type.toLowerCase()}...`}
-                        className="flex-1 bg-transparent text-xs outline-none placeholder:text-slate-400 text-slate-700"
-                      />
-                      {serviceSearch && (
-                        <button type="button" onClick={() => setServiceSearch("")} className="text-slate-300 hover:text-slate-500">
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                    {/* Scrollable list */}
-                    <div className="max-h-36 overflow-y-auto">
-                      {filtered.length === 0 ? (
-                        <p className="px-3 py-3 text-xs text-slate-400 text-center">
-                          {items.length === 0 ? `No items in ${form.type} catalog yet` : "No matches"}
-                        </p>
-                      ) : (
-                        filtered.map(item => {
-                          const checked = form.serviceItems.includes(item);
-                          return (
-                            <button
-                              key={item}
-                              type="button"
-                              onClick={() => set("serviceItems", checked
-                                ? form.serviceItems.filter(s => s !== item)
-                                : [...form.serviceItems, item]
-                              )}
-                              className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-slate-50 ${checked ? "bg-[#4982CF]/5" : ""}`}
-                            >
-                              <div className={`h-3.5 w-3.5 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${checked ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300 bg-white"}`}>
-                                {checked && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                              </div>
-                              <span className={`text-xs ${checked ? "font-medium text-slate-700" : "text-slate-600"}`}>{item}</span>
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                    {/* Selected chips */}
-                    {form.serviceItems.length > 0 && (
-                      <div className="border-t border-slate-100 px-2.5 py-2 flex flex-wrap gap-1">
-                        {form.serviceItems.map(item => (
-                          <span key={item} className="inline-flex items-center gap-1 rounded-full bg-[#4982CF]/10 px-2 py-0.5 text-[11px] font-medium text-[#4982CF]">
-                            {item}
-                            <button type="button" onClick={() => set("serviceItems", form.serviceItems.filter(s => s !== item))}>
-                              <X className="h-2.5 w-2.5" />
-                            </button>
-                          </span>
-                        ))}
+
+                  {/* Trigger button */}
+                  <button
+                    type="button"
+                    onClick={() => { setSvcOpen(o => !o); if (svcOpen) setServiceSearch(""); }}
+                    className={`w-full h-9 flex items-center justify-between px-3 rounded-lg border text-sm transition-colors ${svcOpen ? "border-[#4982CF] ring-1 ring-[#4982CF]/30 bg-white" : "border-slate-200 bg-white hover:border-slate-300"}`}
+                  >
+                    <span className={form.serviceItems.length > 0 ? "text-slate-700 text-xs" : "text-slate-400 text-xs"}>
+                      {form.serviceItems.length > 0
+                        ? form.serviceItems.join(", ")
+                        : `Select ${form.type.toLowerCase()} items...`}
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-slate-400 flex-shrink-0 transition-transform ${svcOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {/* Collapsible panel */}
+                  {svcOpen && (
+                    <div className="mt-1 rounded-lg border border-[#4982CF]/30 shadow-sm overflow-hidden">
+                      {/* Search bar */}
+                      <div className="flex items-center gap-2 px-2.5 py-2 border-b border-slate-100 bg-slate-50/60">
+                        <Search className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                        <input
+                          autoFocus
+                          value={serviceSearch}
+                          onChange={e => setServiceSearch(e.target.value)}
+                          placeholder={`Search ${form.type.toLowerCase()}...`}
+                          className="flex-1 bg-transparent text-xs outline-none placeholder:text-slate-400 text-slate-700"
+                        />
+                        {serviceSearch && (
+                          <button type="button" onClick={() => setServiceSearch("")} className="text-slate-300 hover:text-slate-500">
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
                       </div>
-                    )}
-                  </div>
+                      {/* Scrollable list */}
+                      <div className="max-h-40 overflow-y-auto bg-white">
+                        {filtered.length === 0 ? (
+                          <p className="px-3 py-3 text-xs text-slate-400 text-center">
+                            {items.length === 0 ? `No items in ${form.type} catalog yet` : "No matches"}
+                          </p>
+                        ) : (
+                          filtered.map(item => {
+                            const checked = form.serviceItems.includes(item);
+                            return (
+                              <button
+                                key={item}
+                                type="button"
+                                onClick={() => set("serviceItems", checked
+                                  ? form.serviceItems.filter(s => s !== item)
+                                  : [...form.serviceItems, item]
+                                )}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-slate-50 ${checked ? "bg-[#4982CF]/5" : ""}`}
+                              >
+                                <div className={`h-3.5 w-3.5 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${checked ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300 bg-white"}`}>
+                                  {checked && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                                </div>
+                                <span className={`text-xs ${checked ? "font-medium text-slate-700" : "text-slate-600"}`}>{item}</span>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Selected chips — always visible when items chosen */}
+                  {form.serviceItems.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {form.serviceItems.map(item => (
+                        <span key={item} className="inline-flex items-center gap-1 rounded-full bg-[#4982CF]/10 px-2 py-0.5 text-[11px] font-medium text-[#4982CF]">
+                          {item}
+                          <button type="button" onClick={() => set("serviceItems", form.serviceItems.filter(s => s !== item))}>
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })()}
