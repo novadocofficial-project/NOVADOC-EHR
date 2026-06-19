@@ -51,6 +51,7 @@ const SEED_PROC_SECTIONS: ProcedureSection[] = [
       { id: "pr1",  name: "Spirometry",           cptCode: "94010", autoGenCpt: false, description: "Pulmonary function test" },
       { id: "pr2",  name: "Nebulisation",          cptCode: "94640", autoGenCpt: false, description: "" },
       { id: "pr3",  name: "Peak Flow Measurement", cptCode: "94150", autoGenCpt: false, description: "" },
+      { id: "pr12", name: "Skin Testing",          cptCode: "95004", autoGenCpt: false, description: "Allergy skin prick test" },
     ],
   },
   {
@@ -78,8 +79,8 @@ const SEED_PROC_SECTIONS: ProcedureSection[] = [
 const SEED_PARTNERS: ProcedurePartner[] = [
   {
     id: "pp1", name: "In-Clinic (Main)", type: "Internal Clinic", contact: "", active: true,
-    selectedProcedures: ["pr1","pr2","pr4","pr5","pr6","pr7"],
-    pricing: { pr1: "1500", pr2: "500", pr4: "800", pr5: "1200", pr6: "400", pr7: "1800" },
+    selectedProcedures: ["pr1","pr2","pr4","pr5","pr6","pr7","pr12"],
+    pricing: { pr1: "1500", pr2: "500", pr4: "800", pr5: "1200", pr6: "400", pr7: "1800", pr12: "25000" },
   },
   {
     id: "pp2", name: "Surgical Associates", type: "External Provider", contact: "0300-1234567", active: true,
