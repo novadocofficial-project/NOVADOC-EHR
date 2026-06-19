@@ -7,7 +7,7 @@ import {
   Repeat, AlertTriangle, LayoutGrid, Columns2, RefreshCw,
   Hash, Check, ArrowRight, Pencil, CalendarDays, UserPlus,
   Banknote, Shield, Building2, Heart, FileSignature, Receipt, Activity,
-  ClipboardList, PenLine, Minus,
+  ClipboardList, PenLine, Minus, Download, ShieldCheck, RotateCcw,
 } from "lucide-react";
 import { ApptFaceSheet } from "@/pages/ApptFaceSheet";
 import { ApptNursingDrawer, type NurseCategory } from "@/pages/ApptNursingDrawer";
@@ -820,9 +820,396 @@ interface BookingDrawerProps {
   onClose: () => void;
 }
 
+// ─── Consent Form PDF content ─────────────────────────────────────────────────
+
+const CONSENT_TEXT_SECTIONS = [
+  {
+    heading: "1. Consent for Medical Treatment",
+    body: "I voluntarily consent to and authorize the physician(s) and healthcare professionals at NovaDoc Healthcare to perform medical examinations, diagnostic tests, and treatments deemed necessary and appropriate for my care.",
+  },
+  {
+    heading: "2. Administration of Medications",
+    body: "I consent to the administration of medications and therapeutic procedures prescribed by my attending physician. I acknowledge that I have been informed of the potential benefits and risks associated with my treatment.",
+  },
+  {
+    heading: "3. Use of Medical Records",
+    body: "I authorize NovaDoc Healthcare to use and disclose my protected health information for treatment, payment, and healthcare operations in accordance with applicable privacy laws and regulations.",
+  },
+  {
+    heading: "4. Release of Information",
+    body: "I understand that my medical information may be shared with other healthcare providers, laboratories, and specialists who are directly involved in my care to ensure continuity of treatment.",
+  },
+  {
+    heading: "5. Financial Responsibility",
+    body: "I agree to be financially responsible for charges related to my care, including any amounts not covered by my insurance. I authorize the release of information necessary for billing purposes.",
+  },
+  {
+    heading: "6. Patient Rights",
+    body: "I understand that I have the right to refuse treatment, to withdraw this consent at any time without affecting my right to future care, and to receive a full explanation of my diagnosis, proposed treatments, and alternatives.",
+  },
+  {
+    heading: "7. Acknowledgment",
+    body: "By signing this form — physically or electronically — I confirm that I have read and fully understood the terms stated herein, that my questions have been answered to my satisfaction, and that I agree to proceed on this basis.",
+  },
+];
+
+async function downloadConsentPdf(patientName: string) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  const maxW = pageW - margin * 2;
+  let y = 20;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(31, 41, 55);
+  doc.text("PATIENT CONSENT FOR MEDICAL TREATMENT", pageW / 2, y, { align: "center" });
+  y += 8;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(100, 116, 139);
+  doc.text("NovaDoc Healthcare Services", pageW / 2, y, { align: "center" });
+  y += 5;
+  doc.text(`Date: ${new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}`, pageW / 2, y, { align: "center" });
+  y += 8;
+
+  doc.setDrawColor(220, 228, 240);
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, pageW - margin, y);
+  y += 8;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(31, 41, 55);
+  doc.text("Patient Name:", margin, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(patientName || "_________________________________", margin + 32, y);
+  y += 10;
+
+  for (const section of CONSENT_TEXT_SECTIONS) {
+    if (y > 260) { doc.addPage(); y = 20; }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(31, 41, 55);
+    doc.text(section.heading, margin, y);
+    y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    const lines = doc.splitTextToSize(section.body, maxW);
+    doc.text(lines, margin, y);
+    y += (lines.length * 5) + 6;
+  }
+
+  if (y > 240) { doc.addPage(); y = 20; }
+  y += 6;
+  doc.setDrawColor(220, 228, 240);
+  doc.line(margin, y, pageW - margin, y);
+  y += 10;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text("Patient / Guardian Signature:", margin, y);
+  doc.line(margin + 58, y, pageW - margin - 40, y);
+  doc.text("Date:", pageW - margin - 36, y);
+  doc.line(pageW - margin - 24, y, pageW - margin, y);
+  y += 10;
+  doc.text("Witness Signature:", margin, y);
+  doc.line(margin + 38, y, pageW - margin - 40, y);
+  doc.text("Date:", pageW - margin - 36, y);
+  doc.line(pageW - margin - 24, y, pageW - margin, y);
+
+  doc.save("NovaDoc-Consent-Form.pdf");
+}
+
+// ─── Consent PDF Modal ────────────────────────────────────────────────────────
+
+function ConsentPdfModal({ patientName, onDownloaded, onClose }: { patientName: string; onDownloaded: () => void; onClose: () => void }) {
+  const [downloading, setDownloading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      await downloadConsentPdf(patientName);
+      setDone(true);
+      onDownloaded();
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50 z-[80] backdrop-blur-[2px]" onClick={onClose} />
+      <div className="fixed z-[90] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] max-w-[95vw] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[88vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-[#4982CF]/10">
+              <FileText className="h-5 w-5 text-[#4982CF]" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-800">Patient Consent Form</h2>
+              <p className="text-[11px] text-slate-400">NovaDoc Healthcare Services · Preview</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Preview body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          <div className="text-center border-b border-slate-100 pb-4">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">NovaDoc Healthcare</p>
+            <p className="text-lg font-black text-slate-800">Patient Consent for Medical Treatment</p>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Date: {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}
+            </p>
+          </div>
+          {patientName && (
+            <div className="bg-slate-50 rounded-xl px-4 py-2.5 flex items-center gap-2">
+              <User className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+              <span className="text-xs text-slate-500">Patient:</span>
+              <span className="text-xs font-bold text-slate-700">{patientName}</span>
+            </div>
+          )}
+          {CONSENT_TEXT_SECTIONS.map(s => (
+            <div key={s.heading}>
+              <p className="text-xs font-bold text-slate-700 mb-1">{s.heading}</p>
+              <p className="text-[12px] text-slate-500 leading-relaxed">{s.body}</p>
+            </div>
+          ))}
+          <div className="border-t border-slate-100 pt-4 grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-[10px] text-slate-400 mb-1">Patient / Guardian Signature</p>
+              <div className="border-b border-slate-300 h-8" />
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-400 mb-1">Date</p>
+              <div className="border-b border-slate-300 h-8" />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between flex-shrink-0 bg-slate-50/60 rounded-b-2xl">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors">
+            Close
+          </button>
+          {done ? (
+            <div className="flex items-center gap-2 text-emerald-600 text-sm font-bold">
+              <CheckCircle2 className="h-4 w-4" />
+              PDF Downloaded
+            </div>
+          ) : (
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#4982CF] text-white rounded-xl text-sm font-bold hover:bg-[#3a6bb8] disabled:opacity-60 transition-colors shadow-sm"
+            >
+              <Download className="h-4 w-4" />
+              {downloading ? "Generating…" : "Download PDF"}
+            </button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Online Consent Modal ─────────────────────────────────────────────────────
+
+function OnlineConsentModal({ patientName, onConfirm, onClose }: { patientName: string; onConfirm: () => void; onClose: () => void }) {
+  const [checked, setChecked] = useState(false);
+  const [hasSig, setHasSig] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isDrawing = useRef(false);
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
+
+  function getPos(
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>,
+    canvas: HTMLCanvasElement,
+  ): { x: number; y: number } {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    if ("touches" in e && e.touches.length) {
+      return {
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top) * scaleY,
+      };
+    }
+    const me = e as React.MouseEvent<HTMLCanvasElement>;
+    return { x: (me.clientX - rect.left) * scaleX, y: (me.clientY - rect.top) * scaleY };
+  }
+
+  function startDraw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    isDrawing.current = true;
+    lastPos.current = getPos(e, canvas);
+  }
+
+  function draw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    e.preventDefault();
+    if (!isDrawing.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas || !lastPos.current) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const pos = getPos(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(lastPos.current.x, lastPos.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+    lastPos.current = pos;
+    if (!hasSig) setHasSig(true);
+  }
+
+  function stopDraw() {
+    isDrawing.current = false;
+    lastPos.current = null;
+  }
+
+  function clearSig() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    ctx?.clearRect(0, 0, canvas.width, canvas.height);
+    setHasSig(false);
+  }
+
+  const canConfirm = checked && hasSig;
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50 z-[80] backdrop-blur-[2px]" onClick={onClose} />
+      <div className="fixed z-[90] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[580px] max-w-[95vw] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-emerald-50">
+              <ShieldCheck className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-800">Online Consent</h2>
+              <p className="text-[11px] text-slate-400">Electronic consent with signature</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {patientName && (
+            <div className="bg-slate-50 rounded-xl px-4 py-2.5 flex items-center gap-2">
+              <User className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+              <span className="text-xs text-slate-500">Patient:</span>
+              <span className="text-xs font-bold text-slate-700">{patientName}</span>
+            </div>
+          )}
+
+          {/* Consent statement summary */}
+          <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 space-y-2">
+            <p className="text-xs font-bold text-blue-800 uppercase tracking-wide">Consent Statement</p>
+            <p className="text-[12px] text-blue-700 leading-relaxed">
+              I consent to medical examination, diagnostic tests, and treatments by NovaDoc Healthcare physicians.
+              I authorize the use of my health information for treatment and billing, and confirm that I have been
+              informed of my rights, including the right to withdraw consent at any time.
+            </p>
+          </div>
+
+          {/* Checkbox acknowledgement */}
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <div
+              onClick={() => setChecked(c => !c)}
+              className={`mt-0.5 h-4.5 w-4.5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all cursor-pointer ${checked ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300 bg-white group-hover:border-[#4982CF]"}`}
+              style={{ width: 18, height: 18 }}
+            >
+              {checked && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+            </div>
+            <span className="text-[12px] text-slate-600 leading-relaxed select-none" onClick={() => setChecked(c => !c)}>
+              I have read and understood the consent form and agree to provide my consent electronically.
+            </span>
+          </label>
+
+          {/* Signature canvas */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-slate-600">Signature</p>
+              {hasSig && (
+                <button
+                  onClick={clearSig}
+                  className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-red-500 transition-colors"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="relative rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 overflow-hidden" style={{ height: 110 }}>
+              <canvas
+                ref={canvasRef}
+                width={540}
+                height={110}
+                className="w-full h-full cursor-crosshair touch-none"
+                onMouseDown={startDraw}
+                onMouseMove={draw}
+                onMouseUp={stopDraw}
+                onMouseLeave={stopDraw}
+                onTouchStart={startDraw}
+                onTouchMove={draw}
+                onTouchEnd={stopDraw}
+              />
+              {!hasSig && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <p className="text-[11px] text-slate-300 font-medium">Draw your signature here</p>
+                </div>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1.5">By signing, you confirm the statement above as your binding electronic consent.</p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between flex-shrink-0 bg-slate-50/60 rounded-b-2xl">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={() => { if (canConfirm) { onConfirm(); } }}
+            disabled={!canConfirm}
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Confirm Consent
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Booking Drawer ───────────────────────────────────────────────────────────
+
 function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose }: BookingDrawerProps) {
   const { patients, addPatient } = usePatients();
   const [showRegDrawer, setShowRegDrawer] = useState(false);
+  const [showConsentPdfModal, setShowConsentPdfModal] = useState(false);
+  const [showOnlineConsentModal, setShowOnlineConsentModal] = useState(false);
+  const [consentPdfDownloaded, setConsentPdfDownloaded] = useState(false);
+  const [onlineConsentSigned, setOnlineConsentSigned] = useState(false);
   const [form, setForm] = useState<BookingForm>(() => {
     if (editAppt) {
       return emptyForm({
@@ -1157,6 +1544,58 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
           )}
         </section>
 
+        {/* Consent */}
+        <section>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-3">Consent</label>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Consent Form PDF */}
+            <button
+              type="button"
+              onClick={() => setShowConsentPdfModal(true)}
+              className={`relative flex flex-col items-start gap-2 p-3.5 rounded-xl border-2 transition-all text-left ${consentPdfDownloaded ? "border-[#4982CF] bg-[#4982CF]/5" : "border-slate-200 bg-white hover:border-[#4982CF]/50 hover:bg-slate-50"}`}
+            >
+              <div className="flex items-center justify-between w-full">
+                <div className={`p-2 rounded-lg ${consentPdfDownloaded ? "bg-[#4982CF]/15" : "bg-slate-100"}`}>
+                  <FileText className={`h-4 w-4 ${consentPdfDownloaded ? "text-[#4982CF]" : "text-slate-500"}`} />
+                </div>
+                {consentPdfDownloaded && (
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-[#4982CF] bg-[#4982CF]/10 px-2 py-0.5 rounded-full">
+                    <Download className="h-2.5 w-2.5" />
+                    Downloaded
+                  </span>
+                )}
+              </div>
+              <div>
+                <p className={`text-xs font-bold ${consentPdfDownloaded ? "text-[#4982CF]" : "text-slate-700"}`}>Consent Form PDF</p>
+                <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">Download · Print · Get physical signature</p>
+              </div>
+            </button>
+
+            {/* Online Consent */}
+            <button
+              type="button"
+              onClick={() => setShowOnlineConsentModal(true)}
+              className={`relative flex flex-col items-start gap-2 p-3.5 rounded-xl border-2 transition-all text-left ${onlineConsentSigned ? "border-emerald-500 bg-emerald-50/50" : "border-slate-200 bg-white hover:border-emerald-400/50 hover:bg-slate-50"}`}
+            >
+              <div className="flex items-center justify-between w-full">
+                <div className={`p-2 rounded-lg ${onlineConsentSigned ? "bg-emerald-100" : "bg-slate-100"}`}>
+                  <ShieldCheck className={`h-4 w-4 ${onlineConsentSigned ? "text-emerald-600" : "text-slate-500"}`} />
+                </div>
+                {onlineConsentSigned && (
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    <CheckCircle2 className="h-2.5 w-2.5" />
+                    Signed
+                  </span>
+                )}
+              </div>
+              <div>
+                <p className={`text-xs font-bold ${onlineConsentSigned ? "text-emerald-700" : "text-slate-700"}`}>Online Consent</p>
+                <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">Electronic signature · Instant confirmation</p>
+              </div>
+            </button>
+          </div>
+        </section>
+
         {/* Repeat Appointment */}
         <section>
           <div className="flex items-center justify-between mb-2">
@@ -1216,6 +1655,20 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
           setShowRegDrawer(false);
         }}
         onClose={() => setShowRegDrawer(false)}
+      />
+    )}
+    {showConsentPdfModal && (
+      <ConsentPdfModal
+        patientName={form.patientName}
+        onDownloaded={() => setConsentPdfDownloaded(true)}
+        onClose={() => setShowConsentPdfModal(false)}
+      />
+    )}
+    {showOnlineConsentModal && (
+      <OnlineConsentModal
+        patientName={form.patientName}
+        onConfirm={() => { setOnlineConsentSigned(true); setShowOnlineConsentModal(false); }}
+        onClose={() => setShowOnlineConsentModal(false)}
       />
     )}
     </>
