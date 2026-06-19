@@ -816,7 +816,7 @@ interface BookingDrawerProps {
   appointments: Appointment[];
   init: Partial<BookingForm>;
   editAppt?: Appointment | null;
-  onSave: (form: BookingForm) => void;
+  onSave: (form: BookingForm, consentType: string) => void;
   onClose: () => void;
 }
 
@@ -1332,7 +1332,12 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
           <Button variant="outline" onClick={onClose} className="flex-1 h-9">Cancel</Button>
           <Button
             disabled={!canSave}
-            onClick={() => onSave(form)}
+            onClick={() => {
+              const parts: string[] = [];
+              if (consentPdfDownloaded) parts.push("Physical");
+              if (onlineConsentSigned) parts.push("Online");
+              onSave(form, parts.join(", "));
+            }}
             className="flex-1 h-9 bg-[#4982CF] hover:bg-[#3D73BC] text-white"
           >
             <CheckCircle2 className="h-4 w-4 mr-1.5" />
@@ -3521,7 +3526,7 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
     setDrawerOpen(true);
   }
 
-  function handleSave(form: BookingForm) {
+  function handleSave(form: BookingForm, consentType: string) {
     // ── Slot-capacity enforcement ──────────────────────────────────────────────
     // Look up allowMultiple from the doctor's timing configuration (source of truth).
     const doctor = appointmentDoctors.find(d => d.id === form.doctorId);
@@ -3551,15 +3556,22 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
     // ── Persist ───────────────────────────────────────────────────────────────
     if (editAppt) {
       updateAppointment(editAppt.id, { ...form });
+      if (consentType) {
+        localStorage.setItem(`ehr-appt-consent-${editAppt.id}`, consentType);
+      }
       toast({ title: "Appointment updated", description: `${form.patientName} — ${form.slotStart}` });
     } else {
+      const apptId = uid();
       const appt: Appointment = {
-        id: uid(),
+        id: apptId,
         ...form,
         status: "booked",
         createdAt: new Date().toISOString(),
       };
       addAppointment(appt);
+      if (consentType) {
+        localStorage.setItem(`ehr-appt-consent-${apptId}`, consentType);
+      }
       toast({ title: "Appointment booked", description: `${form.patientName} — ${form.slotStart}` });
     }
     setDrawerOpen(false);
