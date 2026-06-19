@@ -190,7 +190,11 @@ interface BookingForm {
   repeatNote: string;
   comments: string;
   referralProvider?: string;
+  additionalServices: string[];
 }
+
+const BOOKING_CONSULT_SERVICES = ["Consultation", "FollowUp", "Emergency", "Tele-consultation"];
+const BOOKING_OTHER_SERVICES   = ["Vaccinations", "Procedures", "Consumables", "Pharmacy", "Imaging", "Lab"];
 
 function emptyForm(init?: Partial<BookingForm>): BookingForm {
   return {
@@ -199,7 +203,7 @@ function emptyForm(init?: Partial<BookingForm>): BookingForm {
     type: "", specialty: "", priority: "routine",
     contagious: false, contagiousNote: "",
     repeat: false, repeatType: "weekly", repeatNote: "",
-    comments: "", ...init,
+    comments: "", additionalServices: [], ...init,
   };
 }
 
@@ -1256,6 +1260,7 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
         contagious: editAppt.contagious, contagiousNote: editAppt.contagiousNote,
         repeat: editAppt.repeat, repeatType: editAppt.repeatType || "weekly",
         repeatNote: editAppt.repeatNote, comments: editAppt.comments,
+        additionalServices: editAppt.additionalServices ?? [],
       });
     }
     const apptDocs = doctors.filter(d => d.doctorType === "appointment" && d.status === "active");
@@ -1453,7 +1458,10 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
                 <Select value={form.type} onValueChange={v => set("type", v)}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select type..." /></SelectTrigger>
                   <SelectContent>
-                    {(doctor?.services ?? ["Consultation", "FollowUp", "Emergency", "Tele-consultation"]).map(s => (
+                    {(doctor
+                      ? doctor.services.filter(s => BOOKING_CONSULT_SERVICES.includes(s))
+                      : BOOKING_CONSULT_SERVICES
+                    ).map(s => (
                       <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1502,6 +1510,34 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
                   })}
                 </div>
               )}
+            </div>
+
+            {/* Additional Services */}
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Additional Services</label>
+              <div className="flex flex-wrap gap-1.5">
+                {BOOKING_OTHER_SERVICES.map(svc => {
+                  const active = form.additionalServices.includes(svc);
+                  return (
+                    <button
+                      key={svc}
+                      type="button"
+                      onClick={() => set("additionalServices",
+                        active
+                          ? form.additionalServices.filter(s => s !== svc)
+                          : [...form.additionalServices, svc]
+                      )}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                        active
+                          ? "bg-[#4982CF] text-white border-[#4982CF]"
+                          : "bg-white text-slate-500 border-slate-200 hover:border-[#4982CF] hover:text-[#4982CF]"
+                      }`}
+                    >
+                      {svc}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>

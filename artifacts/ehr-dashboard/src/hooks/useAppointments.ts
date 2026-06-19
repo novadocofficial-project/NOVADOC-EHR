@@ -28,6 +28,7 @@ export interface Appointment {
   repeatNote: string;
   comments: string;
   referralProvider?: string;
+  additionalServices?: string[];
   status: ApptStatus;
   checkedInAt?: number;
   createdAt: string;
