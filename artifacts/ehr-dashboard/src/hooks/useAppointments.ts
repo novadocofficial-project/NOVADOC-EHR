@@ -29,7 +29,7 @@ export interface Appointment {
   comments: string;
   referralProvider?: string;
   additionalServices?: string[];
-  serviceItem?: string;
+  serviceItems?: string[];
   status: ApptStatus;
   checkedInAt?: number;
   createdAt: string;
