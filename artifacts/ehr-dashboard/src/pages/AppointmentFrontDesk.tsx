@@ -853,7 +853,7 @@ const CONSENT_TEXT_SECTIONS = [
   },
 ];
 
-async function downloadConsentPdf(patientName: string) {
+async function downloadConsentPdf(patientName: string, patientMrn: string, patientPhone: string) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -880,12 +880,22 @@ async function downloadConsentPdf(patientName: string) {
   doc.line(margin, y, pageW - margin, y);
   y += 8;
 
+  const col2 = pageW / 2 + 5;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(31, 41, 55);
   doc.text("Patient Name:", margin, y);
   doc.setFont("helvetica", "normal");
   doc.text(patientName || "_________________________________", margin + 32, y);
+  doc.setFont("helvetica", "bold");
+  doc.text("MR Number:", col2, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(patientMrn || "________________", col2 + 26, y);
+  y += 7;
+  doc.setFont("helvetica", "bold");
+  doc.text("Phone:", margin, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(patientPhone || "_________________________________", margin + 14, y);
   y += 10;
 
   for (const section of CONSENT_TEXT_SECTIONS) {
@@ -926,14 +936,14 @@ async function downloadConsentPdf(patientName: string) {
 
 // ─── Consent PDF Modal ────────────────────────────────────────────────────────
 
-function ConsentPdfModal({ patientName, onDownloaded, onClose }: { patientName: string; onDownloaded: () => void; onClose: () => void }) {
+function ConsentPdfModal({ patientName, patientMrn, patientPhone, onDownloaded, onClose }: { patientName: string; patientMrn: string; patientPhone: string; onDownloaded: () => void; onClose: () => void }) {
   const [downloading, setDownloading] = useState(false);
   const [done, setDone] = useState(false);
 
   async function handleDownload() {
     setDownloading(true);
     try {
-      await downloadConsentPdf(patientName);
+      await downloadConsentPdf(patientName, patientMrn, patientPhone);
       setDone(true);
       onDownloaded();
     } finally {
@@ -970,11 +980,29 @@ function ConsentPdfModal({ patientName, onDownloaded, onClose }: { patientName: 
               Date: {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}
             </p>
           </div>
-          {patientName && (
-            <div className="bg-slate-50 rounded-xl px-4 py-2.5 flex items-center gap-2">
-              <User className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-              <span className="text-xs text-slate-500">Patient:</span>
-              <span className="text-xs font-bold text-slate-700">{patientName}</span>
+          {(patientName || patientMrn || patientPhone) && (
+            <div className="bg-slate-50 rounded-xl px-4 py-3 grid grid-cols-3 gap-x-4 gap-y-1.5">
+              {patientName && (
+                <div className="col-span-3 flex items-center gap-2">
+                  <User className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                  <span className="text-[11px] text-slate-400">Patient Name</span>
+                  <span className="text-xs font-bold text-slate-700 ml-auto">{patientName}</span>
+                </div>
+              )}
+              {patientMrn && (
+                <div className="flex items-center gap-2 col-span-3 sm:col-span-1">
+                  <Hash className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                  <span className="text-[11px] text-slate-400">MR No.</span>
+                  <span className="text-xs font-bold text-slate-700 ml-auto">{patientMrn}</span>
+                </div>
+              )}
+              {patientPhone && (
+                <div className="flex items-center gap-2 col-span-3 sm:col-span-2">
+                  <Phone className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                  <span className="text-[11px] text-slate-400">Phone</span>
+                  <span className="text-xs font-bold text-slate-700 ml-auto">{patientPhone}</span>
+                </div>
+              )}
             </div>
           )}
           {CONSENT_TEXT_SECTIONS.map(s => (
@@ -1671,6 +1699,8 @@ function BookingDrawer({ doctors, appointments, init, editAppt, onSave, onClose 
     {showConsentPdfModal && (
       <ConsentPdfModal
         patientName={form.patientName}
+        patientMrn={form.patientMrn}
+        patientPhone={form.patientPhone}
         onDownloaded={() => setConsentPdfDownloaded(true)}
         onClose={() => setShowConsentPdfModal(false)}
       />
