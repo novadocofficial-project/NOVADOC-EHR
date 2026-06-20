@@ -126,7 +126,7 @@ const ALL_EHR_KEYS = [
   "ehr-doctors-v1", "ehr-doctor-fees-v1",
   "ehr-lab-sections-v1", "ehr-lab-providers-v1", "ehr-lab-result-templates",
   "ehr-procedure-sections-v1", "ehr-procedure-partners-v1",
-  "ehr-imaging-catalogue-v1", "ehr-imaging-reasons-v1", "ehr-imaging-partners-v1",
+  "ehr-imaging-catalog-v2", "ehr-imaging-catalogue-v1", "ehr-imaging-reasons-v1", "ehr-imaging-partners-v1",
   "ehr-consumables-catalogue-v1", "ehr-consumables-providers-v1",
   "ehr-formulary-catalogue-v1", "ehr-formulary-defaults-v1", "ehr-formulary-partners-v1",
   "ehr-packages-v1", "ehr-nursing-config-v1", "ehr-triage-algorithms", "ehr-reg-config-v1",

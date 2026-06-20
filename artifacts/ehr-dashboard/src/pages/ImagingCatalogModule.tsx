@@ -1,17 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Plus, Trash2, Edit2, X, GripVertical, Search, ChevronDown,
-  ChevronRight, CheckCircle2, FileText, RotateCcw, EyeOff, Eye,
-  ScanLine, Save, Upload, AlertCircle, Building2,
+  ChevronRight, CheckCircle2, FileText, ScanLine, Save, Upload,
+  AlertCircle, Building2, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  type CatalogModality,
+  type CatalogBodyPart,
+  IMAGING_CATALOG_KEY,
+  loadImagingCatalog,
+} from "@/pages/ImagingSection";
 
-const ACCENT = "#4982CF";
-const CATALOGUE_KEY = "ehr-imaging-catalogue-v1";
+const ACCENT       = "#4982CF";
+const CATALOGUE_KEY = "ehr-imaging-catalogue-v1"; // kept for Partners tab
 const REASONS_KEY   = "ehr-imaging-reasons-v1";
 const PARTNERS_KEY  = "ehr-imaging-partners-v1";
 
@@ -136,10 +142,20 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Mammography":       "#ec4899",
 };
 
-const KNOWN_CATS = [
-  "X-Ray", "CT Scan", "MRI", "Ultrasound",
-  "Echocardiography", "Nuclear Medicine", "Fluoroscopy", "Mammography",
-];
+const MODALITY_ACCENT_COLORS: Record<string, string> = {
+  "X-Ray":            "#0ea5e9",
+  "CT":               "#8b5cf6",
+  "MRI":              "#6366f1",
+  "Ultrasound":       "#10b981",
+  "Mammography":      "#ec4899",
+  "Echocardiography": "#f59e0b",
+  "Nuclear Medicine": "#ef4444",
+  "Fluoroscopy":      "#f97316",
+};
+
+function modalityColor(name: string): string {
+  return MODALITY_ACCENT_COLORS[name] ?? ACCENT;
+}
 
 function seedTests(): ImagingTest[] {
   try {
@@ -165,287 +181,476 @@ function seedPartners(): ImagingPartner[] {
   return [...SEED_PARTNERS];
 }
 
-// ─── Tab 1: Imaging Test List (inline add + inline edit) ───────────────────────
+// ─── Tab 1: Hierarchical Catalog Editor ────────────────────────────────────────
 
-interface InlineEdit { name: string; category: string; customCat: string; }
+function CatalogEditorTab() {
+  const [catalog, setCatalog] = useState<CatalogModality[]>(() => loadImagingCatalog());
 
-function ImagingTestListTab({
-  tests, setTests,
-}: {
-  tests: ImagingTest[];
-  setTests: React.Dispatch<React.SetStateAction<ImagingTest[]>>;
-}) {
-  const [search,       setSearch]       = useState("");
-  const [filterCat,    setFilterCat]    = useState("All");
-  const [showInactive, setShowInactive] = useState(false);
-  const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({});
+  // keys: "m:i", "b:i:j", "p:i:j:k"
+  const [editKey, setEditKey] = useState<string | null>(null);
+  const [editVal, setEditVal] = useState("");
 
-  // Inline editing
-  const [editId,   setEditId]   = useState<string | null>(null);
-  const [editData, setEditData] = useState<InlineEdit>({ name: "", category: "X-Ray", customCat: "" });
+  // keys: "m" (add modality), "b:i" (add body part to i), "p:i:j" (add protocol to i,j)
+  const [addKey, setAddKey] = useState<string | null>(null);
+  const [addVal, setAddVal] = useState("");
 
-  // Inline add (shown at bottom of a category or global)
-  const [addCat,    setAddCat]    = useState<string | null>(null);
-  const [addName,   setAddName]   = useState("");
-  const [addCatVal, setAddCatVal] = useState(KNOWN_CATS[0]);
-  const [addCustom, setAddCustom] = useState("");
+  // expand state
+  const [expandM,  setExpandM]  = useState<Record<number, boolean>>(() =>
+    Object.fromEntries(loadImagingCatalog().map((_, i) => [i, true]))
+  );
+  const [expandBP, setExpandBP] = useState<Record<string, boolean>>({});
 
-  const categories = Array.from(new Set(tests.map(t => t.category))).sort();
+  const addInputRef = useRef<HTMLInputElement | null>(null);
 
-  function isVisible(t: ImagingTest) {
-    if (t.deleted && !showInactive) return false;
-    if (!t.enabled && !showInactive) return false;
-    if (filterCat !== "All" && t.category !== filterCat) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q);
+  function persist(next: CatalogModality[]) {
+    setCatalog(next);
+    try { localStorage.setItem(IMAGING_CATALOG_KEY, JSON.stringify(next)); } catch { /**/ }
+  }
+
+  // ── helpers ──
+
+  function isExpandedM(i: number)        { return expandM[i]  !== false; }
+  function isExpandedBP(i: number, j: number) { return expandBP[`${i}:${j}`] !== false; }
+
+  function toggleExpandM(i: number)  { setExpandM(s  => ({ ...s, [i]: !isExpandedM(i)  })); }
+  function toggleExpandBP(i: number, j: number) { setExpandBP(s => ({ ...s, [`${i}:${j}`]: !isExpandedBP(i, j) })); }
+
+  function startEdit(key: string, val: string) {
+    setAddKey(null); setAddVal("");
+    setEditKey(key);
+    setEditVal(val);
+  }
+
+  function cancelEdit() { setEditKey(null); setEditVal(""); }
+
+  function commitEdit() {
+    if (!editKey || !editVal.trim()) { cancelEdit(); return; }
+    const v = editVal.trim();
+    const parts = editKey.split(":").map(Number);
+    const next = catalog.map((m, mi) => {
+      if (parts[0] !== mi && editKey.startsWith("m:") && parts[1] !== mi) return m;
+      return m;
+    });
+
+    // rebuild
+    const c = catalog.map((m, mi) => ({ ...m, bodyParts: m.bodyParts.map((bp, bi) => ({ ...bp })) }));
+    if (editKey === `m:${parts[1]}`) {
+      c[parts[1]] = { ...c[parts[1]], name: v };
+    } else if (editKey === `b:${parts[1]}:${parts[2]}`) {
+      c[parts[1]].bodyParts[parts[2]] = { ...c[parts[1]].bodyParts[parts[2]], name: v };
+    } else if (editKey === `p:${parts[1]}:${parts[2]}:${parts[3]}`) {
+      const protos = [...c[parts[1]].bodyParts[parts[2]].protocols];
+      protos[parts[3]] = v;
+      c[parts[1]].bodyParts[parts[2]] = { ...c[parts[1]].bodyParts[parts[2]], protocols: protos };
     }
-    return true;
+    persist(c);
+    cancelEdit();
   }
 
-  const visible = tests.filter(isVisible);
-
-  const grouped: { cat: string; items: ImagingTest[] }[] = [];
-  const seen = new Set<string>();
-  for (const t of visible) {
-    if (!seen.has(t.category)) { seen.add(t.category); grouped.push({ cat: t.category, items: [] }); }
-    grouped.find(g => g.cat === t.category)!.items.push(t);
+  function startAdd(key: string) {
+    setEditKey(null); setEditVal("");
+    setAddKey(key);
+    setAddVal("");
+    setTimeout(() => addInputRef.current?.focus(), 50);
   }
 
-  function isCatExpanded(cat: string) { return expandedCats[cat] !== false; }
-  function toggleCat(cat: string) { setExpandedCats(p => ({ ...p, [cat]: !isCatExpanded(cat) })); }
+  function cancelAdd() { setAddKey(null); setAddVal(""); }
 
-  function softDelete(id: string) {
-    setTests(p => p.map(t => t.id === id ? { ...t, deleted: true, enabled: false } : t));
-    if (editId === id) setEditId(null);
-  }
-  function restore(id: string) {
-    setTests(p => p.map(t => t.id === id ? { ...t, deleted: false, enabled: true } : t));
-  }
-  function toggleEnabled(id: string) {
-    setTests(p => p.map(t => t.id === id ? { ...t, enabled: !t.enabled } : t));
+  function commitAdd() {
+    if (!addKey || !addVal.trim()) { cancelAdd(); return; }
+    const v = addVal.trim();
+    const parts = addKey.split(":").map(Number);
+    const c: CatalogModality[] = catalog.map(m => ({
+      ...m,
+      bodyParts: m.bodyParts.map(bp => ({ ...bp, protocols: [...bp.protocols] })),
+    }));
+
+    if (addKey === "m") {
+      const newMod: CatalogModality = { name: v, enabled: true, bodyParts: [] };
+      c.push(newMod);
+      setExpandM(s => ({ ...s, [c.length - 1]: true }));
+    } else if (addKey === `b:${parts[1]}`) {
+      const newBP: CatalogBodyPart = { name: v, enabled: true, protocols: [] };
+      c[parts[1]].bodyParts.push(newBP);
+      const bi = c[parts[1]].bodyParts.length - 1;
+      setExpandBP(s => ({ ...s, [`${parts[1]}:${bi}`]: true }));
+    } else if (addKey === `p:${parts[1]}:${parts[2]}`) {
+      c[parts[1]].bodyParts[parts[2]].protocols.push(v);
+    }
+    persist(c);
+    cancelAdd();
   }
 
-  function startEdit(t: ImagingTest) {
-    const known = KNOWN_CATS.includes(t.category) || categories.includes(t.category);
-    setEditId(t.id);
-    setEditData({
-      name:      t.name,
-      category:  known ? t.category : "__custom__",
-      customCat: known ? "" : t.category,
+  function toggleModalityEnabled(i: number) {
+    const c = catalog.map((m, mi) => mi === i ? { ...m, enabled: !(m.enabled !== false) } : m);
+    persist(c);
+  }
+
+  function toggleBodyPartEnabled(i: number, j: number) {
+    const c = catalog.map((m, mi) => mi !== i ? m : {
+      ...m,
+      bodyParts: m.bodyParts.map((bp, bi) => bi === j ? { ...bp, enabled: !(bp.enabled !== false) } : bp),
+    });
+    persist(c);
+  }
+
+  function deleteModality(i: number) {
+    persist(catalog.filter((_, mi) => mi !== i));
+    setExpandM(s => {
+      const n: Record<number, boolean> = {};
+      Object.entries(s).forEach(([k, v]) => { const ki = Number(k); if (ki !== i) n[ki > i ? ki - 1 : ki] = v; });
+      return n;
     });
   }
 
-  function saveEdit(id: string) {
-    const name = editData.name.trim();
-    const cat  = editData.category === "__custom__" ? editData.customCat.trim() : editData.category;
-    if (!name || !cat) return;
-    setTests(p => p.map(t => t.id === id ? { ...t, name, category: cat } : t));
-    setEditId(null);
+  function deleteBodyPart(i: number, j: number) {
+    const c = catalog.map((m, mi) => mi !== i ? m : {
+      ...m, bodyParts: m.bodyParts.filter((_, bi) => bi !== j),
+    });
+    persist(c);
   }
 
-  function addTest() {
-    const name = addName.trim();
-    const cat  = addCatVal === "__custom__" ? addCustom.trim() : addCatVal;
-    if (!name || !cat) return;
-    setTests(p => [...p, { id: uid(), name, category: cat, enabled: true, deleted: false }]);
-    setAddName("");
-    setAddCustom("");
-    setAddCat(null);
+  function deleteProtocol(i: number, j: number, k: number) {
+    const c = catalog.map((m, mi) => mi !== i ? m : {
+      ...m,
+      bodyParts: m.bodyParts.map((bp, bi) => bi !== j ? bp : {
+        ...bp, protocols: bp.protocols.filter((_, pi) => pi !== k),
+      }),
+    });
+    persist(c);
   }
 
-  function exportCSV() {
-    const rows = [["Category", "Test Name", "Enabled"]];
-    tests.filter(t => t.enabled && !t.deleted).forEach(t => rows.push([t.category, t.name, "Yes"]));
-    const csv = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    a.download = "imaging-test-catalogue.csv";
-    a.click();
-  }
-
-  const allCatOptions = [...new Set([...KNOWN_CATS, ...categories])];
+  const enabledCount   = catalog.filter(m => m.enabled !== false).length;
+  const totalBodyParts = catalog.reduce((s, m) => s + m.bodyParts.length, 0);
+  const totalProtocols = catalog.reduce((s, m) => s + m.bodyParts.reduce((ss, bp) => ss + bp.protocols.length, 0), 0);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Toolbar */}
-      <div className="px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search test name or category…" className="pl-8 h-8 text-xs" />
+      <div className="px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-3 text-xs text-slate-500">
+          <span className="font-semibold text-slate-700">{catalog.length}</span> modalities ·{" "}
+          <span className="font-semibold text-slate-700">{totalBodyParts}</span> body parts ·{" "}
+          <span className="font-semibold text-slate-700">{totalProtocols}</span> protocols
+          {catalog.length !== enabledCount && (
+            <span className="text-amber-600 font-semibold ml-1">({catalog.length - enabledCount} disabled)</span>
+          )}
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {["All", ...categories].map(c => (
-            <button key={c} onClick={() => setFilterCat(c)}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                filterCat === c ? "text-white border-transparent" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-              }`}
-              style={filterCat === c ? { background: CATEGORY_COLORS[c] ?? ACCENT } : {}}>
-              {c}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1.5 ml-auto">
-          <button onClick={() => setShowInactive(s => !s)}
-            className={`flex items-center gap-1 text-xs border px-2.5 py-1 rounded-full transition-colors ${
-              showInactive ? "bg-slate-700 text-white border-slate-700" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-            }`}>
-            {showInactive ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-            {showInactive ? "Hide Inactive" : "Include Inactive"}
-          </button>
-          <Button variant="outline" size="sm" onClick={exportCSV} className="h-8 text-xs gap-1.5">
-            <FileText className="h-3.5 w-3.5" /> Export CSV
-          </Button>
-          <Button size="sm" onClick={() => { setAddCat("__new__"); setAddCatVal(KNOWN_CATS[0]); setAddName(""); setAddCustom(""); }}
+        <div className="ml-auto">
+          <Button size="sm"
+            onClick={() => startAdd("m")}
             style={{ background: ACCENT }} className="text-white text-xs gap-1.5 h-8">
-            <Plus className="h-3.5 w-3.5" /> Add Test
+            <Plus className="h-3.5 w-3.5" /> Add Modality
           </Button>
         </div>
       </div>
 
-      {/* Grouped list */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-        {/* Global inline add row (when not adding within a specific category) */}
-        {addCat === "__new__" && (
-          <div className="flex items-center gap-2 p-3 rounded-lg border border-dashed border-[#4982CF]/50 bg-[#4982CF]/5">
-            <ScanLine className="h-3.5 w-3.5 text-[#4982CF] flex-shrink-0" />
-            <Input value={addName} onChange={e => setAddName(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && addTest()}
-              placeholder="Test name…" className="h-7 text-xs flex-1 max-w-xs" autoFocus />
-            <select value={addCatVal} onChange={e => setAddCatVal(e.target.value)}
-              className="h-7 text-xs rounded-md border border-slate-200 bg-white px-2 outline-none focus:ring-1 focus:ring-[#4982CF]/40">
-              {allCatOptions.map(c => <option key={c} value={c}>{c}</option>)}
-              <option value="__custom__">+ Custom…</option>
-            </select>
-            {addCatVal === "__custom__" && (
-              <Input value={addCustom} onChange={e => setAddCustom(e.target.value)}
-                placeholder="Category name" className="h-7 text-xs w-32" />
-            )}
-            <button onClick={addTest}
-              className="p-1.5 rounded hover:bg-[#4982CF] hover:text-white text-[#4982CF] transition-colors"
-              title="Save test">
-              <CheckCircle2 className="h-4 w-4" />
-            </button>
-            <button onClick={() => setAddCat(null)} className="p-1.5 rounded hover:bg-slate-100 text-slate-400">
-              <X className="h-4 w-4" />
-            </button>
+      {/* Tree */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+
+        {/* Add-modality inline row */}
+        {addKey === "m" && (
+          <InlineAddRow
+            placeholder="Modality name (e.g. Fluoroscopy)…"
+            value={addVal}
+            onChange={setAddVal}
+            onCommit={commitAdd}
+            onCancel={cancelAdd}
+            inputRef={addInputRef}
+            indent={0}
+          />
+        )}
+
+        {catalog.length === 0 && addKey !== "m" && (
+          <div className="text-center py-16 text-slate-400 text-sm">
+            No modalities yet. Click <strong>Add Modality</strong> above.
           </div>
         )}
 
-        {visible.length === 0 && addCat !== "__new__" && (
-          <div className="text-center py-16 text-slate-400 text-sm">No tests match your filter.</div>
-        )}
+        {catalog.map((modality, mi) => {
+          const mColor    = modalityColor(modality.name);
+          const mEnabled  = modality.enabled !== false;
+          const mExpanded = isExpandedM(mi);
 
-        {grouped.map(({ cat, items }) => {
-          const color   = CATEGORY_COLORS[cat] ?? "#64748b";
-          const expanded = isCatExpanded(cat);
           return (
-            <div key={cat}>
-              <button className="flex items-center gap-2 w-full text-left mb-2 group" onClick={() => toggleCat(cat)}>
-                <span className="h-3 w-3 rounded-full shrink-0" style={{ background: color }} />
-                <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">{cat}</span>
-                <span className="text-[10px] text-slate-400 ml-1">{items.length} test{items.length !== 1 ? "s" : ""}</span>
-                <span className="ml-auto text-slate-300 group-hover:text-slate-500 transition-colors">
-                  {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                </span>
-              </button>
+            <div key={mi} className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+              {/* Modality row */}
+              <div
+                className={`flex items-center gap-2 px-3 py-2.5 ${mEnabled ? "bg-white" : "bg-slate-50"}`}
+              >
+                <button onClick={() => toggleExpandM(mi)} className="p-0.5 text-slate-400 hover:text-slate-600 flex-shrink-0">
+                  {mExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </button>
 
-              {expanded && (
-                <div className="space-y-1 pl-4 border-l-2" style={{ borderColor: `${color}40` }}>
-                  {items.map(t => {
-                    const isEditing  = editId === t.id;
-                    const isDisabled = !t.enabled || t.deleted;
+                <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ background: mColor }} />
 
-                    if (isEditing) {
-                      return (
-                        <div key={t.id}
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#4982CF]/40 bg-[#4982CF]/5">
-                          <ScanLine className="h-3.5 w-3.5 flex-shrink-0" style={{ color }} />
-                          <Input
-                            value={editData.name}
-                            onChange={e => setEditData(d => ({ ...d, name: e.target.value }))}
-                            onKeyDown={e => e.key === "Enter" && saveEdit(t.id)}
-                            className="h-7 text-xs flex-1 max-w-xs"
-                            autoFocus
-                          />
-                          <select
-                            value={editData.category}
-                            onChange={e => setEditData(d => ({ ...d, category: e.target.value, customCat: "" }))}
-                            className="h-7 text-xs rounded-md border border-slate-200 bg-white px-2 outline-none focus:ring-1 focus:ring-[#4982CF]/40">
-                            {allCatOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                            <option value="__custom__">+ Custom…</option>
-                          </select>
-                          {editData.category === "__custom__" && (
-                            <Input
-                              value={editData.customCat}
-                              onChange={e => setEditData(d => ({ ...d, customCat: e.target.value }))}
-                              placeholder="Category…"
-                              className="h-7 text-xs w-28"
-                            />
-                          )}
-                          <button onClick={() => saveEdit(t.id)} title="Save"
-                            className="p-1.5 rounded hover:bg-[#4982CF] hover:text-white text-[#4982CF] transition-colors">
-                            <CheckCircle2 className="h-4 w-4" />
-                          </button>
-                          <button onClick={() => setEditId(null)} title="Cancel"
-                            className="p-1.5 rounded hover:bg-slate-100 text-slate-400">
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      );
-                    }
+                {editKey === `m:${mi}` ? (
+                  <InlineEditRow
+                    value={editVal}
+                    onChange={setEditVal}
+                    onCommit={commitEdit}
+                    onCancel={cancelEdit}
+                  />
+                ) : (
+                  <span
+                    className={`flex-1 text-sm font-bold ${mEnabled ? "text-slate-800" : "text-slate-400"}`}
+                    onDoubleClick={() => startEdit(`m:${mi}`, modality.name)}
+                  >
+                    {modality.name}
+                  </span>
+                )}
+
+                <span className="text-[10px] text-slate-400 mr-1">{modality.bodyParts.length} body parts</span>
+
+                <Switch
+                  checked={mEnabled}
+                  onCheckedChange={() => toggleModalityEnabled(mi)}
+                  className="data-[state=checked]:bg-[#4982CF] flex-shrink-0"
+                />
+                {editKey !== `m:${mi}` && (
+                  <>
+                    <button
+                      onClick={() => startEdit(`m:${mi}`, modality.name)}
+                      className="p-1.5 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-600 transition-colors"
+                      title="Rename modality"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => deleteModality(mi)}
+                      className="p-1.5 rounded hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors"
+                      title="Delete modality"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Body Parts */}
+              {mExpanded && (
+                <div className="border-t border-slate-100">
+                  {modality.bodyParts.map((bp, bi) => {
+                    const bpEnabled  = bp.enabled !== false;
+                    const bpExpanded = isExpandedBP(mi, bi);
 
                     return (
-                      <div key={t.id}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg border bg-white group transition-all ${
-                          t.deleted ? "border-dashed border-red-200 opacity-60"
-                          : !t.enabled ? "border-slate-100 opacity-60"
-                          : "border-slate-200 hover:border-slate-300"
-                        }`}>
-                        <ScanLine className="h-3.5 w-3.5 flex-shrink-0" style={{ color }} />
-                        <span className={`flex-1 text-sm font-medium ${isDisabled ? "text-slate-400" : "text-slate-800"}`}>
-                          {t.name}
-                        </span>
-                        {t.deleted && (
-                          <span className="text-[10px] font-semibold text-red-500 bg-red-50 border border-red-200 px-1.5 py-0 rounded">
-                            Deleted
-                          </span>
-                        )}
-                        {!t.deleted && !t.enabled && (
-                          <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0 rounded">
-                            Disabled
-                          </span>
-                        )}
-                        {t.deleted ? (
-                          <button onClick={() => restore(t.id)}
-                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 transition-colors">
-                            <RotateCcw className="h-3 w-3" /> Restore
+                      <div key={bi} className={`border-b border-slate-50 last:border-0 ${bpEnabled ? "bg-white" : "bg-slate-50/60"}`}>
+                        {/* Body Part row */}
+                        <div className="flex items-center gap-2 pl-8 pr-3 py-2">
+                          <button onClick={() => toggleExpandBP(mi, bi)} className="p-0.5 text-slate-300 hover:text-slate-500 flex-shrink-0">
+                            {bpExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                           </button>
-                        ) : (
-                          <>
-                            <Switch checked={t.enabled} onCheckedChange={() => toggleEnabled(t.id)}
-                              className="data-[state=checked]:bg-[#4982CF]" />
-                            <button onClick={() => startEdit(t)}
-                              className="p-1.5 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-700 opacity-0 group-hover:opacity-100 transition-all">
-                              <Edit2 className="h-3.5 w-3.5" />
+
+                          {editKey === `b:${mi}:${bi}` ? (
+                            <InlineEditRow
+                              value={editVal}
+                              onChange={setEditVal}
+                              onCommit={commitEdit}
+                              onCancel={cancelEdit}
+                            />
+                          ) : (
+                            <span
+                              className={`flex-1 text-xs font-semibold ${bpEnabled ? "text-slate-700" : "text-slate-400"}`}
+                              onDoubleClick={() => startEdit(`b:${mi}:${bi}`, bp.name)}
+                            >
+                              {bp.name}
+                            </span>
+                          )}
+
+                          <span className="text-[10px] text-slate-400 mr-1">{bp.protocols.length}</span>
+
+                          <Switch
+                            checked={bpEnabled}
+                            onCheckedChange={() => toggleBodyPartEnabled(mi, bi)}
+                            className="data-[state=checked]:bg-[#4982CF] scale-75 flex-shrink-0"
+                          />
+                          {editKey !== `b:${mi}:${bi}` && (
+                            <>
+                              <button
+                                onClick={() => startEdit(`b:${mi}:${bi}`, bp.name)}
+                                className="p-1 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-600 transition-colors"
+                                title="Rename body part"
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={() => deleteBodyPart(mi, bi)}
+                                className="p-1 rounded hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors"
+                                title="Delete body part"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Protocols */}
+                        {bpExpanded && (
+                          <div className="pl-16 pr-3 pb-2 space-y-0.5">
+                            {bp.protocols.map((proto, pi) => (
+                              <div key={pi} className="flex items-center gap-2 group px-2 py-1 rounded-lg hover:bg-slate-50">
+                                <span className="h-1 w-1 rounded-full bg-slate-300 flex-shrink-0" />
+                                {editKey === `p:${mi}:${bi}:${pi}` ? (
+                                  <InlineEditRow
+                                    value={editVal}
+                                    onChange={setEditVal}
+                                    onCommit={commitEdit}
+                                    onCancel={cancelEdit}
+                                  />
+                                ) : (
+                                  <span
+                                    className="flex-1 text-xs text-slate-600"
+                                    onDoubleClick={() => startEdit(`p:${mi}:${bi}:${pi}`, proto)}
+                                  >
+                                    {proto}
+                                  </span>
+                                )}
+                                {editKey !== `p:${mi}:${bi}:${pi}` && (
+                                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() => startEdit(`p:${mi}:${bi}:${pi}`, proto)}
+                                      className="p-1 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-600"
+                                    >
+                                      <Edit2 className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => deleteProtocol(mi, bi, pi)}
+                                      className="p-1 rounded hover:bg-red-50 text-slate-300 hover:text-red-500"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+
+                            {/* Add protocol row */}
+                            {addKey === `p:${mi}:${bi}` && (
+                              <InlineAddRow
+                                placeholder="Protocol name (e.g. Without Contrast)…"
+                                value={addVal}
+                                onChange={setAddVal}
+                                onCommit={commitAdd}
+                                onCancel={cancelAdd}
+                                inputRef={addInputRef}
+                                indent={0}
+                              />
+                            )}
+
+                            <button
+                              onClick={() => { setExpandBP(s => ({ ...s, [`${mi}:${bi}`]: true })); startAdd(`p:${mi}:${bi}`); }}
+                              className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-[#4982CF] px-2 py-1 transition-colors"
+                            >
+                              <Plus className="h-3 w-3" /> Add Protocol
                             </button>
-                            <button onClick={() => softDelete(t.id)}
-                              className="p-1.5 rounded hover:bg-red-50 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                              title="Remove from catalogue">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </>
+                          </div>
                         )}
                       </div>
                     );
                   })}
+
+                  {/* Add body part row inside modality */}
+                  {addKey === `b:${mi}` && (
+                    <div className="pl-8 pr-3 py-1.5 border-t border-slate-50">
+                      <InlineAddRow
+                        placeholder="Body part name (e.g. Lumbar Spine)…"
+                        value={addVal}
+                        onChange={setAddVal}
+                        onCommit={commitAdd}
+                        onCancel={cancelAdd}
+                        inputRef={addInputRef}
+                        indent={0}
+                      />
+                    </div>
+                  )}
+
+                  <div className="pl-8 pr-3 py-2 border-t border-slate-50">
+                    <button
+                      onClick={() => { setExpandM(s => ({ ...s, [mi]: true })); startAdd(`b:${mi}`); }}
+                      className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-[#4982CF] transition-colors"
+                    >
+                      <Plus className="h-3 w-3" /> Add Body Part
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           );
         })}
+
+        {/* Bottom "Add Modality" shortcut */}
+        {catalog.length > 0 && addKey !== "m" && (
+          <button
+            onClick={() => startAdd("m")}
+            className="flex items-center gap-1.5 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 text-slate-400 hover:border-[#4982CF]/40 hover:text-[#4982CF] text-xs font-bold transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add Modality
+          </button>
+        )}
       </div>
+    </div>
+  );
+}
+
+// ─── Shared inline editing UI ──────────────────────────────────────────────────
+
+function InlineEditRow({
+  value, onChange, onCommit, onCancel,
+}: {
+  value:    string;
+  onChange: (v: string) => void;
+  onCommit: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 flex-1">
+      <Input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") onCommit(); if (e.key === "Escape") onCancel(); }}
+        className="h-7 text-xs flex-1"
+        autoFocus
+      />
+      <button onClick={onCommit} className="p-1 rounded hover:bg-[#4982CF] hover:text-white text-[#4982CF] transition-colors">
+        <CheckCircle2 className="h-4 w-4" />
+      </button>
+      <button onClick={onCancel} className="p-1 rounded hover:bg-slate-100 text-slate-400">
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function InlineAddRow({
+  placeholder, value, onChange, onCommit, onCancel, inputRef, indent,
+}: {
+  placeholder: string;
+  value:       string;
+  onChange:    (v: string) => void;
+  onCommit:    () => void;
+  onCancel:    () => void;
+  inputRef:    React.RefObject<HTMLInputElement | null>;
+  indent:      number;
+}) {
+  return (
+    <div className={`flex items-center gap-1.5 py-1`} style={{ paddingLeft: indent }}>
+      <Plus className="h-3.5 w-3.5 text-[#4982CF] flex-shrink-0" />
+      <Input
+        ref={inputRef}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") onCommit(); if (e.key === "Escape") onCancel(); }}
+        placeholder={placeholder}
+        className="h-7 text-xs flex-1"
+        autoFocus
+      />
+      <button onClick={onCommit} className="p-1 rounded hover:bg-[#4982CF] hover:text-white text-[#4982CF] transition-colors">
+        <CheckCircle2 className="h-4 w-4" />
+      </button>
+      <button onClick={onCancel} className="p-1 rounded hover:bg-slate-100 text-slate-400">
+        <X className="h-4 w-4" />
+      </button>
     </div>
   );
 }
@@ -461,19 +666,15 @@ function ReasonTemplatesTab() {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dropIdx, setDropIdx] = useState<number | null>(null);
 
-  // Auto-persist every change so data is never lost on refresh
   useEffect(() => {
     try { localStorage.setItem(REASONS_KEY, JSON.stringify(items)); } catch { /**/ }
     setSaved(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
-  function confirmSave() { setSaved(true); }
-
   function addReason() {
-    const v = newText.trim();
-    if (!v || items.includes(v)) return;
-    setItems(p => [...p, v]);
+    const t = newText.trim();
+    if (!t) return;
+    setItems(p => [...p, t]);
     setNewText("");
   }
 
@@ -482,20 +683,20 @@ function ReasonTemplatesTab() {
     if (editIdx === idx) setEditIdx(null);
   }
 
-  function startEdit(idx: number) {
-    setEditIdx(idx);
-    setEditVal(items[idx]);
-  }
-
+  function startEdit(idx: number) { setEditIdx(idx); setEditVal(items[idx]); }
   function saveEdit(idx: number) {
-    const v = editVal.trim();
-    if (!v) return;
-    setItems(p => p.map((x, i) => i === idx ? v : x));
+    if (!editVal.trim()) return;
+    setItems(p => p.map((s, i) => i === idx ? editVal.trim() : s));
     setEditIdx(null);
   }
 
+  function confirmSave() {
+    try { localStorage.setItem(REASONS_KEY, JSON.stringify(items)); } catch { /**/ }
+    setSaved(true);
+  }
+
   function handleDrop(toIdx: number) {
-    if (dragIdx === null || dragIdx === toIdx) { setDragIdx(null); setDropIdx(null); return; }
+    if (dragIdx === null || dragIdx === toIdx) return;
     setItems(p => reorder(p, dragIdx, toIdx));
     setDragIdx(null);
     setDropIdx(null);
@@ -503,7 +704,6 @@ function ReasonTemplatesTab() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Toolbar */}
       <div className="px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
         <p className="text-xs text-slate-500 flex-1">
           Manage indication templates available when ordering imaging tests. Drag to reorder.
@@ -516,7 +716,6 @@ function ReasonTemplatesTab() {
         </Button>
       </div>
 
-      {/* Add new reason */}
       <div className="px-6 py-3 border-b border-slate-100 flex gap-2">
         <Input
           value={newText}
@@ -531,7 +730,6 @@ function ReasonTemplatesTab() {
         </Button>
       </div>
 
-      {/* Reason list */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="space-y-1.5">
           {items.map((reason, idx) => (
@@ -668,7 +866,6 @@ function ImagingPartnersTab({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Toolbar */}
       <div className="px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
         <p className="text-xs text-slate-500">
           Manage radiology centers and their per-test pricing.
@@ -678,7 +875,6 @@ function ImagingPartnersTab({
         </Button>
       </div>
 
-      {/* Partner list */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
         {partners.length === 0 && (
           <div className="text-center py-16 text-slate-300">
@@ -793,7 +989,6 @@ function ImagingPartnersTab({
             </DialogTitle>
           </DialogHeader>
 
-          {/* Step indicator */}
           <div className="flex items-center gap-2 mb-4">
             {[1, 2].map(s => (
               <div key={s} className={`flex items-center gap-2 ${s < 2 ? "flex-1" : ""}`}>
@@ -900,7 +1095,6 @@ function ImagingPartnersTab({
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -922,29 +1116,31 @@ function ImagingPartnersTab({
 
 // ─── Main Module ───────────────────────────────────────────────────────────────
 
-type TabKey = "tests" | "reasons" | "partners";
+type TabKey = "catalog" | "reasons" | "partners";
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-  { key: "tests",    label: "Imaging Test List",  icon: <ScanLine className="h-3.5 w-3.5" /> },
-  { key: "reasons",  label: "Reason Templates",   icon: <FileText className="h-3.5 w-3.5" /> },
-  { key: "partners", label: "Imaging Partners",   icon: <Building2 className="h-3.5 w-3.5" /> },
+  { key: "catalog",  label: "Catalog",          icon: <Layers className="h-3.5 w-3.5" /> },
+  { key: "reasons",  label: "Reason Templates", icon: <FileText className="h-3.5 w-3.5" /> },
+  { key: "partners", label: "Imaging Partners", icon: <Building2 className="h-3.5 w-3.5" /> },
 ];
 
-interface Props { initialTab?: TabKey; }
+interface Props { initialTab?: TabKey | "tests"; }
 
-export function ImagingCatalogModule({ initialTab = "tests" }: Props) {
-  const [tab, setTab]             = useState<TabKey>(initialTab);
-  const [tests, setTests]         = useState<ImagingTest[]>(seedTests);
-  const [partners, setPartners]   = useState<ImagingPartner[]>(seedPartners);
+export function ImagingCatalogModule({ initialTab = "catalog" }: Props) {
+  // map legacy "tests" → "catalog"
+  const resolvedInitial: TabKey = initialTab === "tests" ? "catalog" : (initialTab as TabKey);
+  const [tab, setTab]         = useState<TabKey>(resolvedInitial);
+  const [tests, setTests]     = useState<ImagingTest[]>(seedTests);
+  const [partners, setPartners] = useState<ImagingPartner[]>(seedPartners);
 
-  useEffect(() => { setTab(initialTab); }, [initialTab]);
+  useEffect(() => {
+    setTab(initialTab === "tests" ? "catalog" : (initialTab as TabKey));
+  }, [initialTab]);
 
-  // Persist tests to localStorage whenever they change
   useEffect(() => {
     try { localStorage.setItem(CATALOGUE_KEY, JSON.stringify(tests)); } catch { /**/ }
   }, [tests]);
 
-  // Persist partners to localStorage whenever they change
   useEffect(() => {
     try { localStorage.setItem(PARTNERS_KEY, JSON.stringify(partners)); } catch { /**/ }
   }, [partners]);
@@ -959,7 +1155,7 @@ export function ImagingCatalogModule({ initialTab = "tests" }: Props) {
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-800">Imaging Catalog</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Manage imaging tests, reason templates, and radiology partners</p>
+            <p className="text-xs text-slate-500 mt-0.5">Manage the imaging catalog, reason templates, and radiology partners</p>
           </div>
         </div>
 
@@ -981,7 +1177,7 @@ export function ImagingCatalogModule({ initialTab = "tests" }: Props) {
 
       {/* Tab content */}
       <div className="flex-1 overflow-hidden">
-        {tab === "tests"    && <ImagingTestListTab tests={tests} setTests={setTests} />}
+        {tab === "catalog"  && <CatalogEditorTab />}
         {tab === "reasons"  && <ReasonTemplatesTab />}
         {tab === "partners" && <ImagingPartnersTab partners={partners} setPartners={setPartners} tests={tests} />}
       </div>

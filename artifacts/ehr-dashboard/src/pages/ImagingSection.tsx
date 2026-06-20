@@ -6,17 +6,33 @@ import {
 
 // ─── Hierarchical Imaging Catalog ────────────────────────────────────────────
 
-interface CatalogBodyPart {
+export interface CatalogBodyPart {
   name:      string;
+  enabled?:  boolean;
   protocols: string[];
 }
 
-interface CatalogModality {
+export interface CatalogModality {
   name:      string;
+  enabled?:  boolean;
   bodyParts: CatalogBodyPart[];
 }
 
-const IMAGING_CATALOG: CatalogModality[] = [
+export const IMAGING_CATALOG_KEY = "ehr-imaging-catalog-v2";
+
+export function loadImagingCatalog(): CatalogModality[] {
+  try {
+    const raw = localStorage.getItem(IMAGING_CATALOG_KEY);
+    if (raw) return JSON.parse(raw) as CatalogModality[];
+  } catch { /**/ }
+  return IMAGING_CATALOG_SEED.map(m => ({
+    ...m,
+    enabled:   true,
+    bodyParts: m.bodyParts.map(bp => ({ ...bp, enabled: true })),
+  }));
+}
+
+const IMAGING_CATALOG_SEED: CatalogModality[] = [
   {
     name: "X-Ray",
     bodyParts: [
@@ -249,8 +265,11 @@ function CascadeForm({
   value:    OrderForm;
   onChange: (v: OrderForm) => void;
 }) {
-  const selectedModality = IMAGING_CATALOG.find(m => m.name === value.modality);
-  const selectedBodyPart = selectedModality?.bodyParts.find(b => b.name === value.bodyPart);
+  const [catalog] = useState(() => loadImagingCatalog());
+  const activeCatalog  = catalog.filter(m => m.enabled !== false);
+  const selectedModality = activeCatalog.find(m => m.name === value.modality);
+  const activeBodyParts  = (selectedModality?.bodyParts ?? []).filter(b => b.enabled !== false);
+  const selectedBodyPart = activeBodyParts.find(b => b.name === value.bodyPart);
 
   const selectClass =
     "w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/20 transition-all appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed";
@@ -269,7 +288,7 @@ function CascadeForm({
             className={selectClass}
           >
             <option value="">Select modality…</option>
-            {IMAGING_CATALOG.map(m => (
+            {activeCatalog.map(m => (
               <option key={m.name} value={m.name}>{m.name}</option>
             ))}
           </select>
@@ -290,7 +309,7 @@ function CascadeForm({
             className={selectClass}
           >
             <option value="">Select body part…</option>
-            {(selectedModality?.bodyParts ?? []).map(b => (
+            {activeBodyParts.map(b => (
               <option key={b.name} value={b.name}>{b.name}</option>
             ))}
           </select>
