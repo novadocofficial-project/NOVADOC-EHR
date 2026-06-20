@@ -3,7 +3,7 @@ import {
   X, ChevronRight, ChevronLeft, ChevronDown, AlertCircle, Heart, Activity,
   ClipboardList, Stethoscope, Target, CheckCircle2, Check, FileText,
   Maximize2, Minimize2, Plus, Trash2, Pill, Receipt, ShieldCheck,
-  DollarSign, Layers,
+  DollarSign, Layers, SkipForward, RotateCcw,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -1989,7 +1989,8 @@ interface SectionSource {
 }
 
 type InteractiveSectionKey = "labOrders" | "prescriptions" | "imaging" | "procedureOrders" | "referrals" | "healthEd" | "carePlan";
-type SectionItemStatuses = Record<string, boolean>;
+interface SectionItemStatus { status: "done" | "skipped"; reason?: string; }
+type SectionItemStatuses = Record<string, SectionItemStatus | undefined>;
 type SourceExec = Partial<Record<InteractiveSectionKey, SectionItemStatuses>>;
 type SectionExecStore = Record<string, SourceExec>;
 
@@ -2031,7 +2032,7 @@ function computeSourceProgress(src: SectionSource, exec: SourceExec): { done: nu
     const items = (src as unknown as Record<string, SectionItem[]>)[key] ?? [];
     total += items.length;
     const statuses = exec[key] ?? {};
-    done += items.filter(it => statuses[it.uid]).length;
+    done += items.filter(it => statuses[it.uid]?.status === "done" || statuses[it.uid]?.status === "skipped").length;
   }
   return { done, total };
 }
@@ -2176,12 +2177,14 @@ function SeverityBadge({ severity }: { severity: string }) {
 
 // ─── Right panel ──────────────────────────────────────────────────────────────
 
-function SectionRightPanel({ source, execStore, onToggle }: {
+function SectionRightPanel({ source, execStore, onSetStatus }: {
   source: SectionSource | null;
   execStore: SectionExecStore;
-  onToggle: (srcId: string, key: InteractiveSectionKey, uid: string, done: boolean) => void;
+  onSetStatus: (srcId: string, key: InteractiveSectionKey, uid: string, status: "done" | "skipped" | "pending", reason?: string) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<string>("diagnoses");
+  const [activeTab,   setActiveTab]   = useState<string>("diagnoses");
+  const [skipMode,    setSkipMode]    = useState<string | null>(null);
+  const [skipReason,  setSkipReason]  = useState("");
 
   useEffect(() => { setActiveTab("diagnoses"); }, [source?.id]);
 
@@ -2273,9 +2276,10 @@ function SectionRightPanel({ source, execStore, onToggle }: {
 
         {/* Interactive sections */}
         {activeTab !== "diagnoses" && (() => {
-          const def    = activeDef;
-          const items  = getSectionItems(def);
+          const def      = activeDef;
+          const items    = getSectionItems(def);
           const statuses = srcExec[def.key as InteractiveSectionKey] ?? {};
+          const sectionKey = def.key as InteractiveSectionKey;
 
           if (items.length === 0) {
             return <div className="text-center py-8 text-xs text-slate-400">No items in this section</div>;
@@ -2283,24 +2287,101 @@ function SectionRightPanel({ source, execStore, onToggle }: {
           return (
             <div className="space-y-2">
               {items.map(item => {
-                const isDone = !!statuses[item.uid];
+                const entry   = statuses[item.uid];
+                const isDone  = entry?.status === "done";
+                const isSkipped = entry?.status === "skipped";
+                const isPending = !entry;
+                const inSkipMode = skipMode === item.uid;
+
                 return (
-                  <button key={item.uid}
-                    onClick={() => onToggle(source.id, def.key as InteractiveSectionKey, item.uid, !isDone)}
-                    className={`w-full text-left flex items-center gap-3 rounded-xl border px-4 py-3 transition-all ${isDone ? "opacity-75" : "hover:shadow-sm"}`}
-                    style={{ borderColor: isDone ? def.color + "60" : "#e2e8f0", background: isDone ? def.color + "08" : "#fff" }}>
-                    <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all`}
-                      style={{ borderColor: isDone ? def.color : "#cbd5e1", background: isDone ? def.color : "transparent" }}>
-                      {isDone && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
-                    </div>
-                    <span className={`flex-1 text-[12px] leading-snug ${isDone ? "line-through text-slate-400" : "text-slate-700 font-medium"}`}>{item.label}</span>
-                    {isDone && (
-                      <span className="text-[9px] font-black rounded-full px-1.5 py-0.5 flex-shrink-0"
-                        style={{ background: def.color + "20", color: def.color }}>
-                        {def.actionLabel}
+                  <div key={item.uid} className="rounded-xl border overflow-hidden transition-all"
+                    style={{ borderColor: isDone ? def.color + "60" : isSkipped ? "#fca5a5" : "#e2e8f0", background: isDone ? def.color + "08" : isSkipped ? "#fff5f5" : "#fff" }}>
+
+                    {/* Main row */}
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      {/* Checkbox — click toggles pending ↔ done */}
+                      <button
+                        onClick={() => onSetStatus(source.id, sectionKey, item.uid, isDone ? "pending" : "done")}
+                        className="h-5 w-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all"
+                        style={{ borderColor: isDone ? def.color : isSkipped ? "#f87171" : "#cbd5e1", background: isDone ? def.color : "transparent" }}>
+                        {isDone    && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                        {isSkipped && <X className="h-3 w-3 text-red-400" strokeWidth={3} />}
+                      </button>
+
+                      {/* Label — strikethrough only when skipped */}
+                      <span className={`flex-1 text-[12px] leading-snug ${isSkipped ? "line-through text-slate-400" : "text-slate-700 font-medium"}`}>
+                        {item.label}
                       </span>
+
+                      {/* Done badge */}
+                      {isDone && (
+                        <span className="text-[9px] font-black rounded-full px-1.5 py-0.5 flex-shrink-0"
+                          style={{ background: def.color + "20", color: def.color }}>
+                          {def.actionLabel}
+                        </span>
+                      )}
+
+                      {/* Skipped badge */}
+                      {isSkipped && (
+                        <span className="text-[9px] font-black rounded-full px-1.5 py-0.5 flex-shrink-0 bg-red-50 text-red-500 border border-red-200">
+                          Skipped
+                        </span>
+                      )}
+
+                      {/* Skip button (pending only) */}
+                      {isPending && !inSkipMode && (
+                        <button
+                          onClick={() => { setSkipMode(item.uid); setSkipReason(""); }}
+                          className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 transition-all flex-shrink-0">
+                          <SkipForward className="h-3 w-3" /> Skip
+                        </button>
+                      )}
+
+                      {/* Undo button (done or skipped) */}
+                      {(isDone || isSkipped) && (
+                        <button
+                          onClick={() => onSetStatus(source.id, sectionKey, item.uid, "pending")}
+                          className="h-6 w-6 flex items-center justify-center rounded-lg border border-slate-200 text-slate-300 hover:text-slate-500 hover:border-slate-300 transition-all flex-shrink-0">
+                          <RotateCcw className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Skip reason row (shown when skipped and has reason) */}
+                    {isSkipped && entry?.reason && (
+                      <div className="px-4 pb-2.5 -mt-1">
+                        <p className="text-[10px] text-red-400 italic">Reason: {entry.reason}</p>
+                      </div>
                     )}
-                  </button>
+
+                    {/* Inline skip input */}
+                    {inSkipMode && (
+                      <div className="px-4 pb-3 pt-0">
+                        <div className="flex items-center gap-2 p-2.5 bg-red-50 border border-red-200 rounded-lg">
+                          <input
+                            autoFocus
+                            value={skipReason}
+                            onChange={e => setSkipReason(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") { onSetStatus(source.id, sectionKey, item.uid, "skipped", skipReason.trim() || undefined); setSkipMode(null); }
+                              if (e.key === "Escape") setSkipMode(null);
+                            }}
+                            placeholder="Reason for skipping (optional)…"
+                            className="flex-1 text-xs text-slate-700 bg-transparent outline-none placeholder:text-red-300" />
+                          <button
+                            onClick={() => { onSetStatus(source.id, sectionKey, item.uid, "skipped", skipReason.trim() || undefined); setSkipMode(null); }}
+                            className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-red-500 text-white hover:bg-red-400 transition-colors flex-shrink-0">
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setSkipMode(null)}
+                            className="text-[10px] font-bold px-2 py-1 rounded-lg border border-red-200 text-red-500 hover:bg-red-100 transition-colors flex-shrink-0">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -2334,11 +2415,15 @@ function ApptCarePlanSection({ appt }: { appt: Appointment }) {
     return () => window.removeEventListener("storage", onStorage);
   }, [appt.id, patientMrn]);
 
-  function handleToggle(srcId: string, key: InteractiveSectionKey, uid: string, done: boolean) {
+  function handleSetStatus(srcId: string, key: InteractiveSectionKey, uid: string, status: "done" | "skipped" | "pending", reason?: string) {
     setExecStore(prev => {
-      const srcExec: SourceExec   = { ...(prev[srcId] ?? {}) };
+      const srcExec: SourceExec = { ...(prev[srcId] ?? {}) };
       const sectionMap: SectionItemStatuses = { ...(srcExec[key] ?? {}) };
-      sectionMap[uid] = done;
+      if (status === "pending") {
+        delete sectionMap[uid];
+      } else {
+        sectionMap[uid] = { status, ...(reason ? { reason } : {}) };
+      }
       srcExec[key] = sectionMap;
       const next = { ...prev, [srcId]: srcExec };
       saveSectionExecStore(next);
@@ -2353,7 +2438,7 @@ function ApptCarePlanSection({ appt }: { appt: Appointment }) {
       <div className="w-[42%] flex-shrink-0 border-r border-slate-200 overflow-hidden">
         <SectionLeftPanel sources={sources} selectedId={selectedId} execStore={execStore} onSelect={setSelectedId} />
       </div>
-      <SectionRightPanel source={selectedSource} execStore={execStore} onToggle={handleToggle} />
+      <SectionRightPanel source={selectedSource} execStore={execStore} onSetStatus={handleSetStatus} />
     </div>
   );
 }
