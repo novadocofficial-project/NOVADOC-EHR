@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Plus, Trash2, Edit2, X, GripVertical, Search, ChevronDown,
-  ChevronRight, CheckCircle2, FileText, ScanLine, Save, Upload,
+  ChevronRight, CheckCircle2, FileText, ScanLine, Save,
   AlertCircle, Building2, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,14 +31,6 @@ function reorder<T>(arr: T[], from: number, to: number) {
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-interface ImagingTest {
-  id:       string;
-  name:     string;
-  category: string;
-  enabled:  boolean;
-  deleted:  boolean;
-}
-
 export type ImagingPartnerType = "Internal Radiology" | "External Centre";
 
 export interface ImagingPartner {
@@ -53,7 +45,7 @@ export interface ImagingPartner {
 
 // ─── Seed data (mirrors ImagingSection.tsx IMAGING_TESTS / REASON_TEMPLATES) ───
 
-const SEED_TESTS: Omit<ImagingTest, "enabled" | "deleted">[] = [
+const SEED_TESTS: { id: string; name: string; category: string }[] = [
   { id: "xray-chest",         name: "X-Ray Chest",                   category: "X-Ray"           },
   { id: "xray-abdomen",       name: "X-Ray Abdomen",                 category: "X-Ray"           },
   { id: "xray-knee",          name: "X-Ray Knee",                    category: "X-Ray"           },
@@ -121,26 +113,13 @@ const SEED_REASONS = [
 const SEED_PARTNERS: ImagingPartner[] = [
   {
     id: "ip1", name: "In-House Radiology", type: "Internal Radiology", contact: "", active: true,
-    selectedTests: ["xray-chest","xray-abdomen","xray-knee","us-abdomen","us-thyroid","echo-2d"],
-    pricing: { "xray-chest": "800", "xray-abdomen": "900", "xray-knee": "700", "us-abdomen": "1500", "us-thyroid": "1200", "echo-2d": "3500" },
+    selectedTests: [], pricing: {},
   },
   {
     id: "ip2", name: "City Diagnostics Centre", type: "External Centre", contact: "0300-9876543", active: true,
-    selectedTests: ["ct-brain","ct-chest","ct-abdo-pelvis","mri-brain","mri-knee","nuc-pet-ct"],
-    pricing: { "ct-brain": "7000", "ct-chest": "8000", "ct-abdo-pelvis": "9000", "mri-brain": "12000", "mri-knee": "10000", "nuc-pet-ct": "35000" },
+    selectedTests: [], pricing: {},
   },
 ];
-
-const CATEGORY_COLORS: Record<string, string> = {
-  "X-Ray":             "#0ea5e9",
-  "CT Scan":           "#8b5cf6",
-  "MRI":               "#6366f1",
-  "Ultrasound":        "#10b981",
-  "Echocardiography":  "#f59e0b",
-  "Nuclear Medicine":  "#ef4444",
-  "Fluoroscopy":       "#f97316",
-  "Mammography":       "#ec4899",
-};
 
 const MODALITY_ACCENT_COLORS: Record<string, string> = {
   "X-Ray":            "#0ea5e9",
@@ -155,14 +134,6 @@ const MODALITY_ACCENT_COLORS: Record<string, string> = {
 
 function modalityColor(name: string): string {
   return MODALITY_ACCENT_COLORS[name] ?? ACCENT;
-}
-
-function seedTests(): ImagingTest[] {
-  try {
-    const raw = localStorage.getItem(CATALOGUE_KEY);
-    if (raw) return JSON.parse(raw) as ImagingTest[];
-  } catch { /**/ }
-  return SEED_TESTS.map(t => ({ ...t, enabled: true, deleted: false }));
 }
 
 function seedReasons(): string[] {
@@ -866,40 +837,57 @@ const PARTNER_TYPE_COLORS: Record<ImagingPartnerType, string> = {
   "External Centre":    "bg-amber-50 text-amber-600 border-amber-200",
 };
 
+/** Stable key for a catalog protocol: "Modality||BodyPart||Protocol" */
+function protoKey(m: string, bp: string, p: string) { return `${m}||${bp}||${p}`; }
+
 function ImagingPartnersTab({
-  partners, setPartners, tests,
+  partners, setPartners,
 }: {
   partners:    ImagingPartner[];
   setPartners: React.Dispatch<React.SetStateAction<ImagingPartner[]>>;
-  tests:       ImagingTest[];
 }) {
-  const [step, setStep]           = useState<1 | 2>(1);
+  const [step, setStep]         = useState<1 | 2>(1);
   const [showModal, setShowModal] = useState(false);
-  const [editId, setEditId]       = useState<string | null>(null);
-  const [form, setForm]           = useState<{ name: string; type: ImagingPartnerType; contact: string }>({
+  const [editId, setEditId]     = useState<string | null>(null);
+  const [form, setForm]         = useState<{ name: string; type: ImagingPartnerType; contact: string }>({
     name: "", type: "Internal Radiology", contact: "",
   });
-  const [selected,   setSelected]   = useState<string[]>([]);
-  const [pricing,    setPricing]    = useState<Record<string, string>>({});
-  const [deleteId,   setDeleteId]   = useState<string | null>(null);
-  const [expandId,   setExpandId]   = useState<string | null>(null);
-  const [importPartnerId, setImportPartnerId] = useState<string | null>(null);
-  const [importText,   setImportText]   = useState("");
-  const [importResult, setImportResult] = useState<{ matched: number; unmatched: string[] } | null>(null);
-  const [modalSearch,  setModalSearch]  = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [pricing,  setPricing]  = useState<Record<string, string>>({});
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [expandId, setExpandId] = useState<string | null>(null);
+  const [modalSearch, setModalSearch] = useState("");
 
-  const activeTests = tests.filter(t => t.enabled && !t.deleted);
-  const categories  = Array.from(new Set(activeTests.map(t => t.category))).sort();
+  // Catalog loaded from localStorage (read-only here; CatalogEditorTab owns writes)
+  const [catalog] = useState<CatalogModality[]>(() =>
+    loadImagingCatalog().filter(m => m.enabled !== false)
+  );
+
+  // Expand state for the hierarchical picker in the modal
+  const [expandModalM,  setExpandModalM]  = useState<Record<number, boolean>>({});
+  const [expandModalBP, setExpandModalBP] = useState<Record<string, boolean>>({});
+
+  function isModalMExpanded (i: number)           { return expandModalM[i]           !== false; }
+  function isModalBPExpanded(i: number, j: number) { return expandModalBP[`${i}:${j}`] !== false; }
+
+  // Total enabled protocols in catalog
+  const totalProtocols = catalog.reduce((s, m) =>
+    s + m.bodyParts.filter(b => b.enabled !== false).reduce((ss, b) => ss + b.protocols.length, 0), 0
+  );
 
   function openNew() {
     setForm({ name: "", type: "Internal Radiology", contact: "" });
-    setSelected([]); setPricing({}); setEditId(null); setStep(1); setModalSearch(""); setShowModal(true);
+    setSelected([]); setPricing({}); setEditId(null); setStep(1);
+    setModalSearch(""); setExpandModalM({}); setExpandModalBP({});
+    setShowModal(true);
   }
 
   function openEdit(p: ImagingPartner) {
     setForm({ name: p.name, type: p.type, contact: p.contact });
     setSelected([...p.selectedTests]); setPricing({ ...p.pricing });
-    setEditId(p.id); setStep(1); setModalSearch(""); setShowModal(true);
+    setEditId(p.id); setStep(1);
+    setModalSearch(""); setExpandModalM({}); setExpandModalBP({});
+    setShowModal(true);
   }
 
   function save() {
@@ -913,34 +901,50 @@ function ImagingPartnersTab({
     setShowModal(false);
   }
 
-  function importPricing(partnerId: string) {
-    const partner = partners.find(p => p.id === partnerId);
-    if (!partner) return;
-    const lines = importText.trim().split("\n").map(l => l.split(",").map(s => s.trim().replace(/^"|"$/g, "")));
-    const newPricing = { ...partner.pricing };
-    const matched: string[] = [];
-    const unmatched: string[] = [];
-    lines.forEach(([name, price]) => {
-      const test = activeTests.find(t => t.name.toLowerCase() === name?.toLowerCase());
-      if (test && price) { newPricing[test.id] = price; matched.push(name); }
-      else if (name) unmatched.push(name);
-    });
-    setPartners(ps => ps.map(p => p.id === partnerId ? { ...p, pricing: newPricing } : p));
-    setImportResult({ matched: matched.length, unmatched });
-    setImportText("");
+  // Search-filtered catalog tree (only enabled modalities/body parts)
+  const searchLower = modalSearch.toLowerCase();
+  const filteredCatalog = catalog.map(m => ({
+    ...m,
+    bodyParts: m.bodyParts
+      .filter(bp => bp.enabled !== false)
+      .map(bp => ({
+        ...bp,
+        protocols: bp.protocols.filter(p =>
+          !modalSearch ||
+          p.toLowerCase().includes(searchLower) ||
+          bp.name.toLowerCase().includes(searchLower) ||
+          m.name.toLowerCase().includes(searchLower)
+        ),
+      }))
+      .filter(bp => bp.protocols.length > 0),
+  })).filter(m => m.bodyParts.length > 0);
+
+  // All protocol keys in the current filtered view
+  function allFilteredKeys() {
+    return filteredCatalog.flatMap(m =>
+      m.bodyParts.flatMap(bp => bp.protocols.map(p => protoKey(m.name, bp.name, p)))
+    );
   }
 
-  const filteredModalTests = modalSearch
-    ? activeTests.filter(t => t.name.toLowerCase().includes(modalSearch.toLowerCase()) || t.category.toLowerCase().includes(modalSearch.toLowerCase()))
-    : activeTests;
-
-  const modalCategories = Array.from(new Set(filteredModalTests.map(t => t.category))).sort();
+  // Resolve selected protocol keys → display rows grouped by modality (for expanded panel)
+  function getPartnerProtocols(p: ImagingPartner) {
+    const rows: { modality: string; bodyPart: string; protocol: string; key: string }[] = [];
+    for (const m of catalog) {
+      for (const bp of m.bodyParts.filter(b => b.enabled !== false)) {
+        for (const proto of bp.protocols) {
+          const k = protoKey(m.name, bp.name, proto);
+          if (p.selectedTests.includes(k)) rows.push({ modality: m.name, bodyPart: bp.name, protocol: proto, key: k });
+        }
+      }
+    }
+    return rows;
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
         <p className="text-xs text-slate-500">
-          Manage radiology centers and their per-test pricing.
+          Manage radiology centers and their per-protocol pricing.
         </p>
         <Button onClick={openNew} className="h-8 text-xs gap-1.5 text-white" style={{ background: ACCENT }}>
           <Plus className="h-3.5 w-3.5" /> New Partner
@@ -957,7 +961,14 @@ function ImagingPartnersTab({
         )}
 
         {partners.map(p => {
-          const isExpanded = expandId === p.id;
+          const isExpanded      = expandId === p.id;
+          const partnerProtocols = isExpanded ? getPartnerProtocols(p) : [];
+          const byModality: Record<string, typeof partnerProtocols> = {};
+          for (const row of partnerProtocols) {
+            if (!byModality[row.modality]) byModality[row.modality] = [];
+            byModality[row.modality].push(row);
+          }
+
           return (
             <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3">
@@ -970,7 +981,9 @@ function ImagingPartnersTab({
                     <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${PARTNER_TYPE_COLORS[p.type]}`}>{p.type}</Badge>
                     {!p.active && <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-slate-50 text-slate-400 border-slate-200">Inactive</Badge>}
                   </div>
-                  <p className="text-[10px] text-slate-400 truncate">{p.contact || "No contact"} · {p.selectedTests.length} test{p.selectedTests.length !== 1 ? "s" : ""}</p>
+                  <p className="text-[10px] text-slate-400 truncate">
+                    {p.contact || "No contact"} · {p.selectedTests.length} protocol{p.selectedTests.length !== 1 ? "s" : ""}
+                  </p>
                 </div>
                 <Switch checked={p.active} onCheckedChange={v => setPartners(ps => ps.map(x => x.id === p.id ? { ...x, active: v } : x))}
                   className="data-[state=checked]:bg-[#4982CF]" />
@@ -987,62 +1000,40 @@ function ImagingPartnersTab({
 
               {isExpanded && (
                 <div className="border-t border-slate-100">
-                  <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex-1">Test Pricing</p>
-                    <button
-                      onClick={() => { setImportPartnerId(importPartnerId === p.id ? null : p.id); setImportResult(null); setImportText(""); }}
-                      className="flex items-center gap-1 text-[10px] font-bold text-[#4982CF] hover:opacity-80">
-                      <Upload className="h-3 w-3" /> Import Pricing
-                    </button>
+                  <div className="px-4 py-2 border-b border-slate-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Protocol Pricing</p>
                   </div>
-                  {importPartnerId === p.id && (
-                    <div className="px-4 py-3 bg-blue-50/40 border-b border-[#4982CF]/20 space-y-2">
-                      <p className="text-[10px] text-slate-500">Paste CSV: <span className="font-mono">Test Name, Price</span> (one per line)</p>
-                      <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={4}
-                        className="w-full text-xs font-mono border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-[#4982CF] resize-none" />
-                      <div className="flex items-center gap-2">
-                        <Button onClick={() => importPricing(p.id)} className="h-7 text-xs text-white px-3" style={{ background: ACCENT }}>Apply</Button>
-                        <Button variant="outline" onClick={() => { setImportPartnerId(null); setImportResult(null); }} className="h-7 text-xs px-3">Cancel</Button>
-                        {importResult && (
-                          <span className="text-[10px] text-slate-500">
-                            {importResult.matched} matched{importResult.unmatched.length > 0 && `, ${importResult.unmatched.length} unmatched`}
-                          </span>
-                        )}
+                  <div className="max-h-72 overflow-y-auto">
+                    {Object.keys(byModality).length === 0 && (
+                      <p className="px-4 py-4 text-center text-xs text-slate-300">No protocols selected — click edit to add protocols</p>
+                    )}
+                    {Object.entries(byModality).map(([modality, rows]) => (
+                      <div key={modality}>
+                        <div className="px-4 py-1.5 bg-slate-50 border-b border-slate-100 flex items-center gap-2 sticky top-0">
+                          <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: modalityColor(modality) }} />
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{modality}</p>
+                        </div>
+                        <table className="w-full text-xs">
+                          <tbody>
+                            {rows.map(({ bodyPart, protocol, key }) => (
+                              <tr key={key} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/40">
+                                <td className="pl-6 pr-2 py-1.5 text-slate-400 text-[10px] w-36 shrink-0">{bodyPart}</td>
+                                <td className="px-2 py-1.5 text-slate-700 flex-1">{protocol}</td>
+                                <td className="px-4 py-1.5 text-right">
+                                  <Input
+                                    value={p.pricing[key] ?? ""}
+                                    onChange={e => setPartners(ps => ps.map(x =>
+                                      x.id === p.id ? { ...x, pricing: { ...x.pricing, [key]: e.target.value } } : x
+                                    ))}
+                                    placeholder="0.00" className="h-6 text-xs text-right w-28 ml-auto"
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    </div>
-                  )}
-                  <div className="max-h-64 overflow-y-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="bg-slate-50 border-b border-slate-100 sticky top-0">
-                          <th className="text-left px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Test</th>
-                          <th className="text-left px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Category</th>
-                          <th className="text-right px-4 py-2 font-black text-[10px] uppercase tracking-widest text-slate-400 w-32">Price (PKR)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activeTests.filter(t => p.selectedTests.includes(t.id)).map(t => (
-                          <tr key={t.id} className="border-b border-slate-50 last:border-0">
-                            <td className="px-4 py-1.5 text-slate-700">{t.name}</td>
-                            <td className="px-4 py-1.5">
-                              <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: `${CATEGORY_COLORS[t.category] ?? "#64748b"}18`, color: CATEGORY_COLORS[t.category] ?? "#64748b" }}>
-                                {t.category}
-                              </span>
-                            </td>
-                            <td className="px-4 py-1.5 text-right">
-                              <Input
-                                value={p.pricing[t.id] ?? ""}
-                                onChange={e => setPartners(ps => ps.map(x => x.id === p.id ? { ...x, pricing: { ...x.pricing, [t.id]: e.target.value } } : x))}
-                                placeholder="0.00" className="h-6 text-xs text-right w-28 ml-auto"
-                              />
-                            </td>
-                          </tr>
-                        ))}
-                        {p.selectedTests.length === 0 && (
-                          <tr><td colSpan={3} className="px-4 py-4 text-center text-slate-300 text-xs">No tests selected for this partner</td></tr>
-                        )}
-                      </tbody>
-                    </table>
+                    ))}
                   </div>
                 </div>
               )}
@@ -1051,9 +1042,9 @@ function ImagingPartnersTab({
         })}
       </div>
 
-      {/* Add / Edit Modal */}
+      {/* Add / Edit Partner Modal */}
       <Dialog open={showModal} onOpenChange={v => !v && setShowModal(false)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[88vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {editId ? "Edit Imaging Partner" : "New Imaging Partner"}
@@ -1061,7 +1052,8 @@ function ImagingPartnersTab({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex items-center gap-2 mb-4">
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 mb-2">
             {[1, 2].map(s => (
               <div key={s} className={`flex items-center gap-2 ${s < 2 ? "flex-1" : ""}`}>
                 <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-black ${step >= s ? "text-white" : "bg-slate-100 text-slate-400"}`}
@@ -1069,13 +1061,14 @@ function ImagingPartnersTab({
                   {s}
                 </div>
                 <span className={`text-xs font-medium ${step === s ? "text-[#4982CF]" : "text-slate-400"}`}>
-                  {s === 1 ? "Partner Details" : "Test Selection & Pricing"}
+                  {s === 1 ? "Partner Details" : "Protocol Selection & Pricing"}
                 </span>
                 {s < 2 && <div className="flex-1 h-px bg-slate-200" />}
               </div>
             ))}
           </div>
 
+          {/* Step 1 — partner details */}
           {step === 1 && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -1102,57 +1095,130 @@ function ImagingPartnersTab({
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setShowModal(false)} className="h-9 text-sm">Cancel</Button>
-                <Button disabled={!form.name.trim()} onClick={() => setStep(2)} className="h-9 text-sm text-white" style={{ background: ACCENT }}>Next →</Button>
+                <Button disabled={!form.name.trim()} onClick={() => setStep(2)} className="h-9 text-sm text-white" style={{ background: ACCENT }}>
+                  Next →
+                </Button>
               </div>
             </div>
           )}
 
+          {/* Step 2 — hierarchical protocol picker */}
           {step === 2 && (
             <div className="flex flex-col gap-3 overflow-hidden flex-1">
-              <div className="flex items-center justify-between gap-3">
+              {/* Toolbar */}
+              <div className="flex items-center gap-3">
                 <div className="relative flex-1 max-w-xs">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                   <Input value={modalSearch} onChange={e => setModalSearch(e.target.value)}
-                    placeholder="Search tests…" className="pl-8 h-8 text-xs" />
+                    placeholder="Search protocols…" className="pl-8 h-8 text-xs" />
                 </div>
-                <p className="text-xs text-slate-500 whitespace-nowrap">{selected.length} of {activeTests.length} selected</p>
+                <p className="text-xs text-slate-500 whitespace-nowrap">{selected.length} of {totalProtocols}</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setSelected(activeTests.map(t => t.id))} className="text-xs font-bold" style={{ color: ACCENT }}>Select All</button>
+                  <button onClick={() => setSelected(allFilteredKeys())} className="text-xs font-bold" style={{ color: ACCENT }}>
+                    Select All
+                  </button>
                   <button onClick={() => setSelected([])} className="text-xs font-bold text-slate-400">Clear</button>
                 </div>
               </div>
+
+              {/* Hierarchical tree */}
               <div className="overflow-y-auto flex-1 border border-slate-100 rounded-xl">
-                {modalCategories.map(cat => {
-                  const color = CATEGORY_COLORS[cat] ?? "#64748b";
-                  const testsInCat = filteredModalTests.filter(t => t.category === cat);
+                {filteredCatalog.length === 0 && (
+                  <p className="text-center text-xs text-slate-300 py-8">No protocols match your search</p>
+                )}
+                {filteredCatalog.map((m, mi) => {
+                  const mKeys   = m.bodyParts.flatMap(bp => bp.protocols.map(p => protoKey(m.name, bp.name, p)));
+                  const mSelCount = mKeys.filter(k => selected.includes(k)).length;
+                  const mAllSel   = mKeys.length > 0 && mSelCount === mKeys.length;
+                  const mExpanded = isModalMExpanded(mi);
+
                   return (
-                    <div key={cat}>
-                      <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{cat}</p>
+                    <div key={mi} className="border-b border-slate-100 last:border-0">
+                      {/* Modality row */}
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-slate-100">
+                        <button
+                          onClick={() => setExpandModalM(s => ({ ...s, [mi]: !mExpanded }))}
+                          className="text-slate-400 hover:text-slate-600 transition-colors">
+                          {mExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                        </button>
+                        <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: modalityColor(m.name) }} />
+                        <p className="text-[11px] font-black uppercase tracking-widest text-slate-600 flex-1">{m.name}</p>
+                        <span className="text-[10px] text-slate-400 mr-1">{mSelCount}/{mKeys.length}</span>
+                        <button
+                          onClick={() => {
+                            if (mAllSel) setSelected(ss => ss.filter(k => !mKeys.includes(k)));
+                            else         setSelected(ss => Array.from(new Set([...ss, ...mKeys])));
+                          }}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded hover:bg-slate-200 transition-colors"
+                          style={{ color: ACCENT }}>
+                          {mAllSel ? "Clear" : "All"}
+                        </button>
                       </div>
-                      {testsInCat.map(t => (
-                        <div key={t.id} className="flex items-center gap-3 px-4 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
-                          <input type="checkbox" checked={selected.includes(t.id)}
-                            onChange={() => setSelected(ss => ss.includes(t.id) ? ss.filter(x => x !== t.id) : [...ss, t.id])}
-                            className="accent-[#4982CF]" />
-                          <span className="flex-1 text-xs text-slate-700">{t.name}</span>
-                          {selected.includes(t.id) && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-slate-400">PKR</span>
-                              <Input value={pricing[t.id] ?? ""} onChange={e => setPricing(p => ({ ...p, [t.id]: e.target.value }))}
-                                placeholder="Price" className="h-6 w-20 text-xs text-right" />
+
+                      {/* Body parts */}
+                      {mExpanded && m.bodyParts.map((bp, bi) => {
+                        const bpKeys    = bp.protocols.map(p => protoKey(m.name, bp.name, p));
+                        const bpSelCnt  = bpKeys.filter(k => selected.includes(k)).length;
+                        const bpAllSel  = bpKeys.length > 0 && bpSelCnt === bpKeys.length;
+                        const bpExpanded = isModalBPExpanded(mi, bi);
+
+                        return (
+                          <div key={bi}>
+                            {/* Body part row */}
+                            <div className="flex items-center gap-2 pl-8 pr-3 py-2 border-b border-slate-50 hover:bg-slate-50/50">
+                              <button
+                                onClick={() => setExpandModalBP(s => ({ ...s, [`${mi}:${bi}`]: !bpExpanded }))}
+                                className="text-slate-400 hover:text-slate-600 transition-colors">
+                                {bpExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                              </button>
+                              <span className="flex-1 text-xs font-semibold text-slate-600">{bp.name}</span>
+                              <span className="text-[10px] text-slate-400 mr-1">{bpSelCnt}/{bpKeys.length}</span>
+                              <button
+                                onClick={() => {
+                                  if (bpAllSel) setSelected(ss => ss.filter(k => !bpKeys.includes(k)));
+                                  else          setSelected(ss => Array.from(new Set([...ss, ...bpKeys])));
+                                }}
+                                className="text-[10px] font-bold px-1.5 py-0.5 rounded hover:bg-slate-100 transition-colors"
+                                style={{ color: ACCENT }}>
+                                {bpAllSel ? "Clear" : "All"}
+                              </button>
                             </div>
-                          )}
-                        </div>
-                      ))}
+
+                            {/* Protocol rows */}
+                            {bpExpanded && bp.protocols.map((proto, pi) => {
+                              const k         = protoKey(m.name, bp.name, proto);
+                              const isChecked = selected.includes(k);
+                              return (
+                                <div key={pi}
+                                  className="flex items-center gap-3 pl-14 pr-4 py-1.5 border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
+                                  <input
+                                    type="checkbox" checked={isChecked}
+                                    onChange={() => setSelected(ss => isChecked ? ss.filter(x => x !== k) : [...ss, k])}
+                                    className="accent-[#4982CF] flex-shrink-0"
+                                  />
+                                  <span className="flex-1 text-xs text-slate-700">{proto}</span>
+                                  {isChecked && (
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[10px] text-slate-400">PKR</span>
+                                      <Input
+                                        value={pricing[k] ?? ""}
+                                        onChange={e => setPricing(prev => ({ ...prev, [k]: e.target.value }))}
+                                        placeholder="Price"
+                                        className="h-6 w-20 text-xs text-right"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}
-                {filteredModalTests.length === 0 && (
-                  <p className="text-center text-xs text-slate-300 py-8">No tests match your search</p>
-                )}
               </div>
+
               <div className="flex justify-between gap-2 pt-1">
                 <Button variant="outline" onClick={() => setStep(1)} className="h-9 text-sm">← Back</Button>
                 <div className="flex gap-2">
@@ -1174,7 +1240,9 @@ function ImagingPartnersTab({
               <AlertCircle className="h-5 w-5" /> Remove Partner
             </DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-slate-600">Remove <strong>{partners.find(p => p.id === deleteId)?.name}</strong>? This cannot be undone.</p>
+          <p className="text-sm text-slate-600">
+            Remove <strong>{partners.find(p => p.id === deleteId)?.name}</strong>? This cannot be undone.
+          </p>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setDeleteId(null)} className="h-8 text-sm">Cancel</Button>
             <Button onClick={() => { setPartners(ps => ps.filter(p => p.id !== deleteId)); setDeleteId(null); }}
@@ -1201,17 +1269,12 @@ interface Props { initialTab?: TabKey | "tests"; }
 export function ImagingCatalogModule({ initialTab = "catalog" }: Props) {
   // map legacy "tests" → "catalog"
   const resolvedInitial: TabKey = initialTab === "tests" ? "catalog" : (initialTab as TabKey);
-  const [tab, setTab]         = useState<TabKey>(resolvedInitial);
-  const [tests, setTests]     = useState<ImagingTest[]>(seedTests);
+  const [tab, setTab]           = useState<TabKey>(resolvedInitial);
   const [partners, setPartners] = useState<ImagingPartner[]>(seedPartners);
 
   useEffect(() => {
     setTab(initialTab === "tests" ? "catalog" : (initialTab as TabKey));
   }, [initialTab]);
-
-  useEffect(() => {
-    try { localStorage.setItem(CATALOGUE_KEY, JSON.stringify(tests)); } catch { /**/ }
-  }, [tests]);
 
   useEffect(() => {
     try { localStorage.setItem(PARTNERS_KEY, JSON.stringify(partners)); } catch { /**/ }
@@ -1251,7 +1314,7 @@ export function ImagingCatalogModule({ initialTab = "catalog" }: Props) {
       <div className="flex-1 overflow-hidden">
         {tab === "catalog"  && <CatalogEditorTab />}
         {tab === "reasons"  && <ReasonTemplatesTab />}
-        {tab === "partners" && <ImagingPartnersTab partners={partners} setPartners={setPartners} tests={tests} />}
+        {tab === "partners" && <ImagingPartnersTab partners={partners} setPartners={setPartners} />}
       </div>
     </div>
   );
