@@ -1,8 +1,7 @@
 import { useState } from "react";
 import {
-  Plus, Trash2, Edit2, Save, X, CheckCircle2, Search, Star,
+  Plus, Trash2, Edit2, Save, X, CheckCircle2, Search,
   ClipboardCheck, Target, MapPin, Heart, ChevronDown, ChevronRight,
-  GripVertical, Tag, ArrowUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,13 +10,6 @@ import { Badge } from "@/components/ui/badge";
 const ACCENT = "#4982CF";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface CareTask {
-  id:        string;
-  title:     string;
-  category:  string;
-  favourite: boolean;
-}
 
 interface PatientGoal {
   id:      string;
@@ -41,21 +33,6 @@ interface Comorbidity {
 }
 
 // ─── Seeds ────────────────────────────────────────────────────────────────────
-
-const CARE_TASK_SEED: CareTask[] = [
-  { id: "ct1",  title: "Guide patient for nasal drops",          category: "Patient Education",  favourite: true  },
-  { id: "ct2",  title: "Inhaler technique demonstration",        category: "Patient Education",  favourite: false },
-  { id: "ct3",  title: "Dietary counseling session",             category: "Patient Education",  favourite: true  },
-  { id: "ct4",  title: "Wound dressing instructions",            category: "Wound & Procedure",  favourite: false },
-  { id: "ct5",  title: "Suture/staple removal follow-up",        category: "Wound & Procedure",  favourite: false },
-  { id: "ct6",  title: "Physiotherapy guidance",                 category: "Rehabilitation",     favourite: true  },
-  { id: "ct7",  title: "Medication adherence counseling",        category: "Medication",         favourite: false },
-  { id: "ct8",  title: "Insulin injection teaching",             category: "Medication",         favourite: true  },
-  { id: "ct9",  title: "Blood glucose monitoring schedule",      category: "Monitoring",         favourite: false },
-  { id: "ct10", title: "Schedule next clinic visit",             category: "Monitoring",         favourite: true  },
-  { id: "ct11", title: "Social worker referral",                 category: "Social & Support",   favourite: false },
-  { id: "ct12", title: "Caregiver/family education",             category: "Social & Support",   favourite: false },
-];
 
 const GOAL_SEED: PatientGoal[] = [
   { id: "g1", title: "Achieve target HbA1c < 7%", actions: ["Daily glucose logging","Monthly lab review","Dietary adherence"] },
@@ -82,133 +59,12 @@ const COMORBIDITY_SEED: Comorbidity[] = [
   { id: "c8",  name: "Rheumatoid Arthritis",        icd10: "M06",  category: "Musculoskeletal" },
 ];
 
-const CARE_CATEGORIES = ["Patient Education","Wound & Procedure","Rehabilitation","Medication","Monitoring","Social & Support"];
 const DEST_CATEGORIES: ReferralDest["category"][] = ["Hospital","Clinic","Diagnostic Lab","Pharmacy","Rehab Centre","Other"];
 const COMORBIDITY_CATEGORIES = ["Cardiovascular","Endocrine","Respiratory","Renal","Neurological","Musculoskeletal","Gastroenterology","Haematology","Other"];
 
-type TabKey = "care-plan" | "goals" | "referral-dest" | "comorbidities";
+type TabKey = "goals" | "referral-dest" | "comorbidities";
 
 function uid() { return `x-${Date.now()}-${Math.random().toString(36).slice(2,6)}`; }
-
-// ─── Care Plan Tab ────────────────────────────────────────────────────────────
-
-function CarePlanTab() {
-  const [tasks, setTasks]   = useState<CareTask[]>(CARE_TASK_SEED);
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"alpha" | "fav">("alpha");
-  const [filterCat, setFilterCat] = useState("All");
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editCat, setEditCat]   = useState("");
-  const [adding, setAdding]     = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newCat, setNewCat]     = useState(CARE_CATEGORIES[0]);
-
-  const visible = tasks
-    .filter(t =>
-      (filterCat === "All" || t.category === filterCat) &&
-      t.title.toLowerCase().includes(search.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (sortBy === "fav") return Number(b.favourite) - Number(a.favourite);
-      return a.title.localeCompare(b.title);
-    });
-
-  function startEdit(t: CareTask) { setEditId(t.id); setEditTitle(t.title); setEditCat(t.category); }
-  function cancelEdit() { setEditId(null); }
-  function saveEdit(id: string) {
-    if (!editTitle.trim()) return;
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, title: editTitle.trim(), category: editCat } : t));
-    setEditId(null);
-  }
-  function toggleFav(id: string) { setTasks(prev => prev.map(t => t.id === id ? { ...t, favourite: !t.favourite } : t)); }
-  function remove(id: string) { setTasks(prev => prev.filter(t => t.id !== id)); }
-  function addTask() {
-    if (!newTitle.trim()) return;
-    setTasks(prev => [...prev, { id: uid(), title: newTitle.trim(), category: newCat, favourite: false }]);
-    setNewTitle(""); setAdding(false);
-  }
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks…" className="pl-8 h-8 text-xs" />
-        </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {["All", ...CARE_CATEGORIES].map(c => (
-            <button key={c} onClick={() => setFilterCat(c)}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                filterCat === c ? "text-white border-transparent" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-              }`}
-              style={filterCat === c ? { background: ACCENT } : {}}>
-              {c}
-            </button>
-          ))}
-        </div>
-        <button onClick={() => setSortBy(s => s === "alpha" ? "fav" : "alpha")}
-          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 border border-slate-200 bg-white px-2.5 py-1 rounded-md transition-colors">
-          <ArrowUpDown className="h-3 w-3" />
-          {sortBy === "alpha" ? "A–Z" : "Favourites"}
-        </button>
-        <Button size="sm" onClick={() => setAdding(true)} style={{ background: ACCENT }} className="text-white text-xs gap-1">
-          <Plus className="h-3.5 w-3.5" /> Add Task
-        </Button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-1.5">
-        {adding && (
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200 rounded-lg">
-            <GripVertical className="h-4 w-4 text-slate-300" />
-            <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()}
-              placeholder="Task title" className="h-7 text-xs flex-1" autoFocus />
-            <select value={newCat} onChange={e => setNewCat(e.target.value)}
-              className="h-7 text-xs border border-slate-200 rounded px-1.5 bg-white">
-              {CARE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-            <Button size="sm" className="h-7 text-xs text-white" style={{ background: ACCENT }} onClick={addTask}>Add</Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAdding(false)}><X className="h-3.5 w-3.5" /></Button>
-          </div>
-        )}
-        {visible.map(t => (
-          <div key={t.id} className="flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
-            <GripVertical className="h-4 w-4 text-slate-300 cursor-grab" />
-            {editId === t.id ? (
-              <>
-                <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} onKeyDown={e => e.key === "Enter" && saveEdit(t.id)}
-                  className="h-7 text-xs flex-1" autoFocus />
-                <select value={editCat} onChange={e => setEditCat(e.target.value)}
-                  className="h-7 text-xs border border-slate-200 rounded px-1.5 bg-white">
-                  {CARE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                </select>
-                <Button size="sm" className="h-7 text-xs text-white" style={{ background: ACCENT }} onClick={() => saveEdit(t.id)}>
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={cancelEdit}><X className="h-3.5 w-3.5" /></Button>
-              </>
-            ) : (
-              <>
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm text-slate-700">{t.title}</span>
-                  <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">{t.category}</Badge>
-                </div>
-                <button onClick={() => toggleFav(t.id)} className={t.favourite ? "text-amber-400" : "text-slate-300 hover:text-amber-400 transition-colors"}>
-                  <Star className="h-4 w-4 fill-current" />
-                </button>
-                <button onClick={() => startEdit(t)} className="text-slate-400 hover:text-slate-700 transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
-                <button onClick={() => remove(t.id)} className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
-              </>
-            )}
-          </div>
-        ))}
-        {visible.length === 0 && !adding && (
-          <div className="text-center py-16 text-slate-400 text-sm">No tasks found.</div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ─── Patient Goals Tab ────────────────────────────────────────────────────────
 
@@ -579,14 +435,12 @@ function ComorbiditiesTab() {
 // ─── Main Module ──────────────────────────────────────────────────────────────
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-  { key: "care-plan",     label: "Care Plan Tasks",      icon: <ClipboardCheck className="h-3.5 w-3.5" /> },
   { key: "goals",         label: "Patient Goals",        icon: <Target className="h-3.5 w-3.5" /> },
   { key: "referral-dest", label: "Referral Destinations",icon: <MapPin className="h-3.5 w-3.5" /> },
   { key: "comorbidities", label: "Comorbidities",        icon: <Heart className="h-3.5 w-3.5" /> },
 ];
 
 const TAB_META_GOALS: Record<TabKey, { title: string; sub: string }> = {
-  "care-plan":     { title: "Care Plan Tasks",       sub: "Manage the admin library of care plan task templates used in SOAP notes." },
   "goals":         { title: "Patient Goals",         sub: "Define goal templates and associated actions for patient care plans." },
   "referral-dest": { title: "Referral Destinations", sub: "Manage the list of referral destinations available in the SOAP note." },
   "comorbidities": { title: "Comorbidities",         sub: "Manage the comorbidity list used when documenting patient conditions." },
@@ -594,13 +448,12 @@ const TAB_META_GOALS: Record<TabKey, { title: string; sub: string }> = {
 
 interface Props { initialTab?: TabKey; standalone?: boolean; }
 
-export function ClinicalGoalsLibraryModule({ initialTab = "care-plan", standalone }: Props) {
+export function ClinicalGoalsLibraryModule({ initialTab = "goals", standalone }: Props) {
   const [tab, setTab] = useState<TabKey>(initialTab);
   const currentMeta = TAB_META_GOALS[tab];
 
   const tabContent = (
     <>
-      {tab === "care-plan"     && <CarePlanTab />}
       {tab === "goals"         && <GoalsTab />}
       {tab === "referral-dest" && <ReferralDestTab />}
       {tab === "comorbidities" && <ComorbiditiesTab />}

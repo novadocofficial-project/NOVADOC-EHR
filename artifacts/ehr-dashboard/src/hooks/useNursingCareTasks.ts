@@ -25,7 +25,6 @@ export interface PatientGoalRef {
 // ─── localStorage / broadcast keys ───────────────────────────────────────────
 
 const EXEC_KEY     = "ehr-nursing-task-exec-v1";
-const BRIDGE_KEY   = "ehr-careplan-bridge-v1";
 const CHANNEL_NAME = "ehr-nursing-tasks-v1";
 
 // ─── Seed goals ───────────────────────────────────────────────────────────────
@@ -59,20 +58,13 @@ function makeSeedExec(goals: PatientGoalRef[]): NursingExecState {
 
 // ─── Persistence ─────────────────────────────────────────────────────────────
 
-type ExecStore   = Record<string, NursingExecState>;
-type BridgeStore = Record<string, { goals: PatientGoalRef[]; updatedAt: number }>;
+type ExecStore = Record<string, NursingExecState>;
 
 function loadExecStore(): ExecStore {
   try { return JSON.parse(localStorage.getItem(EXEC_KEY) ?? "{}") as ExecStore; } catch { return {}; }
 }
 function saveExecStore(store: ExecStore) {
   try { localStorage.setItem(EXEC_KEY, JSON.stringify(store)); } catch { /**/ }
-}
-function readBridge(visitKey: string) {
-  try {
-    const store = JSON.parse(localStorage.getItem(BRIDGE_KEY) ?? "{}") as BridgeStore;
-    return store[visitKey] ?? null;
-  } catch { return null; }
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -84,12 +76,9 @@ export interface UseNursingCareTasksReturn {
 }
 
 export function useNursingCareTasks(visitKey: string): UseNursingCareTasksReturn {
-  const bridgeData = readBridge(visitKey);
-  const goals      = bridgeData?.goals ?? SEED_GOALS;
-
   const [execState, setExecState] = useState<NursingExecState>(() => {
     const store = loadExecStore();
-    return store[visitKey] ?? makeSeedExec(goals);
+    return store[visitKey] ?? makeSeedExec(SEED_GOALS);
   });
 
   const channelRef = useRef<BroadcastChannel | null>(null);
@@ -123,5 +112,5 @@ export function useNursingCareTasks(visitKey: string): UseNursingCareTasksReturn
     });
   }
 
-  return { goals, execState, updateGoalNote };
+  return { goals: SEED_GOALS, execState, updateGoalNote };
 }
