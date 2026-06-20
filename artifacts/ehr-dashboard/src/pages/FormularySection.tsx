@@ -5,6 +5,8 @@ import {
 } from "lucide-react";
 import { loadEnabledBundles } from "@/pages/formularyBundleUtils";
 import type { FormularyBundle } from "@/pages/formularyBundleUtils";
+import { loadInteractions, checkInteractions } from "@/pages/drugInteractionUtils";
+import type { InteractionAlert } from "@/pages/drugInteractionUtils";
 import type { AllergyEntry } from "@/pages/AllergySelector";
 
 // ─── Medicine Database (Generic → Brands + Strengths) ─────────────────────────
@@ -167,7 +169,7 @@ interface AdminGeneric {
 }
 
 /** Returns active (enabled & non-deleted) medicines from admin catalogue, falling back to MEDICINES. */
-function getActiveMedicines(): MedicineDef[] {
+export function getActiveMedicines(): MedicineDef[] {
   try {
     const raw = localStorage.getItem(CATALOGUE_KEY);
     if (raw) {
@@ -546,7 +548,11 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
     m.allergyKeywords.some(kw => a.name.toLowerCase().includes(kw.toLowerCase()) || kw.toLowerCase().includes(a.name.toLowerCase()))
   ));
 
-  const allergyWarning = selMed ? getAllergyWarning(selMed, patientAllergies) : null;
+  const interactions    = loadInteractions();
+  const allergyWarning  = selMed ? getAllergyWarning(selMed, patientAllergies) : null;
+  const interactionAlerts: InteractionAlert[] = selMed
+    ? checkInteractions(selMed.id, medicines.filter(m => m.uid !== editingUid).map(m => m.medicineId), interactions)
+    : [];
   const canAdd = selMed !== null && selBrand !== null && form.dose.trim() !== "";
 
   function setF<K extends keyof typeof EMPTY_FORM>(k: K, v: string) {
@@ -610,6 +616,7 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
     const warnings: string[] = [];
     setMedicines(prev => {
       const next = [...prev];
+      const addedIds = next.map(m => m.medicineId);
       for (const item of bundle.items) {
         if (!next.some(m => m.brandId === item.brandId)) {
           const def = allMeds.find(m => m.id === item.medicineId);
@@ -617,6 +624,12 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
             const warn = getAllergyWarning(def, patientAllergies);
             if (warn) warnings.push(warn);
           }
+          const ddiAlerts = checkInteractions(item.medicineId, addedIds, interactions);
+          for (const a of ddiAlerts) {
+            const SEV_ICON: Record<string, string> = { Contraindicated: "🚫", Major: "⛔", Moderate: "⚠️", Minor: "ℹ️" };
+            warnings.push(`${SEV_ICON[a.severity] ?? "⚠️"} ${a.severity}: ${a.medicineNameA} ↔ ${a.medicineNameB} — ${a.note}`);
+          }
+          addedIds.push(item.medicineId);
           next.push({
             uid:         `med-${Date.now()}-${item.brandId}`,
             medicineId:  item.medicineId,
@@ -731,6 +744,32 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
                 <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-red-50 border border-red-100">
                   <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0 mt-0.5" />
                   <p className="text-[11px] text-red-600 font-medium">⚠ {allergyWarning}</p>
+                </div>
+              )}
+
+              {/* Drug-Drug Interaction warnings */}
+              {interactionAlerts.length > 0 && (
+                <div className="space-y-1.5">
+                  {interactionAlerts.map((alert, i) => {
+                    const styles: Record<string, { wrap: string; icon: string; label: string }> = {
+                      Contraindicated: { wrap: "bg-red-50 border-red-200",    icon: "text-red-500",    label: "text-red-700" },
+                      Major:           { wrap: "bg-orange-50 border-orange-200", icon: "text-orange-500", label: "text-orange-700" },
+                      Moderate:        { wrap: "bg-amber-50 border-amber-200",  icon: "text-amber-600",  label: "text-amber-800" },
+                      Minor:           { wrap: "bg-blue-50 border-blue-200",   icon: "text-blue-500",   label: "text-blue-700" },
+                    };
+                    const s = styles[alert.severity] ?? styles.Moderate;
+                    return (
+                      <div key={i} className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border ${s.wrap}`}>
+                        <AlertTriangle className={`h-3.5 w-3.5 flex-shrink-0 mt-0.5 ${s.icon}`} />
+                        <div>
+                          <p className={`text-[10px] font-black uppercase tracking-wide ${s.label}`}>
+                            {alert.severity} Interaction — {alert.medicineNameA} ↔ {alert.medicineNameB}
+                          </p>
+                          <p className={`text-[10px] mt-0.5 ${s.label} opacity-80`}>{alert.note}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 

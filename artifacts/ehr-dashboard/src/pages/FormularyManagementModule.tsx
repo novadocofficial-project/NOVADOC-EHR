@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Plus, Trash2, Edit2, Save, X, GripVertical, Search, ChevronDown,
   ChevronRight, CheckCircle2, Star, Pill, FileText, RotateCcw,
-  EyeOff, Eye, Tag, AlertTriangle, RefreshCw, BookOpen,
+  EyeOff, Eye, Tag, AlertTriangle, RefreshCw, BookOpen, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { MEDICINES } from "@/pages/FormularySection";
 import { FormularyBundlesTab } from "@/pages/FormularyBundlesTab";
+import { DrugInteractionsTab } from "@/pages/DrugInteractionsTab";
 
 const ACCENT = "#4982CF";
 
@@ -682,12 +683,13 @@ function PrescriptionDefaultsTab() {
 
 // ─── Main Module ──────────────────────────────────────────────────────────────
 
-type TabKey = "catalogue" | "defaults" | "bundles";
+type TabKey = "catalogue" | "defaults" | "bundles" | "interactions";
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-  { key: "catalogue", label: "Medicine Catalogue",    icon: <Pill className="h-3.5 w-3.5" /> },
-  { key: "defaults",  label: "Prescription Defaults", icon: <Tag className="h-3.5 w-3.5" /> },
-  { key: "bundles",   label: "Bundles",               icon: <BookOpen className="h-3.5 w-3.5" /> },
+  { key: "catalogue",    label: "Medicine Catalogue",    icon: <Pill className="h-3.5 w-3.5" /> },
+  { key: "defaults",     label: "Prescription Defaults", icon: <Tag className="h-3.5 w-3.5" /> },
+  { key: "bundles",      label: "Bundles",               icon: <BookOpen className="h-3.5 w-3.5" /> },
+  { key: "interactions", label: "Interactions",          icon: <Zap className="h-3.5 w-3.5" /> },
 ];
 
 interface Props { initialTab?: TabKey; }
@@ -722,9 +724,10 @@ export function FormularyManagementModule({ initialTab = "catalogue" }: Props) {
 
       {/* Tab content */}
       <div className="flex-1 overflow-hidden">
-        {tab === "catalogue" && <MedicineCatalogueTab />}
-        {tab === "defaults"  && <PrescriptionDefaultsTab />}
-        {tab === "bundles"   && <FormularyBundlesTab />}
+        {tab === "catalogue"    && <MedicineCatalogueTab />}
+        {tab === "defaults"     && <PrescriptionDefaultsTab />}
+        {tab === "bundles"      && <FormularyBundlesTab />}
+        {tab === "interactions" && <DrugInteractionsTab />}
       </div>
     </div>
   );
