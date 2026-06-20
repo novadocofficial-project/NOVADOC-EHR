@@ -1,19 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import {
   ChevronLeft, X, Search, CheckCircle2, ClipboardCheck,
-  Plus, AlertTriangle, Pill, Pencil, ChevronDown, Star,
+  Plus, AlertTriangle, Pill, Pencil, ChevronDown, ChevronUp, Star, BookOpen,
 } from "lucide-react";
+import { loadEnabledBundles } from "@/pages/formularyBundleUtils";
+import type { FormularyBundle } from "@/pages/formularyBundleUtils";
 import type { AllergyEntry } from "@/pages/AllergySelector";
 
 // ─── Medicine Database (Generic → Brands + Strengths) ─────────────────────────
 
-interface BrandOption {
+export interface BrandOption {
   id:       string;
   brand:    string;
   strength: string;
 }
 
-interface MedicineDef {
+export interface MedicineDef {
   id:              string;
   generic:         string;
   category:        string;
@@ -204,7 +206,7 @@ const FACTORY_FREQUENCIES = [
 const FACTORY_DURATIONS   = ["1 day", "3 days", "5 days", "7 days", "10 days", "14 days", "21 days", "30 days", "3 months", "6 months", "Ongoing"];
 const FACTORY_UNITS       = ["tablet(s)", "capsule(s)", "ml", "dose(s)", "drop(s)", "puff(s)", "sachet(s)"];
 
-function getFormularyOptions() {
+export function getFormularyOptions() {
   try {
     const raw = localStorage.getItem(DEFAULTS_KEY);
     if (raw) {
@@ -263,7 +265,7 @@ function getAllergyWarning(med: MedicineDef, allergies: AllergyEntry[]): string 
 
 // ─── Small Select ─────────────────────────────────────────────────────────────
 
-function Sel({ value, options, onChange, placeholder }: {
+export function Sel({ value, options, onChange, placeholder }: {
   value: string; options: string[]; onChange: (v: string) => void; placeholder?: string;
 }) {
   return (
@@ -280,7 +282,7 @@ function Sel({ value, options, onChange, placeholder }: {
 
 // ─── Medicine Search Dropdown ─────────────────────────────────────────────────
 
-function MedicineSearch({
+export function MedicineSearch({
   favs, onToggleFav, onSelect,
 }: {
   favs: Set<string>;
@@ -468,9 +470,58 @@ export function FormularyChipsPanel({
   );
 }
 
+// ─── Bundles Collapsible Section (inside Formulary Drawer) ───────────────────
+
+function BundlesSection({ onApply }: { onApply: (b: FormularyBundle) => void }) {
+  const [open, setOpen]       = useState(false);
+  const [bundles, setBundles] = useState<FormularyBundle[]>([]);
+
+  useEffect(() => {
+    setBundles(loadEnabledBundles());
+  }, []);
+
+  if (bundles.length === 0) return null;
+
+  return (
+    <div className="border-b border-slate-100 mx-0">
+      <button
+        onClick={() => setOpen(p => !p)}
+        className="flex items-center gap-2 w-full px-4 py-2.5 hover:bg-slate-50 transition-colors">
+        <BookOpen className="h-3.5 w-3.5 text-[#4982CF] flex-shrink-0" />
+        <p className="text-[10px] font-black text-[#4982CF] uppercase tracking-wide flex-1 text-left">
+          Bundles ({bundles.length})
+        </p>
+        {open
+          ? <ChevronUp   className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+          : <ChevronDown className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />}
+      </button>
+      {open && (
+        <div className="px-4 pb-3 space-y-2">
+          {bundles.map(b => (
+            <div key={b.id}
+              className="flex items-start gap-3 px-3 py-2.5 rounded-xl border border-[#4982CF]/20 bg-[#4982CF]/5">
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-black text-slate-800">{b.name}</p>
+                {b.description && <p className="text-[10px] text-slate-500 mt-0.5">{b.description}</p>}
+                <p className="text-[9px] text-slate-400 mt-0.5">{b.items.length} medicine{b.items.length !== 1 ? "s" : ""}</p>
+              </div>
+              <button
+                onClick={() => { onApply(b); setOpen(false); }}
+                className="flex items-center gap-1 text-[10px] font-black px-2.5 py-1.5 rounded-lg bg-[#4982CF] text-white hover:bg-[#3a73c0] transition-colors flex-shrink-0">
+                <Plus className="h-3 w-3" />
+                Apply
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Formulary Drawer ─────────────────────────────────────────────────────────
 
-const EMPTY_FORM = { dose: "1", unit: "tablet(s)", route: "Oral", frequency: "Once daily (OD)", duration: "5 days" };
+export const EMPTY_FORM = { dose: "1", unit: "tablet(s)", route: "Oral", frequency: "Once daily (OD)", duration: "5 days" };
 
 interface FormularyDrawerProps {
   savedData:        FormularyData;
@@ -549,6 +600,30 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
     if (editingUid === uid) { setSelMed(null); setSelBrand(null); setForm(EMPTY_FORM); setEditingUid(null); }
   }
 
+  function applyBundle(bundle: FormularyBundle) {
+    setMedicines(prev => {
+      const next = [...prev];
+      for (const item of bundle.items) {
+        if (!next.some(m => m.brandId === item.brandId)) {
+          next.push({
+            uid:         `med-${Date.now()}-${item.brandId}`,
+            medicineId:  item.medicineId,
+            brandId:     item.brandId,
+            brand:       item.brand,
+            strength:    item.strength,
+            genericName: item.genericName,
+            dose:        item.dose,
+            unit:        item.unit,
+            route:       item.route,
+            frequency:   item.frequency,
+            duration:    item.duration,
+          });
+        }
+      }
+      return next;
+    });
+  }
+
   function saveAndClose() {
     onSave({ medicines, pharmacistInstructions: pharmNote });
     onClose();
@@ -592,6 +667,9 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
 
       {/* ── Scrollable body ── */}
       <div className="flex-1 overflow-y-auto">
+
+        {/* ── Bundles Section ── */}
+        <BundlesSection onApply={applyBundle} />
 
         {/* ── Add / Edit form ── */}
         <div className="px-4 pt-4 pb-3">
