@@ -12,6 +12,7 @@ import { MEDICINES } from "@/pages/FormularySection";
 import { FormularyBundlesTab } from "@/pages/FormularyBundlesTab";
 import { DrugInteractionsTab } from "@/pages/DrugInteractionsTab";
 import { PediDosingTab } from "@/pages/PediDosingTab";
+import { NonFormularyTab } from "@/pages/NonFormularyTab";
 
 const ACCENT = "#4982CF";
 
@@ -684,14 +685,15 @@ function PrescriptionDefaultsTab() {
 
 // ─── Main Module ──────────────────────────────────────────────────────────────
 
-type TabKey = "catalogue" | "defaults" | "bundles" | "interactions" | "pedi-dosing";
+type TabKey = "catalogue" | "defaults" | "bundles" | "interactions" | "pedi-dosing" | "non-formulary";
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-  { key: "catalogue",    label: "Medicine Catalogue",    icon: <Pill className="h-3.5 w-3.5" /> },
-  { key: "defaults",     label: "Prescription Defaults", icon: <Tag className="h-3.5 w-3.5" /> },
-  { key: "bundles",      label: "Bundles",               icon: <BookOpen className="h-3.5 w-3.5" /> },
-  { key: "interactions", label: "Interactions",          icon: <Zap className="h-3.5 w-3.5" /> },
-  { key: "pedi-dosing",  label: "Pedi Dosing",           icon: <List className="h-3.5 w-3.5" /> },
+  { key: "catalogue",     label: "Medicine Catalogue",    icon: <Pill className="h-3.5 w-3.5" /> },
+  { key: "defaults",      label: "Prescription Defaults", icon: <Tag className="h-3.5 w-3.5" /> },
+  { key: "bundles",       label: "Bundles",               icon: <BookOpen className="h-3.5 w-3.5" /> },
+  { key: "interactions",  label: "Interactions",          icon: <Zap className="h-3.5 w-3.5" /> },
+  { key: "pedi-dosing",   label: "Pedi Dosing",           icon: <List className="h-3.5 w-3.5" /> },
+  { key: "non-formulary", label: "Non-Formulary",         icon: <FileText className="h-3.5 w-3.5" /> },
 ];
 
 interface Props { initialTab?: TabKey; }
@@ -730,7 +732,8 @@ export function FormularyManagementModule({ initialTab = "catalogue" }: Props) {
         {tab === "defaults"     && <PrescriptionDefaultsTab />}
         {tab === "bundles"      && <FormularyBundlesTab />}
         {tab === "interactions" && <DrugInteractionsTab />}
-        {tab === "pedi-dosing"  && <PediDosingTab />}
+        {tab === "pedi-dosing"   && <PediDosingTab />}
+        {tab === "non-formulary" && <NonFormularyTab />}
       </div>
     </div>
   );
