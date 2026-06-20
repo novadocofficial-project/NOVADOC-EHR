@@ -1989,7 +1989,7 @@ interface SectionSource {
   carePlan:             SectionItem[];
 }
 
-type InteractiveSectionKey = "labOrders" | "prescriptions" | "imaging" | "procedureOrders" | "referrals" | "healthEd";
+type InteractiveSectionKey = "labOrders" | "prescriptions" | "imaging" | "procedureOrders" | "referrals" | "healthEd" | "carePlan";
 interface SectionItemStatus { status: "done" | "skipped"; reason?: string; }
 type SectionItemStatuses = Record<string, SectionItemStatus | undefined>;
 type SourceExec = Partial<Record<InteractiveSectionKey, SectionItemStatuses>>;
@@ -2015,7 +2015,7 @@ interface SectionDef {
 }
 
 const SECTION_DEFS: SectionDef[] = [
-  { key: "carePlan",        label: "Care Plan",        tag: "Care", color: "#10b981", interactive: false },
+  { key: "carePlan",        label: "Care Plan",        tag: "Care", color: "#10b981", interactive: true, actionLabel: "Done" },
   { key: "diagnoses",       label: "Diagnosis",        tag: "Dx",   color: "#ef4444", interactive: false },
   { key: "labOrders",       label: "Lab Orders",       tag: "Lab",  color: "#f59e0b", interactive: true,  actionLabel: "Done" },
   { key: "prescriptions",   label: "Prescriptions",    tag: "Rx",   color: "#8b5cf6", interactive: true,  actionLabel: "Done" },
@@ -2233,11 +2233,13 @@ function SectionRightPanel({ source, execStore, onSetStatus }: {
   execStore: SectionExecStore;
   onSetStatus: (srcId: string, key: InteractiveSectionKey, uid: string, status: "done" | "skipped" | "pending", reason?: string) => void;
 }) {
-  const [activeTab,   setActiveTab]   = useState<string>("carePlan");
-  const [skipMode,    setSkipMode]    = useState<string | null>(null);
-  const [skipReason,  setSkipReason]  = useState("");
+  const [activeTab,     setActiveTab]     = useState<string>("carePlan");
+  const [skipMode,      setSkipMode]      = useState<string | null>(null);
+  const [skipReason,    setSkipReason]    = useState("");
+  const [cpCommentOpen, setCpCommentOpen] = useState(false);
+  const [cpComment,     setCpComment]     = useState("");
 
-  useEffect(() => { setActiveTab("carePlan"); }, [source?.id]);
+  useEffect(() => { setActiveTab("carePlan"); setCpCommentOpen(false); setCpComment(""); }, [source?.id]);
 
   if (!source) {
     return (
@@ -2305,21 +2307,81 @@ function SectionRightPanel({ source, execStore, onSetStatus }: {
 
       {/* Section content */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        {/* Care Plan tab — read-only prose */}
+        {/* Care Plan tab — read-only prose + done acknowledgement */}
         {activeTab === "carePlan" && (() => {
-          const text = source.carePlan[0]?.label ?? "";
-          return text ? (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 px-4 py-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="h-6 w-6 rounded-md bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[9px] font-black text-emerald-600">CP</span>
+          const item   = source.carePlan[0];
+          const text   = item?.label ?? "";
+          const entry  = item ? (srcExec["carePlan"] ?? {})[item.uid] : undefined;
+          const isDone = entry?.status === "done";
+
+          if (!text) return <div className="text-center py-8 text-xs text-slate-400">No care plan recorded</div>;
+
+          return (
+            <div className="space-y-3">
+              {/* Paragraph */}
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 px-4 py-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-6 w-6 rounded-md bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[9px] font-black text-emerald-600">CP</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">Care Plan</span>
                 </div>
-                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">Care Plan</span>
+                <p className="text-[12px] text-slate-700 leading-relaxed whitespace-pre-wrap select-text">{text}</p>
               </div>
-              <p className="text-[12px] text-slate-700 leading-relaxed whitespace-pre-wrap select-text">{text}</p>
+
+              {/* Acknowledgement row */}
+              {isDone ? (
+                <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 flex items-start gap-3">
+                  <div className="h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{ background: "#10b981" }}>
+                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-emerald-700">Care plan acknowledged</p>
+                    {entry?.reason && (
+                      <p className="text-[11px] text-slate-600 mt-1 italic">"{entry.reason}"</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { onSetStatus(source.id, "carePlan", item!.uid, "pending"); setCpComment(""); setCpCommentOpen(false); }}
+                    className="text-[10px] text-slate-400 hover:text-slate-600 flex-shrink-0 mt-0.5 underline">
+                    Undo
+                  </button>
+                </div>
+              ) : cpCommentOpen ? (
+                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 space-y-2">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Add a comment (optional)</p>
+                  <textarea
+                    value={cpComment}
+                    onChange={e => setCpComment(e.target.value)}
+                    rows={3}
+                    placeholder="e.g. Patient counselled, verbally understood care plan…"
+                    autoFocus
+                    className="w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none resize-none placeholder:text-slate-400 focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/20 transition-all"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { onSetStatus(source.id, "carePlan", item!.uid, "done", cpComment.trim() || undefined); setCpCommentOpen(false); }}
+                      className="flex-1 text-xs font-bold text-white rounded-lg py-1.5 transition-colors"
+                      style={{ background: "#10b981" }}>
+                      Confirm Done
+                    </button>
+                    <button
+                      onClick={() => { setCpCommentOpen(false); setCpComment(""); }}
+                      className="px-4 text-xs font-semibold text-slate-500 bg-slate-100 rounded-lg py-1.5 hover:bg-slate-200 transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setCpCommentOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-emerald-300 py-3 text-xs font-bold text-emerald-600 hover:bg-emerald-50 transition-colors">
+                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                  Mark Care Plan as Done
+                </button>
+              )}
             </div>
-          ) : (
-            <div className="text-center py-8 text-xs text-slate-400">No care plan recorded</div>
           );
         })()}
 
