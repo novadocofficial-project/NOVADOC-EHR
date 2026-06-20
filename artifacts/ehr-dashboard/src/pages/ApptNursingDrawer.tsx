@@ -1975,17 +1975,18 @@ interface DiagItem { uid: string; code: string; name: string; severity: string; 
 interface SectionItem { uid: string; label: string; }
 
 interface SectionSource {
-  id:              string;
-  doctorName:      string;
-  signedAt:        string;
-  diagnoses:       DiagItem[];
-  labOrders:       SectionItem[];
-  prescriptions:   SectionItem[];
-  imaging:         SectionItem[];
-  procedureOrders: SectionItem[];
-  referrals:       SectionItem[];
-  healthEd:        SectionItem[];
-  carePlan:        SectionItem[];
+  id:                   string;
+  doctorName:           string;
+  signedAt:             string;
+  presentingComplaints: string[];
+  diagnoses:            DiagItem[];
+  labOrders:            SectionItem[];
+  prescriptions:        SectionItem[];
+  imaging:              SectionItem[];
+  procedureOrders:      SectionItem[];
+  referrals:            SectionItem[];
+  healthEd:             SectionItem[];
+  carePlan:             SectionItem[];
 }
 
 type InteractiveSectionKey = "labOrders" | "prescriptions" | "imaging" | "procedureOrders" | "referrals" | "healthEd" | "carePlan";
@@ -2048,9 +2049,10 @@ function scanApptSectionSources(apptId: string, patientMrn: string | null): Sect
   const docMap  = Object.fromEntries(allDocs.map(d => [d.id, d.title]));
 
   const seedSources: SectionSource[] = SOAP_DUMMY.map((note, i) => ({
-    id:             `sec-seed-${i}`,
-    doctorName:     note.signedBy,
-    signedAt:       note.signedAt,
+    id:                   `sec-seed-${i}`,
+    doctorName:           note.signedBy,
+    signedAt:             note.signedAt,
+    presentingComplaints: note.cc ?? [],
     diagnoses:      note.diagnoses.map((d, j) => ({ uid: `sec-seed-${i}-dx-${j}`, code: d.code, name: d.name, severity: d.severity })),
     labOrders:      normItems(note.labs, `sec-seed-${i}-lo`),
     prescriptions:  note.prescriptions.map((p, j) => ({ uid: `sec-seed-${i}-rx-${j}`, label: `${p.drug} — ${p.sig}` })),
@@ -2072,9 +2074,10 @@ function scanApptSectionSources(apptId: string, patientMrn: string | null): Sect
       if (!signed?.noteState) return null;
       const ns = signed.noteState as any;
       return {
-        id:              `sec-ls-${tag}`,
-        doctorName:      signed.doctor ?? "Unknown Doctor",
-        signedAt:        `${signed.date ?? ""}${signed.time ? ", " + signed.time : ""}`,
+        id:                   `sec-ls-${tag}`,
+        doctorName:           signed.doctor ?? "Unknown Doctor",
+        signedAt:             `${signed.date ?? ""}${signed.time ? ", " + signed.time : ""}`,
+        presentingComplaints: ns.chiefComplaints ?? [],
         diagnoses:       (ns.diagnoses ?? []).map((d: any, di: number) => ({ uid: `sec-ls-${tag}-dx-${di}`, code: d.code ?? "", name: d.name ?? "", severity: d.severity ?? "" })),
         labOrders:       (ns.labOrders ?? []).flatMap((lo: any, oi: number) =>
           (lo.tests ?? []).map((t: any, ti: number) => ({ uid: `sec-ls-${tag}-lo-${oi}-${ti}`, label: t.name ?? `Lab test ${ti + 1}` }))),
@@ -2113,52 +2116,100 @@ function SectionLeftPanel({ sources, selectedId, execStore, onSelect }: {
   sources: SectionSource[]; selectedId: string | null;
   execStore: SectionExecStore; onSelect: (id: string) => void;
 }) {
+  const pending   = sources.filter(src => { const { done, total } = computeSourceProgress(src, execStore[src.id] ?? {}); return total === 0 || done < total; });
+  const completed = sources.filter(src => { const { done, total } = computeSourceProgress(src, execStore[src.id] ?? {}); return total > 0 && done >= total; });
+
+  function SourceCard({ src, isRecord }: { src: SectionSource; isRecord: boolean }) {
+    const isSelected = src.id === selectedId;
+    const exec = execStore[src.id] ?? {};
+    const { done, total } = computeSourceProgress(src, exec);
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    return (
+      <button onClick={() => onSelect(src.id)}
+        className={`w-full text-left rounded-xl border p-3.5 transition-all ${
+          isSelected
+            ? "bg-blue-50/60 border-[#4982CF]/60 shadow-sm ring-1 ring-[#4982CF]/30"
+            : isRecord
+              ? "bg-emerald-50/40 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
+              : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
+        }`}>
+        <div className="flex items-start gap-3">
+          <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+            isSelected ? "bg-blue-100" : isRecord ? "bg-emerald-100" : "bg-slate-100"
+          }`}>
+            {isRecord
+              ? <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              : <FileText className={`h-4 w-4 ${isSelected ? "text-[#4982CF]" : "text-slate-400"}`} />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{src.doctorName}</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">{src.signedAt}</p>
+
+            {/* Presenting complaints */}
+            {src.presentingComplaints.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {src.presentingComplaints.slice(0, 3).map((c, ci) => (
+                  <span key={ci} className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 leading-none">{c}</span>
+                ))}
+                {src.presentingComplaints.length > 3 && (
+                  <span className="text-[9px] text-slate-400">+{src.presentingComplaints.length - 3} more</span>
+                )}
+              </div>
+            )}
+
+            {/* Progress bar */}
+            {total > 0 && (
+              <div className="mt-2 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400">{done}/{total} done</span>
+                  <span className="text-[10px] font-bold" style={{ color: pct === 100 ? "#10b981" : "#4982CF" }}>{pct}%</span>
+                </div>
+                <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: pct === 100 ? "#10b981" : "#4982CF" }} />
+                </div>
+              </div>
+            )}
+          </div>
+          <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 mt-1 transition-transform ${isSelected ? "rotate-90 text-[#4982CF]" : "text-slate-300"}`} />
+        </div>
+      </button>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col bg-white overflow-hidden">
-      <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-2 flex-shrink-0">
-        <AlertCircle className="h-3.5 w-3.5 text-[#4982CF] flex-shrink-0" />
-        <span className="text-xs font-bold text-slate-700 flex-1">SOAP Notes</span>
-        <span className="text-[10px] font-bold bg-blue-50 text-[#4982CF] border border-blue-100 rounded-full px-2 py-0.5 leading-none">{sources.length}</span>
-      </div>
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
-        {sources.length === 0 && (
-          <div className="rounded-xl border border-dashed border-slate-200 py-8 flex flex-col items-center gap-1.5 text-center">
-            <Heart className="h-4 w-4 text-slate-300" />
-            <p className="text-xs text-slate-400">No signed SOAP notes</p>
-          </div>
-        )}
-        {sources.map(src => {
-          const isSelected = src.id === selectedId;
-          const exec = execStore[src.id] ?? {};
-          const { done, total } = computeSourceProgress(src, exec);
-          const pct = total ? Math.round((done / total) * 100) : 0;
-          return (
-            <button key={src.id} onClick={() => onSelect(src.id)}
-              className={`w-full text-left rounded-xl border p-3.5 transition-all ${isSelected ? "bg-blue-50/60 border-[#4982CF]/60 shadow-sm ring-1 ring-[#4982CF]/30" : "bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"}`}>
-              <div className="flex items-start gap-3">
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-blue-100" : "bg-slate-100"}`}>
-                  <FileText className={`h-4 w-4 ${isSelected ? "text-[#4982CF]" : "text-slate-400"}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-800 leading-snug truncate">{src.doctorName}</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{src.signedAt}</p>
-                  {total > 0 && (
-                    <div className="mt-2 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-slate-400">{done}/{total} items done</span>
-                        <span className="text-[10px] font-bold" style={{ color: pct === 100 ? "#10b981" : "#4982CF" }}>{pct}%</span>
-                      </div>
-                      <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: pct === 100 ? "#10b981" : "#4982CF" }} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 mt-1 transition-transform ${isSelected ? "rotate-90 text-[#4982CF]" : "text-slate-300"}`} />
-              </div>
-            </button>
-          );
-        })}
+      <div className="flex-1 overflow-y-auto">
+
+        {/* ── Required Actions ── */}
+        <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-4 py-2.5 flex items-center gap-2">
+          <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+          <span className="text-xs font-bold text-slate-700 flex-1">Required Actions</span>
+          {pending.length > 0 && <span className="text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 rounded-full px-2 py-0.5 leading-none">{pending.length}</span>}
+        </div>
+        <div className="px-3 py-3 space-y-2">
+          {pending.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+              <Heart className="h-4 w-4 text-slate-300" />
+              <p className="text-xs text-slate-400">All actions completed</p>
+            </div>
+          ) : pending.map(src => <SourceCard key={src.id} src={src} isRecord={false} />)}
+        </div>
+
+        {/* ── All Records ── */}
+        <div className="border-t border-b border-slate-100 bg-white px-4 py-2.5 flex items-center gap-2">
+          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+          <span className="text-xs font-bold text-slate-700 flex-1">All Records</span>
+          {completed.length > 0 && <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full px-2 py-0.5 leading-none">{completed.length}</span>}
+        </div>
+        <div className="px-3 py-3 space-y-2">
+          {completed.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-1.5 text-center">
+              <CheckCircle2 className="h-4 w-4 text-slate-300" />
+              <p className="text-xs text-slate-400">No completed records yet</p>
+            </div>
+          ) : completed.map(src => <SourceCard key={src.id} src={src} isRecord={true} />)}
+        </div>
+
       </div>
     </div>
   );
