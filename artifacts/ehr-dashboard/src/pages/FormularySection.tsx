@@ -537,7 +537,8 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
   const [selMed,      setSelMed]      = useState<MedicineDef | null>(null);
   const [selBrand,    setSelBrand]    = useState<BrandOption | null>(null);
   const [form,        setForm]        = useState(EMPTY_FORM);
-  const [editingUid,  setEditingUid]  = useState<string | null>(null);
+  const [editingUid,     setEditingUid]     = useState<string | null>(null);
+  const [bundleWarnings, setBundleWarnings] = useState<string[]>([]);
 
   const allMeds = getAllAdminMedicines();
   const opts    = getFormularyOptions();
@@ -601,10 +602,16 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
   }
 
   function applyBundle(bundle: FormularyBundle) {
+    const warnings: string[] = [];
     setMedicines(prev => {
       const next = [...prev];
       for (const item of bundle.items) {
         if (!next.some(m => m.brandId === item.brandId)) {
+          const def = allMeds.find(m => m.id === item.medicineId);
+          if (def) {
+            const warn = getAllergyWarning(def, patientAllergies);
+            if (warn) warnings.push(warn);
+          }
           next.push({
             uid:         `med-${Date.now()}-${item.brandId}`,
             medicineId:  item.medicineId,
@@ -622,6 +629,7 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
       }
       return next;
     });
+    setBundleWarnings(warnings);
   }
 
   function saveAndClose() {
@@ -662,6 +670,23 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
             <p className="text-[10px] font-black text-red-600 uppercase tracking-wide">Patient Drug Allergies</p>
             <p className="text-[11px] text-red-500 mt-0.5">{drugAllergies.map(a => a.name).join(" · ")}</p>
           </div>
+        </div>
+      )}
+
+      {/* ── Bundle Allergy Warnings ── */}
+      {bundleWarnings.length > 0 && (
+        <div className="flex items-start gap-2.5 px-4 py-2.5 bg-amber-50 border-b border-amber-100 flex-shrink-0">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide">Bundle Allergy Conflict</p>
+            {bundleWarnings.map((w, i) => (
+              <p key={i} className="text-[11px] text-amber-600 mt-0.5">{w}</p>
+            ))}
+          </div>
+          <button onClick={() => setBundleWarnings([])}
+            className="h-5 w-5 flex items-center justify-center text-amber-400 hover:text-amber-600 flex-shrink-0">
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 
