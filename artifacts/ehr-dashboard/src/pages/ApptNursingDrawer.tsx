@@ -2014,6 +2014,7 @@ interface SectionDef {
 }
 
 const SECTION_DEFS: SectionDef[] = [
+  { key: "carePlan",        label: "Care Plan",        tag: "Care", color: "#10b981", interactive: true,  actionLabel: "Done" },
   { key: "diagnoses",       label: "Diagnosis",        tag: "Dx",   color: "#ef4444", interactive: false },
   { key: "labOrders",       label: "Lab Orders",       tag: "Lab",  color: "#f59e0b", interactive: true,  actionLabel: "Done" },
   { key: "prescriptions",   label: "Prescriptions",    tag: "Rx",   color: "#8b5cf6", interactive: true,  actionLabel: "Done" },
@@ -2021,7 +2022,6 @@ const SECTION_DEFS: SectionDef[] = [
   { key: "procedureOrders", label: "Procedure Orders", tag: "Proc", color: "#0d9488", interactive: true,  actionLabel: "Done" },
   { key: "referrals",       label: "Patient Referral", tag: "Ref",  color: "#6366f1", interactive: true,  actionLabel: "Done" },
   { key: "healthEd",        label: "Health Education", tag: "Ed",   color: "#f97316", interactive: true,  actionLabel: "Done" },
-  { key: "carePlan",        label: "Care Plan",        tag: "Care", color: "#10b981", interactive: true,  actionLabel: "Done" },
 ];
 
 function computeSourceProgress(src: SectionSource, exec: SourceExec): { done: number; total: number } {
@@ -2182,11 +2182,11 @@ function SectionRightPanel({ source, execStore, onSetStatus }: {
   execStore: SectionExecStore;
   onSetStatus: (srcId: string, key: InteractiveSectionKey, uid: string, status: "done" | "skipped" | "pending", reason?: string) => void;
 }) {
-  const [activeTab,   setActiveTab]   = useState<string>("diagnoses");
+  const [activeTab,   setActiveTab]   = useState<string>("carePlan");
   const [skipMode,    setSkipMode]    = useState<string | null>(null);
   const [skipReason,  setSkipReason]  = useState("");
 
-  useEffect(() => { setActiveTab("diagnoses"); }, [source?.id]);
+  useEffect(() => { setActiveTab("carePlan"); }, [source?.id]);
 
   if (!source) {
     return (
