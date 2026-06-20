@@ -129,7 +129,7 @@ const ALL_EHR_KEYS = [
   "ehr-procedure-sections-v1", "ehr-procedure-partners-v1",
   "ehr-imaging-catalog-v2", "ehr-imaging-catalogue-v1", "ehr-imaging-reasons-v1", "ehr-imaging-partners-v1",
   "ehr-consumables-catalogue-v1", "ehr-consumables-providers-v1",
-  "ehr-formulary-catalogue-v1", "ehr-formulary-defaults-v1", "ehr-formulary-partners-v1", "ehr-formulary-bundles-v1", "ehr-drug-interactions-v1", "ehr-pedi-dosing-v1", "ehr-nf-settings-v1",
+  "ehr-formulary-catalogue-v1", "ehr-formulary-defaults-v1", "ehr-formulary-partners-v1", "ehr-formulary-bundles-v1", "ehr-drug-interactions-v1", "ehr-pedi-dosing-v1", "ehr-nf-settings-v1", "ehr-nf-catalogue-v1",
   "ehr-packages-v1", "ehr-nursing-config-v1", "ehr-triage-algorithms", "ehr-reg-config-v1",
   "ehr-billing-counters", "ehr-billing-reg", "ehr-fifo-lock", "ehr-visit-types",
   "ehr-queue-v2", "ehr-queue-nums-v2", "ehr-queue-ver",

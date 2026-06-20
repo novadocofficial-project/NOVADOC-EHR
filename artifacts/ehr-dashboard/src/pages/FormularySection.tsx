@@ -9,7 +9,8 @@ import { loadInteractions, checkInteractions } from "@/pages/drugInteractionUtil
 import type { InteractionAlert } from "@/pages/drugInteractionUtils";
 import { loadPediRules, getPediRulesForMedicine } from "@/pages/pediDosingUtils";
 import type { PediDosingRule } from "@/pages/pediDosingUtils";
-import { loadNFSettings } from "@/pages/nonFormularyUtils";
+import { loadNFSettings, loadNFCatalogue } from "@/pages/nonFormularyUtils";
+import type { NFDrug, NFBrandOption, NonFormularySettings } from "@/pages/nonFormularyUtils";
 import type { AllergyEntry } from "@/pages/AllergySelector";
 
 // ─── Medicine Database (Generic → Brands + Strengths) ─────────────────────────
@@ -526,6 +527,200 @@ function BundlesSection({ onApply }: { onApply: (b: FormularyBundle) => void }) 
   );
 }
 
+// ─── NF Medicine Search Dropdown ──────────────────────────────────────────────
+
+function NFMedicineSearch({
+  onSelectCatalogue,
+  onSelectCustom,
+}: {
+  onSelectCatalogue: (drug: NFDrug, brand: NFBrandOption) => void;
+  onSelectCustom:    (drugName: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open,  setOpen]  = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function h(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const q        = query.toLowerCase().trim();
+  const catalogue = loadNFCatalogue();
+
+  const matched = q
+    ? catalogue.filter(d =>
+        d.generic.toLowerCase().includes(q) ||
+        d.brands.some(b => b.brand.toLowerCase().includes(q) || b.strength.toLowerCase().includes(q))
+      )
+    : catalogue;
+
+  const grouped = matched.reduce<Record<string, NFDrug[]>>((acc, d) => {
+    (acc[d.category] ??= []).push(d); return acc;
+  }, {});
+
+  function pick(drug: NFDrug, brand: NFBrandOption) {
+    onSelectCatalogue(drug, brand);
+    setQuery(""); setOpen(false);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="flex items-center gap-2 px-3 py-2 bg-white border border-amber-200 rounded-xl focus-within:border-amber-400/60 focus-within:ring-1 focus-within:ring-amber-200 transition-all">
+        <Search className="h-3.5 w-3.5 text-amber-400 flex-shrink-0" />
+        <input
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search non-formulary drug by name…"
+          className="flex-1 text-xs text-slate-700 outline-none placeholder:text-amber-300"
+        />
+        {query && (
+          <button onClick={() => { setQuery(""); setOpen(false); }} className="text-amber-300 hover:text-amber-500">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-amber-200 rounded-xl shadow-2xl max-h-72 overflow-y-auto">
+
+          {Object.entries(grouped).map(([cat, drugs]) => (
+            <div key={cat}>
+              <p className="px-3 pt-2.5 pb-1 text-[9px] font-black uppercase tracking-widest text-amber-600">{cat}</p>
+              {drugs.map(drug => {
+                const brands = q
+                  ? drug.brands.filter(b =>
+                      b.brand.toLowerCase().includes(q) ||
+                      b.strength.toLowerCase().includes(q) ||
+                      drug.generic.toLowerCase().includes(q)
+                    )
+                  : drug.brands;
+                return (
+                  <div key={drug.id}>
+                    <p className="px-4 py-1 text-[10px] font-bold text-slate-600 bg-slate-50/50">{drug.generic}</p>
+                    {brands.map(brand => (
+                      <button key={brand.id} onClick={() => pick(drug, brand)}
+                        className="flex w-full items-center justify-between px-5 py-2 hover:bg-amber-50 transition-colors border-b border-slate-50 last:border-0 text-left">
+                        <span className="text-xs font-bold text-slate-800">{brand.brand}</span>
+                        <span className="text-[10px] text-slate-500 font-medium">{brand.strength}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+
+          {/* Custom option */}
+          {q && (
+            <>
+              {Object.keys(grouped).length > 0 && <div className="border-t border-slate-100 mx-3 my-1" />}
+              <button
+                onClick={() => { onSelectCustom(query); setQuery(""); setOpen(false); }}
+                className="flex w-full items-center gap-2 px-4 py-2.5 hover:bg-amber-50 transition-colors text-left">
+                <Plus className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                <span className="text-xs text-amber-700 font-bold">
+                  Use &ldquo;<span className="italic">{query}</span>&rdquo; as custom drug
+                </span>
+              </button>
+            </>
+          )}
+
+          {Object.keys(grouped).length === 0 && !q && (
+            <p className="px-4 py-4 text-xs text-slate-400 italic text-center">No NF drugs in catalogue</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── NF Dose Block (shared between catalogue + custom forms) ──────────────────
+
+function NFDoseBlock({
+  form, opts, setF, nfSettings, nfJustification, setNfJustification,
+  canAdd, editingUid, onAdd,
+}: {
+  form: typeof EMPTY_FORM;
+  opts: ReturnType<typeof getFormularyOptions>;
+  setF: (k: keyof typeof EMPTY_FORM, v: string) => void;
+  nfSettings: NonFormularySettings;
+  nfJustification: string;
+  setNfJustification: (v: string) => void;
+  canAdd: boolean;
+  editingUid: string | null;
+  onAdd: () => void;
+}) {
+  return (
+    <>
+      {/* Dose + Unit + Route */}
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Dose</label>
+          <input type="text" value={form.dose} onChange={e => setF("dose", e.target.value)}
+            placeholder="e.g. 1"
+            className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-amber-400/60 focus:ring-1 focus:ring-amber-200 transition-all" />
+        </div>
+        <div>
+          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Unit</label>
+          <Sel value={form.unit} options={opts.units} onChange={v => setF("unit", v)} />
+        </div>
+        <div>
+          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Route</label>
+          <Sel value={form.route} options={opts.routes} onChange={v => setF("route", v)} />
+        </div>
+      </div>
+
+      {/* Frequency + Duration */}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Frequency</label>
+          <Sel value={form.frequency} options={opts.frequencies} onChange={v => setF("frequency", v)} />
+        </div>
+        <div>
+          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Duration</label>
+          <Sel value={form.duration} options={opts.durations} onChange={v => setF("duration", v)} />
+        </div>
+      </div>
+
+      {/* Justification */}
+      <div>
+        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">
+          Reason / Justification{nfSettings.requireJustification && <span className="text-red-400 ml-0.5">*</span>}
+        </label>
+        {nfSettings.presetReasons.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-1.5">
+            {nfSettings.presetReasons.map(r => (
+              <button key={r} onClick={() => setNfJustification(r)}
+                className={`text-[9px] px-2 py-0.5 rounded-full border transition-colors ${nfJustification === r ? "border-amber-400 bg-amber-200 text-amber-800" : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"}`}>
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
+        <textarea value={nfJustification} onChange={e => setNfJustification(e.target.value)} rows={2}
+          placeholder={nfSettings.requireJustification
+            ? "Required — explain why this non-formulary drug is needed…"
+            : "Optional — explain why this non-formulary drug is needed…"}
+          className="w-full text-xs text-slate-700 bg-white border border-amber-200 rounded-lg px-2.5 py-2 outline-none focus:border-amber-400/60 focus:ring-1 focus:ring-amber-200 transition-all resize-none placeholder:text-slate-300" />
+      </div>
+
+      {/* Add button */}
+      <div className="flex justify-end">
+        <button onClick={onAdd} disabled={!canAdd}
+          className="flex items-center gap-1.5 text-xs font-black px-4 py-2 rounded-xl bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+          <Plus className="h-3.5 w-3.5" />
+          {editingUid ? "Update Prescription" : "Add Prescription"}
+        </button>
+      </div>
+    </>
+  );
+}
+
 // ─── Formulary Drawer ─────────────────────────────────────────────────────────
 
 export const EMPTY_FORM = { dose: "1", unit: "tablet(s)", route: "Oral", frequency: "Once daily (OD)", duration: "5 days" };
@@ -551,11 +746,13 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
   // ── Non-formulary state ──
   const nfSettings = loadNFSettings();
   const [nfMode,          setNfMode]          = useState(false);
-  const [nfDrug,          setNfDrug]          = useState("");
-  const [nfBrand,         setNfBrand]         = useState("");
-  const [nfStrength,      setNfStrength]      = useState("");
+  const [selNFDrug,       setSelNFDrug]       = useState<NFDrug | null>(null);
+  const [selNFBrand,      setSelNFBrand]      = useState<NFBrandOption | null>(null);
+  const [nfIsCustom,      setNfIsCustom]      = useState(false);
+  const [nfCustomDrug,    setNfCustomDrug]    = useState("");
+  const [nfCustomBrand,   setNfCustomBrand]   = useState("");
+  const [nfCustomStrength,setNfCustomStrength]= useState("");
   const [nfJustification, setNfJustification] = useState("");
-  const [nfReasonOpen,    setNfReasonOpen]    = useState(false);
 
   const allMeds = getAllAdminMedicines();
   const opts    = getFormularyOptions();
@@ -571,25 +768,32 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
   const interactionAlerts: InteractionAlert[] = selMed
     ? checkInteractions(selMed.id, medicines.filter(m => m.uid !== editingUid).map(m => m.medicineId), interactions)
     : [];
+  const nfReady = nfMode && (
+    (selNFDrug !== null && selNFBrand !== null) ||
+    (nfIsCustom && nfCustomDrug.trim() !== "")
+  );
   const canAdd = nfMode
-    ? nfDrug.trim() !== "" && form.dose.trim() !== "" && (!nfSettings.requireJustification || nfJustification.trim() !== "")
+    ? nfReady && form.dose.trim() !== "" && (!nfSettings.requireJustification || nfJustification.trim() !== "")
     : selMed !== null && selBrand !== null && form.dose.trim() !== "";
 
   function clearNFForm() {
-    setNfDrug(""); setNfBrand(""); setNfStrength(""); setNfJustification(""); setNfReasonOpen(false);
+    setSelNFDrug(null); setSelNFBrand(null);
+    setNfIsCustom(false); setNfCustomDrug(""); setNfCustomBrand(""); setNfCustomStrength("");
+    setNfJustification("");
     setForm(EMPTY_FORM); setEditingUid(null);
   }
 
   function handleNFAdd() {
     if (!canAdd) return;
-    const uid  = editingUid ?? `nf-${Date.now()}`;
+    const uid     = editingUid ?? `nf-${Date.now()}`;
+    const isCustom = nfIsCustom || !selNFDrug;
     const entry: MedicineEntry = {
       uid,
-      medicineId:    "non-formulary",
-      brandId:       `nf-brand-${uid}`,
-      brand:         nfBrand.trim() || nfDrug.trim(),
-      strength:      nfStrength.trim(),
-      genericName:   nfDrug.trim(),
+      medicineId:    isCustom ? "nf-custom"              : selNFDrug!.id,
+      brandId:       isCustom ? `nf-custom-${uid}`       : selNFBrand!.id,
+      brand:         isCustom ? (nfCustomBrand.trim() || nfCustomDrug.trim()) : selNFBrand!.brand,
+      strength:      isCustom ? nfCustomStrength.trim()  : selNFBrand!.strength,
+      genericName:   isCustom ? nfCustomDrug.trim()      : selNFDrug!.generic,
       dose:          form.dose.trim(),
       unit:          form.unit,
       route:         form.route,
@@ -713,11 +917,21 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
   function startEdit(m: MedicineEntry) {
     if (m.nonFormulary) {
       setNfMode(true);
-      setNfDrug(m.genericName);
-      setNfBrand(m.brand !== m.genericName ? m.brand : "");
-      setNfStrength(m.strength);
+      const nfCat = loadNFCatalogue();
+      const nfDrugDef  = nfCat.find(d => d.id === m.medicineId) ?? null;
+      const nfBrandDef = nfDrugDef?.brands.find(b => b.id === m.brandId) ?? null;
+      if (nfDrugDef && nfBrandDef) {
+        setSelNFDrug(nfDrugDef); setSelNFBrand(nfBrandDef);
+        setNfIsCustom(false);
+        setNfCustomDrug(""); setNfCustomBrand(""); setNfCustomStrength("");
+      } else {
+        setSelNFDrug(null); setSelNFBrand(null);
+        setNfIsCustom(true);
+        setNfCustomDrug(m.genericName);
+        setNfCustomBrand(m.brand !== m.genericName ? m.brand : "");
+        setNfCustomStrength(m.strength);
+      }
       setNfJustification(m.justification ?? "");
-      setNfReasonOpen(false);
       setSelMed(null); setSelBrand(null);
     } else {
       setNfMode(false);
@@ -912,125 +1126,89 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
             </div>
           )}
 
-          {/* ── Non-formulary free-text form ── */}
+          {/* ── Non-formulary search + form ── */}
           {nfMode && (
-            <div className="border border-amber-200 rounded-xl bg-amber-50/30 p-3 space-y-3">
-              {/* NF header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-200 text-amber-800">NF</span>
-                  <p className="text-[10px] font-bold text-amber-700">Non-formulary prescription</p>
-                </div>
-                {editingUid && (
-                  <button onClick={clearNFForm}
-                    className="h-5 w-5 flex items-center justify-center rounded hover:bg-amber-100 text-amber-400 hover:text-amber-600 transition-colors">
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-
-              {/* Drug Name */}
-              <div>
-                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">
-                  Drug Name (Generic) <span className="text-red-400">*</span>
-                </label>
-                <input
-                  value={nfDrug}
-                  onChange={e => setNfDrug(e.target.value)}
-                  placeholder="e.g. Venlafaxine"
-                  className="w-full text-xs text-slate-700 bg-white border border-amber-200 rounded-lg px-2.5 py-2 outline-none focus:border-amber-400/60 focus:ring-1 focus:ring-amber-200 transition-all placeholder:text-slate-300"
+            <>
+              {/* Search (shown when no drug picked yet) */}
+              {!selNFDrug && !nfIsCustom && (
+                <NFMedicineSearch
+                  onSelectCatalogue={(drug, brand) => { setSelNFDrug(drug); setSelNFBrand(brand); setNfIsCustom(false); setForm(EMPTY_FORM); }}
+                  onSelectCustom={name => { setNfIsCustom(true); setNfCustomDrug(name); setSelNFDrug(null); setSelNFBrand(null); setForm(EMPTY_FORM); }}
                 />
-              </div>
+              )}
 
-              {/* Brand + Strength */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Brand (optional)</label>
-                  <input
-                    value={nfBrand}
-                    onChange={e => setNfBrand(e.target.value)}
-                    placeholder="e.g. Effexor"
-                    className="w-full text-xs text-slate-700 bg-white border border-amber-200 rounded-lg px-2.5 py-2 outline-none focus:border-amber-400/60 focus:ring-1 focus:ring-amber-200 transition-all placeholder:text-slate-300"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Strength</label>
-                  <input
-                    value={nfStrength}
-                    onChange={e => setNfStrength(e.target.value)}
-                    placeholder="e.g. 75mg"
-                    className="w-full text-xs text-slate-700 bg-white border border-amber-200 rounded-lg px-2.5 py-2 outline-none focus:border-amber-400/60 focus:ring-1 focus:ring-amber-200 transition-all placeholder:text-slate-300"
-                  />
-                </div>
-              </div>
-
-              {/* Dose + Unit + Route */}
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Dose</label>
-                  <input
-                    type="text"
-                    value={form.dose}
-                    onChange={e => setF("dose", e.target.value)}
-                    placeholder="e.g. 1"
-                    className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-amber-400/60 focus:ring-1 focus:ring-amber-200 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Unit</label>
-                  <Sel value={form.unit} options={opts.units} onChange={v => setF("unit", v)} />
-                </div>
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Route</label>
-                  <Sel value={form.route} options={opts.routes} onChange={v => setF("route", v)} />
-                </div>
-              </div>
-
-              {/* Frequency + Duration */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Frequency</label>
-                  <Sel value={form.frequency} options={opts.frequencies} onChange={v => setF("frequency", v)} />
-                </div>
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Duration</label>
-                  <Sel value={form.duration} options={opts.durations} onChange={v => setF("duration", v)} />
-                </div>
-              </div>
-
-              {/* Justification */}
-              <div>
-                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">
-                  Reason / Justification{nfSettings.requireJustification && <span className="text-red-400 ml-0.5">*</span>}
-                </label>
-                {nfSettings.presetReasons.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-1.5">
-                    {nfSettings.presetReasons.map(r => (
-                      <button key={r} onClick={() => setNfJustification(r)}
-                        className={`text-[9px] px-2 py-0.5 rounded-full border transition-colors ${nfJustification === r ? "border-amber-400 bg-amber-200 text-amber-800" : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"}`}>
-                        {r}
-                      </button>
-                    ))}
+              {/* Selected catalogue drug form */}
+              {selNFDrug && selNFBrand && (
+                <div className="mt-2 border border-amber-200 rounded-xl bg-amber-50/30 p-3 space-y-3">
+                  {/* Drug header */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-200 text-amber-800">NF</span>
+                        <p className="text-xs font-black text-slate-800">{selNFBrand.brand}</p>
+                        {selNFBrand.strength && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{selNFBrand.strength}</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{selNFDrug.generic} · {selNFDrug.category}</p>
+                    </div>
+                    <button onClick={clearNFForm}
+                      className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-amber-100 text-amber-300 hover:text-amber-600 transition-colors flex-shrink-0">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                )}
-                <textarea
-                  value={nfJustification}
-                  onChange={e => setNfJustification(e.target.value)}
-                  rows={2}
-                  placeholder={nfSettings.requireJustification ? "Required — explain why this non-formulary drug is needed…" : "Optional — explain why this non-formulary drug is needed…"}
-                  className="w-full text-xs text-slate-700 bg-white border border-amber-200 rounded-lg px-2.5 py-2 outline-none focus:border-amber-400/60 focus:ring-1 focus:ring-amber-200 transition-all resize-none placeholder:text-slate-300"
-                />
-              </div>
 
-              {/* Add button */}
-              <div className="flex justify-end">
-                <button onClick={handleNFAdd} disabled={!canAdd}
-                  className="flex items-center gap-1.5 text-xs font-black px-4 py-2 rounded-xl bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  <Plus className="h-3.5 w-3.5" />
-                  {editingUid ? "Update Prescription" : "Add Prescription"}
-                </button>
-              </div>
-            </div>
+                  {/* Dose rows + justification + button */}
+                  {NFDoseBlock({ form, opts, setF, nfSettings, nfJustification, setNfJustification, canAdd, editingUid, onAdd: handleNFAdd })}
+                </div>
+              )}
+
+              {/* Custom drug form */}
+              {nfIsCustom && (
+                <div className="mt-2 border border-amber-200 rounded-xl bg-amber-50/30 p-3 space-y-3">
+                  {/* Custom header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-200 text-amber-800">NF</span>
+                      <p className="text-[10px] font-bold text-amber-700">Custom drug</p>
+                    </div>
+                    <button onClick={clearNFForm}
+                      className="h-5 w-5 flex items-center justify-center rounded hover:bg-amber-100 text-amber-400 hover:text-amber-600 transition-colors">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  {/* Drug Name */}
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">
+                      Drug Name (Generic) <span className="text-red-400">*</span>
+                    </label>
+                    <input value={nfCustomDrug} onChange={e => setNfCustomDrug(e.target.value)}
+                      placeholder="e.g. Bevacizumab"
+                      className="w-full text-xs text-slate-700 bg-white border border-amber-200 rounded-lg px-2.5 py-2 outline-none focus:border-amber-400/60 focus:ring-1 focus:ring-amber-200 transition-all placeholder:text-slate-300" />
+                  </div>
+
+                  {/* Brand + Strength */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Brand (optional)</label>
+                      <input value={nfCustomBrand} onChange={e => setNfCustomBrand(e.target.value)}
+                        placeholder="e.g. Avastin"
+                        className="w-full text-xs text-slate-700 bg-white border border-amber-200 rounded-lg px-2.5 py-2 outline-none focus:border-amber-400/60 focus:ring-1 focus:ring-amber-200 transition-all placeholder:text-slate-300" />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Strength</label>
+                      <input value={nfCustomStrength} onChange={e => setNfCustomStrength(e.target.value)}
+                        placeholder="e.g. 400mg"
+                        className="w-full text-xs text-slate-700 bg-white border border-amber-200 rounded-lg px-2.5 py-2 outline-none focus:border-amber-400/60 focus:ring-1 focus:ring-amber-200 transition-all placeholder:text-slate-300" />
+                    </div>
+                  </div>
+
+                  {/* Dose rows + justification + button */}
+                  {NFDoseBlock({ form, opts, setF, nfSettings, nfJustification, setNfJustification, canAdd, editingUid, onAdd: handleNFAdd })}
+                </div>
+              )}
+            </>
           )}
 
           {/* ── Formulary form (existing) ── */}
