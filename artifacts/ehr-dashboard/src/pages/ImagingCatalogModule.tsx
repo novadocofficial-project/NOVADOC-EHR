@@ -194,6 +194,9 @@ function CatalogEditorTab() {
   const [addKey, setAddKey] = useState<string | null>(null);
   const [addVal, setAddVal] = useState("");
 
+  // keys: "m:i", "b:i:j", "p:i:j:k" — pending delete waiting for confirmation
+  const [confirmKey, setConfirmKey] = useState<string | null>(null);
+
   // expand state
   const [expandM,  setExpandM]  = useState<Record<number, boolean>>(() =>
     Object.fromEntries(loadImagingCatalog().map((_, i) => [i, true]))
@@ -217,6 +220,7 @@ function CatalogEditorTab() {
 
   function startEdit(key: string, val: string) {
     setAddKey(null); setAddVal("");
+    setConfirmKey(null);
     setEditKey(key);
     setEditVal(val);
   }
@@ -249,6 +253,7 @@ function CatalogEditorTab() {
 
   function startAdd(key: string) {
     setEditKey(null); setEditVal("");
+    setConfirmKey(null);
     setAddKey(key);
     setAddVal("");
     setTimeout(() => addInputRef.current?.focus(), 50);
@@ -417,7 +422,7 @@ function CatalogEditorTab() {
                       <Edit2 className="h-3.5 w-3.5" />
                     </button>
                     <button
-                      onClick={() => deleteModality(mi)}
+                      onClick={() => { setEditKey(null); setAddKey(null); setConfirmKey(`m:${mi}`); }}
                       className="p-1.5 rounded hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors"
                       title="Delete modality"
                     >
@@ -426,6 +431,28 @@ function CatalogEditorTab() {
                   </>
                 )}
               </div>
+
+              {/* Modality delete confirmation bar */}
+              {confirmKey === `m:${mi}` && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-t border-red-100">
+                  <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                  <p className="flex-1 text-xs text-red-700 font-semibold">
+                    Remove <em>{modality.name}</em> and all its body parts? This cannot be undone.
+                  </p>
+                  <button
+                    onClick={() => { deleteModality(mi); setConfirmKey(null); }}
+                    className="px-3 py-1 text-xs font-bold bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  >
+                    Remove
+                  </button>
+                  <button
+                    onClick={() => setConfirmKey(null)}
+                    className="px-3 py-1 text-xs font-bold bg-white text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
 
               {/* Body Parts */}
               {mExpanded && (
@@ -475,7 +502,7 @@ function CatalogEditorTab() {
                                 <Edit2 className="h-3 w-3" />
                               </button>
                               <button
-                                onClick={() => deleteBodyPart(mi, bi)}
+                                onClick={() => { setEditKey(null); setAddKey(null); setConfirmKey(`b:${mi}:${bi}`); }}
                                 className="p-1 rounded hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors"
                                 title="Delete body part"
                               >
@@ -485,45 +512,90 @@ function CatalogEditorTab() {
                           )}
                         </div>
 
+                        {/* Body-part delete confirmation bar */}
+                        {confirmKey === `b:${mi}:${bi}` && (
+                          <div className="flex items-center gap-2 pl-8 pr-3 py-2 bg-red-50 border-t border-red-100">
+                            <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />
+                            <p className="flex-1 text-xs text-red-700 font-semibold">
+                              Remove <em>{bp.name}</em> and its protocols?
+                            </p>
+                            <button
+                              onClick={() => { deleteBodyPart(mi, bi); setConfirmKey(null); }}
+                              className="px-2.5 py-1 text-[11px] font-bold bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                            >
+                              Remove
+                            </button>
+                            <button
+                              onClick={() => setConfirmKey(null)}
+                              className="px-2.5 py-1 text-[11px] font-bold bg-white text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+
                         {/* Protocols */}
                         {bpExpanded && (
                           <div className="pl-16 pr-3 pb-2 space-y-0.5">
-                            {bp.protocols.map((proto, pi) => (
-                              <div key={pi} className="flex items-center gap-2 group px-2 py-1 rounded-lg hover:bg-slate-50">
-                                <span className="h-1 w-1 rounded-full bg-slate-300 flex-shrink-0" />
-                                {editKey === `p:${mi}:${bi}:${pi}` ? (
-                                  <InlineEditRow
-                                    value={editVal}
-                                    onChange={setEditVal}
-                                    onCommit={commitEdit}
-                                    onCancel={cancelEdit}
-                                  />
-                                ) : (
-                                  <span
-                                    className="flex-1 text-xs text-slate-600"
-                                    onDoubleClick={() => startEdit(`p:${mi}:${bi}:${pi}`, proto)}
-                                  >
-                                    {proto}
-                                  </span>
-                                )}
-                                {editKey !== `p:${mi}:${bi}:${pi}` && (
-                                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {bp.protocols.map((proto, pi) => {
+                              const isPendingDelete = confirmKey === `p:${mi}:${bi}:${pi}`;
+                              if (isPendingDelete) {
+                                return (
+                                  <div key={pi} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-red-50 border border-red-100">
+                                    <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />
+                                    <p className="flex-1 text-[11px] text-red-700 font-semibold truncate">Remove <em>"{proto}"</em>?</p>
                                     <button
-                                      onClick={() => startEdit(`p:${mi}:${bi}:${pi}`, proto)}
-                                      className="p-1 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-600"
+                                      onClick={() => { deleteProtocol(mi, bi, pi); setConfirmKey(null); }}
+                                      className="px-2 py-0.5 text-[11px] font-bold bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex-shrink-0"
                                     >
-                                      <Edit2 className="h-3 w-3" />
+                                      Remove
                                     </button>
                                     <button
-                                      onClick={() => deleteProtocol(mi, bi, pi)}
-                                      className="p-1 rounded hover:bg-red-50 text-slate-300 hover:text-red-500"
+                                      onClick={() => setConfirmKey(null)}
+                                      className="px-2 py-0.5 text-[11px] font-bold bg-white text-slate-600 border border-slate-200 rounded hover:bg-slate-50 transition-colors flex-shrink-0"
                                     >
-                                      <Trash2 className="h-3 w-3" />
+                                      Cancel
                                     </button>
                                   </div>
-                                )}
-                              </div>
-                            ))}
+                                );
+                              }
+                              return (
+                                <div key={pi} className="flex items-center gap-2 group px-2 py-1 rounded-lg hover:bg-slate-50">
+                                  <span className="h-1 w-1 rounded-full bg-slate-300 flex-shrink-0" />
+                                  {editKey === `p:${mi}:${bi}:${pi}` ? (
+                                    <InlineEditRow
+                                      value={editVal}
+                                      onChange={setEditVal}
+                                      onCommit={commitEdit}
+                                      onCancel={cancelEdit}
+                                    />
+                                  ) : (
+                                    <span
+                                      className="flex-1 text-xs text-slate-600"
+                                      onDoubleClick={() => startEdit(`p:${mi}:${bi}:${pi}`, proto)}
+                                    >
+                                      {proto}
+                                    </span>
+                                  )}
+                                  {editKey !== `p:${mi}:${bi}:${pi}` && (
+                                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button
+                                        onClick={() => startEdit(`p:${mi}:${bi}:${pi}`, proto)}
+                                        className="p-1 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-600"
+                                      >
+                                        <Edit2 className="h-3 w-3" />
+                                      </button>
+                                      <button
+                                        onClick={() => { setEditKey(null); setAddKey(null); setConfirmKey(`p:${mi}:${bi}:${pi}`); }}
+                                        className="p-1 rounded hover:bg-red-50 text-slate-300 hover:text-red-500"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
 
                             {/* Add protocol row */}
                             {addKey === `p:${mi}:${bi}` && (
