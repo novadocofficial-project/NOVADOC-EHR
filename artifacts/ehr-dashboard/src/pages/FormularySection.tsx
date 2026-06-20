@@ -208,7 +208,7 @@ const FACTORY_FREQUENCIES = [
   "Every 6 hours (q6h)", "Every 8 hours (q8h)", "Every 12 hours (q12h)", "As needed (PRN)", "Weekly", "Monthly",
 ];
 const FACTORY_DURATIONS   = ["1 day", "3 days", "5 days", "7 days", "10 days", "14 days", "21 days", "30 days", "3 months", "6 months", "Ongoing"];
-const FACTORY_UNITS       = ["tablet(s)", "capsule(s)", "ml", "dose(s)", "drop(s)", "puff(s)", "sachet(s)"];
+const FACTORY_UNITS       = ["tablet(s)", "capsule(s)", "mg", "mg/kg", "ml", "dose(s)", "drop(s)", "puff(s)", "sachet(s)"];
 
 export function getFormularyOptions() {
   try {
@@ -565,6 +565,68 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
     setForm(prev => ({ ...prev, [k]: v }));
   }
 
+  function applyPediRule(rule: PediDosingRule) {
+    const dr = rule.doseRange;
+
+    // ── Determine unit (mg/kg vs mg) ──
+    const isWeightBased = /mg\/kg/i.test(dr);
+    const derivedUnit   = isWeightBased ? "mg/kg" : "mg";
+    const unitInOpts    = opts.units.includes(derivedUnit);
+
+    // ── Extract numeric value: lower bound of a range or single value ──
+    const numMatch = dr.match(/([\d.]+)/);
+    const doseVal  = numMatch ? numMatch[1] : "";
+
+    // ── Map route: split "Oral / IV" and pick first match in opts ──
+    const routeParts = rule.route.split(/\s*\/\s*/);
+    const mappedRoute = routeParts.reduce<string>((found, part) => {
+      if (found) return found;
+      return opts.routes.find(r => r.toLowerCase() === part.trim().toLowerCase()) ?? "";
+    }, "") || form.route;
+
+    // ── Map frequency: normalise abbreviations → form options ──
+    const freqKey = rule.frequency.toLowerCase().replace(/\(.*?\)/g, "").trim();
+    const freqAliases: [string, string[]][] = [
+      ["once daily",        ["Once daily (OD)", "Once daily"]],
+      ["twice daily",       ["Twice daily (BID)", "Twice daily (BD)", "Twice daily"]],
+      ["bd",                ["Twice daily (BID)", "Twice daily (BD)", "Twice daily"]],
+      ["tds",               ["Three times daily (TID)", "Three times daily (TDS)", "Three times daily"]],
+      ["three times daily", ["Three times daily (TID)", "Three times daily (TDS)", "Three times daily"]],
+      ["qds",               ["Four times daily (QID)", "Four times daily"]],
+      ["four times daily",  ["Four times daily (QID)", "Four times daily"]],
+      ["4–6 hourly",        ["Every 4 hours (q4h)", "Every 6 hours (q6h)"]],
+      ["4 hourly",          ["Every 4 hours (q4h)"]],
+      ["6 hourly",          ["Every 6 hours (q6h)", "Every 6 hours"]],
+      ["6–8 hourly",        ["Every 6 hours (q6h)", "Every 8 hours (q8h)"]],
+      ["6–12 hourly",       ["Every 6 hours (q6h)", "Every 12 hours (q12h)"]],
+      ["8 hourly",          ["Every 8 hours (q8h)", "Every 8 hours"]],
+      ["12 hourly",         ["Every 12 hours (q12h)", "Every 12 hours"]],
+      ["12–24 hourly",      ["Every 12 hours (q12h)", "Once daily (OD)"]],
+      ["24 hourly",         ["Once daily (OD)"]],
+      ["once or twice daily", ["Once daily (OD)"]],
+      ["once daily",        ["Once daily (OD)"]],
+    ];
+
+    let mappedFreq = form.frequency;
+    for (const [key, candidates] of freqAliases) {
+      if (freqKey.includes(key)) {
+        const hit = candidates.find(c => opts.frequencies.some(f => f.toLowerCase().includes(c.toLowerCase())));
+        if (hit) {
+          mappedFreq = opts.frequencies.find(f => f.toLowerCase().includes(hit.toLowerCase())) ?? form.frequency;
+          break;
+        }
+      }
+    }
+
+    setForm(prev => ({
+      ...prev,
+      dose:      doseVal || prev.dose,
+      unit:      unitInOpts ? derivedUnit : prev.unit,
+      route:     mappedRoute,
+      frequency: mappedFreq,
+    }));
+  }
+
   function toggleFav(brandId: string, fav: boolean) {
     setFavs(prev => {
       const next = new Set(prev);
@@ -678,10 +740,16 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
+          <p className="text-[9px] text-teal-500 font-semibold text-center pb-1">Tap a card to apply to prescription</p>
           {pediRulesForMed.map(rule => (
-            <div key={rule.id} className="bg-white rounded-xl border border-teal-100 p-3 shadow-sm">
-              <p className="text-[10px] font-black text-teal-700 uppercase tracking-wide mb-2">{rule.ageLabel}</p>
+            <button key={rule.id} type="button"
+              onClick={() => { applyPediRule(rule); setPediPanelOpen(false); }}
+              className="w-full text-left bg-white rounded-xl border border-teal-100 p-3 shadow-sm hover:border-teal-400 hover:bg-teal-50/60 active:scale-[0.98] transition-all cursor-pointer group">
+              <div className="flex items-start justify-between gap-1 mb-2">
+                <p className="text-[10px] font-black text-teal-700 uppercase tracking-wide leading-snug">{rule.ageLabel}</p>
+                <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-teal-100 text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5">Apply →</span>
+              </div>
               <div className="space-y-1.5">
                 <div className="flex justify-between items-start gap-2">
                   <span className="text-[10px] text-slate-400 flex-shrink-0">Route</span>
@@ -705,7 +773,7 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
               {rule.notes && (
                 <p className="text-[10px] text-slate-400 mt-2 pt-2 border-t border-teal-50 italic leading-relaxed">{rule.notes}</p>
               )}
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -840,10 +908,10 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
                 <div>
                   <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wide mb-1">Dose</label>
                   <input
-                    type="number" min="0.5" step="0.5"
+                    type="text"
                     value={form.dose}
                     onChange={e => setF("dose", e.target.value)}
-                    placeholder="1"
+                    placeholder="e.g. 10 or 0.15"
                     className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-[#6366f1]/50 focus:ring-1 focus:ring-[#6366f1]/20 transition-all"
                   />
                 </div>
