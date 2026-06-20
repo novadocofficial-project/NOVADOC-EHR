@@ -1989,7 +1989,7 @@ interface SectionSource {
   carePlan:             SectionItem[];
 }
 
-type InteractiveSectionKey = "labOrders" | "prescriptions" | "imaging" | "procedureOrders" | "referrals" | "healthEd" | "carePlan";
+type InteractiveSectionKey = "labOrders" | "prescriptions" | "imaging" | "procedureOrders" | "referrals" | "healthEd";
 interface SectionItemStatus { status: "done" | "skipped"; reason?: string; }
 type SectionItemStatuses = Record<string, SectionItemStatus | undefined>;
 type SourceExec = Partial<Record<InteractiveSectionKey, SectionItemStatuses>>;
@@ -2015,7 +2015,7 @@ interface SectionDef {
 }
 
 const SECTION_DEFS: SectionDef[] = [
-  { key: "carePlan",        label: "Care Plan",        tag: "Care", color: "#10b981", interactive: true,  actionLabel: "Done" },
+  { key: "carePlan",        label: "Care Plan",        tag: "Care", color: "#10b981", interactive: false },
   { key: "diagnoses",       label: "Diagnosis",        tag: "Dx",   color: "#ef4444", interactive: false },
   { key: "labOrders",       label: "Lab Orders",       tag: "Lab",  color: "#f59e0b", interactive: true,  actionLabel: "Done" },
   { key: "prescriptions",   label: "Prescriptions",    tag: "Rx",   color: "#8b5cf6", interactive: true,  actionLabel: "Done" },
@@ -2305,6 +2305,24 @@ function SectionRightPanel({ source, execStore, onSetStatus }: {
 
       {/* Section content */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
+        {/* Care Plan tab — read-only prose */}
+        {activeTab === "carePlan" && (() => {
+          const text = source.carePlan[0]?.label ?? "";
+          return text ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 px-4 py-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-6 w-6 rounded-md bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[9px] font-black text-emerald-600">CP</span>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">Care Plan</span>
+              </div>
+              <p className="text-[12px] text-slate-700 leading-relaxed whitespace-pre-wrap select-text">{text}</p>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-xs text-slate-400">No care plan recorded</div>
+          );
+        })()}
+
         {/* Diagnosis tab — read-only */}
         {activeTab === "diagnoses" && (
           <div className="space-y-2">
@@ -2326,7 +2344,7 @@ function SectionRightPanel({ source, execStore, onSetStatus }: {
         )}
 
         {/* Interactive sections */}
-        {activeTab !== "diagnoses" && (() => {
+        {activeTab !== "diagnoses" && activeTab !== "carePlan" && (() => {
           const def      = activeDef;
           const items    = getSectionItems(def);
           const statuses = srcExec[def.key as InteractiveSectionKey] ?? {};
