@@ -500,7 +500,7 @@ function BundlesSection({ onApply }: { onApply: (b: FormularyBundle) => void }) 
           : <ChevronDown className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />}
       </button>
       {open && (
-        <div className="px-4 pb-3 space-y-2">
+        <div className={`px-4 pb-3 space-y-2 ${bundles.length > 2 ? "max-h-44 overflow-y-auto" : ""}`}>
           {bundles.map(b => (
             <div key={b.id}
               className="flex items-start gap-3 px-3 py-2.5 rounded-xl border border-[#4982CF]/20 bg-[#4982CF]/5">
