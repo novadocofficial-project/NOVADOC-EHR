@@ -662,7 +662,7 @@ function scanCarePlanSources(patientMrn: string | null): CarePlanSource[] {
     id:            `seed-${i}`,
     doctorName:    note.signedBy,
     signedAt:      note.signedAt,
-    carePlanItems: note.carePlan,
+    carePlanItems: note.carePlan.trim() ? [note.carePlan] : [],
     patientRef:    "seed",
   }));
 
@@ -1286,7 +1286,7 @@ function loadGoalGroups(): SoapNoteGroup[] {
         priority:         "Normal" as const,
         targetDate:       "",
         diagnoses:        note.diagnoses,
-        carePlanSteps:    note.carePlan,
+        carePlanSteps:    note.carePlan.trim() ? [note.carePlan] : [],
         visitDescription: note.visitDescription,
       })),
     });

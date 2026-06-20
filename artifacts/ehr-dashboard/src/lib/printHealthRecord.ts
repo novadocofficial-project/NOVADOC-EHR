@@ -645,7 +645,7 @@ function buildDummyClinical(note: SoapDummyNote): string {
     parts.push(section("Procedure Orders", bulletList(note.procedureOrders)));
 
   if (note.carePlan.length)
-    parts.push(section("Care Plan", bulletList(note.carePlan)));
+    parts.push(section("Care Plan", `<p style="margin:0;line-height:1.6;">${note.carePlan}</p>`));
 
   if (note.referrals.length)
     parts.push(section("Referrals", note.referrals.map(r =>

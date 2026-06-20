@@ -2060,7 +2060,7 @@ function scanApptSectionSources(apptId: string, patientMrn: string | null): Sect
     procedureOrders:normItems(note.procedureOrders, `sec-seed-${i}-po`),
     referrals:      note.referrals.map((r, j) => ({ uid: `sec-seed-${i}-ref-${j}`, label: `${r.specialty}: ${r.reason}` })),
     healthEd:       normItems(note.healthEducation, `sec-seed-${i}-he`),
-    carePlan:       normItems(note.carePlan, `sec-seed-${i}-cp`),
+    carePlan:       note.carePlan?.trim() ? [{ uid: `sec-seed-${i}-cp`, label: note.carePlan.trim() }] : [],
   }));
 
   if (!patientMrn) return seedSources;
@@ -2088,7 +2088,7 @@ function scanApptSectionSources(apptId: string, patientMrn: string | null): Sect
         procedureOrders: (ns.procedureOrders?.orders ?? []).map((o: any, oi: number) => ({ uid: `sec-ls-${tag}-po-${oi}`, label: `${o.name}${o.priority === "Urgent" ? " (Urgent)" : ""}` })),
         referrals:       (ns.referrals?.referrals ?? []).map((r: any, ri: number) => ({ uid: `sec-ls-${tag}-ref-${ri}`, label: r.speciality ? `${r.speciality}: ${r.reason}` : (r.reason ?? "Referral") })),
         healthEd:        (ns.healthEd?.docIds ?? []).map((id: string, hi: number) => ({ uid: `sec-ls-${tag}-he-${hi}`, label: docMap[id] ?? id })),
-        carePlan:        (ns.carePlan?.tasks ?? []).map((t: any, ti: number) => ({ uid: `sec-ls-${tag}-cp-${ti}`, label: t.title ?? `Task ${ti + 1}` })),
+        carePlan:        ns.carePlan?.instructions?.trim() ? [{ uid: `sec-ls-${tag}-cp`, label: ns.carePlan.instructions.trim() }] : [],
       };
     } catch { return null; }
   }
@@ -2526,7 +2526,7 @@ function loadApptGoalGroups(apptId: string): SoapNoteGroup[] {
       firstDiagnosis: note.diagnoses[0]?.name ?? "",
       goals: note.patientGoals.map((title, gi) => ({
         goalUid: `seed-${ni}-${gi}`, title, priority: "Normal" as const, targetDate: "",
-        diagnoses: note.diagnoses, carePlanSteps: note.carePlan, visitDescription: note.visitDescription,
+        diagnoses: note.diagnoses, carePlanSteps: note.carePlan.trim() ? [note.carePlan] : [], visitDescription: note.visitDescription,
       })),
     });
   });

@@ -969,7 +969,7 @@ function SoapNotePreview({ note }: { note: SoapDummyNote }) {
           {note.carePlan.length > 0 && (
             <Section icon={<BookOpen className="h-3.5 w-3.5" />} title="Care Plan" color="#10b981">
               <p className="text-[11px] leading-relaxed text-slate-600 bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 whitespace-pre-wrap">
-                {note.carePlan.join("\n")}
+                {note.carePlan}
               </p>
             </Section>
           )}

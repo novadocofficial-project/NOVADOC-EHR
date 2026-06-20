@@ -19,7 +19,7 @@ export interface SoapDummyNote {
   labOrders?:       LabOrder[];
   prescriptions:    { drug: string; sig: string; qty: number }[];
   imaging:          string[];
-  carePlan:         string[];
+  carePlan:         string;
   procedureOrders:  string[];
   referrals:        { specialty: string; reason: string }[];
   patientGoals:     string[];
@@ -65,7 +65,7 @@ export const SOAP_DUMMY: SoapDummyNote[] = [
       { drug: "Salbutamol Inhaler 100 mcg", sig: "2 puffs TID",                 qty: 1  },
     ],
     imaging: [],
-    carePlan: ["Steam inhalation TID for 3 days", "Oral fluid intake ≥ 2 L/day", "Complete rest — avoid exertion for 48 h", "Return if fever > 48 h or dyspnoea develops"],
+    carePlan: "Patient advised steam inhalation three times daily for 3 days and to maintain oral fluid intake of at least 2 litres per day. Complete rest is recommended and exertion should be avoided for the next 48 hours. Patient should return promptly if fever persists beyond 48 hours, worsens, or if shortness of breath develops. Full antibiotic course must be completed. Isolate from immunocompromised household contacts.",
     procedureOrders: ["Nebulization with Salbutamol 2.5 mg — stat dose"],
     referrals: [
       { specialty: "ENT", reason: "Persistent sore throat not responding to empiric therapy" },
@@ -107,7 +107,7 @@ export const SOAP_DUMMY: SoapDummyNote[] = [
       { drug: "Hydrochlorothiazide 25 mg", sig: "Once daily — new addition",             qty: 30 },
     ],
     imaging: ["Chest X-ray (PA view) — cardiac silhouette assessment"],
-    carePlan: ["Low sodium diet — < 2 g NaCl / day", "Daily BP monitoring log — bring to next visit", "Reduce caffeine and alcohol", "Moderate aerobic exercise 30 min/day", "Daily weight monitoring for oedema"],
+    carePlan: "Patient counselled on strict low-sodium diet with daily salt intake restricted to less than 2 g NaCl. Advised to maintain a daily home blood pressure log and bring it to the next visit; target BP below 130/80 mmHg. Caffeine and alcohol to be reduced or eliminated. Moderate aerobic exercise of at least 30 minutes per day encouraged on most days of the week. Daily weight monitoring recommended to track fluid retention and ankle oedema. Medication regimen intensified — strict adherence to both new agents essential.",
     procedureOrders: ["12-lead ECG — in clinic", "24-hour ambulatory BP monitoring (ABPM) — arranged"],
     referrals: [
       { specialty: "Cardiology", reason: "Uncontrolled Stage 2 hypertension with end-organ risk" },
@@ -152,7 +152,7 @@ export const SOAP_DUMMY: SoapDummyNote[] = [
       { drug: "Omega-3 Fatty Acids 1000 mg", sig: "Once daily with meal",         qty: 30 },
     ],
     imaging: ["Fundus photography — diabetic retinopathy grading"],
-    carePlan: ["Diabetic diet — low carbohydrate, low GI foods", "Target HbA1c < 7 %", "Daily foot inspection at home", "Refer to diabetic educator for self-management training", "Ophthalmology referral for retinopathy management", "Review in 4 weeks for glucose response"],
+    carePlan: "Patient advised to follow a low-carbohydrate, low-GI diabetic diet and reduce portion sizes. Target HbA1c below 7% — medication regimen intensified to support this goal. Daily foot inspection at home is essential: patient to check for wounds, redness, swelling, or changes in sensation and report immediately. Referral placed to diabetic educator for structured self-management training and dietary coaching. Ophthalmology referral initiated for background retinopathy grading and ongoing management. Review appointment scheduled in 4 weeks to assess glucose response to the new regimen.",
     procedureOrders: ["Foot examination with 10 g monofilament sensory test", "Ankle-brachial index (ABI) measurement"],
     referrals: [
       { specialty: "Ophthalmology",     reason: "Background diabetic retinopathy — grading and management" },
