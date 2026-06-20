@@ -584,7 +584,12 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
       frequency:   form.frequency,
       duration:    form.duration,
     };
-    setMedicines(prev => editingUid ? prev.map(m => m.uid === editingUid ? entry : m) : [...prev, entry]);
+    setMedicines(prev => {
+      if (editingUid) return prev.map(m => m.uid === editingUid ? entry : m);
+      const existing = prev.find(m => m.brandId === entry.brandId);
+      if (existing) return prev.map(m => m.brandId === entry.brandId ? { ...entry, uid: m.uid } : m);
+      return [...prev, entry];
+    });
     setSelMed(null); setSelBrand(null); setForm(EMPTY_FORM); setEditingUid(null);
   }
 
