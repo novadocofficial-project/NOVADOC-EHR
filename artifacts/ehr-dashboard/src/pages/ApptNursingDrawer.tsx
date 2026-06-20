@@ -2236,10 +2236,12 @@ function SectionRightPanel({ source, execStore, onSetStatus }: {
   const [activeTab,     setActiveTab]     = useState<string>("carePlan");
   const [skipMode,      setSkipMode]      = useState<string | null>(null);
   const [skipReason,    setSkipReason]    = useState("");
+  const [doneMode,      setDoneMode]      = useState<string | null>(null);
+  const [doneComment,   setDoneComment]   = useState("");
   const [cpCommentOpen, setCpCommentOpen] = useState(false);
   const [cpComment,     setCpComment]     = useState("");
 
-  useEffect(() => { setActiveTab("carePlan"); setCpCommentOpen(false); setCpComment(""); }, [source?.id]);
+  useEffect(() => { setActiveTab("carePlan"); setSkipMode(null); setDoneMode(null); setCpCommentOpen(false); setCpComment(""); }, [source?.id]);
 
   if (!source) {
     return (
@@ -2418,11 +2420,12 @@ function SectionRightPanel({ source, execStore, onSetStatus }: {
           return (
             <div className="space-y-2">
               {items.map(item => {
-                const entry   = statuses[item.uid];
-                const isDone  = entry?.status === "done";
-                const isSkipped = entry?.status === "skipped";
-                const isPending = !entry;
+                const entry      = statuses[item.uid];
+                const isDone     = entry?.status === "done";
+                const isSkipped  = entry?.status === "skipped";
+                const isPending  = !entry;
                 const inSkipMode = skipMode === item.uid;
+                const inDoneMode = doneMode === item.uid;
 
                 return (
                   <div key={item.uid} className="rounded-xl border overflow-hidden transition-all"
@@ -2430,9 +2433,12 @@ function SectionRightPanel({ source, execStore, onSetStatus }: {
 
                     {/* Main row */}
                     <div className="flex items-center gap-3 px-4 py-3">
-                      {/* Checkbox — click toggles pending ↔ done */}
+                      {/* Checkbox — pending → enter done-comment mode; done → undo */}
                       <button
-                        onClick={() => onSetStatus(source.id, sectionKey, item.uid, isDone ? "pending" : "done")}
+                        onClick={() => {
+                          if (isDone) { onSetStatus(source.id, sectionKey, item.uid, "pending"); }
+                          else if (isPending) { setDoneMode(item.uid); setDoneComment(""); setSkipMode(null); }
+                        }}
                         className="h-5 w-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all"
                         style={{ borderColor: isDone ? def.color : isSkipped ? "#f87171" : "#cbd5e1", background: isDone ? def.color : "transparent" }}>
                         {isDone    && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
@@ -2459,10 +2465,10 @@ function SectionRightPanel({ source, execStore, onSetStatus }: {
                         </span>
                       )}
 
-                      {/* Skip button (pending only) */}
-                      {isPending && !inSkipMode && (
+                      {/* Skip button (pending only, not in any mode) */}
+                      {isPending && !inSkipMode && !inDoneMode && (
                         <button
-                          onClick={() => { setSkipMode(item.uid); setSkipReason(""); }}
+                          onClick={() => { setSkipMode(item.uid); setSkipReason(""); setDoneMode(null); }}
                           className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 transition-all flex-shrink-0">
                           <SkipForward className="h-3 w-3" /> Skip
                         </button>
@@ -2478,10 +2484,48 @@ function SectionRightPanel({ source, execStore, onSetStatus }: {
                       )}
                     </div>
 
+                    {/* Done comment row (shown when done and has comment) */}
+                    {isDone && entry?.reason && (
+                      <div className="px-4 pb-2.5 -mt-1">
+                        <p className="text-[10px] italic" style={{ color: def.color }}>Comment: {entry.reason}</p>
+                      </div>
+                    )}
+
                     {/* Skip reason row (shown when skipped and has reason) */}
                     {isSkipped && entry?.reason && (
                       <div className="px-4 pb-2.5 -mt-1">
                         <p className="text-[10px] text-red-400 italic">Reason: {entry.reason}</p>
+                      </div>
+                    )}
+
+                    {/* Inline done-comment input */}
+                    {inDoneMode && (
+                      <div className="px-4 pb-3 pt-0">
+                        <div className="flex items-center gap-2 p-2.5 rounded-lg border" style={{ background: def.color + "08", borderColor: def.color + "40" }}>
+                          <input
+                            autoFocus
+                            value={doneComment}
+                            onChange={e => setDoneComment(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") { onSetStatus(source.id, sectionKey, item.uid, "done", doneComment.trim() || undefined); setDoneMode(null); }
+                              if (e.key === "Escape") setDoneMode(null);
+                            }}
+                            placeholder="Add a comment (optional)…"
+                            className="flex-1 text-xs text-slate-700 bg-transparent outline-none"
+                            style={{ "::placeholder": { color: def.color + "80" } } as React.CSSProperties} />
+                          <button
+                            onClick={() => { onSetStatus(source.id, sectionKey, item.uid, "done", doneComment.trim() || undefined); setDoneMode(null); }}
+                            className="text-[10px] font-black px-2.5 py-1 rounded-lg text-white transition-colors flex-shrink-0"
+                            style={{ background: def.color }}>
+                            Done
+                          </button>
+                          <button
+                            onClick={() => setDoneMode(null)}
+                            className="text-[10px] font-bold px-2 py-1 rounded-lg border text-slate-500 hover:bg-slate-100 transition-colors flex-shrink-0"
+                            style={{ borderColor: def.color + "40" }}>
+                            Cancel
+                          </button>
+                        </div>
                       </div>
                     )}
 
