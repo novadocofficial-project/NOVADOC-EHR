@@ -1538,13 +1538,15 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
       case "care-plan":
         return (
           <Section key="sc-cp" title="Care Plan" icon={ClipboardList} color="#10b981" filled={!!note.carePlan?.instructions?.trim()}>
-            <textarea
-              value={note.carePlan?.instructions ?? ""}
-              onChange={e => set("carePlan", { ...(note.carePlan ?? EMPTY_CARE_PLAN), instructions: e.target.value })}
-              rows={4}
-              placeholder="Care plan instructions…"
-              className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2.5 outline-none resize-none placeholder:text-slate-400 focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/20 transition-all"
-            />
+            {note.carePlan?.instructions?.trim() ? (
+              <p className="w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 leading-relaxed whitespace-pre-wrap select-text">
+                {note.carePlan.instructions}
+              </p>
+            ) : (
+              <p className="w-full text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200 rounded-xl px-3 py-2.5 italic">
+                No care plan recorded.
+              </p>
+            )}
           </Section>
         );
 
@@ -2228,13 +2230,15 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                 <ClipboardList className="h-3 w-3 text-emerald-500" />
                 Care Plan
               </p>
-              <textarea
-                value={note.carePlan?.instructions ?? ""}
-                onChange={e => set("carePlan", { ...(note.carePlan ?? EMPTY_CARE_PLAN), instructions: e.target.value })}
-                rows={4}
-                placeholder="Care plan instructions…"
-                className="w-full text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2.5 outline-none resize-none placeholder:text-slate-400 focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/20 transition-all"
-              />
+              {note.carePlan?.instructions?.trim() ? (
+                <p className="w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 leading-relaxed whitespace-pre-wrap select-text">
+                  {note.carePlan.instructions}
+                </p>
+              ) : (
+                <p className="w-full text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200 rounded-xl px-3 py-2.5 italic">
+                  No care plan recorded.
+                </p>
+              )}
             </div>
 
           </Section>
