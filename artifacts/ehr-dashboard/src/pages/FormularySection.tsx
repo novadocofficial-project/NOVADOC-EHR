@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import {
   ChevronLeft, X, Search, CheckCircle2, ClipboardCheck,
-  Plus, AlertTriangle, Pill, Pencil, ChevronDown, ChevronUp, Star, BookOpen,
+  Plus, AlertTriangle, Pill, Pencil, ChevronDown, ChevronUp, Star, BookOpen, List,
 } from "lucide-react";
 import { loadEnabledBundles } from "@/pages/formularyBundleUtils";
 import type { FormularyBundle } from "@/pages/formularyBundleUtils";
 import { loadInteractions, checkInteractions } from "@/pages/drugInteractionUtils";
 import type { InteractionAlert } from "@/pages/drugInteractionUtils";
+import { loadPediRules, getPediRulesForMedicine } from "@/pages/pediDosingUtils";
+import type { PediDosingRule } from "@/pages/pediDosingUtils";
 import type { AllergyEntry } from "@/pages/AllergySelector";
 
 // ─── Medicine Database (Generic → Brands + Strengths) ─────────────────────────
@@ -541,6 +543,7 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
   const [form,        setForm]        = useState(EMPTY_FORM);
   const [editingUid,     setEditingUid]     = useState<string | null>(null);
   const [bundleWarnings, setBundleWarnings] = useState<string[]>([]);
+  const [pediPanelOpen,  setPediPanelOpen]  = useState(false);
 
   const allMeds = getAllAdminMedicines();
   const opts    = getFormularyOptions();
@@ -549,6 +552,9 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
   ));
 
   const interactions    = loadInteractions();
+  const pediRulesForMed: PediDosingRule[] = selMed
+    ? getPediRulesForMedicine(selMed.id, loadPediRules())
+    : [];
   const allergyWarning  = selMed ? getAllergyWarning(selMed, patientAllergies) : null;
   const interactionAlerts: InteractionAlert[] = selMed
     ? checkInteractions(selMed.id, medicines.filter(m => m.uid !== editingUid).map(m => m.medicineId), interactions)
@@ -656,6 +662,54 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
   }
 
   return (
+    <>
+    {/* ── Pedi Dosing Reference Panel (left of prescription drawer) ── */}
+    {pediPanelOpen && pediRulesForMed.length > 0 && (
+      <div className="absolute inset-y-0 w-72 bg-white flex flex-col z-[19] overflow-hidden shadow-2xl border-r border-teal-100"
+        style={{ right: 'calc(68%)' }}>
+        <div className="flex items-center gap-2 px-4 py-3.5 border-b border-teal-100 bg-teal-50/80 flex-shrink-0">
+          <List className="h-4 w-4 text-teal-600 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] font-black text-teal-600 uppercase tracking-wide">Pedi Dosing Reference</p>
+            <p className="text-xs font-bold text-slate-700 truncate">{selMed?.generic}</p>
+          </div>
+          <button onClick={() => setPediPanelOpen(false)}
+            className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-teal-100 text-teal-400 hover:text-teal-700 transition-colors flex-shrink-0">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          {pediRulesForMed.map(rule => (
+            <div key={rule.id} className="bg-white rounded-xl border border-teal-100 p-3 shadow-sm">
+              <p className="text-[10px] font-black text-teal-700 uppercase tracking-wide mb-2">{rule.ageLabel}</p>
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-start gap-2">
+                  <span className="text-[10px] text-slate-400 flex-shrink-0">Route</span>
+                  <span className="text-[10px] font-bold text-slate-600 text-right">{rule.route}</span>
+                </div>
+                <div className="flex justify-between items-start gap-2">
+                  <span className="text-[10px] text-slate-400 flex-shrink-0">Dose</span>
+                  <span className="text-[10px] font-bold text-teal-700 text-right">{rule.doseRange}</span>
+                </div>
+                <div className="flex justify-between items-start gap-2">
+                  <span className="text-[10px] text-slate-400 flex-shrink-0">Frequency</span>
+                  <span className="text-[10px] font-bold text-slate-600 text-right">{rule.frequency}</span>
+                </div>
+                {rule.maxDose && (
+                  <div className="flex justify-between items-start gap-2">
+                    <span className="text-[10px] text-slate-400 flex-shrink-0">Max dose</span>
+                    <span className="text-[10px] font-bold text-orange-600 text-right">{rule.maxDose}</span>
+                  </div>
+                )}
+              </div>
+              {rule.notes && (
+                <p className="text-[10px] text-slate-400 mt-2 pt-2 border-t border-teal-50 italic leading-relaxed">{rule.notes}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
     <div className="absolute inset-y-0 right-0 w-[68%] bg-white shadow-2xl border-l border-slate-200 flex flex-col z-20">
 
       {/* ── Header ── */}
@@ -726,17 +780,25 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
             <div className="mt-3 border border-indigo-100 rounded-xl bg-indigo-50/30 p-3 space-y-3">
               {/* Selected medicine header */}
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-xs font-black text-slate-800">{selBrand.brand}</p>
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600">{selBrand.strength}</span>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-0.5">{selMed.generic}</p>
                 </div>
-                <button onClick={() => { setSelMed(null); setSelBrand(null); setForm(EMPTY_FORM); setEditingUid(null); }}
-                  className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors flex-shrink-0">
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {pediRulesForMed.length > 0 && (
+                    <button onClick={() => setPediPanelOpen(v => !v)}
+                      className={`h-6 px-2 flex items-center gap-1 rounded-lg text-[9px] font-black transition-colors ${pediPanelOpen ? "bg-teal-100 text-teal-700" : "bg-teal-50 text-teal-600 hover:bg-teal-100"}`}>
+                      <List className="h-3 w-3" /> Pedi
+                    </button>
+                  )}
+                  <button onClick={() => { setSelMed(null); setSelBrand(null); setForm(EMPTY_FORM); setEditingUid(null); setPediPanelOpen(false); }}
+                    className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
 
               {/* Allergy warning */}
@@ -877,5 +939,6 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
         </div>
       </div>
     </div>
+    </>
   );
 }

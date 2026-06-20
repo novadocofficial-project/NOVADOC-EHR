@@ -22,6 +22,7 @@ import {
   Heart,
   Layers,
   LayoutGrid,
+  List,
   Lock,
   MapPin,
   Monitor,
@@ -128,7 +129,7 @@ const ALL_EHR_KEYS = [
   "ehr-procedure-sections-v1", "ehr-procedure-partners-v1",
   "ehr-imaging-catalog-v2", "ehr-imaging-catalogue-v1", "ehr-imaging-reasons-v1", "ehr-imaging-partners-v1",
   "ehr-consumables-catalogue-v1", "ehr-consumables-providers-v1",
-  "ehr-formulary-catalogue-v1", "ehr-formulary-defaults-v1", "ehr-formulary-partners-v1", "ehr-formulary-bundles-v1", "ehr-drug-interactions-v1",
+  "ehr-formulary-catalogue-v1", "ehr-formulary-defaults-v1", "ehr-formulary-partners-v1", "ehr-formulary-bundles-v1", "ehr-drug-interactions-v1", "ehr-pedi-dosing-v1",
   "ehr-packages-v1", "ehr-nursing-config-v1", "ehr-triage-algorithms", "ehr-reg-config-v1",
   "ehr-billing-counters", "ehr-billing-reg", "ehr-fifo-lock", "ehr-visit-types",
   "ehr-queue-v2", "ehr-queue-nums-v2", "ehr-queue-ver",
@@ -239,7 +240,7 @@ type ActiveModule =
   | "proc-master" | "proc-partners"
   | "vacc-master" | "vacc-partners"
   | "permissions" | "signing-rules"
-  | "formulary-catalogue" | "formulary-defaults" | "formulary-partners" | "formulary-bundles" | "formulary-interactions"
+  | "formulary-catalogue" | "formulary-defaults" | "formulary-partners" | "formulary-bundles" | "formulary-interactions" | "formulary-pedi-dosing"
   | "imaging-tests" | "imaging-reasons" | "imaging-partners"
   | "consumables-master" | "consumables-providers"
   | "lab-order-sets" | "imaging-order-sets"
@@ -825,6 +826,7 @@ export function AdminSettings() {
                 {subNavItem("formulary-defaults",  <Tag className="h-3.5 w-3.5" />,  "Prescription Defaults")}
                 {subNavItem("formulary-bundles",       <BookOpen className="h-3.5 w-3.5" />, "Bundles")}
                 {subNavItem("formulary-interactions", <Zap className="h-3.5 w-3.5" />,      "Drug Interactions")}
+                {subNavItem("formulary-pedi-dosing",  <List className="h-3.5 w-3.5" />,     "Pedi Dosing Guidelines")}
                 {subNavItem("formulary-partners",     <Store className="h-3.5 w-3.5" />,    "Pharmacy Partners")}
               </div>
             )}
@@ -928,7 +930,7 @@ export function AdminSettings() {
         </AlertDialog>
 
         {/* Right Content */}
-        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","formulary-partners","formulary-bundles","formulary-interactions","imaging-tests","imaging-reasons","imaging-partners","consumables-master","consumables-providers","lab-order-sets","imaging-order-sets","nursing-triage"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
+        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","formulary-partners","formulary-bundles","formulary-interactions","formulary-pedi-dosing","imaging-tests","imaging-reasons","imaging-partners","consumables-master","consumables-providers","lab-order-sets","imaging-order-sets","nursing-triage"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
 
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} onNavigateToForms={() => setActiveModule("specialty-forms")} />
@@ -1102,11 +1104,12 @@ export function AdminSettings() {
             <PermissionsModule initialTab={activeModule === "signing-rules" ? "signing-rules" : "role-access"} />
           )}
 
-          {(activeModule === "formulary-catalogue" || activeModule === "formulary-defaults" || activeModule === "formulary-bundles" || activeModule === "formulary-interactions") && (
+          {(activeModule === "formulary-catalogue" || activeModule === "formulary-defaults" || activeModule === "formulary-bundles" || activeModule === "formulary-interactions" || activeModule === "formulary-pedi-dosing") && (
             <FormularyManagementModule initialTab={
-              activeModule === "formulary-defaults"      ? "defaults"      :
-              activeModule === "formulary-bundles"       ? "bundles"       :
-              activeModule === "formulary-interactions"  ? "interactions"  : "catalogue"
+              activeModule === "formulary-defaults"     ? "defaults"     :
+              activeModule === "formulary-bundles"      ? "bundles"      :
+              activeModule === "formulary-interactions" ? "interactions" :
+              activeModule === "formulary-pedi-dosing"  ? "pedi-dosing"  : "catalogue"
             } />
           )}
 
