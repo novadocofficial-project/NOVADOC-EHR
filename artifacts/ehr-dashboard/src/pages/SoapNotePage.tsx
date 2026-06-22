@@ -1357,7 +1357,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
                   style={{ backgroundColor: signedRecords.length > 0 ? "#94a3b8" : ACCENT }}>
                   {signedRecords.length > 0 ? 0 : 1}
                 </span>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-slate-200 text-slate-600 hover:border-[#4982CF]/40 hover:text-[#4982CF] hover:bg-[#4982CF]/5 transition-all">
+                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: ACCENT }}>
                   <BookOpen className="h-3.5 w-3.5" />
                   Medical References
                 </button>
