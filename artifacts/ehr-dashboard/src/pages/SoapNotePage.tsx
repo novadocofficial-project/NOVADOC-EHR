@@ -1358,9 +1358,15 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
                   {signedRecords.length > 0 ? 0 : 1}
                 </span>
               </div>
-              <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-                <RefreshCw className="h-3.5 w-3.5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-slate-200 text-slate-600 hover:border-[#4982CF]/40 hover:text-[#4982CF] hover:bg-[#4982CF]/5 transition-all">
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Medical References
+                </button>
+                <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
 
             <div className="p-5 flex flex-col gap-3">
