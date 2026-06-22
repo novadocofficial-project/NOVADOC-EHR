@@ -1329,7 +1329,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
               <button
                 key={label}
                 onClick={() => active ? closeDrawer() : openModule(label)}
-                className="flex items-center gap-1.5 px-4 py-2.5 text-[11px] font-bold whitespace-nowrap border-b-2 transition-all flex-shrink-0"
+                className="flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-bold whitespace-nowrap border-b-2 transition-all flex-shrink-0"
                 style={active
                   ? { borderBottomColor: ACCENT, color: ACCENT, backgroundColor: `${ACCENT}08` }
                   : { borderBottomColor: "transparent", color: "#94a3b8" }}>
