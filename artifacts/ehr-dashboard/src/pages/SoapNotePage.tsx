@@ -8,7 +8,7 @@ import {
   Microscope, Eye, BookOpen, Target,
   ShieldAlert, Scissors, Send, BookMarked, ListChecks, MessageSquare,
   TestTube, HeartPulse, UserCheck, Home,
-  Printer, FilePenLine, GitBranch, Layers,
+  Printer, FilePenLine, GitBranch, Layers, Camera, Globe,
 } from "lucide-react";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useSoapNoteDraft, saveRoutingSnapshot, savePendingLabOrders, savePatientClinicalSnapshot } from "@/hooks/useSoapNoteDraft";
@@ -66,16 +66,16 @@ const ALLERGIES_LIST = [
 ];
 
 const NAV_TABS: { label: string; Icon: React.ElementType }[] = [
-  { label: "360 View",          Icon: BarChart2     },
-  { label: "Visits",            Icon: Calendar      },
-  { label: "Medicines",         Icon: Pill          },
-  { label: "Labs",               Icon: FlaskConical  },
-  { label: "Nursing",           Icon: Stethoscope   },
-  { label: "Prescription",      Icon: ClipboardList },
-  { label: "Staff",             Icon: Users         },
-  { label: "Reports",           Icon: FileBarChart  },
-  { label: "Scanned Documents", Icon: ScanLine      },
-  { label: "Data Analytics",    Icon: TrendingUp    },
+  { label: "Last Visit",              Icon: Calendar      },
+  { label: "Labs",                    Icon: FlaskConical  },
+  { label: "Imaging",                 Icon: Camera        },
+  { label: "Procedures",              Icon: Scissors      },
+  { label: "MDT",                     Icon: Users         },
+  { label: "Referrals to Specialists",Icon: Send          },
+  { label: "Goals",                   Icon: Target        },
+  { label: "Data Analytics",          Icon: TrendingUp    },
+  { label: "Scanned Documents",       Icon: ScanLine      },
+  { label: "Patient Portal",          Icon: Globe         },
 ];
 
 const NOTE_HISTORY = [
@@ -1724,7 +1724,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
       {/* ═══════════════════════════════════════════════════════════════════════
           MODULE DRAWER (right-side overlay)
       ═══════════════════════════════════════════════════════════════════════ */}
-      {!showNoteDrawer && openDrawer && openDrawer !== "360 View" && openDrawer !== "Labs" && openDrawer !== "Scanned Documents" && activeTabMeta && (
+      {!showNoteDrawer && openDrawer && openDrawer !== "Labs" && openDrawer !== "Scanned Documents" && activeTabMeta && (
         <ModuleDrawer
           label={openDrawer}
           Icon={activeTabMeta.Icon}
@@ -1755,15 +1755,6 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
         />
       )}
 
-      {/* 360 View drawer — facesheet summary panel */}
-      {!showNoteDrawer && openDrawer === "360 View" && (
-        <View360Drawer
-          entry={entry}
-          fullscreen={drawerFullscreen}
-          onToggleFullscreen={() => setDrawerFullscreen(f => !f)}
-          onClose={closeDrawer}
-        />
-      )}
     </div>
   );
 }
