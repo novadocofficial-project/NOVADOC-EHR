@@ -128,6 +128,22 @@ export const PE_TEMPLATES: Record<string, { section: string; items: string[] }[]
 // ─── PE Summary card ──────────────────────────────────────────────────────────
 
 export function PeSummary({ systemId, savedData }: { systemId: string; savedData: Record<string, string> }) {
+  // Abdominal (GIT) — show auto-generated narrative
+  if (systemId === "gastrointestinal" && isAbdominalPeData(savedData)) {
+    const state = deserializeAbdominalPe(savedData);
+    const narrative = buildAbdominalPeNarrative(state);
+    if (!narrative.trim()) return null;
+    return (
+      <div className="mt-2 rounded-xl border border-cyan-100 bg-cyan-50/40 px-3 py-2.5">
+        <p className="text-[9px] font-black uppercase tracking-wider text-cyan-500 mb-1.5">
+          Abdominal Examination
+        </p>
+        <p className="text-[11px] text-slate-700 leading-relaxed">{narrative}</p>
+      </div>
+    );
+  }
+
+  // Generic systems — key:value list
   const template = PE_TEMPLATES[systemId] ?? [];
 
   const filledGroups = template
