@@ -19,6 +19,8 @@ import type { SpecialtyForm } from "@/pages/SpecialtyFormsModule";
 import { printHealthRecord } from "@/lib/printHealthRecord";
 import { CoughHistoryTemplate, CoughSummary, COUGH_EMPTY } from "@/pages/CoughHistoryTemplate";
 import type { CoughState } from "@/pages/CoughHistoryTemplate";
+import { AbdominalPainTemplate, ABDOMINAL_PAIN_EMPTY, buildAbdominalPainNarrative } from "@/pages/AbdominalPainTemplate";
+import type { AbdominalPainState } from "@/pages/AbdominalPainTemplate";
 import { AllergySelector } from "@/pages/AllergySelector";
 import type { AllergyEntry } from "@/pages/AllergySelector";
 import { RosSummary, RosDrawer, PeSystemSelector, PeChipsPanel, PeSystemDrawer } from "@/pages/RosPeSection";
@@ -400,6 +402,10 @@ function generateHpiNarrative(
       if (coughSaved.other)                s.push(coughSaved.other.trim());
       parts.push(s.join(" "));
 
+    } else if (!coughSaved && dynamicSaved && complaint.toLowerCase() === "abdominal pain" && "quality" in dynamicSaved) {
+      // Abdominal Pain structured template → prose
+      parts.push(buildAbdominalPainNarrative(dynamicSaved as unknown as AbdominalPainState));
+
     } else if (template && dynamicSaved) {
       // Admin-configured dynamic template → prose
       const s: string[] = [`Patient presents with ${complaint.toLowerCase()}.`];
@@ -543,18 +549,28 @@ interface HpiTemplateDrawerProps {
 function HpiTemplateDrawer({ complaint, isDone, savedData, onSave, dynamicSavedData, onDynamicSave, onClose }: HpiTemplateDrawerProps) {
   const [adminTemplate] = useState<HpiTemplateDef | null>(() => loadAdminHpiTemplate(complaint));
   const useDynamic = adminTemplate !== null;
+  const isAbdominalPain = !useDynamic && complaint.toLowerCase() === "abdominal pain";
 
   const [localState, setLocalState] = useState<CoughState>(savedData ?? COUGH_EMPTY);
-  const [dynamicLocalState, setDynamicLocalState] = useState<Record<string, unknown>>(dynamicSavedData ?? {});
+  const [dynamicLocalState, setDynamicLocalState] = useState<Record<string, unknown>>(() => {
+    if (dynamicSavedData && Object.keys(dynamicSavedData).length > 0) return dynamicSavedData;
+    if (isAbdominalPain) return ABDOMINAL_PAIN_EMPTY as unknown as Record<string, unknown>;
+    return {};
+  });
+
+  const usesDynamicStore = useDynamic || isAbdominalPain;
+  const emptyRef = isAbdominalPain
+    ? (ABDOMINAL_PAIN_EMPTY as unknown as Record<string, unknown>)
+    : {};
 
   const isDirty = isDone && (
-    useDynamic
-      ? JSON.stringify(dynamicLocalState) !== JSON.stringify(dynamicSavedData ?? {})
+    usesDynamicStore
+      ? JSON.stringify(dynamicLocalState) !== JSON.stringify(dynamicSavedData ?? emptyRef)
       : JSON.stringify(localState) !== JSON.stringify(savedData ?? COUGH_EMPTY)
   );
 
   function handleSave() {
-    if (useDynamic) {
+    if (usesDynamicStore) {
       onDynamicSave(dynamicLocalState);
     } else {
       onSave(localState);
@@ -625,6 +641,11 @@ function HpiTemplateDrawer({ complaint, isDone, savedData, onSave, dynamicSavedD
             fields={adminTemplate!.fields}
             state={dynamicLocalState}
             onChange={setDynamicLocalState}
+          />
+        ) : isAbdominalPain ? (
+          <AbdominalPainTemplate
+            state={dynamicLocalState as unknown as AbdominalPainState}
+            onChange={s => setDynamicLocalState(s as unknown as Record<string, unknown>)}
           />
         ) : complaint === "Cough" ? (
           <CoughHistoryTemplate state={localState} onChange={setLocalState} />
