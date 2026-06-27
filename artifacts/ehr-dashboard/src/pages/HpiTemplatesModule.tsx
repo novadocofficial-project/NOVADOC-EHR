@@ -29,6 +29,7 @@ export interface HpiTemplate {
   complaintName: string;
   fields: HpiField[];
   active: boolean;
+  builtIn?: boolean;
 }
 
 export const HPI_TEMPLATES_KEY = "ehr-hpi-templates-v1";
@@ -62,6 +63,21 @@ const SEED_TEMPLATES: HpiTemplate[] = [
       { id: "f7", label: "Quality", type: "radio", required: true, options: ["Throbbing", "Pressure", "Stabbing", "Band-like"], placeholder: "" },
       { id: "f8", label: "Duration", type: "free-text", required: true, options: [], placeholder: "e.g. 2 hours, started yesterday" },
       { id: "f9", label: "Aggravating Factors", type: "multi-select", required: false, options: ["Light", "Sound", "Movement", "Smell", "Stress"], placeholder: "" },
+    ],
+  },
+  {
+    id: "t3", name: "Abdominal Pain HPI", complaintId: "ap", complaintName: "Abdominal Pain", active: true, builtIn: true,
+    fields: [
+      { id: "fa1", label: "Quality", type: "multi-select", required: true, options: ["Aching", "Burning", "Colicky", "Cramping", "Dull", "Hot", "Pressure-like", "Sharp", "Shooting", "Stabbing", "Tingling", "None"], placeholder: "" },
+      { id: "fa2", label: "Pain Score (0–10)", type: "number", required: true, options: [], placeholder: "0–10" },
+      { id: "fa3", label: "Location", type: "multi-select", required: true, options: ["RUQ", "LUQ", "Epigastric", "Periumbilical", "LLQ", "RLQ", "Suprapubic", "Diffusively", "CVA"], placeholder: "" },
+      { id: "fa4", label: "Radiation", type: "radio", required: false, options: ["Without radiation", "With radiation"], placeholder: "" },
+      { id: "fa5", label: "Onset", type: "free-text", required: true, options: [], placeholder: "e.g. 3 days" },
+      { id: "fa6", label: "Course", type: "radio", required: true, options: ["Stable", "Unchanged", "Gradually worsening", "Rapidly worsening", "Gradually improving", "Rapidly improving", "Completely resolved", "Controlled"], placeholder: "" },
+      { id: "fa7", label: "Aggravating Factors", type: "multi-select", required: false, options: ["Eating", "Fatty foods", "Spicy foods", "Alcohol", "Stress", "Movement", "Deep breathing", "Defecation", "Urination", "Hunger", "None"], placeholder: "" },
+      { id: "fa8", label: "Alleviating Factors", type: "multi-select", required: false, options: ["Eating", "Antacids", "Recumbency", "Sitting forward", "Defecation", "Passing flatus", "Vomiting", "Analgesics", "Heat", "None"], placeholder: "" },
+      { id: "fa9", label: "Associated Symptoms", type: "multi-select", required: false, options: ["Nausea", "Vomiting", "Fever", "Diarrhea", "Constipation", "Bloating", "Loss of appetite", "Weight loss", "Jaundice", "Blood in stool", "Heartburn", "Flatulence"], placeholder: "" },
+      { id: "fa10", label: "Patient Denies", type: "multi-select", required: false, options: ["Fever", "Nausea", "Vomiting", "Diarrhea", "Constipation", "Blood in stool", "Weight loss", "Jaundice", "Heartburn", "Flatulence"], placeholder: "" },
     ],
   },
 ];
@@ -384,7 +400,15 @@ export function HpiTemplatesModule() {
   const [templates, setTemplates] = useState<HpiTemplate[]>(() => {
     try {
       const raw = localStorage.getItem(HPI_TEMPLATES_KEY);
-      if (raw) return JSON.parse(raw) as HpiTemplate[];
+      if (raw) {
+        const stored = JSON.parse(raw) as HpiTemplate[];
+        const builtInIds = SEED_TEMPLATES.filter(s => s.builtIn).map(s => s.id);
+        const missingBuiltIns = SEED_TEMPLATES.filter(
+          s => s.builtIn && !stored.some(t => t.id === s.id)
+        );
+        const pruned = stored.filter(t => !t.builtIn || builtInIds.includes(t.id));
+        return missingBuiltIns.length > 0 ? [...pruned, ...missingBuiltIns] : pruned;
+      }
     } catch { /**/ }
     return SEED_TEMPLATES;
   });
@@ -462,12 +486,25 @@ export function HpiTemplatesModule() {
           <tbody>
             {filtered.map(t => (
               <tr key={t.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 group">
-                <td className="px-4 py-3 font-semibold text-slate-800">{t.name}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-800">{t.name}</span>
+                    {t.builtIn && (
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200 leading-none">
+                        Built-in
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-4 py-3">
                   <Badge variant="outline" className="text-[10px] text-slate-600 border-slate-200">{t.complaintName}</Badge>
                 </td>
                 <td className="px-4 py-3 text-center">
-                  <span className="text-xs font-bold text-slate-500">{t.fields.length}</span>
+                  {t.builtIn ? (
+                    <span className="text-[10px] font-bold text-violet-500">Custom UI</span>
+                  ) : (
+                    <span className="text-xs font-bold text-slate-500">{t.fields.length}</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-center">
                   <Switch checked={t.active}
@@ -475,11 +512,15 @@ export function HpiTemplatesModule() {
                     className="data-[state=checked]:bg-[#4982CF]" />
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <div className="flex justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditing(t)} className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-[#4982CF] transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => cloneTemplate(t)} className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"><Copy className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => setDeleteId(t.id)} className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
-                  </div>
+                  {t.builtIn ? (
+                    <span className="text-[10px] text-slate-300 font-medium pr-1">Read-only</span>
+                  ) : (
+                    <div className="flex justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => setEditing(t)} className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-[#4982CF] transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => cloneTemplate(t)} className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"><Copy className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => setDeleteId(t.id)} className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

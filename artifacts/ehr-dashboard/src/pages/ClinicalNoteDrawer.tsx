@@ -357,7 +357,7 @@ interface HpiFieldDef {
 }
 interface HpiTemplateDef {
   id: string; name: string; complaintId: string; complaintName: string;
-  fields: HpiFieldDef[]; active: boolean;
+  fields: HpiFieldDef[]; active: boolean; builtIn?: boolean;
 }
 
 function loadAdminHpiTemplate(complaint: string): HpiTemplateDef | null {
@@ -365,7 +365,7 @@ function loadAdminHpiTemplate(complaint: string): HpiTemplateDef | null {
     const raw = localStorage.getItem(HPI_TEMPLATES_STORAGE_KEY);
     if (!raw) return null;
     const templates = JSON.parse(raw) as HpiTemplateDef[];
-    return templates.find(t => t.active && t.complaintName.toLowerCase() === complaint.toLowerCase()) ?? null;
+    return templates.find(t => t.active && !t.builtIn && t.complaintName.toLowerCase() === complaint.toLowerCase()) ?? null;
   } catch { return null; }
 }
 
