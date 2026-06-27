@@ -89,6 +89,8 @@ export interface NoteState {
   // HPI and Physical Exam drawer-state persisted so they survive refresh
   hpiSavedData:       Record<string, CoughState>;
   hpiDoneComplaints:  string[];
+  /** Answers for admin-configured dynamic HPI templates, keyed by complaint name then field id. */
+  hpiDynamicData?:    Record<string, Record<string, unknown>>;
   peSavedData:        Record<string, Record<string, string>>;
   peDoneSystemIds:    string[];
   /** Vital signs captured during this consultation (BP, pulse, SpO₂, temp). */
@@ -106,7 +108,7 @@ export const EMPTY_NOTE: NoteState = {
   otherOrders: "", visitNote: "", followUpDate: "",
   planTags: [],
   labOrders: [], labOrderDone: false, diagnoses: [], diagnosisDone: false,
-  hpiSavedData: {}, hpiDoneComplaints: [], peSavedData: {}, peDoneSystemIds: [],
+  hpiSavedData: {}, hpiDoneComplaints: [], hpiDynamicData: {}, peSavedData: {}, peDoneSystemIds: [],
   vitals: [], specialtyFormData: {}, specialtyFormId: undefined,
 };
 
@@ -343,6 +345,101 @@ function ChiefComplaintSelector({
   );
 }
 
+// ─── Admin HPI template helpers ───────────────────────────────────────────────
+
+const HPI_TEMPLATES_STORAGE_KEY = "ehr-hpi-templates-v1";
+
+interface HpiFieldDef {
+  id: string; label: string; type: "free-text" | "multi-select" | "radio" | "number";
+  required: boolean; options: string[]; placeholder: string;
+}
+interface HpiTemplateDef {
+  id: string; name: string; complaintId: string; complaintName: string;
+  fields: HpiFieldDef[]; active: boolean;
+}
+
+function loadAdminHpiTemplate(complaint: string): HpiTemplateDef | null {
+  try {
+    const raw = localStorage.getItem(HPI_TEMPLATES_STORAGE_KEY);
+    if (!raw) return null;
+    const templates = JSON.parse(raw) as HpiTemplateDef[];
+    return templates.find(t => t.active && t.complaintName.toLowerCase() === complaint.toLowerCase()) ?? null;
+  } catch { return null; }
+}
+
+// ─── Dynamic HPI form renderer ─────────────────────────────────────────────────
+
+function DynamicHpiForm({
+  fields, state, onChange,
+}: {
+  fields: HpiFieldDef[];
+  state: Record<string, unknown>;
+  onChange: (s: Record<string, unknown>) => void;
+}) {
+  return (
+    <div className="space-y-5">
+      {fields.map(field => (
+        <div key={field.id} className="pb-4 border-b border-slate-100 last:border-0">
+          <p className="text-xs font-black text-slate-800 mb-2.5">
+            {field.label}
+            {field.required && <span className="text-red-400 ml-0.5">*</span>}
+          </p>
+          {field.type === "free-text" && (
+            <textarea
+              value={(state[field.id] as string) ?? ""}
+              onChange={e => onChange({ ...state, [field.id]: e.target.value })}
+              placeholder={field.placeholder || "Enter text…"}
+              rows={3}
+              className="w-full text-xs text-slate-700 placeholder-slate-300 border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF] resize-none"
+            />
+          )}
+          {field.type === "number" && (
+            <input
+              type="number"
+              value={(state[field.id] as string) ?? ""}
+              onChange={e => onChange({ ...state, [field.id]: e.target.value })}
+              placeholder={field.placeholder || "0"}
+              className="w-32 text-xs text-slate-700 placeholder-slate-300 border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF]"
+            />
+          )}
+          {field.type === "radio" && (
+            <div className="flex flex-wrap gap-2">
+              {field.options.map(opt => {
+                const selected = (state[field.id] as string) === opt;
+                return (
+                  <button key={opt}
+                    onClick={() => onChange({ ...state, [field.id]: selected ? "" : opt })}
+                    className={["text-xs font-semibold px-3 py-1.5 rounded-xl border-2 transition-all", selected ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-200 text-slate-600 hover:border-[#4982CF]/50 hover:bg-blue-50/40"].join(" ")}>
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {field.type === "multi-select" && (
+            <div className="flex flex-wrap gap-2">
+              {field.options.map(opt => {
+                const arr = (state[field.id] as string[]) ?? [];
+                const selected = arr.includes(opt);
+                return (
+                  <button key={opt}
+                    onClick={() => {
+                      const next = selected ? arr.filter(v => v !== opt) : [...arr, opt];
+                      onChange({ ...state, [field.id]: next });
+                    }}
+                    className={["text-xs font-semibold px-3 py-1.5 rounded-xl border-2 transition-all", selected ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-200 text-slate-600 hover:border-[#4982CF]/50 hover:bg-blue-50/40"].join(" ")}>
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── HPI Template Drawer ──────────────────────────────────────────────────────
 
 interface HpiTemplateDrawerProps {
@@ -350,16 +447,30 @@ interface HpiTemplateDrawerProps {
   isDone: boolean;
   savedData?: CoughState;
   onSave: (state: CoughState) => void;
+  dynamicSavedData?: Record<string, unknown>;
+  onDynamicSave: (data: Record<string, unknown>) => void;
   onClose: () => void;
 }
 
-function HpiTemplateDrawer({ complaint, isDone, savedData, onSave, onClose }: HpiTemplateDrawerProps) {
-  const [localState, setLocalState] = useState<CoughState>(savedData ?? COUGH_EMPTY);
+function HpiTemplateDrawer({ complaint, isDone, savedData, onSave, dynamicSavedData, onDynamicSave, onClose }: HpiTemplateDrawerProps) {
+  const [adminTemplate] = useState<HpiTemplateDef | null>(() => loadAdminHpiTemplate(complaint));
+  const useDynamic = adminTemplate !== null;
 
-  const isDirty = isDone && JSON.stringify(localState) !== JSON.stringify(savedData ?? COUGH_EMPTY);
+  const [localState, setLocalState] = useState<CoughState>(savedData ?? COUGH_EMPTY);
+  const [dynamicLocalState, setDynamicLocalState] = useState<Record<string, unknown>>(dynamicSavedData ?? {});
+
+  const isDirty = isDone && (
+    useDynamic
+      ? JSON.stringify(dynamicLocalState) !== JSON.stringify(dynamicSavedData ?? {})
+      : JSON.stringify(localState) !== JSON.stringify(savedData ?? COUGH_EMPTY)
+  );
 
   function handleSave() {
-    onSave(localState);
+    if (useDynamic) {
+      onDynamicSave(dynamicLocalState);
+    } else {
+      onSave(localState);
+    }
   }
 
   return (
@@ -367,40 +478,36 @@ function HpiTemplateDrawer({ complaint, isDone, savedData, onSave, onClose }: Hp
 
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
-        <button
-          onClick={onClose}
-          className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0">
+        <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0">
           <ChevronLeft className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">History Taking Template</p>
           <p className="text-sm font-black text-slate-800 truncate">{complaint}</p>
         </div>
-
-        {/* Action button: Done badge / Update / Mark Done */}
+        {adminTemplate && (
+          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200 flex-shrink-0">
+            {adminTemplate.name}
+          </span>
+        )}
         {isDone && !isDirty ? (
           <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
             <CheckCircle2 className="h-3 w-3" /> Done
           </span>
         ) : isDirty ? (
-          <button
-            onClick={handleSave}
+          <button onClick={handleSave}
             className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 flex-shrink-0"
             style={{ backgroundColor: "#f59e0b" }}>
             <ClipboardCheck className="h-3.5 w-3.5" /> Update
           </button>
         ) : (
-          <button
-            onClick={handleSave}
+          <button onClick={handleSave}
             className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 flex-shrink-0"
             style={{ backgroundColor: ACCENT }}>
             <ClipboardCheck className="h-3.5 w-3.5" /> Mark Done
           </button>
         )}
-
-        <button
-          onClick={onClose}
-          className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+        <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -423,37 +530,31 @@ function HpiTemplateDrawer({ complaint, isDone, savedData, onSave, onClose }: Hp
         </div>
       </div>
 
-      {/* Template body — dynamic per complaint */}
+      {/* Template body */}
       <div className="flex-1 overflow-y-auto px-5 py-4">
-        {complaint === "Cough" ? (
+        {useDynamic ? (
+          <DynamicHpiForm
+            fields={adminTemplate!.fields}
+            state={dynamicLocalState}
+            onChange={setDynamicLocalState}
+          />
+        ) : complaint === "Cough" ? (
           <CoughHistoryTemplate state={localState} onChange={setLocalState} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
-            <div
-              className="h-16 w-16 rounded-2xl flex items-center justify-center"
-              style={{ backgroundColor: `${ACCENT}10` }}>
+            <div className="h-16 w-16 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${ACCENT}10` }}>
               <ClipboardList className="h-7 w-7" style={{ color: ACCENT }} />
             </div>
             <div>
-              <p className="text-sm font-black text-slate-700">History Template</p>
+              <p className="text-sm font-black text-slate-700">No Template Configured</p>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-xs">
-                The structured HPI template for <strong className="text-slate-600">{complaint}</strong> will load here.
+                No HPI template is configured for <strong className="text-slate-600">{complaint}</strong> yet.
                 <br />
-                Dynamic templates can be mapped per complaint type.
+                Go to <strong className="text-slate-600">Admin › SOAP Config › HPI Templates</strong> to create one.
               </p>
             </div>
-            <div className="mt-2 w-full max-w-xs space-y-2">
-              {["Onset & Duration", "Location & Radiation", "Quality & Severity", "Modifying Factors", "Associated Symptoms"].map(field => (
-                <div key={field} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-left">
-                  <div className="h-1.5 w-1.5 rounded-full bg-slate-300 flex-shrink-0" />
-                  <span className="text-xs text-slate-400 flex-1">{field}</span>
-                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide">Coming soon</span>
-                </div>
-              ))}
-            </div>
             {!isDone && (
-              <button
-                onClick={handleSave}
+              <button onClick={handleSave}
                 className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 mt-2"
                 style={{ backgroundColor: ACCENT }}>
                 <ClipboardCheck className="h-3.5 w-3.5" /> Mark Done
@@ -1065,6 +1166,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
   const [hpiOpenComplaint,  setHpiOpenComplaint]  = useState<string | null>(null);
   const [hpiDoneComplaints, setHpiDoneComplaints] = useState<string[]>(() => initialNote?.hpiDoneComplaints ?? []);
   const [hpiSavedData,      setHpiSavedData]      = useState<Record<string, CoughState>>(() => initialNote?.hpiSavedData ?? {});
+  const [hpiDynamicData,    setHpiDynamicData]    = useState<Record<string, Record<string, unknown>>>(() => initialNote?.hpiDynamicData ?? {});
   const [rosDrawerOpen,     setRosDrawerOpen]     = useState(false);
   const [peOpenSystem,      setPeOpenSystem]      = useState<string | null>(null);
   const [peDoneSystemIds,   setPeDoneSystemIds]   = useState<string[]>(() => initialNote?.peDoneSystemIds ?? []);
@@ -1230,6 +1332,15 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
     setNote(prev => ({ ...prev, hpiSavedData: nextSavedData, hpiDoneComplaints: nextDone }));
   }
 
+  function handleHpiDynamicSave(complaint: string, data: Record<string, unknown>) {
+    const nextDynamic = { ...hpiDynamicData, [complaint]: data };
+    const nextDone = hpiDoneComplaints.includes(complaint) ? hpiDoneComplaints : [...hpiDoneComplaints, complaint];
+    setHpiDynamicData(nextDynamic);
+    setHpiDoneComplaints(nextDone);
+    setHpiOpenComplaint(null);
+    setNote(prev => ({ ...prev, hpiDynamicData: nextDynamic, hpiDoneComplaints: nextDone }));
+  }
+
   function handlePeSave(systemId: string, findings: Record<string, string>) {
     const nextPeData = { ...peSavedData, [systemId]: findings };
     const nextDoneIds = peDoneSystemIds.includes(systemId) ? peDoneSystemIds : [...peDoneSystemIds, systemId];
@@ -1368,13 +1479,34 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                   })}
                 </div>
                 {note.chiefComplaints.map(complaint => {
-                  const isDone = hpiDoneComplaints.includes(complaint);
-                  const saved  = hpiSavedData[complaint];
-                  if (!isDone || !saved) return null;
+                  if (!hpiDoneComplaints.includes(complaint)) return null;
+                  const coughSaved   = hpiSavedData[complaint];
+                  const dynamicSaved = hpiDynamicData[complaint];
+                  const template     = dynamicSaved ? loadAdminHpiTemplate(complaint) : null;
+                  if (!coughSaved && !dynamicSaved) return null;
                   return (
                     <div key={`summary-${complaint}`}>
                       <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mt-3 mb-1">{complaint} — History Summary</p>
-                      <CoughSummary state={saved} />
+                      {coughSaved && !dynamicSaved ? (
+                        <CoughSummary state={coughSaved} />
+                      ) : template && dynamicSaved ? (
+                        <div className="mt-2 rounded-xl border border-purple-100 bg-purple-50/50 px-3 py-2.5 space-y-1.5">
+                          {template.fields.flatMap(f => {
+                            const val = dynamicSaved[f.id];
+                            if (val === undefined || val === null || val === "") return [];
+                            if (Array.isArray(val) && val.length === 0) return [];
+                            const items: string[] = Array.isArray(val) ? val : [String(val)];
+                            return [(
+                              <div key={f.id} className="flex flex-wrap items-center gap-1">
+                                <span className="text-[9px] font-black uppercase tracking-wider text-purple-400 w-full">{f.label}</span>
+                                {items.map(item => (
+                                  <span key={item} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white border border-purple-200 text-purple-700">{item}</span>
+                                ))}
+                              </div>
+                            )];
+                          })}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -1802,15 +1934,36 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
 
                 {/* Summary cards per done complaint */}
                 {note.chiefComplaints.map(complaint => {
-                  const isDone = hpiDoneComplaints.includes(complaint);
-                  const saved  = hpiSavedData[complaint];
-                  if (!isDone || !saved) return null;
+                  if (!hpiDoneComplaints.includes(complaint)) return null;
+                  const coughSaved   = hpiSavedData[complaint];
+                  const dynamicSaved = hpiDynamicData[complaint];
+                  const template     = dynamicSaved ? loadAdminHpiTemplate(complaint) : null;
+                  if (!coughSaved && !dynamicSaved) return null;
                   return (
                     <div key={`summary-${complaint}`}>
                       <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mt-3 mb-1">
                         {complaint} — History Summary
                       </p>
-                      <CoughSummary state={saved} />
+                      {coughSaved && !dynamicSaved ? (
+                        <CoughSummary state={coughSaved} />
+                      ) : template && dynamicSaved ? (
+                        <div className="mt-2 rounded-xl border border-purple-100 bg-purple-50/50 px-3 py-2.5 space-y-1.5">
+                          {template.fields.flatMap(f => {
+                            const val = dynamicSaved[f.id];
+                            if (val === undefined || val === null || val === "") return [];
+                            if (Array.isArray(val) && val.length === 0) return [];
+                            const items: string[] = Array.isArray(val) ? val : [String(val)];
+                            return [(
+                              <div key={f.id} className="flex flex-wrap items-center gap-1">
+                                <span className="text-[9px] font-black uppercase tracking-wider text-purple-400 w-full">{f.label}</span>
+                                {items.map(item => (
+                                  <span key={item} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white border border-purple-200 text-purple-700">{item}</span>
+                                ))}
+                              </div>
+                            )];
+                          })}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -2387,6 +2540,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             isDone={hpiDoneComplaints.includes(hpiOpenComplaint)}
             savedData={hpiSavedData[hpiOpenComplaint]}
             onSave={state => handleHpiSave(hpiOpenComplaint, state)}
+            dynamicSavedData={hpiDynamicData[hpiOpenComplaint]}
+            onDynamicSave={data => handleHpiDynamicSave(hpiOpenComplaint, data)}
             onClose={() => setHpiOpenComplaint(null)}
           />
         )}

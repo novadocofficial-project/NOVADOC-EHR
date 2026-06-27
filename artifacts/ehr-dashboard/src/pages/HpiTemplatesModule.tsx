@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Plus, Edit2, Trash2, Copy, GripVertical, X, ChevronRight, Save,
   CheckCircle2, Eye, FileText, ChevronDown, AlertCircle,
@@ -11,9 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type FieldType = "free-text" | "multi-select" | "radio" | "number";
+export type FieldType = "free-text" | "multi-select" | "radio" | "number";
 
-interface HpiField {
+export interface HpiField {
   id: string;
   label: string;
   type: FieldType;
@@ -22,7 +22,7 @@ interface HpiField {
   placeholder: string;
 }
 
-interface HpiTemplate {
+export interface HpiTemplate {
   id: string;
   name: string;
   complaintId: string;
@@ -30,6 +30,8 @@ interface HpiTemplate {
   fields: HpiField[];
   active: boolean;
 }
+
+export const HPI_TEMPLATES_KEY = "ehr-hpi-templates-v1";
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
 
@@ -379,7 +381,16 @@ function TemplateEditor({
 // ─── HpiTemplatesModule ───────────────────────────────────────────────────────
 
 export function HpiTemplatesModule() {
-  const [templates, setTemplates] = useState<HpiTemplate[]>(SEED_TEMPLATES);
+  const [templates, setTemplates] = useState<HpiTemplate[]>(() => {
+    try {
+      const raw = localStorage.getItem(HPI_TEMPLATES_KEY);
+      if (raw) return JSON.parse(raw) as HpiTemplate[];
+    } catch { /**/ }
+    return SEED_TEMPLATES;
+  });
+  useEffect(() => {
+    try { localStorage.setItem(HPI_TEMPLATES_KEY, JSON.stringify(templates)); } catch { /**/ }
+  }, [templates]);
   const [editing, setEditing] = useState<HpiTemplate | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);

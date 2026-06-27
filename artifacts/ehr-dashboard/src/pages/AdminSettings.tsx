@@ -145,6 +145,7 @@ const ALL_EHR_KEYS = [
   "appt-goal-drafts-v1",
   "appt-triage-drafts", "appt-triage-sessions",
   "ehr-health-ed-library-v1",
+  "ehr-hpi-templates-v1",
 ] as const;
 
 export type Specialty = {
