@@ -541,25 +541,26 @@ function HpiTemplateDrawer({ complaint, isDone, savedData, onSave, dynamicSavedD
         ) : complaint === "Cough" ? (
           <CoughHistoryTemplate state={localState} onChange={setLocalState} />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
-            <div className="h-16 w-16 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${ACCENT}10` }}>
-              <ClipboardList className="h-7 w-7" style={{ color: ACCENT }} />
-            </div>
-            <div>
-              <p className="text-sm font-black text-slate-700">No Template Configured</p>
-              <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-xs">
-                No HPI template is configured for <strong className="text-slate-600">{complaint}</strong> yet.
-                <br />
-                Go to <strong className="text-slate-600">Admin › SOAP Config › HPI Templates</strong> to create one.
+          <div className="space-y-4">
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700 leading-relaxed">
+                No structured template configured for <strong>{complaint}</strong>.
+                Document findings below or go to <strong>Admin › SOAP Config › HPI Templates</strong> to create one.
               </p>
             </div>
-            {!isDone && (
-              <button onClick={handleSave}
-                className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 mt-2"
-                style={{ backgroundColor: ACCENT }}>
-                <ClipboardCheck className="h-3.5 w-3.5" /> Mark Done
-              </button>
-            )}
+            <div className="pb-4">
+              <p className="text-xs font-black text-slate-800 mb-2">
+                History of Present Illness — {complaint}
+              </p>
+              <textarea
+                value={(dynamicLocalState._generic as string) ?? ""}
+                onChange={e => setDynamicLocalState({ ...dynamicLocalState, _generic: e.target.value })}
+                placeholder={`Describe the history of ${complaint}…`}
+                rows={8}
+                className="w-full text-xs text-slate-700 placeholder-slate-300 border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF] resize-none"
+              />
+            </div>
           </div>
         )}
       </div>
@@ -1484,6 +1485,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                   const dynamicSaved = hpiDynamicData[complaint];
                   const template     = dynamicSaved ? loadAdminHpiTemplate(complaint) : null;
                   if (!coughSaved && !dynamicSaved) return null;
+                  const genericText  = dynamicSaved?._generic as string | undefined;
                   return (
                     <div key={`summary-${complaint}`}>
                       <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mt-3 mb-1">{complaint} — History Summary</p>
@@ -1505,6 +1507,10 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                               </div>
                             )];
                           })}
+                        </div>
+                      ) : genericText ? (
+                        <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                          <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{genericText}</p>
                         </div>
                       ) : null}
                     </div>
@@ -1939,6 +1945,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                   const dynamicSaved = hpiDynamicData[complaint];
                   const template     = dynamicSaved ? loadAdminHpiTemplate(complaint) : null;
                   if (!coughSaved && !dynamicSaved) return null;
+                  const genericText  = dynamicSaved?._generic as string | undefined;
                   return (
                     <div key={`summary-${complaint}`}>
                       <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mt-3 mb-1">
@@ -1962,6 +1969,10 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                               </div>
                             )];
                           })}
+                        </div>
+                      ) : genericText ? (
+                        <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                          <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{genericText}</p>
                         </div>
                       ) : null}
                     </div>
