@@ -76,6 +76,298 @@ const CHIEF_COMPLAINT_OPTIONS = [
   "Nasal Polyps", "Repeated Ear Infection", "Plugged Ears", "Snoring and Sleep Apnea",
 ];
 
+const ALLERGY_FORM_SECTIONS: FormSection[] = [
+  {
+    id: "s1", title: "Main Reason for Allergy Consultation", description: "", globalOrder: 0,
+    fields: [
+      { id: "f1-quick", label: "Chief Complaint", type: "multiselect", placeholder: "", allowOther: true, options: CHIEF_COMPLAINT_OPTIONS },
+      { id: "f1-text", label: "Main Reason (Additional Details)", type: "textarea", placeholder: "Describe the main reason for this allergy consultation…", options: [] },
+    ],
+  },
+  {
+    id: "s-nasal", title: "Main Symptoms — Nasal / Eyes / Sinus / Throat", description: "", globalOrder: 100,
+    fields: [{ id: "f-nasal", label: "Nasal / Eyes / Sinus / Throat Symptoms", type: "checkbox-group", placeholder: "", options: [
+      "Runny nose", "Sneezing", "Blocked nose — Right", "Blocked nose — Left", "Blocked nose — Bilateral",
+      "Itchy and watery eyes", "Red eyes", "Sinus congestion / pressure", "Postnasal drip",
+      "Irritated throat with cough", "Frequent sore throats", "Nasal polyps", "Choking / tongue swelling",
+      "Headache", "Sinus infections / positive X-ray", "Deviated nasal septum",
+      "Enlarged turbinates", "History of nasal trauma",
+    ] }],
+  },
+  {
+    id: "s-chest-sx", title: "Main Symptoms — Chest", description: "", globalOrder: 200,
+    fields: [{ id: "f-chest-sx", label: "Chest Symptoms", type: "checkbox-group", placeholder: "", options: [
+      "Cough — dry", "Cough — with sputum", "Chest congestion", "Wheezing", "Difficulty breathing",
+      "Chest tightness", "Difficulty breathing in", "Dyspnea on exertion", "Pain on breathing in",
+      "Leg swelling — Left", "Leg swelling — Right", "Leg swelling — Bilateral",
+      "Acid reflux / acidity", "Anxiety / panic attacks", "Waking up at night",
+      "Fever — high grade", "Fever — low grade", "Weight loss", "H/O pneumonia",
+      "Use of ACE inhibitors / BCPs", "Exposure to smoke", "Environmental risks",
+    ] }],
+  },
+  {
+    id: "s-skin-sx", title: "Main Symptoms — Skin", description: "", globalOrder: 300,
+    fields: [{ id: "f-skin-sx", label: "Skin Symptoms / Details", type: "textarea", placeholder: "Describe skin symptoms, rash type, distribution, triggers…", options: [] }],
+  },
+  {
+    id: "s-food-sx", title: "Main Symptoms — Food Allergies", description: "", globalOrder: 400,
+    fields: [{ id: "f-food-sx", label: "Food Allergy Details", type: "textarea", placeholder: "Foods causing reactions, type of reaction, severity…", options: [] }],
+  },
+  {
+    id: "s-drug-sx", title: "Main Symptoms — Drug Allergies", description: "", globalOrder: 500,
+    fields: [{ id: "f-drug-sx", label: "Drug Allergy Details", type: "textarea", placeholder: "Drugs causing reactions, type of reaction, severity…", options: [] }],
+  },
+  {
+    id: "s-immuno-sx", title: "Main Symptoms — Immunodeficiency", description: "", globalOrder: 600,
+    fields: [{ id: "f-immuno-sx", label: "Immunodeficiency Details", type: "textarea", placeholder: "Recurrent infections, immune deficiency history…", options: [] }],
+  },
+  {
+    id: "s-anaphylaxis", title: "Main Symptoms — Anaphylaxis / HAE", description: "", globalOrder: 700,
+    fields: [{ id: "f-anaphylaxis", label: "Anaphylaxis / HAE Details", type: "textarea", placeholder: "Episodes of anaphylaxis or hereditary angioedema, triggers, treatment…", options: [] }],
+  },
+  {
+    id: "s-other-sx", title: "Main Symptoms — Other", description: "", globalOrder: 800,
+    fields: [
+      { id: "f-other-sx-check", label: "Other Symptoms", type: "checkbox-group", placeholder: "", options: ["H/O pneumonia / sinus infection"] },
+      { id: "f-other-sx-text", label: "Other Symptoms Details", type: "textarea", placeholder: "Other symptoms and relevant details…", options: [] },
+    ],
+  },
+  {
+    id: "s-duration", title: "Duration & Pattern of Symptoms", description: "", globalOrder: 900,
+    fields: [
+      { id: "f-duration", label: "Duration of Symptoms", type: "text", placeholder: "e.g. 3 weeks, 6 months, 2 years…", options: [] },
+      { id: "f-worse-duration", label: "Symptoms Worse For", type: "text", placeholder: "e.g. last 2 weeks, past month…", options: [] },
+    ],
+  },
+  {
+    id: "s-assoc-sx", title: "Associated Symptoms", description: "", globalOrder: 1000,
+    fields: [{ id: "f-assoc-sx", label: "Associated Symptoms", type: "checkbox-group", placeholder: "", options: [
+      "Cough / chest congestion", "Frequent sore throat", "Post-nasal drip", "Sinus congestion",
+      "Cough — dry", "Cough — productive", "Cough — with blood", "Migraine headache",
+      "Wheezing", "Shortness of breath", "Chest tightness", "Chest congestion", "Chest pain",
+      "Difficulty breathing", "Skin rash", "Acid reflux", "Choking of the throat",
+      "Edema of the tongue", "Headache", "Anxiety / stress", "H/O eczema / dry skin",
+      "H/O pneumonia / sinus infection", "Food allergies",
+    ] }],
+  },
+  {
+    id: "s-aggravating", title: "Aggravating Factors", description: "", globalOrder: 1100,
+    fields: [{ id: "f-aggravating", label: "Aggravating Factors", type: "checkbox-group", placeholder: "", options: [
+      "House dust", "Animals — cats", "Animals — dogs", "Animals — birds", "Animals — other",
+      "URTIs", "Seasons — summer", "Seasons — winter", "All year / season changes",
+      "Indoor", "Outdoors", "Cities / locations", "Home", "Work", "Perfumes",
+      "Kitchen environment", "Foods", "Moisture / molds / leaks", "Biomass exposure",
+      "Chemicals / hobby materials", "Other",
+    ] }],
+  },
+  {
+    id: "s-relieving", title: "Relieving Factors", description: "", globalOrder: 1200,
+    fields: [{ id: "f-relieving", label: "Relieving Factors", type: "checkbox-group", placeholder: "", options: [
+      "Seasons", "Cities / locations", "Indoors", "Outdoors", "Triggers avoidance",
+      "Home", "Work", "Air conditioning", "Air purifier", "Masks", "Protective gear", "Other",
+    ] }],
+  },
+  {
+    id: "s4", title: "Current Medications", description: "Name, dose/form, frequency, duration", globalOrder: 1300,
+    fields: [{ id: "f4", label: "Current Medications", type: "multiselect", placeholder: "Select medications…", allowOther: true, selectionStyle: "simple", options: [
+      "Rigix (Cetirizine)", "Telfast (Fexofenadine)", "Kestine (Ebastine)", "Myteka (Montelukast)",
+      "Hivate (Mometesone)", "Flixonose (Fluticasone)", "Nebulized Treatment", "Ventolin Inhaler",
+      "Foster Inhaler", "Seretide Inhaler", "Combivair", "T-Day 5mg", "T-Day 10mg",
+    ] }],
+  },
+  {
+    id: "s-past-meds", title: "Past Medicines", description: "Categories previously used", globalOrder: 1400,
+    fields: [{ id: "f-past-meds", label: "Past Medication Categories", type: "checkbox-group", placeholder: "", options: [
+      "Allergy tablets / syrups", "Nasal sprays", "Inhalers — controllers", "Inhalers — relievers",
+      "Nebulizer medicines", "Oral steroids", "Injectable steroids", "Creams", "Antibiotics",
+      "Biological medicines", "Allergy vaccine — oral (SLIT)", "Allergy vaccine — subcutaneous (SCIT)",
+      "Immunizations", "Hakimi", "Homeopathy", "Natural therapies", "Other",
+    ] }],
+  },
+  {
+    id: "s-med-allergy", title: "Medicine Allergies", description: "Generic name and type of reaction", globalOrder: 1500,
+    fields: [{ id: "f-med-allergy", label: "Medicine Allergy Details", type: "textarea", placeholder: "e.g. Penicillin — anaphylaxis; Aspirin — urticaria…", options: [] }],
+  },
+  {
+    id: "s-medical-cond", title: "Current & Past Medical Conditions", description: "", globalOrder: 1600,
+    fields: [{ id: "f-medical-cond", label: "Medical Conditions", type: "checkbox-group", placeholder: "", options: [
+      "Hypertension", "Diabetes", "PUD / GERD", "Arthritis / back pain", "Heart disease",
+      "Kidney / prostate", "Tuberculosis (T.B.)", "Liver disease", "COPD", "Obesity",
+      "Anxiety / panic disorder", "Lipid disorder", "Hepatitis / jaundice", "Ulcers", "Other",
+    ] }],
+  },
+  {
+    id: "s-surgical", title: "Past Surgical History", description: "", globalOrder: 1700,
+    fields: [{ id: "f-surgical", label: "Surgeries / Procedures", type: "checkbox-group", placeholder: "", options: [
+      "Sinus / nasal polyp surgery", "Tonsillectomy", "Adenoidectomy", "Ear surgeries",
+      "Appendectomy", "Hernia repair", "Cataract / eye surgery", "Joint surgery", "Other",
+    ] }],
+  },
+  {
+    id: "s-emergency", title: "Past Emergency Visits, Hospitalizations & Procedures", description: "", globalOrder: 1800,
+    fields: [
+      { id: "f-emergency", label: "Emergency Visit Details", type: "textarea", placeholder: "Date: ___  Reason: ___\nDate: ___  Reason: ___", options: [] },
+      { id: "f-hospitalization", label: "Hospitalization Details", type: "textarea", placeholder: "Date: ___  Reason: ___\nDate: ___  Reason: ___", options: [] },
+      { id: "f-procedures", label: "Procedures (date, reason)", type: "textarea", placeholder: "Date: ___  Reason: ___\nDate: ___  Reason: ___", options: [] },
+    ],
+  },
+  {
+    id: "s-recent-tests", title: "Recent Diagnostic Tests", description: "", globalOrder: 1900,
+    fields: [
+      { id: "f-allergy-tests", label: "Allergy Related Tests", type: "checkbox-group", placeholder: "", options: [
+        "CBC", "IgE", "Allergy blood tests", "Allergy skin tests", "PFTs / peak flow",
+        "Sinus X-ray", "CT sinus", "Chest X-ray", "Other",
+      ] },
+      { id: "f-general-tests", label: "General Tests", type: "checkbox-group", placeholder: "", options: [
+        "TSH", "LFTs", "Vitamin B12", "Ultrasounds", "Urine", "ECG", "Other",
+      ] },
+    ],
+  },
+  {
+    id: "s-family-hx", title: "Family History", description: "", globalOrder: 2000,
+    fields: [
+      { id: "f-family-allergy", label: "Allergy Related Conditions", type: "checkbox-group", placeholder: "", options: [
+        "Sinus / nasal congestion", "Asthma", "Skin rash", "Food allergy", "Drug allergy", "Immunodeficiency",
+      ] },
+      { id: "f-family-general", label: "Non-Allergy Related Conditions", type: "checkbox-group", placeholder: "", options: [
+        "Diabetes", "Hypertension", "Thyroid disease", "Arthritis / back pain", "Overweight", "Mental illness",
+      ] },
+    ],
+  },
+  {
+    id: "s-social", title: "Social History", description: "", globalOrder: 2100,
+    fields: [{ id: "f-social", label: "Social History", type: "checkbox-group", placeholder: "", options: [
+      "Smoker — current", "Smoker — past", "Vape / e-cigarette", "Oral tobacco",
+      "Tea", "Coffee", "Alcohol", "Exercise / gym", "Exposure in hobbies", "Cold beverages",
+    ] }],
+  },
+  {
+    id: "s-ros", title: "Review of Systems", description: "", globalOrder: 2200,
+    fields: [{ id: "f-ros", label: "Systems Review", type: "checkbox-group", placeholder: "", options: [
+      "Stomach / intestines", "Thyroid", "Heart", "Lungs", "Skin", "Arthritis / morning stiffness",
+      "Anxiety", "Ears / hearing", "Insomnia", "Fatigue / weakness", "Weight gain", "Weight loss",
+      "Bladder / kidney", "Liver disease", "Other",
+    ] }],
+  },
+  {
+    id: "s-home-env", title: "Home / Area Environment", description: "", globalOrder: 2300,
+    fields: [
+      { id: "f-home-type", label: "Residence Type", type: "checkbox-group", placeholder: "", options: [
+        "Urban", "Rural", "House", "Apartment",
+      ] },
+      { id: "f-home-area", label: "Area Characteristics", type: "checkbox-group", placeholder: "", options: [
+        "Heavy traffic / pollution", "Garden / open space", "Industrial area / waste",
+        "Surrounding greenery", "Other",
+      ] },
+    ],
+  },
+  {
+    id: "s-indoor-env", title: "Indoor Environment", description: "", globalOrder: 2400,
+    fields: [{ id: "f-indoor", label: "Indoor Environment Features", type: "checkbox-group", placeholder: "", options: [
+      "Indoor pets", "Smokers in home", "Air conditioning", "Cooler",
+      "Full carpet floor", "Rug floor", "Tiles floor", "Mosaic floor", "Wood floor", "Marble floor",
+      "Moldy walls / floors", "Air cleaner", "Ventilation", "Humidifier", "Other",
+    ] }],
+  },
+  {
+    id: "s-bedroom-env", title: "Bedroom Environment", description: "", globalOrder: 2500,
+    fields: [{ id: "f-bedroom", label: "Bedroom Environment Features", type: "checkbox-group", placeholder: "", options: [
+      "Full carpet / rug", "Laminate", "Tile", "Mosaic", "Cement floor", "Dust collectors",
+      "Pets in bedroom", "Stuffed toys", "Charpai", "Foam mattress", "Spring mattress",
+      "Air purifier", "Air cleaner", "History of leaks / flooding", "Humidifier",
+      "Heavy curtains", "Dust mopping routine", "Other",
+    ] }],
+  },
+  {
+    id: "s-work-env", title: "Work Environment", description: "", globalOrder: 2600,
+    fields: [
+      { id: "f-work-text", label: "Present Occupation & Years at Job", type: "text", placeholder: "e.g. Teacher, 5 years…", options: [] },
+      { id: "f-work-features", label: "Work Environment Features", type: "checkbox-group", placeholder: "", options: [
+        "Outdoor work", "Indoor work", "Clean environment", "Dusty environment",
+        "Ventilation compliance", "Hazardous exposure", "Protection equipment used",
+      ] },
+    ],
+  },
+  {
+    id: "s5", title: "Physical Examination", description: "", globalOrder: 2700,
+    fields: [{ id: "f5", label: "Physical Examination Findings", type: "multiselect", placeholder: "Select examination findings…", allowOther: true, selectionStyle: "simple", options: [
+      "The Physical Examination is normal", "Bilateral Crackles", "Bilateral Wheezing",
+      "Clear Nasal Discharge", "Dry Skin in General", "Eczematous Rashes",
+      "Erythematous Conjunctiva", "Erythematous Throat with Post Nasal Drip",
+      "Nasal Congestion", "Post Nasal Drip", "Swelling of Lips and Face",
+      "Urticarial Rashes", "Wheezing on the Left Side", "Wheezing on the Right",
+    ] }],
+  },
+  {
+    id: "s7", title: "Provisional Diagnosis", description: "", globalOrder: 2800,
+    fields: [{ id: "f8", label: "Diagnosis", type: "multiselect", placeholder: "Select diagnosis…", allowOther: true, selectionStyle: "simple", options: [
+      "Airway Disease (Unspecified) — J98.9", "Allergic Conjunctivitis — H10.13",
+      "Allergic Rhinitis — J30.9", "Anaphylactic Reaction — T78.2XXA", "Angioedema — T78.3XXA",
+      "Anxiety — F41.9", "Anxiety and Depression — F41.8", "Asthma — J45.909",
+      "Atopic Dermatitis — L20.9", "Bronchitis — J40", "Chronic Sinusitis — J32.9",
+      "Chronic Urticaria — L50.8", "Contact Dermatitis — L25.9", "Drug Allergy — Z88.9",
+      "Dry Skin — L85.3", "Food Allergy — Z91.018", "Fungal Skin Infection — B36.9",
+      "Gluten Allergy — K90.41", "Hair Color Allergy — L23.4", "Hereditary Angioedema — D84.1",
+      "Immune Deficiency — D84.9", "NSAID Allergy — Z88.6", "Postnasal Drip — R09.82",
+      "Reactive Airway Disease — J45.909", "Recurrent Sore Throats — J31.2",
+    ] }],
+  },
+  {
+    id: "s8", title: "Diagnostic Tests Ordered", description: "", globalOrder: 2900,
+    fields: [{ id: "f9", label: "Tests Ordered", type: "checkbox-group", placeholder: "", options: [
+      "CBC", "PFT", "CRP", "Food allergy blood test", "Oral drug challenge",
+      "IgA / IgG levels", "C4 level", "IgE", "Chest X-ray", "TSH",
+      "C1 esterase inhibitor level", "Environmental allergy skin tests", "HRCT chest",
+      "Thyroid antibodies", "Anti-transglutaminase IgA / IgG", "Sinus X-ray",
+      "Tryptase level", "Environmental allergy blood tests", "Peak flow meter reading",
+      "Vitamin B12", "Food diary", "Food allergy panel", "Asthma assessment test",
+      "Vitamin D", "Oral food challenge", "Limited CT sinus", "ANA",
+      "Sputum for eosinophils", "Patch skin testing", "Skin biopsy",
+    ] }],
+  },
+  {
+    id: "s10", title: "Treatment Plan", description: "", globalOrder: 3000,
+    fields: [{ id: "f11", label: "Treatment Plan", type: "checkbox-group", placeholder: "", options: [
+      "Antihistamines", "Nasal spray", "Inhalers", "LK inhibitors",
+      "Oral steroids", "Injectable steroids", "Allergy vaccination — SLIT",
+      "Allergy vaccination — SCIT", "Biologics",
+    ] }],
+  },
+  {
+    id: "s-education", title: "Patient Education", description: "", globalOrder: 3100,
+    fields: [{ id: "f-education", label: "Patient Education Notes", type: "textarea", placeholder: "Allergen avoidance, inhaler technique, nasal spray technique, lifestyle modifications, websites…", options: [] }],
+  },
+  {
+    id: "s11", title: "Specialist Referrals", description: "", globalOrder: 3200,
+    fields: [{ id: "f12", label: "Referrals", type: "checkbox-group", placeholder: "", options: [
+      "ENT", "Primary care physician", "Pulmonary", "Nutritionist",
+      "Clinical psychologist", "Psychiatrist", "Other",
+    ] }],
+  },
+  {
+    id: "s6", title: "Red Flags", description: "Check all red flag signs that are present", globalOrder: 3300,
+    fields: [{ id: "f7", label: "Red Flag Signs", type: "checkbox-group", placeholder: "", options: [
+      "Anaphylaxis", "Severe dyspnea", "Angioedema", "Hypotension",
+      "Loss of consciousness", "High-grade fever (> 39°C)",
+    ] }],
+  },
+  {
+    id: "s9", title: "General Measures", description: "", globalOrder: 3400,
+    fields: [{ id: "f10", label: "General Management", type: "textarea", placeholder: "Diet, lifestyle modifications, allergen avoidance…", options: [] }],
+  },
+  {
+    id: "s12", title: "Others", description: "", globalOrder: 3500,
+    fields: [{ id: "f13", label: "Additional Notes", type: "textarea", placeholder: "Any other observations, instructions, or follow-up plan…", options: [] }],
+  },
+  {
+    id: "s13", title: "Follow-Up Visit", description: "", globalOrder: 3600,
+    fields: [
+      { id: "f13-when", label: "Follow-Up Timeframe", type: "radio-group", placeholder: "", options: ["Days", "Weeks", "Months", "Years", "As needed"] },
+      { id: "f14", label: "Follow-Up Date", type: "date", placeholder: "", options: [] },
+    ],
+  },
+];
+
 export function loadForms(): SpecialtyForm[] {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -83,156 +375,10 @@ export function loadForms(): SpecialtyForm[] {
       const forms = JSON.parse(raw) as SpecialtyForm[];
       // Migration: ensure all forms have systemComponents array
       forms.forEach(f => { if (!f.systemComponents) f.systemComponents = []; });
-      // Migration: patch sf-asif-immuno chief complaint if still textarea
+      // Migration v2: replace sf-asif-immuno sections with comprehensive allergy form
       const asif = forms.find(f => f.id === "sf-asif-immuno");
-      if (asif) {
-        const s1 = asif.sections.find(s => s.id === "s1");
-        if (s1) {
-          const f1 = s1.fields.find(f => f.id === "f1");
-          if (f1 && f1.type === "textarea") {
-            f1.type = "multiselect";
-            f1.options = CHIEF_COMPLAINT_OPTIONS;
-            f1.allowOther = true;
-            f1.placeholder = "";
-          }
-        }
-        // Migration: patch f4 (Current Medications) if still textarea
-        const s4 = asif.sections.find(s => s.id === "s4");
-        if (s4) {
-          const f4 = s4.fields.find(f => f.id === "f4");
-          if (f4) {
-            if (f4.type === "textarea") {
-              f4.type = "multiselect";
-              f4.placeholder = "Select medications…";
-              f4.allowOther = true;
-              f4.options = [
-                "Rigix (Cetirizine)", "Telfast (Fexofenadine)", "Kestine (Ebastine)",
-                "Myteka (Montelukast)", "Hivate (Mometesone)", "Flixonose (Fluticasone)",
-                "Nebulized Treatment", "Ventolin Inhaler", "Foster Inhaler",
-                "Seretide Inhaler", "Combivair", "T-Day 5mg", "T-Day 10mg",
-              ];
-            }
-            if (!f4.selectionStyle) f4.selectionStyle = "simple";
-          }
-        }
-        // Migration: merge History 1 + History 2 → single History multiselect
-        const s2 = asif.sections.find(s => s.id === "s2");
-        if (s2 && s2.title !== "History") {
-          s2.title = "History";
-          s2.description = "";
-          s2.fields = [{ id: "f2", label: "Patient History", type: "multiselect", placeholder: "Select patient history…", allowOther: true, selectionStyle: "simple", options: [
-            "Allergy to Food", "Allergy to Medicine", "Anxiety", "Anxiety and Depression",
-            "Chest Congestion", "Cough With Clear Sputum", "Cough with Wheezing",
-            "Difficulty in Breathing", "Dry Cough Due to Throat Irritation", "Eczematous Rashes",
-            "Frequent Sore Throat", "Itchy and Red Eyes", "Itchy and Watery Eyes",
-            "Medicines Are Not Controlling the Symptoms", "Medicines Help But Not Completely",
-            "Nasal Polyps", "Nebulizer Treatment Helpful for the Chest Congestion",
-            "Plugged Ears", "Postnasal Drip and Sinus Congestion", "Repeated Ear Infection",
-            "Skin Rash", "Sneezing and Runny Nose", "Snoring and Sleep Apnea", "Swelling of the Skin",
-            "Symptoms are Aggravated by Pests", "Symptoms Are Present All Year Around",
-            "Symptoms Are Seasonal", "Symptoms Are Worse in Winter",
-            "Symptoms Occur All Year Around", "Symptoms Worse in Karachi",
-            "The Symptoms are Aggravated by Dust", "The Symptoms are Chronic",
-            "The Symptoms Have Been Present for Several Days",
-            "The Symptoms Have Been Present for Several Months",
-            "The Symptoms Have Been Present for Several Weeks",
-            "The Symptoms Have Been Present for Several Years",
-            "The Symptoms Have Improved Significantly", "The Symptoms Have Worsened Lately",
-            "There is a History of Smoking", "There is Wall to Wall Carpet in the Bedroom",
-            "Urticaria and Hives", "With Recent Aggravation",
-          ] }];
-        }
-        // Remove old s3 (History 2)
-        asif.sections = asif.sections.filter(s => s.id !== "s3");
-        // Migration: add s13 Follow Up if missing
-        if (!asif.sections.find(s => s.id === "s13")) {
-          asif.sections.push({ id: "s13", title: "Follow Up", description: "", fields: [{ id: "f14", label: "Follow Up Date", type: "date", placeholder: "", options: [] }], globalOrder: asif.sections.length * 100 });
-        }
-        // Migration: patch s11 Specialist Referrals f12 → multiselect
-        const s11 = asif.sections.find(s => s.id === "s11");
-        if (s11) {
-          const f12 = s11.fields.find(f => f.id === "f12");
-          if (!f12 || f12.type !== "multiselect") {
-            s11.fields = [{ id: "f12", label: "Referral Details", type: "multiselect", placeholder: "Select referrals…", allowOther: true, selectionStyle: "simple", options: [
-              "ENT Consultation",
-              "Family Medicine Consultation",
-              "Behavioural Health Evaluation by a Clinical Psychologist",
-              "Nutritionist Consultation",
-              "Pulmonary Consultation",
-            ] }];
-          }
-        }
-        // Migration: patch s10 Care Management f11 → multiselect
-        const s10 = asif.sections.find(s => s.id === "s10");
-        if (s10) {
-          const f11 = s10.fields.find(f => f.id === "f11");
-          if (!f11 || f11.type !== "multiselect") {
-            s10.fields = [{ id: "f11", label: "Treatment Plan", type: "multiselect", placeholder: "Select care management items…", allowOther: true, selectionStyle: "simple", options: [
-              "Behavioural Health Evaluation",
-              "Demonstration of Inhaler Technique and Use of Spacer Device",
-              "Demonstration of Nasal Spray Technique",
-              "Demonstration of Peak Flow Measurements and Documentation",
-              "Information on Allergen Avoidance of Dust Mite and Cockroach",
-              "Information on Allergy Vaccination, its Benefits and Risks",
-              "Instructions on Diagnostic Tests and Procedures Ordered",
-              "Instructions on ENT Specialist and Other Specialists Referral",
-              "Instructions on Family Medicine Referral",
-              "Instructions on Taking Prescription Medicines and Potential Side Effects",
-              "Nutritional Advice from Nutritionist",
-              "Patient Care Manager Contact Information",
-              "Visit Websites of The American Academy of Allergy and American College of Allergy",
-            ] }];
-          }
-        }
-        // Migration: patch s8 Investigations f9 → multiselect
-        const s8 = asif.sections.find(s => s.id === "s8");
-        if (s8) {
-          const f9 = s8.fields.find(f => f.id === "f9");
-          if (!f9 || f9.type !== "multiselect") {
-            s8.fields = [{ id: "f9", label: "Investigations Required", type: "multiselect", placeholder: "Select investigations…", allowOther: true, selectionStyle: "simple", options: [
-              "CBC", "Chest X-Ray", "CRP", "CT Scan of the Sinus",
-              "Environmental Allergy Blood Test", "Environmental Allergy Intra Dermal Skin Test",
-              "Environmental Allergy Skin Prick Test", "Food Allergy Blood Test",
-              "Food Allergy Skin Prick Tests", "GGT", "IgA and IgG levels", "IgE",
-              "LFTs", "PFT'S", "Sinus X-Ray", "TSH", "Vit B12", "Vit D",
-            ] }];
-          }
-        }
-        // Migration: patch s7 Provisional Diagnosis f8 → multiselect
-        const s7 = asif.sections.find(s => s.id === "s7");
-        if (s7) {
-          const f8 = s7.fields.find(f => f.id === "f8");
-          if (!f8 || f8.type !== "multiselect") {
-            s7.fields = [{ id: "f8", label: "Diagnosis", type: "multiselect", placeholder: "Select diagnosis…", allowOther: true, selectionStyle: "simple", options: [
-              "Airway Disease (Unspecified) — J98.9", "Allergic Conjunctivitis — H10.13",
-              "Allergic Rhinitis — J30.9", "Anaphylactic Reaction — T78.2XXA",
-              "Angioedema — T78.3XXA", "Anxiety — F41.9", "Anxiety and Depression — F41.8",
-              "Asthma — J45.909", "Atopic Dermatitis — L20.9", "Bronchitis — J40",
-              "Chronic Sinusitis — J32.9", "Chronic Urticaria — L50.8",
-              "Contact Dermatitis — L25.9", "Drug Allergy — Z88.9", "Dry Skin — L85.3",
-              "Food Allergy — Z91.018", "Fungal Skin Infection — B36.9",
-              "Gluten Allergy — K90.41", "Hair Color Allergy — L23.4",
-              "Hereditary Angioedema — D84.1", "Immune Deficiency — D84.9",
-              "NSAID Allergy — Z88.6", "Postnasal Drip — R09.82",
-              "Reactive Airway Disease — J45.909", "Recurrent Sore Throats — J31.2",
-            ] }];
-          }
-        }
-        // Migration: patch s5 Physical Examination → multiselect
-        const s5 = asif.sections.find(s => s.id === "s5");
-        if (s5) {
-          const f5 = s5.fields.find(f => f.id === "f5");
-          if (!f5 || f5.type !== "multiselect") {
-            s5.fields = [{ id: "f5", label: "Physical Examination", type: "multiselect", placeholder: "Select examination findings…", allowOther: true, selectionStyle: "simple", options: [
-              "The Physical Examination is normal",
-              "Bilateral Crackles", "Bilateral Wheezing", "Clear Nasal Discharge",
-              "Dry Skin in General", "Eczematous Rashes", "Erythematous Conjunctiva",
-              "Erythematous Throat with Post Nasal Drip", "Nasal Congestion", "Post Nasal Drip",
-              "Swelling of Lips and Face", "Urticarial Rashes",
-              "Wheezing on the Left Side", "Wheezing on the Right",
-            ] }];
-          }
-        }
+      if (asif && !asif.sections.find(s => s.id === "s-nasal")) {
+        asif.sections = ALLERGY_FORM_SECTIONS.map(s => ({ ...s }));
       }
       // Migration: backfill globalOrder on sections for ALL forms; remap SC orders into unified space
       forms.forEach(f => {
@@ -274,219 +420,7 @@ const SEED_FORMS: SpecialtyForm[] = [
     systemComponents: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    sections: [
-      {
-        id: "s1", title: "Chief Complaint", description: "", globalOrder: 0,
-        fields: [{
-          id: "f1", label: "Chief Complaint", type: "multiselect", placeholder: "", allowOther: true,
-          options: [
-            "Sneezing and Runny Nose",
-            "Itchy and Watery Eyes",
-            "Skin Rash",
-            "Urticaria and Hives",
-            "Swelling of the Skin",
-            "Cough and Wheezing",
-            "Chest Congestion",
-            "Difficulty in Breathing",
-            "Frequent Sore Throat",
-            "Dry Cough",
-            "Cough with Clear Sputum",
-            "Postnasal Drip and Sinus Congestion",
-            "Eczematous Rashes",
-            "Allergy to Food",
-            "Allergy to Medicine",
-            "Nasal Polyps",
-            "Repeated Ear Infection",
-            "Plugged Ears",
-            "Snoring and Sleep Apnea",
-          ],
-        }],
-      },
-      {
-        id: "s2", title: "History", description: "", globalOrder: 100,
-        fields: [{ id: "f2", label: "Patient History", type: "multiselect", placeholder: "Select patient history…", allowOther: true, selectionStyle: "simple", options: [
-          "Allergy to Food",
-          "Allergy to Medicine",
-          "Anxiety",
-          "Anxiety and Depression",
-          "Chest Congestion",
-          "Cough With Clear Sputum",
-          "Cough with Wheezing",
-          "Difficulty in Breathing",
-          "Dry Cough Due to Throat Irritation",
-          "Eczematous Rashes",
-          "Frequent Sore Throat",
-          "Itchy and Red Eyes",
-          "Itchy and Watery Eyes",
-          "Medicines Are Not Controlling the Symptoms",
-          "Medicines Help But Not Completely",
-          "Nasal Polyps",
-          "Nebulizer Treatment Helpful for the Chest Congestion",
-          "Plugged Ears",
-          "Postnasal Drip and Sinus Congestion",
-          "Repeated Ear Infection",
-          "Skin Rash",
-          "Sneezing and Runny Nose",
-          "Snoring and Sleep Apnea",
-          "Swelling of the Skin",
-          "Symptoms are Aggravated by Pests",
-          "Symptoms Are Present All Year Around",
-          "Symptoms Are Seasonal",
-          "Symptoms Are Worse in Winter",
-          "Symptoms Occur All Year Around",
-          "Symptoms Worse in Karachi",
-          "The Symptoms are Aggravated by Dust",
-          "The Symptoms are Chronic",
-          "The Symptoms Have Been Present for Several Days",
-          "The Symptoms Have Been Present for Several Months",
-          "The Symptoms Have Been Present for Several Weeks",
-          "The Symptoms Have Been Present for Several Years",
-          "The Symptoms Have Improved Significantly",
-          "The Symptoms Have Worsened Lately",
-          "There is a History of Smoking",
-          "There is Wall to Wall Carpet in the Bedroom",
-          "Urticaria and Hives",
-          "With Recent Aggravation",
-        ] }],
-      },
-      {
-        id: "s4", title: "Current Medicine", description: "", globalOrder: 200,
-        fields: [{ id: "f4", label: "Current Medications", type: "multiselect", placeholder: "Select medications…", allowOther: true, selectionStyle: "simple", options: [
-          "Rigix (Cetirizine)",
-          "Telfast (Fexofenadine)",
-          "Kestine (Ebastine)",
-          "Myteka (Montelukast)",
-          "Hivate (Mometesone)",
-          "Flixonose (Fluticasone)",
-          "Nebulized Treatment",
-          "Ventolin Inhaler",
-          "Foster Inhaler",
-          "Seretide Inhaler",
-          "Combivair",
-          "T-Day 5mg",
-          "T-Day 10mg",
-        ] }],
-      },
-      {
-        id: "s5", title: "Physical Examination", description: "", globalOrder: 300,
-        fields: [{ id: "f5", label: "Physical Examination", type: "multiselect", placeholder: "Select examination findings…", allowOther: true, selectionStyle: "simple", options: [
-          "The Physical Examination is normal",
-          "Bilateral Crackles",
-          "Bilateral Wheezing",
-          "Clear Nasal Discharge",
-          "Dry Skin in General",
-          "Eczematous Rashes",
-          "Erythematous Conjunctiva",
-          "Erythematous Throat with Post Nasal Drip",
-          "Nasal Congestion",
-          "Post Nasal Drip",
-          "Swelling of Lips and Face",
-          "Urticarial Rashes",
-          "Wheezing on the Left Side",
-          "Wheezing on the Right",
-        ] }],
-      },
-      {
-        id: "s6", title: "Red Flags", description: "Check all red flag signs that are present", globalOrder: 400,
-        fields: [{
-          id: "f7", label: "Red Flag Signs", type: "checkbox-group", placeholder: "",
-          options: ["Anaphylaxis", "Severe dyspnea", "Angioedema", "Hypotension", "Loss of consciousness", "High-grade fever (> 39°C)"],
-        }],
-      },
-      {
-        id: "s7", title: "Provisional Diagnosis", description: "", globalOrder: 500,
-        fields: [{ id: "f8", label: "Diagnosis", type: "multiselect", placeholder: "Select diagnosis…", allowOther: true, selectionStyle: "simple", options: [
-          "Airway Disease (Unspecified) — J98.9",
-          "Allergic Conjunctivitis — H10.13",
-          "Allergic Rhinitis — J30.9",
-          "Anaphylactic Reaction — T78.2XXA",
-          "Angioedema — T78.3XXA",
-          "Anxiety — F41.9",
-          "Anxiety and Depression — F41.8",
-          "Asthma — J45.909",
-          "Atopic Dermatitis — L20.9",
-          "Bronchitis — J40",
-          "Chronic Sinusitis — J32.9",
-          "Chronic Urticaria — L50.8",
-          "Contact Dermatitis — L25.9",
-          "Drug Allergy — Z88.9",
-          "Dry Skin — L85.3",
-          "Food Allergy — Z91.018",
-          "Fungal Skin Infection — B36.9",
-          "Gluten Allergy — K90.41",
-          "Hair Color Allergy — L23.4",
-          "Hereditary Angioedema — D84.1",
-          "Immune Deficiency — D84.9",
-          "NSAID Allergy — Z88.6",
-          "Postnasal Drip — R09.82",
-          "Reactive Airway Disease — J45.909",
-          "Recurrent Sore Throats — J31.2",
-        ] }],
-      },
-      {
-        id: "s8", title: "Investigations", description: "", globalOrder: 600,
-        fields: [{ id: "f9", label: "Investigations Required", type: "multiselect", placeholder: "Select investigations…", allowOther: true, selectionStyle: "simple", options: [
-          "CBC",
-          "Chest X-Ray",
-          "CRP",
-          "CT Scan of the Sinus",
-          "Environmental Allergy Blood Test",
-          "Environmental Allergy Intra Dermal Skin Test",
-          "Environmental Allergy Skin Prick Test",
-          "Food Allergy Blood Test",
-          "Food Allergy Skin Prick Tests",
-          "GGT",
-          "IgA and IgG levels",
-          "IgE",
-          "LFTs",
-          "PFT'S",
-          "Sinus X-Ray",
-          "TSH",
-          "Vit B12",
-          "Vit D",
-        ] }],
-      },
-      {
-        id: "s9", title: "General Measures", description: "", globalOrder: 700,
-        fields: [{ id: "f10", label: "General Management", type: "textarea", placeholder: "Diet, lifestyle modifications, allergen avoidance...", options: [] }],
-      },
-      {
-        id: "s10", title: "Care Management", description: "", globalOrder: 800,
-        fields: [{ id: "f11", label: "Treatment Plan", type: "multiselect", placeholder: "Select care management items…", allowOther: true, selectionStyle: "simple", options: [
-          "Behavioural Health Evaluation",
-          "Demonstration of Inhaler Technique and Use of Spacer Device",
-          "Demonstration of Nasal Spray Technique",
-          "Demonstration of Peak Flow Measurements and Documentation",
-          "Information on Allergen Avoidance of Dust Mite and Cockroach",
-          "Information on Allergy Vaccination, its Benefits and Risks",
-          "Instructions on Diagnostic Tests and Procedures Ordered",
-          "Instructions on ENT Specialist and Other Specialists Referral",
-          "Instructions on Family Medicine Referral",
-          "Instructions on Taking Prescription Medicines and Potential Side Effects",
-          "Nutritional Advice from Nutritionist",
-          "Patient Care Manager Contact Information",
-          "Visit Websites of The American Academy of Allergy and American College of Allergy",
-        ] }],
-      },
-      {
-        id: "s11", title: "Specialist Referrals", description: "", globalOrder: 900,
-        fields: [{ id: "f12", label: "Referral Details", type: "multiselect", placeholder: "Select referrals…", allowOther: true, selectionStyle: "simple", options: [
-          "ENT Consultation",
-          "Family Medicine Consultation",
-          "Behavioural Health Evaluation by a Clinical Psychologist",
-          "Nutritionist Consultation",
-          "Pulmonary Consultation",
-        ] }],
-      },
-      {
-        id: "s12", title: "Others", description: "", globalOrder: 1000,
-        fields: [{ id: "f13", label: "Additional Notes", type: "textarea", placeholder: "Any other observations, instructions, or follow-up plan...", options: [] }],
-      },
-      {
-        id: "s13", title: "Follow Up", description: "", globalOrder: 1100,
-        fields: [{ id: "f14", label: "Follow Up Date", type: "date", placeholder: "", options: [] }],
-      },
-    ],
+    sections: ALLERGY_FORM_SECTIONS,
   },
 ];
 
