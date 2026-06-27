@@ -367,6 +367,60 @@ function loadAdminHpiTemplate(complaint: string): HpiTemplateDef | null {
   } catch { return null; }
 }
 
+// ─── HPI narrative generator ───────────────────────────────────────────────────
+
+function generateHpiNarrative(
+  complaints: string[],
+  hpiSavedData: Record<string, CoughState>,
+  hpiDynamicData: Record<string, Record<string, unknown>>,
+  hpiDoneComplaints: string[],
+): string {
+  const parts: string[] = [];
+
+  for (const complaint of complaints) {
+    if (!hpiDoneComplaints.includes(complaint)) continue;
+    const coughSaved   = hpiSavedData[complaint];
+    const dynamicSaved = hpiDynamicData[complaint];
+    const template     = dynamicSaved ? loadAdminHpiTemplate(complaint) : null;
+    const genericText  = dynamicSaved?._generic as string | undefined;
+
+    if (coughSaved && !dynamicSaved) {
+      // Cough structured data → prose
+      const s: string[] = [`Patient presents with ${complaint.toLowerCase()}.`];
+      if (coughSaved.duration) s.push(`Duration: ${coughSaved.duration}.`);
+      if (coughSaved.character.length)     s.push(`Character: ${coughSaved.character.join(", ")}.`);
+      if (coughSaved.origin.length)        s.push(`Origin: ${coughSaved.origin.join(", ")}.`);
+      const sputumParts = [coughSaved.sputumAmount, ...coughSaved.sputumColor].filter(Boolean);
+      if (sputumParts.length)              s.push(`Sputum: ${sputumParts.join(", ")}.`);
+      if (coughSaved.assocSymptoms.length) s.push(`Associated symptoms: ${coughSaved.assocSymptoms.join(", ")}.`);
+      if (coughSaved.childSymptoms.length) s.push(`Paediatric symptoms: ${coughSaved.childSymptoms.join(", ")}.`);
+      if (coughSaved.triggers.length)      s.push(`Triggered by: ${coughSaved.triggers.join(", ")}.`);
+      if (coughSaved.otherTrigger)         s.push(`Other trigger: ${coughSaved.otherTrigger}.`);
+      if (coughSaved.hxContact.length)     s.push(`History of contact: ${coughSaved.hxContact.join(", ")}.`);
+      if (coughSaved.other)                s.push(coughSaved.other.trim());
+      parts.push(s.join(" "));
+
+    } else if (template && dynamicSaved) {
+      // Admin-configured dynamic template → prose
+      const s: string[] = [`Patient presents with ${complaint.toLowerCase()}.`];
+      for (const field of template.fields) {
+        const val = dynamicSaved[field.id];
+        if (val === undefined || val === null || val === "") continue;
+        if (Array.isArray(val) && val.length === 0) continue;
+        const display = Array.isArray(val) ? val.join(", ") : String(val);
+        s.push(`${field.label}: ${display}.`);
+      }
+      parts.push(s.join(" "));
+
+    } else if (genericText) {
+      // Free-text fallback — include verbatim
+      parts.push(`[${complaint}] ${genericText.trim()}`);
+    }
+  }
+
+  return parts.join("\n\n");
+}
+
 // ─── Dynamic HPI form renderer ─────────────────────────────────────────────────
 
 function DynamicHpiForm({
@@ -1516,6 +1570,47 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                     </div>
                   );
                 })}
+                {/* HPI Narrative generation */}
+                {hpiDoneComplaints.length > 0 && note.chiefComplaints.some(c =>
+                  hpiDoneComplaints.includes(c) && (hpiSavedData[c] || (hpiDynamicData ?? {})[c])
+                ) && (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    {note.hpi ? (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-purple-500 flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" /> HPI Narrative
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => navigator.clipboard.writeText(note.hpi)}
+                              className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border border-slate-200 text-slate-500 bg-slate-50 hover:bg-slate-100 transition-colors">
+                              <ClipboardCheck className="h-2.5 w-2.5" /> Copy
+                            </button>
+                            <button
+                              onClick={() => set("hpi", generateHpiNarrative(note.chiefComplaints, hpiSavedData, hpiDynamicData ?? {}, hpiDoneComplaints))}
+                              className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border border-purple-200 text-purple-600 bg-purple-50 hover:bg-purple-100 transition-colors">
+                              <Sparkles className="h-2.5 w-2.5" /> Regenerate
+                            </button>
+                          </div>
+                        </div>
+                        <textarea
+                          value={note.hpi}
+                          onChange={e => set("hpi", e.target.value)}
+                          rows={5}
+                          className="w-full text-xs text-slate-700 border border-purple-100 rounded-xl px-3 py-2.5 bg-purple-50/20 focus:outline-none focus:ring-2 focus:ring-purple-300/40 focus:border-purple-300 resize-none leading-relaxed"
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => set("hpi", generateHpiNarrative(note.chiefComplaints, hpiSavedData, hpiDynamicData ?? {}, hpiDoneComplaints))}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-purple-200 text-purple-600 bg-purple-50/40 hover:bg-purple-50 hover:border-purple-300 transition-all text-xs font-bold">
+                        <Sparkles className="h-3.5 w-3.5" /> Generate HPI Narrative
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {hpiDoneComplaints.length > 0 && (
                   <p className="text-[10px] text-slate-400 mt-1">{hpiDoneComplaints.length}/{note.chiefComplaints.length} complaints documented</p>
                 )}
@@ -1978,6 +2073,47 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                     </div>
                   );
                 })}
+
+                {/* HPI Narrative generation */}
+                {hpiDoneComplaints.length > 0 && note.chiefComplaints.some(c =>
+                  hpiDoneComplaints.includes(c) && (hpiSavedData[c] || (hpiDynamicData ?? {})[c])
+                ) && (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    {note.hpi ? (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-purple-500 flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" /> HPI Narrative
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => navigator.clipboard.writeText(note.hpi)}
+                              className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border border-slate-200 text-slate-500 bg-slate-50 hover:bg-slate-100 transition-colors">
+                              <ClipboardCheck className="h-2.5 w-2.5" /> Copy
+                            </button>
+                            <button
+                              onClick={() => set("hpi", generateHpiNarrative(note.chiefComplaints, hpiSavedData, hpiDynamicData ?? {}, hpiDoneComplaints))}
+                              className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border border-purple-200 text-purple-600 bg-purple-50 hover:bg-purple-100 transition-colors">
+                              <Sparkles className="h-2.5 w-2.5" /> Regenerate
+                            </button>
+                          </div>
+                        </div>
+                        <textarea
+                          value={note.hpi}
+                          onChange={e => set("hpi", e.target.value)}
+                          rows={5}
+                          className="w-full text-xs text-slate-700 border border-purple-100 rounded-xl px-3 py-2.5 bg-purple-50/20 focus:outline-none focus:ring-2 focus:ring-purple-300/40 focus:border-purple-300 resize-none leading-relaxed"
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => set("hpi", generateHpiNarrative(note.chiefComplaints, hpiSavedData, hpiDynamicData ?? {}, hpiDoneComplaints))}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-purple-200 text-purple-600 bg-purple-50/40 hover:bg-purple-50 hover:border-purple-300 transition-all text-xs font-bold">
+                        <Sparkles className="h-3.5 w-3.5" /> Generate HPI Narrative
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {hpiDoneComplaints.length > 0 && (
                   <p className="text-[10px] text-slate-400 mt-1">
