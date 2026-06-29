@@ -881,7 +881,7 @@ export function AdminSettings() {
               className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
             >
               <FlaskConical className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Lab Catalog</span>
+              <span className="flex-1 text-left">Lab</span>
               {navExpanded.labCatalog ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
             </button>
             {navExpanded.labCatalog && (
@@ -900,7 +900,7 @@ export function AdminSettings() {
               className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
             >
               <Stethoscope className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Procedure Catalog</span>
+              <span className="flex-1 text-left">Procedure</span>
               {navExpanded.procedureCatalog ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
             </button>
             {navExpanded.procedureCatalog && (
@@ -917,7 +917,7 @@ export function AdminSettings() {
               className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
             >
               <ScanLine className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Imaging Catalog</span>
+              <span className="flex-1 text-left">Imaging</span>
               {navExpanded.imagingCatalog ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
             </button>
             {navExpanded.imagingCatalog && (
@@ -936,7 +936,7 @@ export function AdminSettings() {
               className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
             >
               <Syringe className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Vaccine Catalog</span>
+              <span className="flex-1 text-left">Vaccine</span>
               {navExpanded.vaccineCatalog ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
             </button>
             {navExpanded.vaccineCatalog && (
