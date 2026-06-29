@@ -1058,7 +1058,7 @@ function RegistrationContent({ onRegister, isReassign = false, patients }: Regis
 type BillingStep = "cart" | "payment";
 type BillingMode = "services" | "packages";
 type PayType = "cash" | "card" | "corporate" | "insurance" | "welfare" | "split";
-type SplitLegMethod = "cash" | "card" | "bank";
+type SplitLegMethod = "cash" | "card";
 
 type DiscountMode   = "percent" | "amount";
 type DiscountSource = "doctor" | "hospital" | "both";
@@ -1067,14 +1067,12 @@ interface SplitLeg {
   uid: string;
   method: SplitLegMethod;
   amount: string;
-  cashRx: string;
 }
 
 export interface SplitLegResult {
   method: SplitLegMethod;
   label: string;
   amount: number;
-  cashReceived?: number;
 }
 
 interface CartLine {
@@ -1167,7 +1165,7 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
   const [coPayAmt, setCoPayAmt]   = useState("");
   const [coPayMethod, setCoPayMethod] = useState<SplitLegMethod>("cash");
   const [refNum, setRefNum]       = useState("");
-  const [splitLegs, setSplitLegs] = useState<SplitLeg[]>([{ uid: uid(), method: "cash", amount: "", cashRx: "" }]);
+  const [splitLegs, setSplitLegs] = useState<SplitLeg[]>([{ uid: uid(), method: "cash", amount: "" }]);
 
   const invNo = useRef("INV-" + Math.random().toString(36).substr(2, 6).toUpperCase()).current;
 
@@ -1237,7 +1235,7 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
   const splitExcess    = Math.max(0, splitAllocated - grandTotal);
 
   function addSplitLeg() {
-    setSplitLegs(prev => [...prev, { uid: uid(), method: "cash", amount: "", cashRx: "" }]);
+    setSplitLegs(prev => [...prev, { uid: uid(), method: "cash", amount: "" }]);
   }
   function removeSplitLeg(legUid: string) {
     setSplitLegs(prev => prev.length > 1 ? prev.filter(l => l.uid !== legUid) : prev);
@@ -1253,8 +1251,7 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
     if (payType === "split") {
       const balanced  = Math.abs(splitAllocated - grandTotal) < 0.01;
       const allFilled = splitLegs.every(l => l.method && Number(l.amount) > 0);
-      const cashOk    = splitLegs.filter(l => l.method === "cash").every(l => (Number(l.cashRx) || 0) >= (Number(l.amount) || 0));
-      return balanced && allFilled && cashOk;
+      return balanced && allFilled;
     }
     return true;
   }
@@ -1882,11 +1879,10 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
             {coPay > 0 && (
               <div>
                 <p className="text-xs font-semibold text-slate-500 mb-1.5">Co-pay collected by</p>
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2">
                   {([
                     { v: "cash" as SplitLegMethod, label: "Cash" },
-                    { v: "card" as SplitLegMethod, label: "Card / Transfer" },
-                    { v: "bank" as SplitLegMethod, label: "Bank Transfer" },
+                    { v: "card" as SplitLegMethod, label: "Card / Bank Transfer" },
                   ]).map(m => (
                     <button key={m.v} onClick={() => setCoPayMethod(m.v)}
                       className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${coPayMethod === m.v ? "bg-[#4982CF] text-white border-[#4982CF]" : "border-slate-200 text-slate-500 hover:border-slate-300 bg-white"}`}>
@@ -1917,76 +1913,48 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
           <div className="space-y-3">
             <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Payment Methods</p>
             <div className="space-y-2">
-              {splitLegs.map(leg => {
-                const legAmt   = Number(leg.amount) || 0;
-                const legCashRx = Number(leg.cashRx) || 0;
-                const legChange = Math.max(0, legCashRx - legAmt);
-                const legShort  = legCashRx > 0 && legCashRx < legAmt;
-                return (
-                  <div key={leg.uid} className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
-                    {/* Method chips + remove */}
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-1.5 flex-1 flex-wrap">
-                        {([
-                          { v: "cash" as SplitLegMethod, label: "Cash" },
-                          { v: "card" as SplitLegMethod, label: "Card / Transfer" },
-                          { v: "bank" as SplitLegMethod, label: "Bank Transfer" },
-                        ]).map(m => (
-                          <button key={m.v} onClick={() => updateSplitLeg(leg.uid, "method", m.v)}
-                            className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all ${leg.method === m.v ? "bg-[#4982CF] text-white border-[#4982CF]" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
-                            {m.label}
-                          </button>
-                        ))}
-                      </div>
-                      {splitLegs.length > 1 && (
-                        <button onClick={() => removeSplitLeg(leg.uid)}
-                          className="text-slate-300 hover:text-red-400 transition-colors flex-shrink-0">
-                          <X className="h-4 w-4" />
+              {splitLegs.map(leg => (
+                <div key={leg.uid} className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+                  {/* Method chips + remove */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1.5 flex-1">
+                      {([
+                        { v: "cash" as SplitLegMethod, label: "Cash" },
+                        { v: "card" as SplitLegMethod, label: "Card / Bank Transfer" },
+                      ]).map(m => (
+                        <button key={m.v} onClick={() => updateSplitLeg(leg.uid, "method", m.v)}
+                          className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all ${leg.method === m.v ? "bg-[#4982CF] text-white border-[#4982CF]" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                          {m.label}
                         </button>
-                      )}
+                      ))}
                     </div>
-                    {/* Amount input */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-400 flex-shrink-0">Rs.</span>
-                      <Input
-                        type="number" min={0}
-                        value={leg.amount}
-                        onChange={e => updateSplitLeg(leg.uid, "amount", e.target.value)}
-                        placeholder="0"
-                        className="h-9 text-sm font-bold flex-1"
-                      />
-                      {splitRemaining > 0 && leg.amount === "" && (
-                        <button
-                          onClick={() => updateSplitLeg(leg.uid, "amount", String(splitRemaining))}
-                          className="text-[11px] text-[#4982CF] font-bold hover:opacity-70 flex-shrink-0 whitespace-nowrap">
-                          Fill {fmt(splitRemaining)}
-                        </button>
-                      )}
-                    </div>
-                    {/* Cash received sub-row */}
-                    {leg.method === "cash" && legAmt > 0 && (
-                      <div>
-                        <label className="text-[11px] text-slate-500 font-semibold mb-1 block">Cash Received</label>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-400 flex-shrink-0">Rs.</span>
-                          <Input
-                            type="number" min={0}
-                            value={leg.cashRx}
-                            onChange={e => updateSplitLeg(leg.uid, "cashRx", e.target.value)}
-                            placeholder={String(legAmt)}
-                            className="h-8 text-sm flex-1"
-                          />
-                        </div>
-                        {legCashRx > 0 && (
-                          <p className={`text-[11px] font-bold mt-1 ${legChange > 0 ? "text-green-600" : legShort ? "text-red-500" : "text-slate-400"}`}>
-                            {legChange > 0 ? `Change: ${fmt(legChange)}` : legShort ? `Short by ${fmt(legAmt - legCashRx)}` : "Exact amount"}
-                          </p>
-                        )}
-                      </div>
+                    {splitLegs.length > 1 && (
+                      <button onClick={() => removeSplitLeg(leg.uid)}
+                        className="text-slate-300 hover:text-red-400 transition-colors flex-shrink-0">
+                        <X className="h-4 w-4" />
+                      </button>
                     )}
                   </div>
-                );
-              })}
+                  {/* Amount input */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-400 flex-shrink-0">Rs.</span>
+                    <Input
+                      type="number" min={0}
+                      value={leg.amount}
+                      onChange={e => updateSplitLeg(leg.uid, "amount", e.target.value)}
+                      placeholder="0"
+                      className="h-9 text-sm font-bold flex-1"
+                    />
+                    {splitRemaining > 0 && leg.amount === "" && (
+                      <button
+                        onClick={() => updateSplitLeg(leg.uid, "amount", String(splitRemaining))}
+                        className="text-[11px] text-[#4982CF] font-bold hover:opacity-70 flex-shrink-0 whitespace-nowrap">
+                        Fill {fmt(splitRemaining)}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
             {/* Add leg button */}
             <button onClick={addSplitLeg}
@@ -2030,9 +1998,8 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
             const resolvedSplitLegs: SplitLegResult[] = payType === "split"
               ? splitLegs.map(l => ({
                   method: l.method,
-                  label: l.method === "cash" ? "Cash" : l.method === "card" ? "Card / Transfer" : "Bank Transfer",
+                  label: l.method === "cash" ? "Cash" : "Card / Bank Transfer",
                   amount: Number(l.amount) || 0,
-                  cashReceived: l.method === "cash" ? (Number(l.cashRx) || 0) : undefined,
                 }))
               : [];
             onComplete({
@@ -2101,10 +2068,10 @@ export function printThermalReceipt(r: ReceiptInfo) {
     ${r.cartDiscAmt > 0 ? `<div>Cart Disc (${r.cartDiscMode === "percent" ? `${r.cartDisc}%` : `Rs.${r.cartDisc.toLocaleString("en-PK")}`}, ${r.cartDiscSource === "doctor" ? "Dr." : r.cartDiscSource === "hospital" ? "Clinic" : "Both"}): -Rs.${r.cartDiscAmt.toLocaleString("en-PK")}</div>` : ""}
     <div class="total">TOTAL: Rs.${r.total.toLocaleString("en-PK")}</div>
     ${r.splitLegs && r.splitLegs.length > 0
-      ? r.splitLegs.map(l => `<div>${l.label}: <span class="bold">Rs.${l.amount.toLocaleString("en-PK")}</span>${l.cashReceived && l.cashReceived > l.amount ? ` &middot; Rcvd Rs.${l.cashReceived.toLocaleString("en-PK")} &middot; Change Rs.${(l.cashReceived - l.amount).toLocaleString("en-PK")}` : ""}</div>`).join("")
+      ? r.splitLegs.map(l => `<div>${l.label}: <span class="bold">Rs.${l.amount.toLocaleString("en-PK")}</span></div>`).join("")
       : `<div>Payment: <span class="bold">${payLabel[r.payType] ?? r.payType}</span></div>`}
     ${r.payType === "cash" && !r.splitLegs && r.cashReceived > r.total ? `<div>Cash Rcvd: Rs.${r.cashReceived.toLocaleString("en-PK")}</div><div>Change: Rs.${(r.cashReceived - r.total).toLocaleString("en-PK")}</div>` : ""}
-    ${r.payType === "welfare" ? `<div>Co-Pay (${r.coPayMethod === "card" ? "Card/Transfer" : r.coPayMethod === "bank" ? "Bank Transfer" : "Cash"}): Rs.${r.coPay.toLocaleString("en-PK")}</div><div>Welfare Covers: Rs.${(r.total - r.coPay).toLocaleString("en-PK")}</div>` : ""}
+    ${r.payType === "welfare" ? `<div>Co-Pay (${r.coPayMethod === "card" ? "Card/Bank Transfer" : "Cash"}): Rs.${r.coPay.toLocaleString("en-PK")}</div><div>Welfare Covers: Rs.${(r.total - r.coPay).toLocaleString("en-PK")}</div>` : ""}
     ${r.refNum ? `<div>Ref: ${r.refNum}</div>` : ""}
     <div class="sep"></div>
     <div class="center" style="font-size:11px">Thank you · Please proceed to Vitals</div>
