@@ -18,6 +18,8 @@ import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
 import type { VaccinePartner } from "@/pages/VaccineCatalogModule";
 import { SEED_VISIT_TYPES, type VisitType } from "@/pages/QueueModule";
 
+type BranchOperationalMode = "queue-only" | "appointment-only" | "queue-and-appointment";
+
 type Branch = {
   id: string;
   name: string;
@@ -26,6 +28,7 @@ type Branch = {
   workingHoursStart: string;
   workingHoursEnd: string;
   tokenResetTime: string;
+  operationalMode: BranchOperationalMode;
   status: "active" | "inactive";
   createdAt: string;
 };
@@ -35,27 +38,33 @@ const TIMEZONES = [
   "Asia/Riyadh", "Europe/London", "America/New_York", "America/Chicago",
 ];
 
+const OP_MODES: { value: BranchOperationalMode; label: string; desc: string; cls: string }[] = [
+  { value: "queue-only",            label: "Queue-Based Only",          desc: "Branch operates exclusively via token queue walk-ins.",                  cls: "text-violet-600 border-violet-200 bg-violet-50" },
+  { value: "appointment-only",      label: "Appointment-Based Only",    desc: "Branch operates exclusively via scheduled appointments.",                 cls: "text-sky-600 border-sky-200 bg-sky-50" },
+  { value: "queue-and-appointment", label: "Queue & Appointment-Based", desc: "Branch supports both walk-in token queues and scheduled appointments.",  cls: "text-teal-600 border-teal-200 bg-teal-50" },
+];
+
 const BLANK: Omit<Branch, "id" | "createdAt"> = {
   name: "", code: "", timezone: "Asia/Karachi",
   workingHoursStart: "08:00", workingHoursEnd: "22:00",
-  tokenResetTime: "00:00", status: "active",
+  tokenResetTime: "00:00", operationalMode: "queue-only", status: "active",
 };
 
 const SEED: Branch[] = [
   {
     id: "br-1", name: "Main Branch — Lahore", code: "LHR-MAIN",
     timezone: "Asia/Karachi", workingHoursStart: "08:00", workingHoursEnd: "22:00",
-    tokenResetTime: "00:00", status: "active", createdAt: "2024-01-01T00:00:00.000Z",
+    tokenResetTime: "00:00", operationalMode: "queue-and-appointment", status: "active", createdAt: "2024-01-01T00:00:00.000Z",
   },
   {
     id: "br-2", name: "North Branch — Islamabad", code: "ISB-NORTH",
     timezone: "Asia/Karachi", workingHoursStart: "09:00", workingHoursEnd: "20:00",
-    tokenResetTime: "00:00", status: "active", createdAt: "2024-06-15T00:00:00.000Z",
+    tokenResetTime: "00:00", operationalMode: "queue-only", status: "active", createdAt: "2024-06-15T00:00:00.000Z",
   },
   {
     id: "br-3", name: "East Branch — Karachi", code: "KHI-EAST",
     timezone: "Asia/Karachi", workingHoursStart: "07:30", workingHoursEnd: "21:00",
-    tokenResetTime: "00:00", status: "inactive", createdAt: "2024-09-01T00:00:00.000Z",
+    tokenResetTime: "00:00", operationalMode: "appointment-only", status: "inactive", createdAt: "2024-09-01T00:00:00.000Z",
   },
 ];
 
@@ -1186,7 +1195,7 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
   function openEdit(b: Branch) {
     setForm({ name: b.name, code: b.code, timezone: b.timezone,
       workingHoursStart: b.workingHoursStart, workingHoursEnd: b.workingHoursEnd,
-      tokenResetTime: b.tokenResetTime, status: b.status });
+      tokenResetTime: b.tokenResetTime, operationalMode: b.operationalMode, status: b.status });
     setErrors({}); setEditingId(b.id); setShowForm(true);
   }
 
@@ -1288,10 +1297,18 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
                   return filtered.map(b => {
                   const mode = branchMode[b.id] ?? "single";
                   const { label: modeLabel, cls: modeCls } = modeMeta[mode];
+                  const opMode = OP_MODES.find(m => m.value === b.operationalMode);
                   return (
                     <div key={b.id} className="grid items-center px-5 py-4 hover:bg-slate-50 group transition-colors"
                       style={{ gridTemplateColumns: "1fr 110px 130px 160px 120px 120px 90px 110px" }}>
-                      <div><p className="text-sm font-semibold text-slate-800">{b.name}</p></div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{b.name}</p>
+                        {opMode && (
+                          <span className={`inline-block mt-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded border ${opMode.cls}`}>
+                            {opMode.label}
+                          </span>
+                        )}
+                      </div>
                       <span className="font-mono text-xs font-bold text-[#4982CF] bg-[#4982CF]/8 px-2 py-0.5 rounded w-fit">{b.code}</span>
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${modeCls}`}>{modeLabel}</span>
                       <div className="flex items-center gap-1.5 text-xs text-slate-500"><Globe className="h-3 w-3" />{b.timezone}</div>
@@ -1403,6 +1420,27 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
                 <div className="flex items-center gap-2 mt-1">
                   <Switch checked={form.status === "active"} onCheckedChange={v => setForm(p => ({ ...p, status: v ? "active" : "inactive" }))} className="data-[state=checked]:bg-emerald-500" />
                   <span className="text-sm text-slate-600">{form.status === "active" ? "Active" : "Inactive"}</span>
+                </div>
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label className="text-xs font-semibold text-slate-600">Operational Mode <span className="text-rose-500">*</span></Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {OP_MODES.map(m => {
+                    const active = form.operationalMode === m.value;
+                    return (
+                      <button key={m.value} type="button"
+                        onClick={() => setForm(p => ({ ...p, operationalMode: m.value }))}
+                        className={`flex flex-col gap-1 rounded-xl border-2 px-3 py-2.5 text-left transition-all ${
+                          active ? "border-[#4982CF] bg-[#4982CF]/5 shadow-sm" : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
+                        }`}>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[11px] font-bold ${active ? "text-[#4982CF]" : "text-slate-700"}`}>{m.label}</span>
+                          {active && <Check className="h-3 w-3 text-[#4982CF] flex-shrink-0" />}
+                        </div>
+                        <p className="text-[9px] text-slate-400 leading-relaxed">{m.desc}</p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
