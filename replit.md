@@ -27,6 +27,7 @@ pnpm workspace monorepo. Primary artifact: `artifacts/ehr-dashboard` — a pure 
 ### Admin Settings (`/admin`)
 - Departments, doctors, billing types, branches, queue setup (visit types, counters, behavior, display screens)
 - **Queue Behavior > Billing Settings**: dynamic per-counter billing toggles grouped by counter type (persisted to localStorage `ehr-billing-counters` as `Record<counterId, boolean>`; migrates from legacy `ehr-billing-reg` key automatically)
+- **Service Pricing**: service list is entirely catalog-derived (Lab → `ehr-lab-sections-v1`, Procedures → `ehr-procedure-sections-v1`, Pharmacy → `ehr-formulary-catalogue-v1`, Consumables → `ehr-consumables-catalogue-v1`, Imaging → `ehr-imaging-catalogue-v1`, Vaccine → `ehr-vaccine-sections-v1`). Pricing overrides (providerPrices, active, taxable, dept assignment) persisted separately to `ehr-service-pricing-v1` as `Record<itemId, PricingOverride>`. No manual add/delete of services — catalog modules are the source of truth.
 
 ## Cross-Tab State Sync Architecture
 

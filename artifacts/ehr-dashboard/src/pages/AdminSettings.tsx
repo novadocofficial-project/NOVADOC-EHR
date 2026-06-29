@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import {
   Activity,
@@ -70,9 +70,10 @@ import { PermissionsModule } from "@/pages/PermissionsModule";
 import { FormularyManagementModule } from "@/pages/FormularyManagementModule";
 import { FormularyPartnersModule, FORMULARY_SEED_PARTNERS } from "@/pages/FormularyPartnersModule";
 import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
-import { ImagingCatalogModule } from "@/pages/ImagingCatalogModule";
+import { MEDICINES } from "@/pages/FormularySection";
+import { ImagingCatalogModule, IMAGING_SEED_TESTS } from "@/pages/ImagingCatalogModule";
 import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
-import { ConsumablesModule, CONSUMABLE_SEED_PROVIDERS } from "@/pages/ConsumablesModule";
+import { ConsumablesModule, CONSUMABLE_SEED_PROVIDERS, CONSUMABLE_SEED_ITEMS } from "@/pages/ConsumablesModule";
 import type { ConsumableProvider } from "@/pages/ConsumablesModule";
 import { LabCatalogModule, SEED_SECTIONS as LAB_SEED_SECTIONS, SEED_PROVIDERS as LAB_SEED_PROVIDERS, type LabSection, type LabProvider } from "@/pages/LabCatalogModule";
 import { LabResultTemplatesModule } from "@/pages/LabResultTemplatesModule";
@@ -88,7 +89,7 @@ import { OrderSetsModule } from "@/pages/OrderSetsModule";
 import { UsersManagementModule } from "@/pages/UsersManagementModule";
 import { RoutingRulesModule } from "@/pages/RoutingRulesModule";
 import { HealthEdLibraryModule } from "@/pages/HealthEdLibraryModule";
-import { INITIAL_SERVICE_TYPES, INITIAL_SERVICES } from "@/pages/BillingTypes";
+import { INITIAL_SERVICE_TYPES } from "@/pages/BillingTypes";
 import { HomeNavButton, QueueNavDropdown, AppointmentsNavDropdown, ReportsNavDropdown } from "@/pages/QueuePageLayout";
 import type { ServiceType, Service } from "@/pages/BillingTypes";
 import { Button } from "@/components/ui/button";
@@ -146,6 +147,7 @@ const ALL_EHR_KEYS = [
   "appt-triage-drafts", "appt-triage-sessions",
   "ehr-health-ed-library-v1",
   "ehr-hpi-templates-v1",
+  "ehr-service-pricing-v1",
 ] as const;
 
 export type Specialty = {
@@ -250,6 +252,48 @@ type ActiveModule =
   | "reg-demographics" | "reg-custom-sections" | "reg-workflow" | "reg-quick"
   | "health-ed-library";
 
+// ── Pricing override shape (persisted to ehr-service-pricing-v1) ─────────────
+type PricingOverride = {
+  providerPrices: Record<string, number>;
+  active: boolean;
+  taxable: boolean;
+  departmentId: string;
+  subDepartmentId: string;
+};
+
+const PRICING_DATE = "2024-01-01T00:00:00.000Z";
+
+function computeCatalogServices(
+  labSections: LabSection[],
+  procSections: ProcedureSection[],
+  vaccSections: VaccineSection[],
+  imagingTests: { id: string; name: string; category: string }[],
+  consumableItems: { id: string; name: string; enabled?: boolean; deleted?: boolean }[],
+  formularyGenerics: { id: string; generic: string; enabled: boolean; deleted: boolean }[],
+  overrides: Record<string, PricingOverride>,
+): Service[] {
+  const make = (id: string, name: string, serviceTypeId: string): Service => {
+    const o = overrides[id];
+    return {
+      id, name, serviceTypeId, basePrice: 0,
+      providerPrices: o?.providerPrices ?? {},
+      departmentId: o?.departmentId ?? "",
+      subDepartmentId: o?.subDepartmentId ?? "",
+      active: o?.active ?? true,
+      taxable: o?.taxable ?? false,
+      createdAt: PRICING_DATE,
+    };
+  };
+  const items: Service[] = [];
+  labSections.forEach(s => s.tests.forEach(t => items.push(make(t.id, t.name, "st-2"))));
+  procSections.forEach(s => s.procedures.forEach(p => items.push(make(p.id, p.name, "st-3"))));
+  formularyGenerics.filter(g => !g.deleted && g.enabled !== false).forEach(g => items.push(make(g.id, g.generic, "st-4")));
+  consumableItems.filter(c => !c.deleted && c.enabled !== false).forEach(c => items.push(make(c.id, c.name, "st-5")));
+  imagingTests.forEach(t => items.push(make(t.id, t.name, "st-6")));
+  vaccSections.forEach(s => s.vaccines.forEach(v => items.push(make(v.id, v.name, "st-7"))));
+  return items;
+}
+
 export function AdminSettings() {
   const [, setLocation] = useLocation();
   const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
@@ -300,7 +344,25 @@ export function AdminSettings() {
     try { localStorage.setItem("ehr-doctors-v1", JSON.stringify(doctors)); } catch {}
   }, [doctors]);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>(INITIAL_SERVICE_TYPES);
-  const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
+  const [pricingOverrides, setPricingOverrides] = useState<Record<string, PricingOverride>>(() => {
+    try { const r = localStorage.getItem("ehr-service-pricing-v1"); if (r) return JSON.parse(r) as Record<string, PricingOverride>; } catch { /**/ }
+    return {};
+  });
+  const [imagingTests] = useState<{ id: string; name: string; category: string }[]>(() => {
+    try { const r = localStorage.getItem("ehr-imaging-catalogue-v1"); if (r) return JSON.parse(r); } catch { /**/ }
+    return IMAGING_SEED_TESTS;
+  });
+  const [consumableItems] = useState<{ id: string; name: string; enabled?: boolean; deleted?: boolean }[]>(() => {
+    try { const r = localStorage.getItem("ehr-consumables-catalogue-v1"); if (r) return JSON.parse(r); } catch { /**/ }
+    return CONSUMABLE_SEED_ITEMS;
+  });
+  const [formularyGenerics] = useState<{ id: string; generic: string; enabled: boolean; deleted: boolean }[]>(() => {
+    try {
+      const r = localStorage.getItem("ehr-formulary-catalogue-v1");
+      if (r) return (JSON.parse(r) as { id: string; generic: string; enabled: boolean; deleted: boolean }[]);
+    } catch { /**/ }
+    return MEDICINES.map(m => ({ id: m.id, generic: m.generic, enabled: true, deleted: false }));
+  });
   const [labSections, setLabSections] = useState<LabSection[]>(() => {
     try { const r = localStorage.getItem("ehr-lab-sections-v1"); if (r) return JSON.parse(r) as LabSection[]; } catch { /**/ }
     return LAB_SEED_SECTIONS;
@@ -405,6 +467,39 @@ export function AdminSettings() {
   useEffect(() => { try { localStorage.setItem("ehr-vaccine-sections-v1",   JSON.stringify(vaccSections)); } catch { /**/ } }, [vaccSections]);
   useEffect(() => { try { localStorage.setItem("ehr-vaccine-partners-v1",   JSON.stringify(vaccPartners)); } catch { /**/ } }, [vaccPartners]);
   useEffect(() => { try { localStorage.setItem("ehr-doctor-fees-v1",        JSON.stringify(doctorFees));   } catch { /**/ } }, [doctorFees]);
+  useEffect(() => { try { localStorage.setItem("ehr-service-pricing-v1",    JSON.stringify(pricingOverrides)); } catch { /**/ } }, [pricingOverrides]);
+
+  const catalogServices = useMemo(
+    () => computeCatalogServices(labSections, procSections, vaccSections, imagingTests, consumableItems, formularyGenerics, pricingOverrides),
+    [labSections, procSections, vaccSections, imagingTests, consumableItems, formularyGenerics, pricingOverrides],
+  );
+
+  const handleSetServices = useCallback<React.Dispatch<React.SetStateAction<Service[]>>>(
+    (updater) => {
+      setPricingOverrides(prev => {
+        const current = computeCatalogServices(labSections, procSections, vaccSections, imagingTests, consumableItems, formularyGenerics, prev);
+        const updated = typeof updater === "function" ? updater(current) : updater;
+        const next = { ...prev };
+        updated.forEach((s, idx) => {
+          const orig = current[idx];
+          if (!orig || orig.id !== s.id) return;
+          if (orig.active !== s.active || orig.taxable !== s.taxable ||
+              orig.departmentId !== s.departmentId || orig.subDepartmentId !== s.subDepartmentId ||
+              JSON.stringify(orig.providerPrices) !== JSON.stringify(s.providerPrices)) {
+            next[s.id] = {
+              providerPrices: s.providerPrices ?? {},
+              active: s.active,
+              taxable: s.taxable,
+              departmentId: s.departmentId,
+              subDepartmentId: s.subDepartmentId,
+            };
+          }
+        });
+        return next;
+      });
+    },
+    [labSections, procSections, vaccSections, imagingTests, consumableItems, formularyGenerics],
+  );
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
     d1: true, d2: true, d3: false, d4: true,
@@ -979,7 +1074,7 @@ export function AdminSettings() {
             <SpecialtiesModule departments={departments} setDepartments={setDepartments} />
           )}
           {activeModule === "fees" && (
-            <FeesModule departments={departments} doctors={doctors} services={services} serviceTypes={serviceTypes} doctorFees={doctorFees} setDoctorFees={setDoctorFees} />
+            <FeesModule departments={departments} doctors={doctors} services={catalogServices} serviceTypes={serviceTypes} doctorFees={doctorFees} setDoctorFees={setDoctorFees} />
           )}
           {activeModule === "service-types" && (
             <ServiceTypesModule serviceTypes={serviceTypes} setServiceTypes={setServiceTypes} />
@@ -987,8 +1082,8 @@ export function AdminSettings() {
           {activeModule === "service-pricing" && (
             <ServicePricingModule
               serviceTypes={serviceTypes}
-              services={services}
-              setServices={setServices}
+              services={catalogServices}
+              setServices={handleSetServices}
               departments={departments}
               labProviders={labProviders}
               imagingPartners={imagingPartners}
@@ -1003,7 +1098,7 @@ export function AdminSettings() {
           {activeModule === "corporate-pricing" && (
             <CorporatePricingModule
               serviceTypes={serviceTypes}
-              services={services}
+              services={catalogServices}
               pharmacyPartners={pharmacyPartners}
               labProviders={labProviders}
               labSections={labSections}
@@ -1017,10 +1112,10 @@ export function AdminSettings() {
             />
           )}
           {activeModule === "insurance-pricing" && (
-            <InsurancePricingModule serviceTypes={serviceTypes} services={services} />
+            <InsurancePricingModule serviceTypes={serviceTypes} services={catalogServices} />
           )}
           {activeModule === "packages" && (
-            <PackagesModule services={services} serviceTypes={serviceTypes} />
+            <PackagesModule services={catalogServices} serviceTypes={serviceTypes} />
           )}
 
           {activeModule === "branches" && (

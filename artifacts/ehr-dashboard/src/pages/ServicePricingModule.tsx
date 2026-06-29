@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import {
-  Plus, Printer, Search, Edit2, Trash2,
+  Printer, Search, Edit2,
   ClipboardList, FileSpreadsheet, LayoutGrid, Columns, Banknote, Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -320,7 +320,6 @@ export function ServicePricingModule({
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
   const [consultSearch, setConsultSearch] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const tabScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -422,7 +421,6 @@ export function ServicePricingModule({
 
   const isConsultTab = activeTab === "consultation-fees";
 
-  const openAdd = () => { setForm(blankForm()); setEditingId(null); setShowForm(true); };
   const openEdit = (s: Service) => {
     setForm({
       name: s.name, serviceTypeId: s.serviceTypeId,
@@ -433,31 +431,15 @@ export function ServicePricingModule({
   };
 
   const saveForm = () => {
-    const name = form.name.trim();
-    if (!name || !form.serviceTypeId || !form.departmentId) return;
-    if (editingId) {
-      setServices(prev => prev.map(s => s.id === editingId
-        ? { ...s, name, serviceTypeId: form.serviceTypeId, departmentId: form.departmentId, subDepartmentId: form.subDepartmentId, active: form.active, taxable: form.taxable }
-        : s));
-    } else {
-      const newS: Service = {
-        id: `svc-${Date.now()}`, name, serviceTypeId: form.serviceTypeId, basePrice: 0,
-        providerPrices: {},
-        departmentId: form.departmentId, subDepartmentId: form.subDepartmentId,
-        active: form.active, taxable: form.taxable, createdAt: new Date().toISOString(),
-      };
-      setServices(prev => [...prev, newS]);
-    }
+    if (!editingId) return;
+    setServices(prev => prev.map(s => s.id === editingId
+      ? { ...s, departmentId: form.departmentId, subDepartmentId: form.subDepartmentId, active: form.active, taxable: form.taxable }
+      : s));
     setShowForm(false);
   };
 
   const toggleActive = (id: string) => {
     setServices(prev => prev.map(s => s.id === id ? { ...s, active: !s.active } : s));
-  };
-
-  const deleteService = (id: string) => {
-    setServices(prev => prev.filter(s => s.id !== id));
-    setDeleteConfirm(null);
   };
 
   const setProviderPrice = (serviceId: string, providerId: string, price: number | undefined) => {
@@ -471,7 +453,6 @@ export function ServicePricingModule({
   };
 
   const selectedDept = departments.find(d => d.id === form.departmentId);
-  const isFormValid = form.name.trim() && form.serviceTypeId && form.departmentId;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -504,13 +485,6 @@ export function ServicePricingModule({
                   disabled={visibleServices.length === 0}
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5" /> Export CSV
-                </Button>
-                <Button
-                  onClick={openAdd}
-                  className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white gap-2 ml-2"
-                  data-testid="btn-add-service"
-                >
-                  <Plus className="h-4 w-4" /> Add Service
                 </Button>
               </>
             )}
@@ -597,7 +571,6 @@ export function ServicePricingModule({
             providers={activeProviders}
             getSTName={getSTName}
             toggleActive={toggleActive}
-            onDelete={id => setDeleteConfirm(id)}
             onEdit={openEdit}
             setProviderPrice={setProviderPrice}
           />
@@ -608,35 +581,29 @@ export function ServicePricingModule({
             getDeptName={getDeptName}
             getSubDeptName={getSubDeptName}
             toggleActive={toggleActive}
-            onDelete={id => setDeleteConfirm(id)}
             onEdit={openEdit}
           />
         )}
       </div>
 
-      {/* Add / Edit Dialog */}
+      {/* Edit Dialog */}
       <Dialog open={showForm} onOpenChange={open => !open && setShowForm(false)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Service" : "Add Service"}</DialogTitle>
+            <DialogTitle>Edit Service</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 pt-2">
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-semibold text-slate-600">Service Name <span className="text-rose-500">*</span></Label>
-              <Input placeholder="e.g. Blood Test — CBC" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              <Label className="text-xs font-semibold text-slate-600">Service Name</Label>
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">{form.name}</div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-semibold text-slate-600">Service Type <span className="text-rose-500">*</span></Label>
-              <Select value={form.serviceTypeId} onValueChange={v => setForm(f => ({ ...f, serviceTypeId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select service type…" /></SelectTrigger>
-                <SelectContent>
-                  {activeServiceTypes.map(st => <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label className="text-xs font-semibold text-slate-600">Service Type</Label>
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">{getSTName(form.serviceTypeId)}</div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-semibold text-slate-600">Department <span className="text-rose-500">*</span></Label>
+                <Label className="text-xs font-semibold text-slate-600">Department</Label>
                 <Select value={form.departmentId} onValueChange={v => setForm(f => ({ ...f, departmentId: v, subDepartmentId: "" }))}>
                   <SelectTrigger><SelectValue placeholder="Select dept…" /></SelectTrigger>
                   <SelectContent>
@@ -670,24 +637,8 @@ export function ServicePricingModule({
             </div>
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={saveForm} disabled={!isFormValid} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white">
-                {editingId ? "Save Changes" : "Add Service"}
-              </Button>
+              <Button onClick={saveForm} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white">Save Changes</Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirm */}
-      <Dialog open={!!deleteConfirm} onOpenChange={open => !open && setDeleteConfirm(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Delete Service?</DialogTitle></DialogHeader>
-          <p className="text-sm text-slate-600">
-            <strong>{services.find(s => s.id === deleteConfirm)?.name}</strong> will be permanently removed.
-          </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
-            <Button onClick={() => deleteService(deleteConfirm!)} className="bg-rose-500 hover:bg-rose-600 text-white">Delete</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -702,7 +653,6 @@ function FlatTable({
   getDeptName,
   getSubDeptName,
   toggleActive,
-  onDelete,
   onEdit,
 }: {
   services: Service[];
@@ -710,7 +660,6 @@ function FlatTable({
   getDeptName: (id: string) => string;
   getSubDeptName: (deptId: string, subId: string) => string;
   toggleActive: (id: string) => void;
-  onDelete: (id: string) => void;
   onEdit: (s: Service) => void;
 }) {
   return (
@@ -743,7 +692,6 @@ function FlatTable({
             <span className="text-xs text-slate-400">{fmtDate(s.createdAt)}</span>
             <div className="flex items-center justify-end gap-1">
               <button onClick={() => onEdit(s)} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[#4982CF] transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
-              <button onClick={() => onDelete(s.id)} className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>
           </div>
         ))}
@@ -758,7 +706,6 @@ function PivotTable({
   providers,
   getSTName,
   toggleActive,
-  onDelete,
   onEdit,
   setProviderPrice,
 }: {
@@ -766,7 +713,6 @@ function PivotTable({
   providers: Provider[];
   getSTName: (id: string) => string;
   toggleActive: (id: string) => void;
-  onDelete: (id: string) => void;
   onEdit: (s: Service) => void;
   setProviderPrice: (serviceId: string, providerId: string, price: number | undefined) => void;
 }) {
@@ -841,7 +787,6 @@ function PivotTable({
             {/* Actions */}
             <div className="flex items-center justify-end gap-1">
               <button onClick={() => onEdit(s)} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[#4982CF] transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
-              <button onClick={() => onDelete(s.id)} className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>
           </div>
         ))}
