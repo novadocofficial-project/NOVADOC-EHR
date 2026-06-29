@@ -1032,6 +1032,7 @@ export function AdminSettings() {
               imagingPartners={imagingPartners}
               consumableProviders={consumableProviders}
               pharmacyPartners={pharmacyPartners}
+              vaccPartners={vaccPartners}
               onNavigate={(section) => setActiveModule(section as Parameters<typeof setActiveModule>[0])}
             />
           )}
