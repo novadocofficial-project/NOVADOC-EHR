@@ -1318,7 +1318,10 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
                       <div className="flex items-center gap-1 text-xs text-slate-600">
                         <Clock className="h-3 w-3 text-slate-400" />{fmt12(b.workingHoursStart)} – {fmt12(b.workingHoursEnd)}
                       </div>
-                      <span className="text-xs text-slate-600 font-mono">{fmt12(b.tokenResetTime)}</span>
+                      {b.operationalMode === "appointment-only"
+                        ? <span className="text-xs text-slate-300 font-mono">—</span>
+                        : <span className="text-xs text-slate-600 font-mono">{fmt12(b.tokenResetTime)}</span>
+                      }
                       <div className="flex items-center gap-1.5">
                         <Switch checked={b.status === "active"}
                           onCheckedChange={v => setBranches(p => p.map(br => br.id === b.id ? { ...br, status: v ? "active" : "inactive" } : br))}
