@@ -290,10 +290,6 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
   const basicSection = config.sections.find(s => s.sectionType === "basic-info");
   const patientType  = values["_patient_type"] ?? (config.patientTypes.find(t => t.enabled)?.id ?? "cash");
   const activeType   = config.patientTypes.find(t => t.id === patientType && t.enabled);
-  const welfareForm  = activeType?.welfareFormId
-    ? config.welfareForms.find(f => f.id === activeType.welfareFormId)
-    : null;
-
   const conditionalFieldIds = basicSection?.conditionalRules.flatMap(r => r.showFieldIds) ?? [];
   const enabledTypes = config.patientTypes.filter(t => t.enabled);
 

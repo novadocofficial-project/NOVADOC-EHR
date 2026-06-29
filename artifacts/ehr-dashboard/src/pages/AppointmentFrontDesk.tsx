@@ -302,7 +302,6 @@ function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
 
   const patientType = values["_patient_type"] ?? (config.patientTypes.find(t => t.enabled)?.id ?? "cash");
   const activeType = config.patientTypes.find(t => t.id === patientType && t.enabled);
-  const welfareForm = activeType?.welfareFormId ? config.welfareForms.find(f => f.id === activeType.welfareFormId) : null;
   const conditionalFieldIds = basicInfoSec?.conditionalRules.flatMap(r => r.showFieldIds) ?? [];
   const enabledTypes = config.patientTypes.filter(t => t.enabled);
 
@@ -580,31 +579,6 @@ function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
           <div key="__te__" className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
             <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{activeType.label} Details</p>
             {renderFieldsInGrid(activeType.extraFields.filter(f => f.enabled), "te-")}
-          </div>
-        );
-      }
-      if (patientType === "welfare" && welfareForm) {
-        const wfCondIds = (welfareForm.conditionalRules ?? []).flatMap(r => r.showFieldIds);
-        const wfNormFlds = welfareForm.fields.filter(f => f.enabled && !wfCondIds.includes(f.id));
-        blocks.push(
-          <div key="__wf__" className="rounded-xl border border-red-100 bg-red-50 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <FileSignature className="h-4 w-4 text-red-500" />
-              <p className="text-sm font-bold text-red-700">Welfare Form — {welfareForm.name}</p>
-            </div>
-            {wfNormFlds.map(f => renderField(f))}
-            {(welfareForm.conditionalRules ?? []).map(rule => {
-              const tv = values[rule.triggerFieldId] ?? "";
-              if (!rule.triggerValues.includes(tv)) return null;
-              const condFlds = welfareForm.fields.filter(f => rule.showFieldIds.includes(f.id) && f.enabled);
-              if (!condFlds.length) return null;
-              return (
-                <div key={rule.id} className="rounded-xl border border-red-200 bg-white/60 p-3 space-y-3">
-                  <p className="text-xs font-bold text-red-600 uppercase tracking-wide">{tv} Details</p>
-                  <div className="space-y-3">{condFlds.map(f => renderField(f))}</div>
-                </div>
-              );
-            })}
           </div>
         );
       }

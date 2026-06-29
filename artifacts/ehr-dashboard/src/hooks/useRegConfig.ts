@@ -43,14 +43,6 @@ export interface PatientTypeConfig {
   color: string;
   enabled: boolean;
   extraFields: RegField[];
-  welfareFormId: string | null;
-}
-
-export interface WelfareFormTemplate {
-  id: string;
-  name: string;
-  fields: RegField[];
-  conditionalRules: ConditionalRule[];
 }
 
 export interface QuickRegField {
@@ -73,7 +65,6 @@ export interface QuickRegProfile {
 export interface RegConfig {
   sections: RegSection[];
   patientTypes: PatientTypeConfig[];
-  welfareForms: WelfareFormTemplate[];
   quickProfiles: QuickRegProfile[];
   queueProfileMap: Record<string, string>;
 }
@@ -154,7 +145,6 @@ export const DEFAULT_REG_CONFIG: RegConfig = {
     {
       id: "cash", label: "Cash", color: "#10b981", enabled: true,
       extraFields: [],
-      welfareFormId: null,
     },
     {
       id: "insurance", label: "Insurance", color: "#4982CF", enabled: true,
@@ -164,7 +154,6 @@ export const DEFAULT_REG_CONFIG: RegConfig = {
         { id: "ins_emergency", label: "Emergency Contact", type: "text",     required: false, enabled: true, options: [], placeholder: "Phone" },
         { id: "ins_notes",     label: "Notes",             type: "textarea", required: false, enabled: true, options: [], placeholder: "Any additional notes..." },
       ],
-      welfareFormId: null,
     },
     {
       id: "corporate", label: "Corporate", color: "#f59e0b", enabled: true,
@@ -174,26 +163,10 @@ export const DEFAULT_REG_CONFIG: RegConfig = {
         { id: "corp_emergency",   label: "Emergency Contact",type: "text",    required: false, enabled: true, options: [], placeholder: "Phone" },
         { id: "corp_notes",       label: "Notes",           type: "textarea", required: false, enabled: true, options: [], placeholder: "Any additional notes..." },
       ],
-      welfareFormId: null,
     },
     {
       id: "welfare", label: "Welfare", color: "#ef4444", enabled: true,
       extraFields: [],
-      welfareFormId: "wf-1",
-    },
-  ],
-  welfareForms: [
-    {
-      id: "wf-1",
-      name: "Standard Welfare Form",
-      conditionalRules: [],
-      fields: [
-        { id: "wf_income",    label: "Monthly Income",       type: "number",    required: true,  enabled: true, options: [], placeholder: "PKR amount" },
-        { id: "wf_household", label: "Household Members",    type: "number",    required: true,  enabled: true, options: [], placeholder: "Count" },
-        { id: "wf_reason",    label: "Reason for Welfare",   type: "textarea",  required: true,  enabled: true, options: [], placeholder: "Describe your situation..." },
-        { id: "wf_cnic_proof",label: "CNIC Proof",           type: "file",      required: false, enabled: true, options: [], placeholder: "" },
-        { id: "wf_signature", label: "Patient Signature",    type: "signature", required: true,  enabled: true, options: [], placeholder: "" },
-      ],
     },
   ],
   quickProfiles: [
@@ -242,12 +215,6 @@ function normalizeConfig(stored: Partial<RegConfig>): RegConfig {
   return {
     sections,
     patientTypes,
-    welfareForms: Array.isArray(stored.welfareForms)
-      ? stored.welfareForms.map(wf => ({
-          ...wf,
-          conditionalRules: Array.isArray(wf.conditionalRules) ? wf.conditionalRules : [],
-        }))
-      : DEFAULT_REG_CONFIG.welfareForms,
     quickProfiles: Array.isArray(stored.quickProfiles) && stored.quickProfiles.length > 0
       ? stored.quickProfiles
       : DEFAULT_REG_CONFIG.quickProfiles,

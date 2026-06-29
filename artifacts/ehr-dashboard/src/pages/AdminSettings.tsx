@@ -253,7 +253,7 @@ type ActiveModule =
   | "lab-order-sets" | "imaging-order-sets"
   | "welfare-schemes"
   | "users-counters"
-  | "reg-basic-info" | "reg-patient-types" | "reg-welfare-forms"
+  | "reg-basic-info" | "reg-patient-types"
   | "reg-demographics" | "reg-custom-sections" | "reg-workflow" | "reg-quick"
   | "health-ed-library";
 
@@ -318,7 +318,7 @@ export function AdminSettings() {
   const initSection = searchParams.get("section") as ActiveModule | null;
   const queueSections: ActiveModule[] = ["visit-types","workflow-config","counter-types","counters","token-settings","queue-behavior","locking-settings","display-settings","doctor-partitions","routing-rules"];
   const [activeModule, setActiveModule] = useState<ActiveModule>(initSection ?? "departments");
-  const regSections: ActiveModule[] = ["reg-basic-info","reg-patient-types","reg-welfare-forms","reg-demographics","reg-custom-sections","reg-workflow","reg-quick"];
+  const regSections: ActiveModule[] = ["reg-basic-info","reg-patient-types","reg-demographics","reg-custom-sections","reg-workflow","reg-quick"];
   const [navExpanded, setNavExpanded] = useState({
     departments: false,
     doctors: false,
@@ -771,7 +771,6 @@ export function AdminSettings() {
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
                 {subNavItem("reg-basic-info",      <UserRound className="h-3.5 w-3.5" />,     "Basic Info")}
                 {subNavItem("reg-patient-types",   <Users className="h-3.5 w-3.5" />,         "Patient Types")}
-                {subNavItem("reg-welfare-forms",   <Heart className="h-3.5 w-3.5" />,         "Welfare Forms")}
                 {subNavItem("reg-demographics",    <Globe className="h-3.5 w-3.5" />,         "Demographics")}
                 {subNavItem("reg-custom-sections", <Layers className="h-3.5 w-3.5" />,        "Custom Sections")}
                 {subNavItem("reg-workflow",        <Workflow className="h-3.5 w-3.5" />,      "Workflow Builder")}
@@ -1171,7 +1170,7 @@ export function AdminSettings() {
             activeModule === s ? <QueueModule key={s} section={s as QueueSection} /> : null
           )}
 
-          {(["reg-basic-info","reg-patient-types","reg-welfare-forms","reg-demographics","reg-custom-sections","reg-workflow","reg-quick"] as const).map(s =>
+          {(["reg-basic-info","reg-patient-types","reg-demographics","reg-custom-sections","reg-workflow","reg-quick"] as const).map(s =>
             activeModule === s ? <PatientRegistrationModule key={s} section={s as PatRegSection} /> : null
           )}
 

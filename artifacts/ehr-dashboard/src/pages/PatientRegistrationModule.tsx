@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   useRegConfig,
   type RegField, type RegSection, type FieldType,
-  type WelfareFormTemplate, type QuickRegProfile, type QuickRegField, type ConditionalRule,
+  type QuickRegProfile, type QuickRegField, type ConditionalRule,
 } from "@/hooks/useRegConfig";
 import { SEED_VISIT_TYPES } from "@/pages/QueueModule";
 
@@ -23,7 +23,6 @@ import { SEED_VISIT_TYPES } from "@/pages/QueueModule";
 export type PatRegSection =
   | "reg-basic-info"
   | "reg-patient-types"
-  | "reg-welfare-forms"
   | "reg-demographics"
   | "reg-custom-sections"
   | "reg-workflow"
@@ -395,13 +394,6 @@ function PatientTypesTab() {
     }));
   }
 
-  function setWelfareForm(typeId: string, welfareFormId: string | null) {
-    updateConfig(prev => ({
-      ...prev,
-      patientTypes: prev.patientTypes.map(t => t.id === typeId ? { ...t, welfareFormId } : t),
-    }));
-  }
-
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <SavedBanner savedAt={savedAt} />
@@ -419,11 +411,10 @@ function PatientTypesTab() {
                   <p className={`text-sm font-bold ${pt.enabled ? "text-slate-900" : "text-slate-400"}`}>{pt.label}</p>
                   <p className="text-[11px] text-slate-400">
                     {pt.extraFields.filter(f => f.enabled).length} extra field{pt.extraFields.filter(f => f.enabled).length !== 1 ? "s" : ""}
-                    {pt.welfareFormId ? " · Welfare form linked" : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  {(pt.extraFields.length > 0 || pt.id === "welfare") && (
+                  {pt.extraFields.length > 0 && (
                     <button
                       onClick={() => setExpanded(isExpanded ? null : pt.id)}
                       className="text-xs font-semibold text-[#4982CF] hover:opacity-70 flex items-center gap-1"
@@ -441,245 +432,12 @@ function PatientTypesTab() {
               </div>
               {isExpanded && (
                 <div className="border-t border-slate-100 px-4 py-4 space-y-4">
-                  {pt.id === "welfare" ? (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-600 mb-2">Linked Welfare Form</p>
-                      <Select
-                        value={pt.welfareFormId ?? "none"}
-                        onValueChange={v => setWelfareForm(pt.id, v === "none" ? null : v)}
-                      >
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Select welfare form..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None (no welfare form)</SelectItem>
-                          {config.welfareForms.map(wf => (
-                            <SelectItem key={wf.id} value={wf.id}>{wf.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[11px] text-slate-400 mt-1.5">When a patient selects Welfare type, this form is presented for them to complete.</p>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-600 mb-2">Type-Specific Fields</p>
-                      <FieldListEditor
-                        fields={pt.extraFields}
-                        onChange={fields => updateExtraFields(pt.id, fields)}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Tab: Welfare Forms ────────────────────────────────────────────────────────
-
-function WelfareFormsTab() {
-  const { config, updateConfig, savedAt } = useRegConfig();
-  const [expanded, setExpanded] = useState<string | null>(config.welfareForms[0]?.id ?? null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
-  const [addingName, setAddingName] = useState(false);
-  const [newName, setNewName] = useState("");
-
-  function addForm() {
-    if (!newName.trim()) return;
-    const id = `wf-${Date.now()}`;
-    updateConfig(prev => ({
-      ...prev,
-      welfareForms: [...prev.welfareForms, { id, name: newName.trim(), fields: [], conditionalRules: [] }],
-    }));
-    setExpanded(id);
-    setNewName("");
-    setAddingName(false);
-  }
-
-  function deleteForm(id: string) {
-    updateConfig(prev => ({
-      ...prev,
-      welfareForms: prev.welfareForms.filter(f => f.id !== id),
-    }));
-    setDeleteTarget(null);
-  }
-
-  function updateFormFields(formId: string, fields: RegField[]) {
-    updateConfig(prev => ({
-      ...prev,
-      welfareForms: prev.welfareForms.map(f => f.id === formId ? { ...f, fields } : f),
-    }));
-  }
-
-  function renameForm(formId: string, name: string) {
-    updateConfig(prev => ({
-      ...prev,
-      welfareForms: prev.welfareForms.map(f => f.id === formId ? { ...f, name } : f),
-    }));
-  }
-
-  function addWelfareConditionalRule(formId: string) {
-    const rule: ConditionalRule = {
-      id: `wf-rule-${Date.now()}`,
-      triggerFieldId: "",
-      triggerValues: [],
-      showFieldIds: [],
-    };
-    updateConfig(prev => ({
-      ...prev,
-      welfareForms: prev.welfareForms.map(f =>
-        f.id === formId ? { ...f, conditionalRules: [...(f.conditionalRules ?? []), rule] } : f
-      ),
-    }));
-  }
-
-  function removeWelfareConditionalRule(formId: string, ruleId: string) {
-    updateConfig(prev => ({
-      ...prev,
-      welfareForms: prev.welfareForms.map(f =>
-        f.id === formId
-          ? { ...f, conditionalRules: (f.conditionalRules ?? []).filter(r => r.id !== ruleId) }
-          : f
-      ),
-    }));
-  }
-
-  function updateWelfareConditionalRule(formId: string, ruleId: string, patch: Partial<ConditionalRule>) {
-    updateConfig(prev => ({
-      ...prev,
-      welfareForms: prev.welfareForms.map(f =>
-        f.id === formId
-          ? { ...f, conditionalRules: (f.conditionalRules ?? []).map(r => r.id === ruleId ? { ...r, ...patch } : r) }
-          : f
-      ),
-    }));
-  }
-
-  return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <SavedBanner savedAt={savedAt} />
-      <div className="flex items-start justify-between">
-        <PageHeader title="Welfare Form Builder" desc="Design forms that welfare patients must complete during registration." />
-        <Button size="sm" className="bg-[#4982CF] hover:bg-[#3D73BC] text-white h-9 gap-2 flex-shrink-0" onClick={() => setAddingName(true)}>
-          <Plus className="h-4 w-4" /> New Form
-        </Button>
-      </div>
-      {addingName && (
-        <div className="rounded-xl border border-[#4982CF]/30 bg-[#4982CF]/5 p-4 flex items-center gap-3">
-          <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Form name..." className="h-9 flex-1" autoFocus onKeyDown={e => { if (e.key === "Enter") addForm(); if (e.key === "Escape") setAddingName(false); }} />
-          <Button size="sm" onClick={addForm} className="bg-[#4982CF] hover:bg-[#3D73BC] text-white h-9"><Check className="h-4 w-4" /></Button>
-          <Button size="sm" variant="ghost" onClick={() => setAddingName(false)} className="h-9"><X className="h-4 w-4" /></Button>
-        </div>
-      )}
-      {config.welfareForms.length === 0 && !addingName && (
-        <div className="rounded-xl border border-dashed border-slate-200 py-12 text-center text-slate-400 space-y-2">
-          <Heart className="h-8 w-8 mx-auto text-slate-300" />
-          <p className="text-sm font-semibold">No welfare forms yet</p>
-          <p className="text-xs">Click "New Form" to create one.</p>
-        </div>
-      )}
-      <div className="space-y-3">
-        {config.welfareForms.map(form => {
-          const isExpanded = expanded === form.id;
-          return (
-            <div key={form.id} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-              <div className="flex items-center gap-3 px-4 py-3">
-                <div className="h-8 w-8 rounded-xl bg-rose-50 flex items-center justify-center flex-shrink-0">
-                  <Heart className="h-4 w-4 text-rose-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 truncate">{form.name}</p>
-                  <p className="text-[11px] text-slate-400">{form.fields.filter(f => f.enabled).length} field{form.fields.filter(f => f.enabled).length !== 1 ? "s" : ""}</p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button onClick={() => setExpanded(isExpanded ? null : form.id)} className="text-xs font-semibold text-[#4982CF] hover:opacity-70 flex items-center gap-1">
-                    {isExpanded ? "Collapse" : "Edit Fields"}
-                    {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                  </button>
-                  <button onClick={() => setDeleteTarget({ id: form.id, name: form.name })} className="text-slate-300 hover:text-rose-500">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              {isExpanded && (
-                <div className="border-t border-slate-100 px-4 py-4 space-y-3">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 block">Form Name</label>
-                    <Input value={form.name} onChange={e => renameForm(form.id, e.target.value)} className="h-9 max-w-xs" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 block">Fields</label>
-                    <FieldListEditor fields={form.fields} onChange={fields => updateFormFields(form.id, fields)} />
-                  </div>
-                  <div className="border-t border-slate-100 pt-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Conditional Rules</label>
-                      <button onClick={() => addWelfareConditionalRule(form.id)} className="text-xs text-[#4982CF] font-semibold hover:opacity-70 flex items-center gap-1">
-                        <Plus className="h-3 w-3" /> Add Rule
-                      </button>
-                    </div>
-                    {(form.conditionalRules ?? []).length === 0 && (
-                      <p className="text-xs text-slate-400 text-center py-3 border border-dashed border-slate-200 rounded-lg">
-                        No rules — all fields shown unconditionally.
-                      </p>
-                    )}
-                    {(form.conditionalRules ?? []).map(rule => (
-                      <div key={rule.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-600">When field value matches…</span>
-                          <button onClick={() => removeWelfareConditionalRule(form.id, rule.id)} className="text-slate-300 hover:text-rose-400">
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 block">Trigger Field</label>
-                            <Select value={rule.triggerFieldId || ""} onValueChange={v => updateWelfareConditionalRule(form.id, rule.id, { triggerFieldId: v })}>
-                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select field…" /></SelectTrigger>
-                              <SelectContent>
-                                {form.fields.map(f => <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 block">Trigger Value(s)</label>
-                            <Input
-                              className="h-8 text-xs"
-                              placeholder="val1, val2…"
-                              value={rule.triggerValues.join(", ")}
-                              onChange={e => updateWelfareConditionalRule(form.id, rule.id, {
-                                triggerValues: e.target.value.split(",").map(v => v.trim()).filter(Boolean),
-                              })}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-2 block">Then show these fields</label>
-                          {form.fields.filter(f => f.id !== rule.triggerFieldId).length === 0 ? (
-                            <p className="text-xs text-slate-400">Add other fields first.</p>
-                          ) : (
-                            <div className="flex flex-wrap gap-1.5">
-                              {form.fields.filter(f => f.id !== rule.triggerFieldId).map(f => {
-                                const selected = rule.showFieldIds.includes(f.id);
-                                return (
-                                  <button key={f.id}
-                                    onClick={() => updateWelfareConditionalRule(form.id, rule.id, {
-                                      showFieldIds: selected
-                                        ? rule.showFieldIds.filter(id => id !== f.id)
-                                        : [...rule.showFieldIds, f.id],
-                                    })}
-                                    className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${selected ? "bg-[#4982CF] text-white border-[#4982CF]" : "border-slate-200 text-slate-600 hover:border-[#4982CF]"}`}>
-                                    {f.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                    <p className="text-xs font-semibold text-slate-600 mb-2">Type-Specific Fields</p>
+                    <FieldListEditor
+                      fields={pt.extraFields}
+                      onChange={fields => updateExtraFields(pt.id, fields)}
+                    />
                   </div>
                 </div>
               )}
@@ -687,12 +445,6 @@ function WelfareFormsTab() {
           );
         })}
       </div>
-      <DeleteDialog
-        open={!!deleteTarget}
-        name={deleteTarget?.name ?? ""}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => deleteTarget && deleteForm(deleteTarget.id)}
-      />
     </div>
   );
 }
@@ -1426,7 +1178,6 @@ export function PatientRegistrationModule({ section }: { section: PatRegSection 
   switch (section) {
     case "reg-basic-info":     return <BasicInfoTab />;
     case "reg-patient-types":  return <PatientTypesTab />;
-    case "reg-welfare-forms":  return <WelfareFormsTab />;
     case "reg-demographics":   return <DemographicsTab />;
     case "reg-custom-sections":return <CustomSectionsTab />;
     case "reg-workflow":       return <WorkflowBuilderTab />;
