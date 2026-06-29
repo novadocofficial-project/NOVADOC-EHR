@@ -136,4 +136,17 @@ export const INITIAL_SERVICES: Service[] = [
   { id: "svc-76", name: "Urinary Catheter (Fr16)",    serviceTypeId: "st-5", basePrice: 350,   providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
   { id: "svc-77", name: "Nasogastric Tube (Fr16)",    serviceTypeId: "st-5", basePrice: 280,   providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
   { id: "svc-78", name: "Oxygen Mask (simple)",       serviceTypeId: "st-5", basePrice: 200,   providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: true,  createdAt: D },
+
+  // ── Vaccine ───────────────────────────────────────────────────────────────
+  { id: "svc-80", name: "BCG Vaccine",                   serviceTypeId: "st-7", basePrice: 500,   providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-81", name: "Hepatitis B Vaccine",           serviceTypeId: "st-7", basePrice: 800,   providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-82", name: "OPV (Oral Polio Vaccine)",      serviceTypeId: "st-7", basePrice: 300,   providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-83", name: "DTP Vaccine",                   serviceTypeId: "st-7", basePrice: 700,   providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-84", name: "MMR Vaccine",                   serviceTypeId: "st-7", basePrice: 1200,  providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-85", name: "Varicella (Chickenpox) Vaccine",serviceTypeId: "st-7", basePrice: 2500,  providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-86", name: "HPV Vaccine",                   serviceTypeId: "st-7", basePrice: 8500,  providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-87", name: "Influenza Vaccine (annual)",    serviceTypeId: "st-7", basePrice: 1800,  providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-88", name: "COVID-19 Vaccine",              serviceTypeId: "st-7", basePrice: 2000,  providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-89", name: "Typhoid Vaccine",               serviceTypeId: "st-7", basePrice: 1500,  providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
+  { id: "svc-90", name: "Hepatitis A Vaccine",           serviceTypeId: "st-7", basePrice: 3500,  providerPrices: {}, departmentId: "", subDepartmentId: "", active: true,  taxable: false, createdAt: D },
 ];
