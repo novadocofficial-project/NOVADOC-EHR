@@ -261,6 +261,8 @@ export function AdminSettings() {
     departments: false,
     doctors: false,
     billing: false,
+    corporate: false,
+    insurance: false,
     branches: false,
     patientReg: !!initSection && regSections.includes(initSection as ActiveModule),
     queue: !!initSection && queueSections.includes(initSection as ActiveModule),
@@ -643,12 +645,41 @@ export function AdminSettings() {
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
                 {subNavItem("service-types", <Tag className="h-3.5 w-3.5" />, "Service Types")}
                 {subNavItem("service-pricing", <ClipboardList className="h-3.5 w-3.5" />, "Service Pricing")}
-                {subNavItem("corporate-pricing", <CreditCard className="h-3.5 w-3.5" />, "Corporate Pricing")}
-                {subNavItem("insurance-pricing", <Shield className="h-3.5 w-3.5" />, "Insurance Pricing")}
                 {subNavItem("packages", <Package className="h-3.5 w-3.5" />, "Packages / Bundles")}
               </div>
             )}
 
+            {/* ── Corporate Group ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("corporate")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <CreditCard className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Corporate</span>
+              {navExpanded.corporate ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.corporate && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("corporate-pricing", <ClipboardList className="h-3.5 w-3.5" />, "Pricing")}
+              </div>
+            )}
+
+            {/* ── Insurance Group ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("insurance")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Shield className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Insurance</span>
+              {navExpanded.insurance ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.insurance && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("insurance-pricing", <ClipboardList className="h-3.5 w-3.5" />, "Pricing")}
+              </div>
+            )}
 
             {/* ── Branch Management Group ── */}
             <button
