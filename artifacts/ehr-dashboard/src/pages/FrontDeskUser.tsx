@@ -1057,10 +1057,25 @@ function RegistrationContent({ onRegister, isReassign = false, patients }: Regis
 
 type BillingStep = "cart" | "payment";
 type BillingMode = "services" | "packages";
-type PayType = "cash" | "card" | "corporate" | "insurance" | "welfare";
+type PayType = "cash" | "card" | "corporate" | "insurance" | "welfare" | "split";
+type SplitLegMethod = "cash" | "card" | "bank";
 
 type DiscountMode   = "percent" | "amount";
 type DiscountSource = "doctor" | "hospital" | "both";
+
+interface SplitLeg {
+  uid: string;
+  method: SplitLegMethod;
+  amount: string;
+  cashRx: string;
+}
+
+export interface SplitLegResult {
+  method: SplitLegMethod;
+  label: string;
+  amount: number;
+  cashReceived?: number;
+}
 
 interface CartLine {
   uid: string;
@@ -1085,10 +1100,12 @@ export interface ReceiptInfo {
   refNum: string;
   cashReceived: number;
   coPay: number;
+  coPayMethod?: SplitLegMethod;
   cartDisc: number;
   cartDiscMode: DiscountMode;
   cartDiscSource: DiscountSource;
   cartDiscAmt: number;
+  splitLegs?: SplitLegResult[];
 }
 
 export interface BillingEntry {
@@ -1148,7 +1165,9 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
   const [payType, setPayType]     = useState<PayType | null>(null);
   const [cashRx, setCashRx]       = useState("");
   const [coPayAmt, setCoPayAmt]   = useState("");
+  const [coPayMethod, setCoPayMethod] = useState<SplitLegMethod>("cash");
   const [refNum, setRefNum]       = useState("");
+  const [splitLegs, setSplitLegs] = useState<SplitLeg[]>([{ uid: uid(), method: "cash", amount: "", cashRx: "" }]);
 
   const invNo = useRef("INV-" + Math.random().toString(36).substr(2, 6).toUpperCase()).current;
 
@@ -1213,10 +1232,30 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
   const coPay          = Number(coPayAmt) || 0;
   const welfareCovered = Math.max(0, grandTotal - coPay);
 
+  const splitAllocated = splitLegs.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  const splitRemaining = Math.max(0, grandTotal - splitAllocated);
+  const splitExcess    = Math.max(0, splitAllocated - grandTotal);
+
+  function addSplitLeg() {
+    setSplitLegs(prev => [...prev, { uid: uid(), method: "cash", amount: "", cashRx: "" }]);
+  }
+  function removeSplitLeg(legUid: string) {
+    setSplitLegs(prev => prev.length > 1 ? prev.filter(l => l.uid !== legUid) : prev);
+  }
+  function updateSplitLeg(legUid: string, key: keyof Omit<SplitLeg, "uid">, value: string) {
+    setSplitLegs(prev => prev.map(l => l.uid === legUid ? { ...l, [key]: value } : l));
+  }
+
   function canProceed(): boolean {
     if (!payType) return false;
     if (payType === "cash") return cashReceived >= grandTotal;
     if (payType === "welfare") return coPay >= 0 && coPay <= grandTotal;
+    if (payType === "split") {
+      const balanced  = Math.abs(splitAllocated - grandTotal) < 0.01;
+      const allFilled = splitLegs.every(l => l.method && Number(l.amount) > 0);
+      const cashOk    = splitLegs.filter(l => l.method === "cash").every(l => (Number(l.cashRx) || 0) >= (Number(l.amount) || 0));
+      return balanced && allFilled && cashOk;
+    }
     return true;
   }
 
@@ -1754,13 +1793,14 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
           <p className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3">Payment Type</p>
           <div className="grid grid-cols-2 gap-2">
             {([
-              { v: "cash",      label: "Cash",      icon: <Banknote   className="h-4 w-4" />, color: "#10b981", desc: "Collected at counter"   },
-              { v: "card",      label: "Card / Transfer", icon: <CreditCard className="h-4 w-4" />, color: "#4982CF", desc: "POS or bank transfer"   },
-              { v: "corporate", label: "Corporate", icon: <Building2  className="h-4 w-4" />, color: "#f59e0b", desc: "Billed to company"      },
-              { v: "insurance", label: "Insurance", icon: <Shield     className="h-4 w-4" />, color: "#6366f1", desc: "Insurance claim"        },
-              { v: "welfare",   label: "Welfare",   icon: <Heart      className="h-4 w-4" />, color: "#ef4444", desc: "Govt. welfare scheme"   },
-            ] as const).map(t => (
-              <button key={t.v} onClick={() => setPayType(t.v as PayType)}
+              { v: "cash",      label: "Cash",           icon: <Banknote   className="h-4 w-4" />,                                                                                              color: "#10b981", desc: "Collected at counter"  },
+              { v: "card",      label: "Card / Transfer", icon: <CreditCard className="h-4 w-4" />,                                                                                              color: "#4982CF", desc: "POS or bank transfer"  },
+              { v: "corporate", label: "Corporate",       icon: <Building2  className="h-4 w-4" />,                                                                                              color: "#f59e0b", desc: "Billed to company"     },
+              { v: "insurance", label: "Insurance",       icon: <Shield     className="h-4 w-4" />,                                                                                              color: "#6366f1", desc: "Insurance claim"       },
+              { v: "welfare",   label: "Welfare",         icon: <Heart      className="h-4 w-4" />,                                                                                              color: "#ef4444", desc: "Govt. welfare scheme"  },
+              { v: "split",     label: "Split Payment",   icon: <div className="flex gap-0.5 items-center"><Banknote className="h-3.5 w-3.5" /><Plus className="h-2.5 w-2.5" /><CreditCard className="h-3.5 w-3.5" /></div>, color: "#8b5cf6", desc: "Multiple methods"      },
+            ] as { v: PayType; label: string; icon: React.ReactNode; color: string; desc: string }[]).map(t => (
+              <button key={t.v} onClick={() => setPayType(t.v)}
                 className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${payType === t.v ? "border-current text-white shadow-sm" : "border-slate-200 text-slate-600 hover:border-slate-300 bg-white"}`}
                 style={payType === t.v ? { borderColor: t.color, backgroundColor: t.color } : undefined}>
                 <div>{t.icon}</div>
@@ -1839,6 +1879,23 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
                   onChange={e => setCoPayAmt(e.target.value)} placeholder="0" autoFocus />
               </div>
             </div>
+            {coPay > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-1.5">Co-pay collected by</p>
+                <div className="flex gap-2 flex-wrap">
+                  {([
+                    { v: "cash" as SplitLegMethod, label: "Cash" },
+                    { v: "card" as SplitLegMethod, label: "Card / Transfer" },
+                    { v: "bank" as SplitLegMethod, label: "Bank Transfer" },
+                  ]).map(m => (
+                    <button key={m.v} onClick={() => setCoPayMethod(m.v)}
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${coPayMethod === m.v ? "bg-[#4982CF] text-white border-[#4982CF]" : "border-slate-200 text-slate-500 hover:border-slate-300 bg-white"}`}>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2">
                 <p className="text-[10px] text-slate-500 font-semibold">Co-Pay</p>
@@ -1855,27 +1912,147 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
             </div>
           </div>
         )}
+
+        {payType === "split" && (
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Payment Methods</p>
+            <div className="space-y-2">
+              {splitLegs.map(leg => {
+                const legAmt   = Number(leg.amount) || 0;
+                const legCashRx = Number(leg.cashRx) || 0;
+                const legChange = Math.max(0, legCashRx - legAmt);
+                const legShort  = legCashRx > 0 && legCashRx < legAmt;
+                return (
+                  <div key={leg.uid} className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+                    {/* Method chips + remove */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1.5 flex-1 flex-wrap">
+                        {([
+                          { v: "cash" as SplitLegMethod, label: "Cash" },
+                          { v: "card" as SplitLegMethod, label: "Card / Transfer" },
+                          { v: "bank" as SplitLegMethod, label: "Bank Transfer" },
+                        ]).map(m => (
+                          <button key={m.v} onClick={() => updateSplitLeg(leg.uid, "method", m.v)}
+                            className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all ${leg.method === m.v ? "bg-[#4982CF] text-white border-[#4982CF]" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                      {splitLegs.length > 1 && (
+                        <button onClick={() => removeSplitLeg(leg.uid)}
+                          className="text-slate-300 hover:text-red-400 transition-colors flex-shrink-0">
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    {/* Amount input */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-400 flex-shrink-0">Rs.</span>
+                      <Input
+                        type="number" min={0}
+                        value={leg.amount}
+                        onChange={e => updateSplitLeg(leg.uid, "amount", e.target.value)}
+                        placeholder="0"
+                        className="h-9 text-sm font-bold flex-1"
+                      />
+                      {splitRemaining > 0 && leg.amount === "" && (
+                        <button
+                          onClick={() => updateSplitLeg(leg.uid, "amount", String(splitRemaining))}
+                          className="text-[11px] text-[#4982CF] font-bold hover:opacity-70 flex-shrink-0 whitespace-nowrap">
+                          Fill {fmt(splitRemaining)}
+                        </button>
+                      )}
+                    </div>
+                    {/* Cash received sub-row */}
+                    {leg.method === "cash" && legAmt > 0 && (
+                      <div>
+                        <label className="text-[11px] text-slate-500 font-semibold mb-1 block">Cash Received</label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-400 flex-shrink-0">Rs.</span>
+                          <Input
+                            type="number" min={0}
+                            value={leg.cashRx}
+                            onChange={e => updateSplitLeg(leg.uid, "cashRx", e.target.value)}
+                            placeholder={String(legAmt)}
+                            className="h-8 text-sm flex-1"
+                          />
+                        </div>
+                        {legCashRx > 0 && (
+                          <p className={`text-[11px] font-bold mt-1 ${legChange > 0 ? "text-green-600" : legShort ? "text-red-500" : "text-slate-400"}`}>
+                            {legChange > 0 ? `Change: ${fmt(legChange)}` : legShort ? `Short by ${fmt(legAmt - legCashRx)}` : "Exact amount"}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Add leg button */}
+            <button onClick={addSplitLeg}
+              className="flex items-center gap-1.5 text-xs font-bold text-[#4982CF] hover:opacity-70 transition-opacity">
+              <Plus className="h-3.5 w-3.5" /> Add another method
+            </button>
+            {/* Running totals */}
+            <div className={`rounded-xl border px-4 py-3 flex items-center justify-between ${
+              splitExcess > 0
+                ? "border-red-200 bg-red-50"
+                : splitAllocated > 0 && Math.abs(splitAllocated - grandTotal) < 0.01
+                  ? "border-green-200 bg-green-50"
+                  : "border-slate-200 bg-slate-50"
+            }`}>
+              <div>
+                <p className="text-[10px] text-slate-500 font-semibold">Allocated</p>
+                <p className={`text-sm font-black ${splitExcess > 0 ? "text-red-600" : "text-slate-800"}`}>{fmt(splitAllocated)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] text-slate-400 font-semibold">of</p>
+                <p className="text-sm font-black text-slate-500">{fmt(grandTotal)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-slate-500 font-semibold">{splitExcess > 0 ? "Excess" : "Remaining"}</p>
+                <p className={`text-sm font-black ${
+                  splitExcess > 0 ? "text-red-600" : splitRemaining === 0 && splitAllocated > 0 ? "text-green-600" : "text-slate-400"
+                }`}>
+                  {splitExcess > 0 ? fmt(splitExcess) : splitRemaining === 0 ? "✓ Balanced" : fmt(splitRemaining)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer */}
       <div className="flex-shrink-0 border-t border-slate-100 bg-white px-5 py-4">
         <Button className="w-full h-11 text-sm font-bold gap-2" style={{ backgroundColor: "#4982CF" }}
           disabled={!canProceed()}
-          onClick={() => onComplete({
-            tokenNumber: entry.tokenLabel,
-            patientName: entry.patient?.name ?? "Walk-in Patient",
-            total: grandTotal,
-            payType: payType!,
-            items: cart,
-            invNo,
-            refNum,
-            cashReceived: Number(cashRx) || 0,
-            coPay: Number(coPayAmt) || 0,
-            cartDisc,
-            cartDiscMode,
-            cartDiscSource,
-            cartDiscAmt,
-          })}>
+          onClick={() => {
+            const resolvedSplitLegs: SplitLegResult[] = payType === "split"
+              ? splitLegs.map(l => ({
+                  method: l.method,
+                  label: l.method === "cash" ? "Cash" : l.method === "card" ? "Card / Transfer" : "Bank Transfer",
+                  amount: Number(l.amount) || 0,
+                  cashReceived: l.method === "cash" ? (Number(l.cashRx) || 0) : undefined,
+                }))
+              : [];
+            onComplete({
+              tokenNumber: entry.tokenLabel,
+              patientName: entry.patient?.name ?? "Walk-in Patient",
+              total: grandTotal,
+              payType: payType!,
+              items: cart,
+              invNo,
+              refNum,
+              cashReceived: Number(cashRx) || 0,
+              coPay: Number(coPayAmt) || 0,
+              coPayMethod: payType === "welfare" ? coPayMethod : undefined,
+              cartDisc,
+              cartDiscMode,
+              cartDiscSource,
+              cartDiscAmt,
+              splitLegs: resolvedSplitLegs.length > 0 ? resolvedSplitLegs : undefined,
+            });
+          }}>
           <CheckCircle2 className="h-4 w-4" /> Generate Invoice &amp; Advance to Vitals
         </Button>
       </div>
@@ -1923,9 +2100,11 @@ export function printThermalReceipt(r: ReceiptInfo) {
     ${r.items.reduce((s, l) => { const g = l.price * l.qty; return s + (l.discountMode === "amount" ? Math.min(l.discount, g) : g * l.discount / 100); }, 0) > 0 ? `<div>Item Discounts: -Rs.${Math.round(r.items.reduce((s,l)=>{ const g=l.price*l.qty; return s+(l.discountMode==="amount"?Math.min(l.discount,g):g*l.discount/100); },0)).toLocaleString("en-PK")}</div>` : ""}
     ${r.cartDiscAmt > 0 ? `<div>Cart Disc (${r.cartDiscMode === "percent" ? `${r.cartDisc}%` : `Rs.${r.cartDisc.toLocaleString("en-PK")}`}, ${r.cartDiscSource === "doctor" ? "Dr." : r.cartDiscSource === "hospital" ? "Clinic" : "Both"}): -Rs.${r.cartDiscAmt.toLocaleString("en-PK")}</div>` : ""}
     <div class="total">TOTAL: Rs.${r.total.toLocaleString("en-PK")}</div>
-    <div>Payment: <span class="bold">${payLabel[r.payType] ?? r.payType}</span></div>
-    ${r.payType === "cash" && r.cashReceived > r.total ? `<div>Cash Rcvd: Rs.${r.cashReceived.toLocaleString("en-PK")}</div><div>Change: Rs.${(r.cashReceived - r.total).toLocaleString("en-PK")}</div>` : ""}
-    ${r.payType === "welfare" ? `<div>Co-Pay: Rs.${r.coPay.toLocaleString("en-PK")}</div><div>Welfare: Rs.${(r.total - r.coPay).toLocaleString("en-PK")}</div>` : ""}
+    ${r.splitLegs && r.splitLegs.length > 0
+      ? r.splitLegs.map(l => `<div>${l.label}: <span class="bold">Rs.${l.amount.toLocaleString("en-PK")}</span>${l.cashReceived && l.cashReceived > l.amount ? ` &middot; Rcvd Rs.${l.cashReceived.toLocaleString("en-PK")} &middot; Change Rs.${(l.cashReceived - l.amount).toLocaleString("en-PK")}` : ""}</div>`).join("")
+      : `<div>Payment: <span class="bold">${payLabel[r.payType] ?? r.payType}</span></div>`}
+    ${r.payType === "cash" && !r.splitLegs && r.cashReceived > r.total ? `<div>Cash Rcvd: Rs.${r.cashReceived.toLocaleString("en-PK")}</div><div>Change: Rs.${(r.cashReceived - r.total).toLocaleString("en-PK")}</div>` : ""}
+    ${r.payType === "welfare" ? `<div>Co-Pay (${r.coPayMethod === "card" ? "Card/Transfer" : r.coPayMethod === "bank" ? "Bank Transfer" : "Cash"}): Rs.${r.coPay.toLocaleString("en-PK")}</div><div>Welfare Covers: Rs.${(r.total - r.coPay).toLocaleString("en-PK")}</div>` : ""}
     ${r.refNum ? `<div>Ref: ${r.refNum}</div>` : ""}
     <div class="sep"></div>
     <div class="center" style="font-size:11px">Thank you · Please proceed to Vitals</div>
