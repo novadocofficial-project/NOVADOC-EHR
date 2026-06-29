@@ -495,8 +495,8 @@ export function WelfareSchemesModule() {
               </div>
             </div>
 
-            {/* Tabs */}
-            <Tabs defaultValue="overview" className="flex flex-1 flex-col overflow-hidden">
+            {/* Tabs — keyed by scheme.id so all tab sub-components remount on scheme switch */}
+            <Tabs key={selected.id} defaultValue="overview" className="flex flex-1 flex-col overflow-hidden">
               <TabsList className="flex-none mx-6 mt-4 w-fit bg-slate-100/80">
                 <TabsTrigger value="overview" className="text-xs gap-1.5"><HandHeart className="h-3.5 w-3.5" />Overview</TabsTrigger>
                 <TabsTrigger value="eligibility" className="text-xs gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Eligibility</TabsTrigger>
@@ -855,27 +855,37 @@ function CoverageTab({ scheme, onUpdate }: { scheme: WelfareScheme; onUpdate: (p
 
 /* ── Limits Tab ────────────────────────────────────────────────────────────── */
 function LimitsTab({ scheme, onUpdate }: { scheme: WelfareScheme; onUpdate: (p: Partial<WelfareScheme>) => void }) {
-  const [local, setLocal] = useState({ ...scheme });
+  const [local, setLocal] = useState({
+    annualCreditLimit: scheme.annualCreditLimit,
+    maxOpdVisitsPerYear: scheme.maxOpdVisitsPerYear,
+    maxInpatientDaysPerYear: scheme.maxInpatientDaysPerYear,
+    renewalPeriod: scheme.renewalPeriod,
+    gracePeriodDays: scheme.gracePeriodDays,
+  });
+  // co-pay % per service type — independently editable from coverage %
+  const [localCoPay, setLocalCoPay] = useState<Record<string, number>>(() =>
+    Object.fromEntries(SERVICE_TYPES.map(st => [st.id, scheme.coverage[st.id]?.coPay ?? 0]))
+  );
   const [saved, setSaved] = useState(false);
 
   function save() {
+    // Merge updated coPay back into coverage (keep enabled & coveragePct unchanged)
+    const updatedCoverage: Record<string, ServiceCoverageRule> = { ...scheme.coverage };
+    SERVICE_TYPES.forEach(st => {
+      const existing = updatedCoverage[st.id] ?? { enabled: false, coveragePct: 0, coPay: 100 };
+      updatedCoverage[st.id] = { ...existing, coPay: localCoPay[st.id] ?? existing.coPay };
+    });
     onUpdate({
       annualCreditLimit: local.annualCreditLimit,
       maxOpdVisitsPerYear: local.maxOpdVisitsPerYear,
       maxInpatientDaysPerYear: local.maxInpatientDaysPerYear,
       renewalPeriod: local.renewalPeriod,
       gracePeriodDays: local.gracePeriodDays,
+      coverage: updatedCoverage,
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
-
-  const effectiveCoPay = SERVICE_TYPES.map(st => {
-    const rule = scheme.coverage[st.id];
-    if (!rule?.enabled) return null;
-    const co = 100 - rule.coveragePct;
-    return { name: st.name, co };
-  }).filter(Boolean) as { name: string; co: number }[];
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -916,22 +926,48 @@ function LimitsTab({ scheme, onUpdate }: { scheme: WelfareScheme; onUpdate: (p: 
         </div>
       </div>
 
-      {/* Co-pay summary */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Effective Co-pay by Service Type</h3>
-        <p className="text-[10px] text-slate-400 mb-3">Derived from your Coverage settings. To change co-pay percentages, update coverage % on the Coverage tab.</p>
-        <div className="flex flex-wrap gap-2">
-          {effectiveCoPay.map(({ name, co }) => (
-            <div key={name} className={`flex items-center gap-1.5 rounded-full border px-3 py-1 ${co === 0 ? "border-emerald-200 bg-emerald-50" : co >= 50 ? "border-amber-200 bg-amber-50" : "border-blue-200 bg-blue-50"}`}>
-              <span className="text-xs font-medium text-slate-700">{name}</span>
-              <span className={`text-xs font-bold ${co === 0 ? "text-emerald-600" : co >= 50 ? "text-amber-600" : "text-blue-600"}`}>{co}% co-pay</span>
-            </div>
-          ))}
+      {/* Co-pay % per service type — editable */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-2.5">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">Co-pay % by Service Type</h3>
+          <p className="text-[10px] text-slate-400 mt-0.5">The portion of cost the patient pays out-of-pocket. Independent from the coverage % set on the Coverage tab.</p>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {SERVICE_TYPES.map(st => {
+            const rule = scheme.coverage[st.id];
+            const isEnabled = rule?.enabled ?? false;
+            const co = localCoPay[st.id] ?? 0;
+            return (
+              <div key={st.id} className="flex items-center gap-4 px-5 py-3">
+                <div className="flex-1 flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full flex-none ${isEnabled ? "bg-emerald-500" : "bg-slate-300"}`} />
+                  <span className={`text-sm font-medium ${isEnabled ? "text-slate-700" : "text-slate-400"}`}>{st.name}</span>
+                  {!isEnabled && <span className="text-[10px] text-slate-400">(not covered)</span>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number" min={0} max={100}
+                    value={co}
+                    disabled={!isEnabled}
+                    onChange={e => setLocalCoPay(prev => ({
+                      ...prev,
+                      [st.id]: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)),
+                    }))}
+                    className="h-7 text-xs w-20 text-right"
+                  />
+                  <span className="text-xs text-slate-400 w-4">%</span>
+                  <Badge className={`w-20 justify-center text-[9px] ${co === 0 ? "bg-emerald-500/10 text-emerald-700 border-emerald-200" : co >= 50 ? "bg-amber-500/10 text-amber-700 border-amber-200" : "bg-blue-500/10 text-blue-700 border-blue-200"}`}>
+                    {co === 0 ? "No co-pay" : co >= 100 ? "Full co-pay" : `${co}% co-pay`}
+                  </Badge>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       <div className="flex items-center gap-3">
-        <Button onClick={save} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white" size="sm">Save Limits</Button>
+        <Button onClick={save} className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white" size="sm">Save Limits & Co-pay</Button>
         {saved && <span className="flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" />Saved</span>}
       </div>
     </div>
