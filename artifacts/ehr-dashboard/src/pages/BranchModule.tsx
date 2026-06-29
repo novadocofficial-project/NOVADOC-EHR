@@ -1310,7 +1310,10 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
                         )}
                       </div>
                       <span className="font-mono text-xs font-bold text-[#4982CF] bg-[#4982CF]/8 px-2 py-0.5 rounded w-fit">{b.code}</span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${modeCls}`}>{modeLabel}</span>
+                      {b.operationalMode === "appointment-only"
+                        ? <span className="text-xs text-slate-300 font-mono">—</span>
+                        : <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${modeCls}`}>{modeLabel}</span>
+                      }
                       <div className="flex items-center gap-1.5 text-xs text-slate-500"><Globe className="h-3 w-3" />{b.timezone}</div>
                       <div className="flex items-center gap-1 text-xs text-slate-600">
                         <Clock className="h-3 w-3 text-slate-400" />{fmt12(b.workingHoursStart)} – {fmt12(b.workingHoursEnd)}
