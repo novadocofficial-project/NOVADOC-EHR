@@ -198,7 +198,7 @@ function buildCatalogue(apptFilter?: ApptFilter): { categories: BillCategory[]; 
   const activeImgProvs  = imagingPartners.filter(p => p.active);
 
   // Build a flat list of all protocol entries from enabled modalities/body parts.
-  const allImgProtocols: { id: string; name: string; subLabel: string }[] = [];
+  const allImgProtocols: { id: string; name: string }[] = [];
   for (const mod of imagingCatalog) {
     if (mod.enabled === false) continue;
     for (const bp of mod.bodyParts) {
@@ -206,9 +206,8 @@ function buildCatalogue(apptFilter?: ApptFilter): { categories: BillCategory[]; 
       for (const proto of bp.protocols) {
         const key = `${mod.name}||${bp.name}||${proto}`;
         allImgProtocols.push({
-          id:       key,
-          name:     `${bp.name} — ${proto}`,
-          subLabel: mod.name,
+          id:   key,
+          name: `${mod.name} — ${bp.name} — ${proto}`,
         });
       }
     }

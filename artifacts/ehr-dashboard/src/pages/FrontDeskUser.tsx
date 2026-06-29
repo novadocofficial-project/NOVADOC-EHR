@@ -1080,7 +1080,7 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
         {mode === "services" && catId && currentCat && (() => {
           const style = CAT_STYLE[catId] ?? { color: "text-slate-700", bg: "bg-slate-50 border-slate-200" };
           // Categories that group items by their subLabel
-          const isGrouped = catId === "consultation" || catId === "imaging" || catId === "pharmacy";
+          const isGrouped = catId === "consultation" || catId === "pharmacy";
 
           // Apply search filter
           const q = catSearch.trim().toLowerCase();
