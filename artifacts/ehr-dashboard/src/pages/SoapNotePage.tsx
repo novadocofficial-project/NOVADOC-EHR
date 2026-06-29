@@ -65,8 +65,18 @@ const ALLERGIES_LIST = [
   { name: "Latex",        severity: "Mild",     reaction: "Contact dermatitis" },
 ];
 
+const CURRENT_MEDICATIONS = [
+  { name: "Lisinopril",    dose: "10 mg",  form: "Tablet", frequency: "Once daily",       route: "Oral", indication: "Hypertension",    prescriber: "Dr. Asif Imam",  startDate: "12 Jan 2025", status: "Active"   },
+  { name: "Metformin",     dose: "500 mg", form: "Tablet", frequency: "Twice daily",      route: "Oral", indication: "Type 2 Diabetes", prescriber: "Dr. Asif Imam",  startDate: "05 Mar 2024", status: "Active"   },
+  { name: "Atorvastatin",  dose: "20 mg",  form: "Tablet", frequency: "Once at bedtime",  route: "Oral", indication: "Dyslipidaemia",   prescriber: "Dr. Asif Imam",  startDate: "18 Jun 2024", status: "Active"   },
+  { name: "Aspirin",       dose: "75 mg",  form: "Tablet", frequency: "Once daily",       route: "Oral", indication: "Cardioprotection", prescriber: "Dr. Asif Imam", startDate: "12 Jan 2025", status: "Active"   },
+  { name: "Omeprazole",    dose: "20 mg",  form: "Capsule",frequency: "Once daily",       route: "Oral", indication: "GI protection",   prescriber: "Dr. Asif Imam",  startDate: "12 Jan 2025", status: "Active"   },
+  { name: "Amlodipine",    dose: "5 mg",   form: "Tablet", frequency: "Once daily",       route: "Oral", indication: "Hypertension",    prescriber: "Dr. Asif Imam",  startDate: "20 Sep 2024", status: "On Hold"  },
+];
+
 const NAV_TABS: { label: string; Icon: React.ElementType }[] = [
   { label: "Last Visit",              Icon: Calendar      },
+  { label: "Current Medications",     Icon: Pill          },
   { label: "Labs",                    Icon: FlaskConical  },
   { label: "Imaging",                 Icon: Camera        },
   { label: "Procedures",              Icon: Scissors      },
@@ -1082,6 +1092,78 @@ interface DrawerProps {
   onClose: () => void;
 }
 
+function CurrentMedicationsDrawer({ fullscreen, onToggleFullscreen, onClose }: Omit<DrawerProps, "label" | "Icon">) {
+  const statusColor = (s: string) => s === "Active" ? "#10b981" : "#f59e0b";
+  return (
+    <>
+      {!fullscreen && <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px] z-30" />}
+      <div className={["absolute top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-40 transition-all duration-300", fullscreen ? "inset-0 w-full" : "w-[560px] border-l border-slate-200"].join(" ")}>
+
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 flex-shrink-0">
+          <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${ACCENT}15` }}>
+            <Pill className="h-4 w-4" style={{ color: ACCENT }} />
+          </div>
+          <p className="text-sm font-black text-slate-800 flex-1">Current Medications</p>
+          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: ACCENT }}>
+            {CURRENT_MEDICATIONS.length}
+          </span>
+          <button onClick={onToggleFullscreen} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title={fullscreen ? "Exit fullscreen" : "Fullscreen"}>
+            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Summary bar */}
+        <div className="flex items-center gap-4 px-5 py-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+          {[
+            { label: "Total", value: CURRENT_MEDICATIONS.length, color: ACCENT },
+            { label: "Active", value: CURRENT_MEDICATIONS.filter(m => m.status === "Active").length, color: "#10b981" },
+            { label: "On Hold", value: CURRENT_MEDICATIONS.filter(m => m.status === "On Hold").length, color: "#f59e0b" },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <span className="text-lg font-black" style={{ color }}>{value}</span>
+              <span className="text-[11px] text-slate-500 font-medium">{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Medication list */}
+        <div className="flex-1 overflow-y-auto">
+          {CURRENT_MEDICATIONS.map((med, i) => (
+            <div key={i} className="px-5 py-4 border-b border-slate-100 hover:bg-slate-50 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: `${ACCENT}12` }}>
+                    <Pill className="h-4 w-4" style={{ color: ACCENT }} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-black text-slate-800">{med.name}</span>
+                      <span className="text-[11px] font-bold text-slate-500">{med.dose} · {med.form}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">{med.frequency} · {med.route}</p>
+                    <p className="text-xs text-slate-400 mt-1">For: <span className="text-slate-600 font-medium">{med.indication}</span></p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0 mt-1" style={{ backgroundColor: `${statusColor(med.status)}18`, color: statusColor(med.status) }}>
+                  {med.status}
+                </span>
+              </div>
+              <div className="flex items-center gap-4 mt-2.5 pl-12">
+                <span className="text-[10px] text-slate-400">Prescribed by <span className="text-slate-600 font-medium">{med.prescriber}</span></span>
+                <span className="text-[10px] text-slate-400">Started <span className="text-slate-600 font-medium">{med.startDate}</span></span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function ModuleDrawer({ label, Icon, fullscreen, onToggleFullscreen, onClose }: DrawerProps) {
   return (
     <>
@@ -1728,7 +1810,15 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
       {/* ═══════════════════════════════════════════════════════════════════════
           MODULE DRAWER (right-side overlay)
       ═══════════════════════════════════════════════════════════════════════ */}
-      {!showNoteDrawer && openDrawer && openDrawer !== "Labs" && openDrawer !== "Scanned Documents" && activeTabMeta && (
+      {!showNoteDrawer && openDrawer === "Current Medications" && (
+        <CurrentMedicationsDrawer
+          fullscreen={drawerFullscreen}
+          onToggleFullscreen={() => setDrawerFullscreen(f => !f)}
+          onClose={closeDrawer}
+        />
+      )}
+
+      {!showNoteDrawer && openDrawer && openDrawer !== "Labs" && openDrawer !== "Scanned Documents" && openDrawer !== "Current Medications" && activeTabMeta && (
         <ModuleDrawer
           label={openDrawer}
           Icon={activeTabMeta.Icon}
