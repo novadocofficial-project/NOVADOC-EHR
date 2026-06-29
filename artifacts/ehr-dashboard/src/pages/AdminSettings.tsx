@@ -591,7 +591,24 @@ export function AdminSettings() {
             Admin Settings
           </div>
           <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-            {/* Departments Group */}
+
+            {/* 1 ── Branches ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("branches")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <GitBranch className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Branches</span>
+              {navExpanded.branches ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.branches && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("branches", <Building2 className="h-3.5 w-3.5" />, "Branch List")}
+              </div>
+            )}
+
+            {/* 2 ── Care Structure ── */}
             <button
               type="button"
               onClick={() => toggleNav("departments")}
@@ -610,7 +627,7 @@ export function AdminSettings() {
               </div>
             )}
 
-            {/* Doctors Group */}
+            {/* 3 ── Doctors ── */}
             <button
               type="button"
               onClick={() => toggleNav("doctors")}
@@ -629,75 +646,7 @@ export function AdminSettings() {
               </div>
             )}
 
-            {/* Billing & Pricing Group */}
-            <button
-              type="button"
-              onClick={() => toggleNav("billing")}
-              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <Receipt className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Billing & Pricing</span>
-              {navExpanded.billing
-                ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-            </button>
-            {navExpanded.billing && (
-              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("service-types", <Tag className="h-3.5 w-3.5" />, "Service Types")}
-                {subNavItem("service-pricing", <ClipboardList className="h-3.5 w-3.5" />, "Service Pricing")}
-                {subNavItem("packages", <Package className="h-3.5 w-3.5" />, "Packages / Bundles")}
-              </div>
-            )}
-
-            {/* ── Corporate Group ── */}
-            <button
-              type="button"
-              onClick={() => toggleNav("corporate")}
-              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <CreditCard className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Corporate</span>
-              {navExpanded.corporate ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-            </button>
-            {navExpanded.corporate && (
-              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("corporate-pricing", <ClipboardList className="h-3.5 w-3.5" />, "Pricing")}
-              </div>
-            )}
-
-            {/* ── Insurance Group ── */}
-            <button
-              type="button"
-              onClick={() => toggleNav("insurance")}
-              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <Shield className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Insurance</span>
-              {navExpanded.insurance ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-            </button>
-            {navExpanded.insurance && (
-              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("insurance-pricing", <ClipboardList className="h-3.5 w-3.5" />, "Pricing")}
-              </div>
-            )}
-
-            {/* ── Branch Management Group ── */}
-            <button
-              type="button"
-              onClick={() => toggleNav("branches")}
-              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <GitBranch className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Branches</span>
-              {navExpanded.branches ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-            </button>
-            {navExpanded.branches && (
-              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("branches", <Building2 className="h-3.5 w-3.5" />, "Branch List")}
-              </div>
-            )}
-
-            {/* ── Patient Registration Group ── */}
+            {/* 4 ── Patient Registration ── */}
             <button
               type="button"
               onClick={() => toggleNav("patientReg")}
@@ -719,7 +668,7 @@ export function AdminSettings() {
               </div>
             )}
 
-            {/* ── Queue Management Group ── */}
+            {/* Queue Setup ── */}
             <button
               type="button"
               onClick={() => toggleNav("queue")}
@@ -744,7 +693,26 @@ export function AdminSettings() {
               </div>
             )}
 
-            {/* ── SOAP Configuration Group ── */}
+            {/* 5 ── Nursing ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("nursing")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Heart className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Nursing</span>
+              {navExpanded.nursing ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.nursing && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("nursing-triage",     <AlertCircle className="h-3.5 w-3.5" />,  "Triage")}
+                {subNavItem("nursing-history",    <ClipboardList className="h-3.5 w-3.5" />, "History")}
+                {subNavItem("nursing-vitals",     <Sliders className="h-3.5 w-3.5" />,       "Vital Signs")}
+                {subNavItem("nursing-procedures", <Stethoscope className="h-3.5 w-3.5" />,   "Nursing Procedures")}
+              </div>
+            )}
+
+            {/* 6 ── SOAP Configuration ── */}
             <button
               type="button"
               onClick={() => toggleNav("soapConfig")}
@@ -768,7 +736,6 @@ export function AdminSettings() {
                 {subNavItem("clinical-poc",          <FlaskConical className="h-3.5 w-3.5" />,  "POC Tests")}
                 {subNavItem("clinical-icd10",        <FileText className="h-3.5 w-3.5" />,      "ICD-10 Codes")}
                 {subNavItem("comorbidities",         <Heart className="h-3.5 w-3.5" />,         "Comorbidities")}
-
                 {subNavItem("goals-library",         <Target className="h-3.5 w-3.5" />,        "Patient Goals")}
                 {subNavItem("referral-destinations", <MapPin className="h-3.5 w-3.5" />,        "Referral Destinations")}
                 {subNavItem("template-manager",      <FileText className="h-3.5 w-3.5" />,      "Template Manager")}
@@ -777,26 +744,27 @@ export function AdminSettings() {
               </div>
             )}
 
-            {/* ── Nursing Group ── */}
+            {/* 7 ── Billing & Pricing ── */}
             <button
               type="button"
-              onClick={() => toggleNav("nursing")}
+              onClick={() => toggleNav("billing")}
               className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
             >
-              <Heart className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Nursing</span>
-              {navExpanded.nursing ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+              <Receipt className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Billing & Pricing</span>
+              {navExpanded.billing
+                ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
             </button>
-            {navExpanded.nursing && (
+            {navExpanded.billing && (
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("nursing-triage",     <AlertCircle className="h-3.5 w-3.5" />,  "Triage")}
-                {subNavItem("nursing-history",    <ClipboardList className="h-3.5 w-3.5" />, "History")}
-                {subNavItem("nursing-vitals",     <Sliders className="h-3.5 w-3.5" />,       "Vital Signs")}
-                {subNavItem("nursing-procedures", <Stethoscope className="h-3.5 w-3.5" />,   "Nursing Procedures")}
+                {subNavItem("service-types",   <Tag className="h-3.5 w-3.5" />,          "Service Types")}
+                {subNavItem("service-pricing", <ClipboardList className="h-3.5 w-3.5" />, "Service Pricing")}
+                {subNavItem("packages",        <Package className="h-3.5 w-3.5" />,       "Packages / Bundles")}
               </div>
             )}
 
-            {/* ── Lab Catalog Group ── */}
+            {/* 8 ── Lab Catalog ── */}
             <button
               type="button"
               onClick={() => toggleNav("labCatalog")}
@@ -815,7 +783,7 @@ export function AdminSettings() {
               </div>
             )}
 
-            {/* ── Procedure Catalog Group ── */}
+            {/* 9 ── Procedure Catalog ── */}
             <button
               type="button"
               onClick={() => toggleNav("procedureCatalog")}
@@ -827,12 +795,31 @@ export function AdminSettings() {
             </button>
             {navExpanded.procedureCatalog && (
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("proc-master",   <FileText className="h-3.5 w-3.5" />, "Procedure Master List")}
+                {subNavItem("proc-master",   <FileText className="h-3.5 w-3.5" />,    "Procedure Master List")}
                 {subNavItem("proc-partners", <Stethoscope className="h-3.5 w-3.5" />, "Procedure Partners")}
               </div>
             )}
 
-            {/* ── Vaccine Catalog Group ── */}
+            {/* 10 ── Imaging Catalog ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("imagingCatalog")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <ScanLine className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Imaging Catalog</span>
+              {navExpanded.imagingCatalog ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.imagingCatalog && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("imaging-tests",      <ScanLine className="h-3.5 w-3.5" />,  "Imaging Test List")}
+                {subNavItem("imaging-reasons",    <FileText className="h-3.5 w-3.5" />,  "Reason Templates")}
+                {subNavItem("imaging-partners",   <Building2 className="h-3.5 w-3.5" />, "Imaging Partners")}
+                {subNavItem("imaging-order-sets", <Layers className="h-3.5 w-3.5" />,    "Imaging Order Sets")}
+              </div>
+            )}
+
+            {/* 11 ── Vaccine Catalog ── */}
             <button
               type="button"
               onClick={() => toggleNav("vaccineCatalog")}
@@ -849,7 +836,7 @@ export function AdminSettings() {
               </div>
             )}
 
-            {/* ── Formulary Management Group ── */}
+            {/* 12 ── Formulary ── */}
             <button
               type="button"
               onClick={() => toggleNav("formulary")}
@@ -861,36 +848,17 @@ export function AdminSettings() {
             </button>
             {navExpanded.formulary && (
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("formulary-catalogue", <Pill className="h-3.5 w-3.5" />, "Medicine Catalogue")}
-                {subNavItem("formulary-defaults",  <Tag className="h-3.5 w-3.5" />,  "Prescription Defaults")}
-                {subNavItem("formulary-bundles",       <BookOpen className="h-3.5 w-3.5" />, "Bundles")}
+                {subNavItem("formulary-catalogue",    <Pill className="h-3.5 w-3.5" />,     "Medicine Catalogue")}
+                {subNavItem("formulary-defaults",     <Tag className="h-3.5 w-3.5" />,      "Prescription Defaults")}
+                {subNavItem("formulary-bundles",      <BookOpen className="h-3.5 w-3.5" />, "Bundles")}
                 {subNavItem("formulary-interactions", <Zap className="h-3.5 w-3.5" />,      "Drug Interactions")}
-                {subNavItem("formulary-pedi-dosing",    <List className="h-3.5 w-3.5" />,     "Pedi Dosing Guidelines")}
-                {subNavItem("formulary-non-formulary", <FileText className="h-3.5 w-3.5" />, "Non-Formulary")}
-                {subNavItem("formulary-partners",      <Store className="h-3.5 w-3.5" />,    "Pharmacy Partners")}
+                {subNavItem("formulary-pedi-dosing",  <List className="h-3.5 w-3.5" />,     "Pedi Dosing Guidelines")}
+                {subNavItem("formulary-non-formulary",<FileText className="h-3.5 w-3.5" />, "Non-Formulary")}
+                {subNavItem("formulary-partners",     <Store className="h-3.5 w-3.5" />,    "Pharmacy Partners")}
               </div>
             )}
 
-            {/* ── Imaging Catalog Group ── */}
-            <button
-              type="button"
-              onClick={() => toggleNav("imagingCatalog")}
-              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <ScanLine className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Imaging Catalog</span>
-              {navExpanded.imagingCatalog ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-            </button>
-            {navExpanded.imagingCatalog && (
-              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("imaging-tests",    <ScanLine className="h-3.5 w-3.5" />,  "Imaging Test List")}
-                {subNavItem("imaging-reasons",  <FileText className="h-3.5 w-3.5" />,  "Reason Templates")}
-                {subNavItem("imaging-partners", <Building2 className="h-3.5 w-3.5" />, "Imaging Partners")}
-                {subNavItem("imaging-order-sets", <Layers className="h-3.5 w-3.5" />,  "Imaging Order Sets")}
-              </div>
-            )}
-
-            {/* ── Consumables Group ── */}
+            {/* 13 ── Consumables ── */}
             <button
               type="button"
               onClick={() => toggleNav("consumables")}
@@ -907,7 +875,39 @@ export function AdminSettings() {
               </div>
             )}
 
-            {/* ── Users Management Group ── */}
+            {/* 14 ── Insurance ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("insurance")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Shield className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Insurance</span>
+              {navExpanded.insurance ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.insurance && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("insurance-pricing", <ClipboardList className="h-3.5 w-3.5" />, "Pricing")}
+              </div>
+            )}
+
+            {/* 15 ── Corporate ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("corporate")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <CreditCard className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Corporate</span>
+              {navExpanded.corporate ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.corporate && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("corporate-pricing", <ClipboardList className="h-3.5 w-3.5" />, "Pricing")}
+              </div>
+            )}
+
+            {/* 16 ── Users ── */}
             <button
               type="button"
               onClick={() => toggleNav("users")}
@@ -920,7 +920,7 @@ export function AdminSettings() {
             {navExpanded.users && (
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
                 {subNavItem("users-counters", <UserRound className="h-3.5 w-3.5" />, "Users & Counters")}
-                {subNavItem("permissions",    <Shield className="h-3.5 w-3.5" />, "Security")}
+                {subNavItem("permissions",    <Shield className="h-3.5 w-3.5" />,    "Security")}
               </div>
             )}
           </nav>
