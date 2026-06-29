@@ -329,6 +329,7 @@ export function AdminSettings() {
     patientReg: !!initSection && regSections.includes(initSection as ActiveModule),
     queue: !!initSection && queueSections.includes(initSection as ActiveModule),
     soapConfig: false,
+    specialityNotes: false,
     nursing: false,
     clinicalLibraries: false,
     labCatalog: false,
@@ -824,8 +825,23 @@ export function AdminSettings() {
                 {subNavItem("goals-library",         <Target className="h-3.5 w-3.5" />,        "Patient Goals")}
                 {subNavItem("referral-destinations", <MapPin className="h-3.5 w-3.5" />,        "Referral Destinations")}
                 {subNavItem("template-manager",      <FileText className="h-3.5 w-3.5" />,      "Template Manager")}
-                {subNavItem("specialty-forms",       <Layers   className="h-3.5 w-3.5" />,      "Specialty Forms")}
                 {subNavItem("health-ed-library",     <BookOpen className="h-3.5 w-3.5" />,      "Health Ed Library")}
+              </div>
+            )}
+
+            {/* 6b ── Speciality Notes ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("specialityNotes")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Layers className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Speciality Notes</span>
+              {navExpanded.specialityNotes ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.specialityNotes && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("specialty-forms", <FileText className="h-3.5 w-3.5" />, "Forms")}
               </div>
             )}
 
