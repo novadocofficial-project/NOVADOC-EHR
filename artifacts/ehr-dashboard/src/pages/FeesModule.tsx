@@ -761,17 +761,19 @@ export function FeesModule({
 
       {/* ── Assign Services Dialog ── */}
       <Dialog open={showAssignDialog} onOpenChange={open => !open && setShowAssignDialog(false)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Assign Services to {selectedDoctor?.name}</DialogTitle></DialogHeader>
-          <div className="space-y-3 pt-1">
-            <div className="relative">
+        <DialogContent className="max-w-xl flex flex-col max-h-[85vh] overflow-hidden">
+          <DialogHeader className="flex-none">
+            <DialogTitle>Assign Services to {selectedDoctor?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col flex-1 min-h-0 gap-3 pt-1">
+            <div className="relative flex-none">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <Input placeholder="Search services…" value={assignSearch} onChange={e => setAssignSearch(e.target.value)} className="pl-8 h-8 text-xs" />
             </div>
             {services.length === 0 ? (
               <p className="text-center text-sm text-slate-400 py-6">No services in system. Add services in Service Pricing first.</p>
             ) : (
-              <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
+              <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
                 {assignableServices.map(svc => {
                   const checked = pendingServiceIds.includes(svc.id);
                   return (
@@ -794,7 +796,7 @@ export function FeesModule({
                 {assignableServices.length === 0 && <p className="px-4 py-6 text-center text-sm text-slate-400">No services match.</p>}
               </div>
             )}
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex-none flex items-center justify-between pt-1">
               <span className="text-xs text-slate-400">{pendingServiceIds.length} selected</span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setShowAssignDialog(false)}>Cancel</Button>
