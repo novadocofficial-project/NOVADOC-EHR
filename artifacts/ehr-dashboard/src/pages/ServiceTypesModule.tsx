@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Edit2, Trash2, Tag, ToggleLeft, ToggleRight, X, Check } from "lucide-react";
+import { Edit2, Trash2, Tag, ToggleLeft, ToggleRight, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,12 +19,6 @@ export function ServiceTypesModule({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-
-  const openAdd = () => {
-    setFormName("");
-    setEditingId(null);
-    setShowForm(true);
-  };
 
   const openEdit = (st: ServiceType) => {
     setFormName(st.name);
@@ -70,14 +64,6 @@ export function ServiceTypesModule({
             Manage service categories used across pricing and billing modules.
           </p>
         </div>
-        <Button
-          onClick={openAdd}
-          className="bg-[#4982CF] hover:bg-[#3a6ab5] text-white gap-2"
-          data-testid="btn-add-service-type"
-        >
-          <Plus className="h-4 w-4" />
-          Add Service Type
-        </Button>
       </div>
 
       {/* Stats */}
