@@ -20,6 +20,7 @@ import {
   GitBranch,
   Globe,
   Heart,
+  HandHeart,
   Layers,
   LayoutGrid,
   List,
@@ -90,6 +91,7 @@ import { OrderSetsModule } from "@/pages/OrderSetsModule";
 import { UsersManagementModule } from "@/pages/UsersManagementModule";
 import { RoutingRulesModule } from "@/pages/RoutingRulesModule";
 import { HealthEdLibraryModule } from "@/pages/HealthEdLibraryModule";
+import { WelfareSchemesModule } from "@/pages/WelfareSchemesModule";
 import { INITIAL_SERVICE_TYPES } from "@/pages/BillingTypes";
 import { HomeNavButton, QueueNavDropdown, AppointmentsNavDropdown, ReportsNavDropdown } from "@/pages/QueuePageLayout";
 import type { ServiceType, Service } from "@/pages/BillingTypes";
@@ -149,6 +151,7 @@ const ALL_EHR_KEYS = [
   "ehr-health-ed-library-v1",
   "ehr-hpi-templates-v1",
   "ehr-service-pricing-v1",
+  "ehr-welfare-schemes-v1",
 ] as const;
 
 export type Specialty = {
@@ -248,6 +251,7 @@ type ActiveModule =
   | "imaging-tests" | "imaging-reasons" | "imaging-partners"
   | "consumables-master" | "consumables-providers"
   | "lab-order-sets" | "imaging-order-sets"
+  | "welfare-schemes"
   | "users-counters"
   | "reg-basic-info" | "reg-patient-types" | "reg-welfare-forms"
   | "reg-demographics" | "reg-custom-sections" | "reg-workflow" | "reg-quick"
@@ -334,6 +338,7 @@ export function AdminSettings() {
     imagingCatalog: false,
     consumables: false,
     permissions: false,
+    welfare: false,
     users: false,
   });
   const [departments, setDepartments] = useState<Department[]>(() => {
@@ -1013,7 +1018,23 @@ export function AdminSettings() {
               </div>
             )}
 
-            {/* 16 ── Users ── */}
+            {/* 16 ── Welfare ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("welfare")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Heart className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Welfare</span>
+              {navExpanded.welfare ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.welfare && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("welfare-schemes", <HandHeart className="h-3.5 w-3.5" />, "Welfare Schemes")}
+              </div>
+            )}
+
+            {/* 17 ── Users ── */}
             <button
               type="button"
               onClick={() => toggleNav("users")}
@@ -1076,7 +1097,7 @@ export function AdminSettings() {
         </AlertDialog>
 
         {/* Right Content */}
-        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","packages","display-settings","routing-rules","pe-builder","template-manager","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","formulary-partners","formulary-bundles","formulary-interactions","formulary-pedi-dosing","formulary-non-formulary","imaging-tests","imaging-reasons","imaging-partners","consumables-master","consumables-providers","lab-order-sets","imaging-order-sets","nursing-triage"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
+        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","welfare-schemes","packages","display-settings","routing-rules","pe-builder","template-manager","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","formulary-partners","formulary-bundles","formulary-interactions","formulary-pedi-dosing","formulary-non-formulary","imaging-tests","imaging-reasons","imaging-partners","consumables-master","consumables-providers","lab-order-sets","imaging-order-sets","nursing-triage"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
 
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} onNavigateToForms={() => setActiveModule("specialty-forms")} />
@@ -1124,6 +1145,9 @@ export function AdminSettings() {
           )}
           {activeModule === "insurance-pricing" && (
             <InsurancePricingModule serviceTypes={serviceTypes} services={catalogServices} />
+          )}
+          {activeModule === "welfare-schemes" && (
+            <WelfareSchemesModule />
           )}
           {activeModule === "packages" && (
             <PackagesModule services={catalogServices} serviceTypes={serviceTypes} />
