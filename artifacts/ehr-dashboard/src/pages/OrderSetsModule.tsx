@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { LabSection } from "@/pages/LabCatalogModule";
 import type { ProcedureSection } from "@/pages/ProcedureCatalogModule";
+import { loadImagingCatalog } from "@/pages/ImagingSection";
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
@@ -37,26 +38,7 @@ export interface OrderSet {
   setType: "lab" | "imaging";
 }
 
-// ─── Static imaging tests catalogue (mirrors ImagingCatalogModule seed) ───────
-
-const IMAGING_CATALOG: { id: string; name: string; category: string }[] = [
-  { id: "xray-chest",       name: "X-Ray Chest (PA)",          category: "X-Ray" },
-  { id: "xray-abdomen",     name: "X-Ray Abdomen",             category: "X-Ray" },
-  { id: "xray-knee",        name: "X-Ray Knee (AP/Lat)",       category: "X-Ray" },
-  { id: "us-abdomen",       name: "Ultrasound Abdomen",        category: "Ultrasound" },
-  { id: "us-thyroid",       name: "Ultrasound Thyroid",        category: "Ultrasound" },
-  { id: "us-pelvis",        name: "Ultrasound Pelvis",         category: "Ultrasound" },
-  { id: "echo-2d",          name: "2D Echocardiography",       category: "Ultrasound" },
-  { id: "ct-brain",         name: "CT Brain (Plain)",          category: "CT Scan" },
-  { id: "ct-chest",         name: "CT Chest",                  category: "CT Scan" },
-  { id: "ct-abdo-pelvis",   name: "CT Abdomen & Pelvis",       category: "CT Scan" },
-  { id: "mri-brain",        name: "MRI Brain",                 category: "MRI" },
-  { id: "mri-knee",         name: "MRI Knee",                  category: "MRI" },
-  { id: "mri-spine",        name: "MRI Spine (L/S)",           category: "MRI" },
-  { id: "nuc-bone-scan",    name: "Nuclear: Bone Scan",        category: "Nuclear Medicine" },
-  { id: "nuc-pet-ct",       name: "Nuclear: PET-CT",           category: "Nuclear Medicine" },
-  { id: "dexa-scan",        name: "DEXA Scan",                 category: "Bone Densitometry" },
-];
+// Imaging catalogue is loaded live from ehr-imaging-catalog-v2 (see loadImagingCatalog)
 
 // ─── Order Set categories ──────────────────────────────────────────────────────
 
@@ -122,8 +104,8 @@ const SEED_ORDER_SETS: OrderSet[] = [
     description: "Cardiac imaging evaluation including echocardiography and chest X-ray.",
     active: true, createdAt: "2024-02-14",
     items: [
-      { id: "oi9",  type: "imaging", itemId: "echo-2d",    name: "2D Echocardiography" },
-      { id: "oi10", type: "imaging", itemId: "xray-chest", name: "X-Ray Chest (PA)" },
+      { id: "oi9",  type: "imaging", itemId: "Echocardiography||Transthoracic (TTE)||2D Echo with Doppler", name: "Echocardiography — Transthoracic (TTE) — 2D Echo with Doppler" },
+      { id: "oi10", type: "imaging", itemId: "X-Ray||Chest||PA View",                                       name: "X-Ray — Chest — PA View" },
     ],
   },
   {
@@ -131,7 +113,7 @@ const SEED_ORDER_SETS: OrderSet[] = [
     description: "Imaging component of pre-operative clearance — chest X-ray.",
     active: true, createdAt: "2024-03-05",
     items: [
-      { id: "oi21", type: "imaging", itemId: "xray-chest", name: "X-Ray Chest (PA)" },
+      { id: "oi21", type: "imaging", itemId: "X-Ray||Chest||PA View", name: "X-Ray — Chest — PA View" },
     ],
   },
 ];
@@ -192,6 +174,9 @@ export function OrderSetsModule({
   const [formCustomCat, setFormCustomCat] = useState("");
   const [formItems, setFormItems]   = useState<OrderSetItem[]>([]);
   const [itemSearch, setItemSearch] = useState("");
+
+  // Live imaging catalog from ehr-imaging-catalog-v2
+  const [imagingCatalog] = useState(() => loadImagingCatalog());
 
   // Flat lists for lookup
   const allLabTests = useMemo(() => labSections.flatMap(s => s.tests.map(t => ({ ...t, section: s.name }))), [labSections]);
@@ -271,11 +256,25 @@ export function OrderSetsModule({
     a.click();
   }
 
-  // ── Item catalogue rows ─────────────────────────────────────────────────────
+  // ── Item catalogue rows (used for empty-state detection) ────────────────────
   const currentCatRows: { id: string; name: string }[] =
     setType === "lab"
       ? allLabTests.filter(t => !itemSearch || t.name.toLowerCase().includes(itemSearch.toLowerCase()))
-      : IMAGING_CATALOG.filter(t => !itemSearch || t.name.toLowerCase().includes(itemSearch.toLowerCase()));
+      : imagingCatalog
+          .filter(m => m.enabled !== false)
+          .flatMap(m =>
+            m.bodyParts
+              .filter(bp => bp.enabled !== false)
+              .flatMap(bp =>
+                bp.protocols
+                  .filter(p => !itemSearch ||
+                    `${m.name} ${bp.name} ${p}`.toLowerCase().includes(itemSearch.toLowerCase()))
+                  .map(p => ({
+                    id:   `${m.name}||${bp.name}||${p}`,
+                    name: `${m.name} — ${bp.name} — ${p}`,
+                  }))
+              )
+          );
 
   const addedCount = formItems.length;
 
@@ -479,29 +478,52 @@ export function OrderSetsModule({
                 )}
 
                 {setType === "imaging" && (() => {
-                  const byCat = IMAGING_CATALOG.reduce((acc, t) => {
-                    if (itemSearch && !t.name.toLowerCase().includes(itemSearch.toLowerCase())) return acc;
-                    if (!acc[t.category]) acc[t.category] = [];
-                    acc[t.category].push(t);
-                    return acc;
-                  }, {} as Record<string, typeof IMAGING_CATALOG>);
-                  return Object.entries(byCat).map(([cat, tests]) => (
-                    <div key={cat}>
-                      <div className="sticky top-0 bg-slate-50/95 px-4 py-1.5 border-b border-slate-100">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{cat}</span>
+                  const searchLower = itemSearch.toLowerCase();
+                  const filtered = imagingCatalog
+                    .filter(m => m.enabled !== false)
+                    .map(m => ({
+                      ...m,
+                      bodyParts: m.bodyParts
+                        .filter(bp => bp.enabled !== false)
+                        .map(bp => ({
+                          ...bp,
+                          protocols: bp.protocols.filter(p =>
+                            !itemSearch ||
+                            `${m.name} ${bp.name} ${p}`.toLowerCase().includes(searchLower)
+                          ),
+                        }))
+                        .filter(bp => bp.protocols.length > 0),
+                    }))
+                    .filter(m => m.bodyParts.length > 0);
+
+                  return filtered.map(m => (
+                    <div key={m.name}>
+                      {/* Modality sticky header */}
+                      <div className="sticky top-0 bg-slate-50/95 px-4 py-1.5 border-b border-slate-100 z-10">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{m.name}</span>
                       </div>
-                      {tests.map(t => {
-                        const added = isItemAdded("imaging", t.id);
-                        return (
-                          <label key={t.id} className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-slate-50 border-b border-slate-50 last:border-0 transition-colors ${added ? "bg-[#4982CF]/5" : ""}`}>
-                            <div className={`h-4 w-4 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${added ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300"}`}
-                              onClick={() => toggleItem("imaging", t.id, t.name)}>
-                              {added && <CheckCircle2 className="h-3 w-3 text-white" />}
-                            </div>
-                            <p className="text-xs font-medium text-slate-700 flex-1 cursor-pointer" onClick={() => toggleItem("imaging", t.id, t.name)}>{t.name}</p>
-                          </label>
-                        );
-                      })}
+                      {m.bodyParts.map(bp => (
+                        <div key={bp.name}>
+                          {/* Body part sub-header */}
+                          <div className="px-5 pt-2 pb-0.5">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{bp.name}</span>
+                          </div>
+                          {bp.protocols.map(proto => {
+                            const key  = `${m.name}||${bp.name}||${proto}`;
+                            const name = `${m.name} — ${bp.name} — ${proto}`;
+                            const added = isItemAdded("imaging", key);
+                            return (
+                              <label key={key} className={`flex items-center gap-3 px-5 py-2 cursor-pointer hover:bg-slate-50 border-b border-slate-50 last:border-0 transition-colors ${added ? "bg-[#4982CF]/5" : ""}`}>
+                                <div className={`h-4 w-4 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${added ? "bg-[#4982CF] border-[#4982CF]" : "border-slate-300"}`}
+                                  onClick={() => toggleItem("imaging", key, name)}>
+                                  {added && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                </div>
+                                <p className="text-xs font-medium text-slate-700 flex-1" onClick={() => toggleItem("imaging", key, name)}>{proto}</p>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      ))}
                     </div>
                   ));
                 })()}
