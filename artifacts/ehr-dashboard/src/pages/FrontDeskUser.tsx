@@ -1079,7 +1079,8 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
         {/* ── SERVICES — category drill-down ────────────────────────── */}
         {mode === "services" && catId && currentCat && (() => {
           const style = CAT_STYLE[catId] ?? { color: "text-slate-700", bg: "bg-slate-50 border-slate-200" };
-          const isConsult = catId === "consultation";
+          // Categories that group items by their subLabel
+          const isGrouped = catId === "consultation" || catId === "imaging" || catId === "pharmacy";
 
           // Apply search filter
           const q = catSearch.trim().toLowerCase();
@@ -1090,12 +1091,12 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
               )
             : currentCatItems;
 
-          // Group consultation items by doctor (subLabel) — after filtering
-          const doctorGroups: Record<string, BillCatItem[]> = {};
-          if (isConsult) {
+          // Group by subLabel when applicable (doctor for consult, modality for imaging, generic for pharmacy)
+          const subLabelGroups: Record<string, BillCatItem[]> = {};
+          if (isGrouped) {
             for (const item of filteredItems) {
               const key = item.subLabel ?? "Other";
-              (doctorGroups[key] ??= []).push(item);
+              (subLabelGroups[key] ??= []).push(item);
             }
           }
 
@@ -1195,12 +1196,12 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
                   </div>
                 )}
 
-                {/* Items — consultation grouped by doctor, others flat */}
-                {filteredItems.length > 0 && isConsult && (
+                {/* Items — grouped by subLabel (doctor / modality / generic) or flat */}
+                {filteredItems.length > 0 && isGrouped && (
                   <div className="space-y-1 pb-4">
-                    {Object.entries(doctorGroups).map(([doctorName, items]) => (
-                      <div key={doctorName} className="mb-1">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 mt-3 first:mt-0 px-1">{doctorName}</p>
+                    {Object.entries(subLabelGroups).map(([groupName, items]) => (
+                      <div key={groupName} className="mb-1">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 mt-3 first:mt-0 px-1">{groupName}</p>
                         <div className="space-y-2">
                           {items.map(item => <ServiceRow key={item.id} item={item} />)}
                         </div>
@@ -1208,7 +1209,7 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
                     ))}
                   </div>
                 )}
-                {filteredItems.length > 0 && !isConsult && (
+                {filteredItems.length > 0 && !isGrouped && (
                   <div className="space-y-2 pb-4">
                     {filteredItems.map(item => <ServiceRow key={item.id} item={item} />)}
                   </div>
