@@ -71,7 +71,7 @@ export const INITIAL_SERVICE_TYPES: ServiceType[] = [
   { id: "st-1", name: "Consultation",        active: true, createdAt: D },
   { id: "st-2", name: "Lab",                 active: true, createdAt: D },
   { id: "st-3", name: "Procedure",  active: true, createdAt: D },
-  { id: "st-4", name: "Pharmacy",            active: true, createdAt: D },
+  { id: "st-4", name: "Formulary",           active: true, createdAt: D },
   { id: "st-5", name: "Consumables",         active: true, createdAt: D },
   { id: "st-6", name: "Imaging",             active: true, createdAt: D },
   { id: "st-7", name: "Vaccine",             active: true, createdAt: D },

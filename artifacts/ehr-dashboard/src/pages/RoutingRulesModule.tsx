@@ -72,7 +72,7 @@ const SERVICE_TYPES = [
   { id: "st-1", name: "Consultation" },
   { id: "st-2", name: "Lab" },
   { id: "st-3", name: "Procedure" },
-  { id: "st-4", name: "Pharmacy" },
+  { id: "st-4", name: "Formulary" },
   { id: "st-5", name: "Consumables" },
   { id: "st-6", name: "Imaging" },
   { id: "st-7", name: "Vaccine" },
