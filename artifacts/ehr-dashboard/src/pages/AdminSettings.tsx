@@ -71,7 +71,8 @@ import { FormularyManagementModule } from "@/pages/FormularyManagementModule";
 import { FormularyPartnersModule, FORMULARY_SEED_PARTNERS } from "@/pages/FormularyPartnersModule";
 import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
 import { MEDICINES } from "@/pages/FormularySection";
-import { ImagingCatalogModule, IMAGING_SEED_TESTS } from "@/pages/ImagingCatalogModule";
+import { ImagingCatalogModule } from "@/pages/ImagingCatalogModule";
+import { loadImagingCatalog, type CatalogModality } from "@/pages/ImagingSection";
 import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
 import { ConsumablesModule, CONSUMABLE_SEED_PROVIDERS, CONSUMABLE_SEED_ITEMS } from "@/pages/ConsumablesModule";
 import type { ConsumableProvider } from "@/pages/ConsumablesModule";
@@ -267,7 +268,7 @@ function computeCatalogServices(
   labSections: LabSection[],
   procSections: ProcedureSection[],
   vaccSections: VaccineSection[],
-  imagingTests: { id: string; name: string; category: string }[],
+  imagingCatalog: CatalogModality[],
   consumableItems: { id: string; name: string; enabled?: boolean; deleted?: boolean }[],
   formularyGenerics: { id: string; generic: string; enabled?: boolean; deleted?: boolean; brands?: { id: string; brand: string; strength: string }[] }[],
   overrides: Record<string, PricingOverride>,
@@ -295,7 +296,14 @@ function computeCatalogServices(
     }
   });
   consumableItems.filter(c => !c.deleted && c.enabled !== false).forEach(c => items.push(make(c.id, c.name, "st-5")));
-  imagingTests.forEach(t => items.push(make(t.id, t.name, "st-6")));
+  imagingCatalog.filter(m => m.enabled !== false).forEach(m =>
+    m.bodyParts.filter(bp => bp.enabled !== false).forEach(bp =>
+      bp.protocols.forEach(proto => {
+        const id = `img||${m.name}||${bp.name}||${proto}`;
+        items.push(make(id, `${m.name} - ${bp.name} - ${proto}`, "st-6"));
+      })
+    )
+  );
   vaccSections.forEach(s => s.vaccines.forEach(v => items.push(make(v.id, v.name, "st-7"))));
   return items;
 }
@@ -354,10 +362,7 @@ export function AdminSettings() {
     try { const r = localStorage.getItem("ehr-service-pricing-v1"); if (r) return JSON.parse(r) as Record<string, PricingOverride>; } catch { /**/ }
     return {};
   });
-  const [imagingTests] = useState<{ id: string; name: string; category: string }[]>(() => {
-    try { const r = localStorage.getItem("ehr-imaging-catalogue-v1"); if (r) return JSON.parse(r); } catch { /**/ }
-    return IMAGING_SEED_TESTS;
-  });
+  const [imagingCatalog] = useState<CatalogModality[]>(() => loadImagingCatalog());
   const [consumableItems] = useState<{ id: string; name: string; enabled?: boolean; deleted?: boolean }[]>(() => {
     try { const r = localStorage.getItem("ehr-consumables-catalogue-v1"); if (r) return JSON.parse(r); } catch { /**/ }
     return CONSUMABLE_SEED_ITEMS;
@@ -476,14 +481,14 @@ export function AdminSettings() {
   useEffect(() => { try { localStorage.setItem("ehr-service-pricing-v1",    JSON.stringify(pricingOverrides)); } catch { /**/ } }, [pricingOverrides]);
 
   const catalogServices = useMemo(
-    () => computeCatalogServices(labSections, procSections, vaccSections, imagingTests, consumableItems, formularyGenerics, pricingOverrides),
-    [labSections, procSections, vaccSections, imagingTests, consumableItems, formularyGenerics, pricingOverrides],
+    () => computeCatalogServices(labSections, procSections, vaccSections, imagingCatalog, consumableItems, formularyGenerics, pricingOverrides),
+    [labSections, procSections, vaccSections, imagingCatalog, consumableItems, formularyGenerics, pricingOverrides],
   );
 
   const handleSetServices = useCallback<React.Dispatch<React.SetStateAction<Service[]>>>(
     (updater) => {
       setPricingOverrides(prev => {
-        const current = computeCatalogServices(labSections, procSections, vaccSections, imagingTests, consumableItems, formularyGenerics, prev);
+        const current = computeCatalogServices(labSections, procSections, vaccSections, imagingCatalog, consumableItems, formularyGenerics, prev);
         const updated = typeof updater === "function" ? updater(current) : updater;
         const next = { ...prev };
         updated.forEach((s, idx) => {
@@ -504,7 +509,7 @@ export function AdminSettings() {
         return next;
       });
     },
-    [labSections, procSections, vaccSections, imagingTests, consumableItems, formularyGenerics],
+    [labSections, procSections, vaccSections, imagingCatalog, consumableItems, formularyGenerics],
   );
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
