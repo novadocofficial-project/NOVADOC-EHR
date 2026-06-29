@@ -894,6 +894,7 @@ interface BillingContentProps {
   entry: BillingEntry;
   onComplete: (receipt: ReceiptInfo) => void;
   isFullscreen: boolean;
+  apptContext?: import("@/hooks/useBillingCatalogue").ApptFilter;
 }
 
 function BillingStepBar({ step }: { step: BillingStep }) {
@@ -919,7 +920,7 @@ function BillingStepBar({ step }: { step: BillingStep }) {
   );
 }
 
-export function BillingContent({ entry, onComplete, isFullscreen }: BillingContentProps) {
+export function BillingContent({ entry, onComplete, isFullscreen, apptContext }: BillingContentProps) {
   const [step, setStep]         = useState<BillingStep>("cart");
   const [mode, setMode]         = useState<BillingMode>("services");
   const [catId, setCatId]       = useState<string | null>(null);
@@ -931,7 +932,7 @@ export function BillingContent({ entry, onComplete, isFullscreen }: BillingConte
   const [showCartDisc, setShowCartDisc]     = useState(false);
   const [selectedProviders, setSelectedProviders] = useState<Record<string, string | null>>({});
 
-  const { categories, packages: billPackages } = useBillingCatalogue();
+  const { categories, packages: billPackages } = useBillingCatalogue(apptContext);
 
   // Payment state
   const [payType, setPayType]     = useState<PayType | null>(null);

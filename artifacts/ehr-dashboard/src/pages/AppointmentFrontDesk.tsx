@@ -4146,6 +4146,11 @@ export function AppointmentFrontDesk({ role, lockedDoctorId }: { role: Role; loc
                     phone: invoiceAppt.patientPhone || undefined,
                   },
                 }}
+                apptContext={
+                  invoiceAppt.doctorId && invoiceAppt.specialty && invoiceAppt.type
+                    ? { doctorId: invoiceAppt.doctorId, specialty: invoiceAppt.specialty, apptType: invoiceAppt.type }
+                    : undefined
+                }
                 onComplete={r => {
                   setInvoiceReceipt(r);
                   if (invoiceAppt) {

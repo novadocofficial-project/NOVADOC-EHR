@@ -8,6 +8,8 @@ import { INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS } from "@/pages/ProcedureC
 import type { ProcedureSection, ProcedurePartner } from "@/pages/ProcedureCatalogModule";
 import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
 import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
+import { INITIAL_DEPARTMENTS } from "@/pages/AdminSettings";
+import type { Department } from "@/pages/AdminSettings";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,6 +38,17 @@ export type BillPackage = {
   name:        string;
   description: string;
   price:       number;
+};
+
+/**
+ * Optional appointment context — when provided, the consultation category
+ * is filtered to show only the relevant doctor and the department-specific
+ * fee that matches the appointment's specialty.
+ */
+export type ApptFilter = {
+  doctorId:  string;
+  specialty: string;
+  apptType:  string;
 };
 
 // ─── Local types mirroring Admin modules (avoid circular imports) ─────────────
@@ -69,36 +82,92 @@ const SVC_TO_FEE: Record<string, FeeField> = {
   "Tele-consultation": "teleFee",
 };
 
+// ─── Resolve specialty name → department ID ───────────────────────────────────
+
+function resolveDeptId(specialty: string, departments: Department[]): string | null {
+  for (const dept of departments) {
+    if (dept.specialties.some(s => s.name === specialty)) return dept.id;
+    for (const sub of dept.subDepartments) {
+      if (sub.specialties.some(s => s.name === specialty)) return dept.id;
+    }
+  }
+  return null;
+}
+
 // ─── Core builder (pure, no hooks) ───────────────────────────────────────────
 
-function buildCatalogue(): { categories: BillCategory[]; packages: BillPackage[] } {
+function buildCatalogue(apptFilter?: ApptFilter): { categories: BillCategory[]; packages: BillPackage[] } {
 
   // ── Consultation ──────────────────────────────────────────────────────────
-  const doctors  = ls<Doctor[]>("ehr-doctors-v1", INITIAL_DOCTORS);
-  const feesMap  = ls<Record<string, FeeRow[]>>("ehr-doctor-fees-v1", {});
-  const activeDocs = doctors.filter(d => d.status === "active");
+  const doctors      = ls<Doctor[]>("ehr-doctors-v1", INITIAL_DOCTORS);
+  const feesMap      = ls<Record<string, FeeRow[]>>("ehr-doctor-fees-v1", {});
+  const departments  = ls<Department[]>("ehr-departments-v1", INITIAL_DEPARTMENTS);
+
+  // When an appointment filter is provided, scope to that doctor only;
+  // otherwise show all active doctors.
+  const activeDocs = apptFilter
+    ? doctors.filter(d => d.id === apptFilter.doctorId && d.status === "active")
+    : doctors.filter(d => d.status === "active");
+
+  // Resolve the department ID from the appointment's specialty.
+  const filteredDeptId = apptFilter
+    ? resolveDeptId(apptFilter.specialty, departments)
+    : null;
 
   const consultationCat: BillCategory = {
     id: "consultation", label: "Consultation",
     providers: [], defaultProviderId: null,
     getItems: () => {
       const items: BillCatItem[] = [];
+
       for (const doc of activeDocs) {
         const rows = feesMap[doc.id] ?? [];
-        for (const svc of doc.services) {
-          if (!CONSULT_SERVICES.includes(svc)) continue;
-          const feeKey = SVC_TO_FEE[svc];
-          // Scan all subdept rows for the first non-zero configured fee.
-          // This correctly handles doctors assigned to multiple departments
-          // with different fee schedules — we surface the first meaningful value
-          // rather than always reading row[0] which may have an empty fee.
-          const price = rows.reduce<number>((best, row) => {
-            if (best > 0) return best;
-            return parseFloat((row[feeKey] as string | undefined) ?? "") || 0;
-          }, 0);
-          items.push({ id: `${doc.id}::${svc}`, name: svc, price, subLabel: doc.name });
+
+        if (apptFilter) {
+          // ── Filtered mode: show only services that doctor offers ──────────
+          // If the appointment type is a consultation service, only show that
+          // specific service; otherwise show all the doctor's services.
+          const svcsToShow = CONSULT_SERVICES.includes(apptFilter.apptType)
+            ? [apptFilter.apptType]
+            : doc.services.filter(s => CONSULT_SERVICES.includes(s));
+
+          for (const svc of svcsToShow) {
+            if (!doc.services.includes(svc)) continue;
+            const feeKey = SVC_TO_FEE[svc];
+            if (!feeKey) continue;
+
+            // Prefer the fee row matching the appointment's department;
+            // fall back to the first non-zero row if none is found.
+            let price = 0;
+            if (filteredDeptId) {
+              const deptRow = rows.find(r => r.deptId === filteredDeptId);
+              price = deptRow
+                ? (parseFloat((deptRow[feeKey] as string | undefined) ?? "") || 0)
+                : 0;
+            }
+            if (price === 0) {
+              price = rows.reduce<number>((best, row) => {
+                if (best > 0) return best;
+                return parseFloat((row[feeKey] as string | undefined) ?? "") || 0;
+              }, 0);
+            }
+
+            items.push({ id: `${doc.id}::${svc}`, name: svc, price, subLabel: doc.name });
+          }
+        } else {
+          // ── Unfiltered mode (original): all doctors, all services ─────────
+          for (const svc of doc.services) {
+            if (!CONSULT_SERVICES.includes(svc)) continue;
+            const feeKey = SVC_TO_FEE[svc];
+            const price = rows.reduce<number>((best, row) => {
+              if (best > 0) return best;
+              return parseFloat((row[feeKey] as string | undefined) ?? "") || 0;
+            }, 0);
+            items.push({ id: `${doc.id}::${svc}`, name: svc, price, subLabel: doc.name });
+          }
         }
       }
+
       return items;
     },
   };
@@ -200,14 +269,14 @@ function buildCatalogue(): { categories: BillCategory[]; packages: BillPackage[]
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useBillingCatalogue(): { categories: BillCategory[]; packages: BillPackage[] } {
-  const [catalogue, setCatalogue] = useState(() => buildCatalogue());
+export function useBillingCatalogue(apptFilter?: ApptFilter): { categories: BillCategory[]; packages: BillPackage[] } {
+  const [catalogue, setCatalogue] = useState(() => buildCatalogue(apptFilter));
 
   useEffect(() => {
-    function onStorage() { setCatalogue(buildCatalogue()); }
+    function onStorage() { setCatalogue(buildCatalogue(apptFilter)); }
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return catalogue;
 }

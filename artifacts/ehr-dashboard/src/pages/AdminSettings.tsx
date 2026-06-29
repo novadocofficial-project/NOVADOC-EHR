@@ -170,7 +170,7 @@ export type Department = {
   specialties: Specialty[];
 };
 
-const INITIAL_DATA: Department[] = [
+export const INITIAL_DEPARTMENTS: Department[] = [
   {
     id: "d1",
     name: "Cardiology",
@@ -276,7 +276,13 @@ export function AdminSettings() {
     permissions: false,
     users: false,
   });
-  const [departments, setDepartments] = useState<Department[]>(INITIAL_DATA);
+  const [departments, setDepartments] = useState<Department[]>(() => {
+    try {
+      const raw = localStorage.getItem("ehr-departments-v1");
+      if (raw) return JSON.parse(raw) as Department[];
+    } catch { /**/ }
+    return INITIAL_DEPARTMENTS;
+  });
 
   const toggleNav = (key: keyof typeof navExpanded) =>
     setNavExpanded(prev => ({ ...prev, [key]: !prev[key] }));
@@ -389,6 +395,7 @@ export function AdminSettings() {
     };
   });
 
+  useEffect(() => { try { localStorage.setItem("ehr-departments-v1",       JSON.stringify(departments));  } catch { /**/ } }, [departments]);
   useEffect(() => { try { localStorage.setItem("ehr-lab-sections-v1",       JSON.stringify(labSections));  } catch { /**/ } }, [labSections]);
   useEffect(() => { try { localStorage.setItem("ehr-lab-providers-v1",      JSON.stringify(labProviders)); } catch { /**/ } }, [labProviders]);
   useEffect(() => { try { localStorage.setItem("ehr-procedure-sections-v1", JSON.stringify(procSections)); } catch { /**/ } }, [procSections]);
