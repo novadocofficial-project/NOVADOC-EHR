@@ -24,12 +24,13 @@ import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
 import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
 import type { ConsumableProvider } from "@/pages/ConsumablesModule";
 import type { ProcedurePartner } from "@/pages/ProcedureCatalogModule";
+import type { VaccinePartner } from "@/pages/VaccineCatalogModule";
 
 // ── Generic provider shape used internally ─────────────────────────────────
 interface Provider { id: string; name: string; active: boolean; }
 
 // ── Service-type ID → provider category ───────────────────────────────────
-const PROVIDER_ST_IDS = new Set(["st-2", "st-3", "st-4", "st-5", "st-6"]);
+const PROVIDER_ST_IDS = new Set(["st-2", "st-3", "st-4", "st-5", "st-6", "st-7"]);
 
 // ── Consultation service → FeeRow field mapping ────────────────────────────
 const CONSULT_SERVICES_LIST = ["Consultation", "FollowUp", "Emergency", "Tele-consultation"] as const;
@@ -296,6 +297,7 @@ export function ServicePricingModule({
   pharmacyPartners = [],
   consumableProviders = [],
   procPartners = [],
+  vaccPartners = [],
   doctors,
   doctorFees,
 }: {
@@ -308,6 +310,7 @@ export function ServicePricingModule({
   pharmacyPartners?: FormularyPartner[];
   consumableProviders?: ConsumableProvider[];
   procPartners?: ProcedurePartner[];
+  vaccPartners?: VaccinePartner[];
   doctors?: Doctor[];
   doctorFees?: Record<string, FeeRow[]>;
 }) {
@@ -341,7 +344,8 @@ export function ServicePricingModule({
     "st-4": (pharmacyPartners as Provider[]).filter(p => p.active),
     "st-5": (consumableProviders as Provider[]).filter(p => p.active),
     "st-6": (imagingPartners as Provider[]).filter(p => p.active),
-  }), [labProviders, procPartners, pharmacyPartners, consumableProviders, imagingPartners]);
+    "st-7": (vaccPartners as Provider[]).filter(p => p.active),
+  }), [labProviders, procPartners, pharmacyPartners, consumableProviders, imagingPartners, vaccPartners]);
 
   // Whether the current tab should show the pivot table
   const hasPivot = PROVIDER_ST_IDS.has(activeTab);

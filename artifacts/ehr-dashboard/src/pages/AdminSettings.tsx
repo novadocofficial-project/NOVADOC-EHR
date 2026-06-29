@@ -995,6 +995,7 @@ export function AdminSettings() {
               pharmacyPartners={pharmacyPartners}
               consumableProviders={consumableProviders}
               procPartners={procPartners}
+              vaccPartners={vaccPartners}
               doctors={doctors}
               doctorFees={doctorFees}
             />

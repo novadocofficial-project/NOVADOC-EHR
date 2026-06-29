@@ -75,6 +75,7 @@ const SERVICE_TYPES = [
   { id: "st-4", name: "Pharmacy" },
   { id: "st-5", name: "Consumables" },
   { id: "st-6", name: "Imaging" },
+  { id: "st-7", name: "Vaccine" },
 ];
 
 const PAYMENT_TYPES    = ["cash", "corporate", "insurance", "zakat"];

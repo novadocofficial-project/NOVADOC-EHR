@@ -35,11 +35,12 @@ export type RateList = {
   consumableProviderId: string | null;
   procedurePartnerId:  string | null;
   imagingPartnerId:    string | null;
+  vaccinePartnerId:    string | null;
   doctorIds:           string[];
 };
 
 export function blankRateList(): RateList {
-  return { pharmacyPartnerId: null, labProviderId: null, consumableProviderId: null, procedurePartnerId: null, imagingPartnerId: null, doctorIds: [] };
+  return { pharmacyPartnerId: null, labProviderId: null, consumableProviderId: null, procedurePartnerId: null, imagingPartnerId: null, vaccinePartnerId: null, doctorIds: [] };
 }
 
 export type ItemOverride = {
@@ -73,6 +74,7 @@ export const INITIAL_SERVICE_TYPES: ServiceType[] = [
   { id: "st-4", name: "Pharmacy",            active: true, createdAt: D },
   { id: "st-5", name: "Consumables",         active: true, createdAt: D },
   { id: "st-6", name: "Imaging",             active: true, createdAt: D },
+  { id: "st-7", name: "Vaccine",             active: true, createdAt: D },
 ];
 
 export const INITIAL_SERVICES: Service[] = [
