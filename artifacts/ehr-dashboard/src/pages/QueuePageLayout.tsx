@@ -41,6 +41,16 @@ export type Doctor = {
   initials: string;
 };
 
+export type WelfareEnrollment = {
+  schemeId: string;
+  schemeName: string;
+  enrolledAt: string;
+  status: "active" | "pending" | "expired";
+  monthlyIncome: number;
+  householdMembers: number;
+  submittedDocuments: string[];
+};
+
 export type Patient = {
   id: string;
   mrn: string;
@@ -48,6 +58,7 @@ export type Patient = {
   phone: string;
   dob: string;
   gender: "M" | "F" | "O";
+  welfareEnrollment?: WelfareEnrollment;
 };
 
 export type VisitType = {

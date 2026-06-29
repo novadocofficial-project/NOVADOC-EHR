@@ -332,6 +332,15 @@ export function WelfareSchemesModule() {
   }
 
   const selected = schemes.find(s => s.id === selectedId) ?? null;
+  const activeBeneficiaries = useMemo(() => {
+    if (!selected) return 0;
+    try {
+      const raw = localStorage.getItem("ehr-patients-v1");
+      if (!raw) return 0;
+      const pts = JSON.parse(raw) as Array<{ welfareEnrollment?: { schemeId: string; status: string } }>;
+      return pts.filter(p => p.welfareEnrollment?.schemeId === selected.id && p.welfareEnrollment?.status === "active").length;
+    } catch { return 0; }
+  }, [selected?.id, schemes]);
   const visibleSchemes = useMemo(
     () => schemes.filter(s => !s.deleted && s.name.toLowerCase().includes(search.toLowerCase())),
     [schemes, search]
@@ -510,7 +519,7 @@ export function WelfareSchemesModule() {
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-4">
                   {[
-                    { label: "Active Beneficiaries", value: "0", icon: <Users className="h-4 w-4 text-blue-500" />, sub: "pending integration" },
+                    { label: "Active Beneficiaries", value: String(activeBeneficiaries), icon: <Users className="h-4 w-4 text-blue-500" />, sub: activeBeneficiaries === 1 ? "enrolled patient" : "enrolled patients" },
                     { label: "Total Disbursed", value: `Rs. ${schemeDisbursed(selected).toLocaleString()}`, icon: <ArrowDownCircle className="h-4 w-4 text-rose-500" />, sub: "all time" },
                     { label: "Fund Balance", value: `Rs. ${schemeBalance(selected).toLocaleString()}`, icon: <Banknote className="h-4 w-4 text-emerald-500" />, sub: "current" },
                   ].map(stat => (
