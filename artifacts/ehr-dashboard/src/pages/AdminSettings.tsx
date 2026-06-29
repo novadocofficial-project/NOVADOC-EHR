@@ -668,31 +668,6 @@ export function AdminSettings() {
               </div>
             )}
 
-            {/* Queue Setup ── */}
-            <button
-              type="button"
-              onClick={() => toggleNav("queue")}
-              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <Ticket className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Queue Setup</span>
-              {navExpanded.queue ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-            </button>
-            {navExpanded.queue && (
-              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("visit-types",       <Activity className="h-3.5 w-3.5" />,   "Visit Types")}
-                {subNavItem("workflow-config",    <Workflow className="h-3.5 w-3.5" />,   "Workflow Config")}
-                {subNavItem("counter-types",      <Layers className="h-3.5 w-3.5" />,     "Counter Types")}
-                {subNavItem("counters",           <LayoutGrid className="h-3.5 w-3.5" />, "Counters")}
-                {subNavItem("token-settings",     <Tag className="h-3.5 w-3.5" />,        "Token Settings")}
-                {subNavItem("queue-behavior",     <Settings className="h-3.5 w-3.5" />,   "Queue Behavior")}
-                {subNavItem("locking-settings",   <Lock className="h-3.5 w-3.5" />,       "Locking")}
-                {subNavItem("display-settings",   <Monitor className="h-3.5 w-3.5" />,    "Display")}
-                {subNavItem("doctor-partitions",  <Stethoscope className="h-3.5 w-3.5" />,"Doctor / Partition")}
-                {subNavItem("routing-rules",      <Zap className="h-3.5 w-3.5" />,        "Routing Rules")}
-              </div>
-            )}
-
             {/* 5 ── Nursing ── */}
             <button
               type="button"
@@ -741,6 +716,31 @@ export function AdminSettings() {
                 {subNavItem("template-manager",      <FileText className="h-3.5 w-3.5" />,      "Template Manager")}
                 {subNavItem("specialty-forms",       <Layers   className="h-3.5 w-3.5" />,      "Specialty Forms")}
                 {subNavItem("health-ed-library",     <BookOpen className="h-3.5 w-3.5" />,      "Health Ed Library")}
+              </div>
+            )}
+
+            {/* Queue Setup ── */}
+            <button
+              type="button"
+              onClick={() => toggleNav("queue")}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Ticket className="h-4 w-4 text-slate-500" />
+              <span className="flex-1 text-left">Queue Setup</span>
+              {navExpanded.queue ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {navExpanded.queue && (
+              <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
+                {subNavItem("visit-types",      <Activity className="h-3.5 w-3.5" />,   "Visit Types")}
+                {subNavItem("workflow-config",  <Workflow className="h-3.5 w-3.5" />,   "Workflow Config")}
+                {subNavItem("counter-types",    <Layers className="h-3.5 w-3.5" />,     "Counter Types")}
+                {subNavItem("counters",         <LayoutGrid className="h-3.5 w-3.5" />, "Counters")}
+                {subNavItem("token-settings",   <Tag className="h-3.5 w-3.5" />,        "Token Settings")}
+                {subNavItem("queue-behavior",   <Settings className="h-3.5 w-3.5" />,   "Queue Behavior")}
+                {subNavItem("locking-settings", <Lock className="h-3.5 w-3.5" />,       "Locking")}
+                {subNavItem("display-settings", <Monitor className="h-3.5 w-3.5" />,    "Display")}
+                {subNavItem("doctor-partitions",<Stethoscope className="h-3.5 w-3.5" />,"Doctor / Partition")}
+                {subNavItem("routing-rules",    <Zap className="h-3.5 w-3.5" />,        "Routing Rules")}
               </div>
             )}
 
