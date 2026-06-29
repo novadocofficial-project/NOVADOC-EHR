@@ -269,7 +269,7 @@ function computeCatalogServices(
   vaccSections: VaccineSection[],
   imagingTests: { id: string; name: string; category: string }[],
   consumableItems: { id: string; name: string; enabled?: boolean; deleted?: boolean }[],
-  formularyGenerics: { id: string; generic: string; enabled: boolean; deleted: boolean }[],
+  formularyGenerics: { id: string; generic: string; enabled?: boolean; deleted?: boolean; brands?: { id: string; brand: string; strength: string }[] }[],
   overrides: Record<string, PricingOverride>,
 ): Service[] {
   const make = (id: string, name: string, serviceTypeId: string): Service => {
@@ -287,7 +287,13 @@ function computeCatalogServices(
   const items: Service[] = [];
   labSections.forEach(s => s.tests.forEach(t => items.push(make(t.id, t.name, "st-2"))));
   procSections.forEach(s => s.procedures.forEach(p => items.push(make(p.id, p.name, "st-3"))));
-  formularyGenerics.filter(g => !g.deleted && g.enabled !== false).forEach(g => items.push(make(g.id, g.generic, "st-4")));
+  formularyGenerics.filter(g => g.deleted !== true && g.enabled !== false).forEach(g => {
+    if (g.brands && g.brands.length > 0) {
+      g.brands.forEach(b => items.push(make(b.id, `${b.brand} ${b.strength} (${g.generic})`, "st-4")));
+    } else {
+      items.push(make(g.id, g.generic, "st-4"));
+    }
+  });
   consumableItems.filter(c => !c.deleted && c.enabled !== false).forEach(c => items.push(make(c.id, c.name, "st-5")));
   imagingTests.forEach(t => items.push(make(t.id, t.name, "st-6")));
   vaccSections.forEach(s => s.vaccines.forEach(v => items.push(make(v.id, v.name, "st-7"))));
@@ -356,12 +362,12 @@ export function AdminSettings() {
     try { const r = localStorage.getItem("ehr-consumables-catalogue-v1"); if (r) return JSON.parse(r); } catch { /**/ }
     return CONSUMABLE_SEED_ITEMS;
   });
-  const [formularyGenerics] = useState<{ id: string; generic: string; enabled: boolean; deleted: boolean }[]>(() => {
+  const [formularyGenerics] = useState<{ id: string; generic: string; enabled?: boolean; deleted?: boolean; brands?: { id: string; brand: string; strength: string }[] }[]>(() => {
     try {
       const r = localStorage.getItem("ehr-formulary-catalogue-v1");
-      if (r) return (JSON.parse(r) as { id: string; generic: string; enabled: boolean; deleted: boolean }[]);
+      if (r) return JSON.parse(r);
     } catch { /**/ }
-    return MEDICINES.map(m => ({ id: m.id, generic: m.generic, enabled: true, deleted: false }));
+    return MEDICINES.map(m => ({ id: m.id, generic: m.generic, enabled: true, deleted: false, brands: m.brands }));
   });
   const [labSections, setLabSections] = useState<LabSection[]>(() => {
     try { const r = localStorage.getItem("ehr-lab-sections-v1"); if (r) return JSON.parse(r) as LabSection[]; } catch { /**/ }
