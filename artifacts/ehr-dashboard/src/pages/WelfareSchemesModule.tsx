@@ -72,7 +72,7 @@ export type WelfareScheme = {
 const SERVICE_TYPES = [
   { id: "st-1", name: "Consultation" },
   { id: "st-2", name: "Lab" },
-  { id: "st-3", name: "Nursing Procedures" },
+  { id: "st-3", name: "Procedure" },
   { id: "st-4", name: "Pharmacy" },
   { id: "st-5", name: "Consumables" },
   { id: "st-6", name: "Imaging" },

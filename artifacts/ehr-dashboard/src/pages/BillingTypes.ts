@@ -70,7 +70,7 @@ const D = "2024-01-01T00:00:00.000Z";
 export const INITIAL_SERVICE_TYPES: ServiceType[] = [
   { id: "st-1", name: "Consultation",        active: true, createdAt: D },
   { id: "st-2", name: "Lab",                 active: true, createdAt: D },
-  { id: "st-3", name: "Nursing Procedures",  active: true, createdAt: D },
+  { id: "st-3", name: "Procedure",  active: true, createdAt: D },
   { id: "st-4", name: "Pharmacy",            active: true, createdAt: D },
   { id: "st-5", name: "Consumables",         active: true, createdAt: D },
   { id: "st-6", name: "Imaging",             active: true, createdAt: D },

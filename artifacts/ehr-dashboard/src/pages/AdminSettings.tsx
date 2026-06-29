@@ -793,7 +793,7 @@ export function AdminSettings() {
                 {subNavItem("nursing-triage",     <AlertCircle className="h-3.5 w-3.5" />,  "Triage")}
                 {subNavItem("nursing-history",    <ClipboardList className="h-3.5 w-3.5" />, "History")}
                 {subNavItem("nursing-vitals",     <Sliders className="h-3.5 w-3.5" />,       "Vital Signs")}
-                {subNavItem("nursing-procedures", <Stethoscope className="h-3.5 w-3.5" />,   "Nursing Procedures")}
+                {subNavItem("nursing-procedures", <Stethoscope className="h-3.5 w-3.5" />,   "Procedure")}
               </div>
             )}
 
