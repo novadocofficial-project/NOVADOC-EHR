@@ -765,7 +765,7 @@ export function AdminSettings() {
               className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
             >
               <ClipboardList className="h-4 w-4 text-slate-500" />
-              <span className="flex-1 text-left">Patient Registration</span>
+              <span className="flex-1 text-left">Patient Intake</span>
               {navExpanded.patientReg ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
             </button>
             {navExpanded.patientReg && (
