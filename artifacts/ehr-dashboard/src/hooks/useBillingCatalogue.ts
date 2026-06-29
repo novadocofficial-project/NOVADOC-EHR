@@ -7,6 +7,7 @@ import type { LabSection, LabProvider } from "@/pages/LabCatalogModule";
 import { INITIAL_PROC_SECTIONS, INITIAL_PROC_PARTNERS } from "@/pages/ProcedureCatalogModule";
 import type { ProcedureSection, ProcedurePartner } from "@/pages/ProcedureCatalogModule";
 import type { ImagingPartner } from "@/pages/ImagingCatalogModule";
+import { loadImagingCatalog } from "@/pages/ImagingSection";
 import type { FormularyPartner } from "@/pages/FormularyPartnersModule";
 import { INITIAL_DEPARTMENTS } from "@/pages/AdminSettings";
 import type { Department } from "@/pages/AdminSettings";
@@ -52,8 +53,6 @@ export type ApptFilter = {
 };
 
 // ─── Local types mirroring Admin modules (avoid circular imports) ─────────────
-
-interface ImagingTest { id: string; name: string; category: string; enabled: boolean; deleted: boolean; }
 
 interface FormBrand  { id: string; brand: string; strength: string; }
 interface FormGeneric { id: string; generic: string; category: string; brands: FormBrand[]; enabled: boolean; deleted: boolean; }
@@ -192,9 +191,28 @@ function buildCatalogue(apptFilter?: ApptFilter): { categories: BillCategory[]; 
   };
 
   // ── Imaging ───────────────────────────────────────────────────────────────
-  const imagingTests    = ls<ImagingTest[]>("ehr-imaging-catalogue-v1", []).filter(t => t.enabled && !t.deleted);
+  // Uses the hierarchical catalog (ehr-imaging-catalog-v2) and composite keys
+  // "Modality||BodyPart||Protocol" that the Partners tab stores pricing under.
+  const imagingCatalog  = loadImagingCatalog();
   const imagingPartners = ls<ImagingPartner[]>("ehr-imaging-partners-v1", []);
   const activeImgProvs  = imagingPartners.filter(p => p.active);
+
+  // Build a flat list of all protocol entries from enabled modalities/body parts.
+  const allImgProtocols: { id: string; name: string; subLabel: string }[] = [];
+  for (const mod of imagingCatalog) {
+    if (mod.enabled === false) continue;
+    for (const bp of mod.bodyParts) {
+      if (bp.enabled === false) continue;
+      for (const proto of bp.protocols) {
+        const key = `${mod.name}||${bp.name}||${proto}`;
+        allImgProtocols.push({
+          id:       key,
+          name:     `${bp.name} — ${proto}`,
+          subLabel: mod.name,
+        });
+      }
+    }
+  }
 
   const imagingCat: BillCategory = {
     id: "imaging", label: "Radiology / Imaging",
@@ -202,10 +220,12 @@ function buildCatalogue(apptFilter?: ApptFilter): { categories: BillCategory[]; 
     defaultProviderId: activeImgProvs[0]?.id ?? null,
     getItems: (provId) => {
       const prov = activeImgProvs.find(p => p.id === provId) ?? activeImgProvs[0];
-      return imagingTests.map(t => ({
-        id: t.id, name: t.name,
-        price: prov ? (parseFloat(prov.pricing[t.id] ?? "") || 0) : 0,
-      }));
+      if (!prov) return allImgProtocols.map(t => ({ ...t, price: 0 }));
+      // Only show protocols the partner has selected; include price from pricing map.
+      const selected = new Set(prov.selectedTests);
+      return allImgProtocols
+        .filter(t => selected.size === 0 || selected.has(t.id))
+        .map(t => ({ ...t, price: parseFloat(prov.pricing[t.id] ?? "") || 0 }));
     },
   };
 
