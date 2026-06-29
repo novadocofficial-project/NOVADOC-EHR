@@ -347,16 +347,6 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
       });
     }
     (activeType?.extraFields ?? []).filter(f => f.enabled && f.required).forEach(f => required.push(f.id));
-    if (patientType === "welfare" && welfareForm) {
-      const wfCondIds = (welfareForm.conditionalRules ?? []).flatMap(r => r.showFieldIds);
-      const wfVisIds  = (welfareForm.conditionalRules ?? []).flatMap(rule =>
-        rule.triggerValues.includes(values[rule.triggerFieldId] ?? "") ? rule.showFieldIds : []
-      );
-      welfareForm.fields
-        .filter(f => f.enabled && f.required && f.type !== "signature" && f.type !== "file" &&
-          (!wfCondIds.includes(f.id) || wfVisIds.includes(f.id)))
-        .forEach(f => required.push(f.id));
-    }
     // Demographics sections
     config.sections.filter(s => s.sectionType === "demographics" && s.enabled).forEach(sec => {
       sec.fields
@@ -397,16 +387,6 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
         });
       }
       (activeType?.extraFields ?? []).filter(f => f.enabled && f.required).forEach(f => required.push(f.id));
-      if (patientType === "welfare" && welfareForm) {
-        const wfCondIds = (welfareForm.conditionalRules ?? []).flatMap(r => r.showFieldIds);
-        const wfVisIds  = (welfareForm.conditionalRules ?? []).flatMap(rule =>
-          rule.triggerValues.includes(values[rule.triggerFieldId] ?? "") ? rule.showFieldIds : []
-        );
-        welfareForm.fields
-          .filter(f => f.enabled && f.required && f.type !== "signature" && f.type !== "file" &&
-            (!wfCondIds.includes(f.id) || wfVisIds.includes(f.id)))
-          .forEach(f => required.push(f.id));
-      }
     } else {
       const sec = config.sections.find(s => s.id === step.sectionId);
       if (sec) {
@@ -660,31 +640,6 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
         blocks.push(
           <WelfareEnrollmentPanel key="__ws_enroll__" values={values} setVal={setVal} schemes={welfareSchemes} />
         );
-        if (welfareForm) {
-          const wfCondIds   = (welfareForm.conditionalRules ?? []).flatMap(r => r.showFieldIds);
-          const wfNormFlds  = welfareForm.fields.filter(f => f.enabled && !wfCondIds.includes(f.id));
-          blocks.push(
-            <div key="__wf__" className="rounded-xl border border-red-100 bg-red-50 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <FileSignature className="h-4 w-4 text-red-500" />
-                <p className="text-sm font-bold text-red-700">Welfare Form — {welfareForm.name}</p>
-              </div>
-              {wfNormFlds.map(f => renderField(f))}
-              {(welfareForm.conditionalRules ?? []).map(rule => {
-                const tv = values[rule.triggerFieldId] ?? "";
-                if (!rule.triggerValues.includes(tv)) return null;
-                const condFlds = welfareForm.fields.filter(f => rule.showFieldIds.includes(f.id) && f.enabled);
-                if (!condFlds.length) return null;
-                return (
-                  <div key={rule.id} className="rounded-xl border border-red-200 bg-white/60 p-3 space-y-3">
-                    <p className="text-xs font-bold text-red-600 uppercase tracking-wide">{tv} Details</p>
-                    <div className="space-y-3">{condFlds.map(f => renderField(f))}</div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        }
       }
       return <>{blocks}</>;
     }
@@ -766,18 +721,6 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
           .filter(k => k.startsWith("_welfare_doc_") && values[k] === "yes")
           .map(k => k.replace("_welfare_doc_", "").replace(/_/g, " ").trim());
         if (docs.length > 0) items.push({ label: "Documents Collected", value: docs.join(", ") });
-      }
-      if (welfareForm) {
-        const wfCondIds = (welfareForm.conditionalRules ?? []).flatMap(r => r.showFieldIds);
-        const wfVisIds  = (welfareForm.conditionalRules ?? []).flatMap(rule =>
-          rule.triggerValues.includes(values[rule.triggerFieldId] ?? "") ? rule.showFieldIds : []
-        );
-        for (const f of welfareForm.fields.filter(f =>
-          f.enabled && f.type !== "signature" && f.type !== "file" &&
-          (!wfCondIds.includes(f.id) || wfVisIds.includes(f.id))
-        )) {
-          const v = values[f.id]; if (v) items.push({ label: f.label, value: v });
-        }
       }
       if (items.length > 0) sections.push({ title: scheme ? `${scheme.name} Enrollment` : "Welfare Registration", items });
     }
