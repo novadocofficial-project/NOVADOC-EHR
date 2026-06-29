@@ -7,11 +7,12 @@ import {
   Repeat, AlertTriangle, LayoutGrid, Columns2, RefreshCw,
   Hash, Check, ArrowRight, Pencil, CalendarDays, UserPlus,
   Banknote, Shield, Building2, Heart, FileSignature, Receipt, Activity,
-  ClipboardList, PenLine, Minus, Download, ShieldCheck, RotateCcw,
+  ClipboardList, PenLine, Minus, Download, ShieldCheck, RotateCcw, HandHeart,
 } from "lucide-react";
 import { ApptFaceSheet } from "@/pages/ApptFaceSheet";
 import { ApptNursingDrawer, type NurseCategory } from "@/pages/ApptNursingDrawer";
-import { BillingContent, ReceiptInfo, printThermalReceipt } from "@/pages/FrontDeskUser";
+import { BillingContent, ReceiptInfo, printThermalReceipt, WelfareEnrollmentPanel, type SchemeOption } from "@/pages/FrontDeskUser";
+import { buildSeedSchemes } from "@/pages/WelfareSchemesModule";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -249,6 +250,13 @@ function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [currentStep, setCurrentStep] = useState(0);
   const [showReview, setShowReview] = useState(false);
+  const [welfareSchemes] = useState<SchemeOption[]>(() => {
+    try {
+      const raw = localStorage.getItem("ehr-welfare-schemes-v1");
+      if (raw) return (JSON.parse(raw) as Array<SchemeOption & { deleted?: boolean; active?: boolean }>).filter(s => !s.deleted && s.active !== false);
+    } catch { /**/ }
+    return buildSeedSchemes().filter(s => !s.deleted && s.active !== false);
+  });
   const [drawing, setDrawing] = useState(false);
   const sigRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
   const mrBanner = useRef("MR-" + Math.floor(45100 + Math.random() * 900)).current;
@@ -582,6 +590,11 @@ function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
           </div>
         );
       }
+      if (patientType === "welfare") {
+        blocks.push(
+          <WelfareEnrollmentPanel key="__ws_enroll__" values={values} setVal={setVal} schemes={welfareSchemes} />
+        );
+      }
       return <>{blocks}</>;
     }
     if (stepDef.sectionType === "demographics") {
@@ -638,6 +651,15 @@ function ApptRegDrawer({ onRegister, onClose }: ApptRegDrawerProps) {
         }
       }
       if (items.length > 0) sections.push({ title: "Basic Info", items });
+      if (patientType === "welfare") {
+        const scheme = welfareSchemes.find(s => s.id === values["_welfare_scheme_id"]);
+        if (scheme) {
+          const wItems: { label: string; value: string }[] = [{ label: "Scheme", value: scheme.name }];
+          if (values["_welfare_income"]) wItems.push({ label: "Monthly Income", value: `Rs. ${values["_welfare_income"]}` });
+          if (values["_welfare_household"]) wItems.push({ label: "Household Members", value: values["_welfare_household"] });
+          sections.push({ title: "Welfare Enrollment", items: wItems });
+        }
+      }
     }
     for (const sec of orderedSections.filter(s => s.sectionType === "demographics")) {
       const items: { label: string; value: string }[] = [];

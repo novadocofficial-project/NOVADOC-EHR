@@ -53,7 +53,7 @@ function catIcon(id: string, cls = "h-5 w-5") {
 
 // ─── Welfare Scheme Enrollment Panel ──────────────────────────────────────────
 
-type SchemeOption = {
+export type SchemeOption = {
   id: string;
   name: string;
   maxMonthlyIncome: number;
@@ -61,7 +61,7 @@ type SchemeOption = {
   requiredDocuments: string[];
 };
 
-function WelfareEnrollmentPanel({
+export function WelfareEnrollmentPanel({
   values, setVal, schemes,
 }: {
   values: Record<string, string>;
