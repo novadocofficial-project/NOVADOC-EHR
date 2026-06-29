@@ -17,6 +17,7 @@ import { QueueAppHeader, SEED_PATIENTS, timeAgo, Patient, WelfareEnrollment, uid
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useRegConfig, type RegField } from "@/hooks/useRegConfig";
 import { usePatients } from "@/hooks/usePatients";
+import { buildSeedSchemes } from "@/pages/WelfareSchemesModule";
 import { useBillingCatalogue } from "@/hooks/useBillingCatalogue";
 import type { BillCatItem, BillPackage } from "@/hooks/useBillingCatalogue";
 
@@ -277,7 +278,7 @@ function DynamicRegNewForm({ onRegister, isReassign }: { onRegister: (p: Patient
           .filter(s => !s.deleted && s.active !== false);
       }
     } catch { /**/ }
-    return [];
+    return buildSeedSchemes().filter(s => !s.deleted && s.active !== false);
   });
 
   useEffect(() => {

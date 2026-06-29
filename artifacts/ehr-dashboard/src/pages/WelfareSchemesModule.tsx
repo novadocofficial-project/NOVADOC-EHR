@@ -129,7 +129,7 @@ function rebuildBalances(entries: WelfareLedgerEntry[]): WelfareLedgerEntry[] {
   });
 }
 
-function buildSeedSchemes(): WelfareScheme[] {
+export function buildSeedSchemes(): WelfareScheme[] {
   return [
     {
       id: "ws-1",
