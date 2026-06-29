@@ -1343,7 +1343,7 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
 
       {/* ── Queue Visit Types tab ── */}
       {activeTab === "queue-visit-types" && (
-        <QueueVisitTypesTab branches={branches} visitTypes={SEED_VISIT_TYPES} branchMode={branchMode} setBranchMode={setBranchMode} />
+        <QueueVisitTypesTab branches={branches.filter(b => b.operationalMode !== "appointment-only")} visitTypes={SEED_VISIT_TYPES} branchMode={branchMode} setBranchMode={setBranchMode} />
       )}
 
       {/* ── Lab Assignment tab ── */}
@@ -1410,11 +1410,13 @@ export function BranchModule({ labProviders = [], labSections = [], procPartners
                 <Input type="time" {...field("workingHoursEnd")} className="h-9 text-sm" />
                 {errors.hours && <p className="text-xs text-rose-500 col-span-2">{errors.hours}</p>}
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-600">Token Reset Time</Label>
-                <Input type="time" {...field("tokenResetTime")} className="h-9 text-sm" />
-                <p className="text-[10px] text-slate-400">Tokens reset daily at this time.</p>
-              </div>
+              {form.operationalMode !== "appointment-only" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-600">Token Reset Time</Label>
+                  <Input type="time" {...field("tokenResetTime")} className="h-9 text-sm" />
+                  <p className="text-[10px] text-slate-400">Tokens reset daily at this time.</p>
+                </div>
+              )}
               <div className="space-y-1.5 flex flex-col justify-center">
                 <Label className="text-xs font-semibold text-slate-600">Status</Label>
                 <div className="flex items-center gap-2 mt-1">
