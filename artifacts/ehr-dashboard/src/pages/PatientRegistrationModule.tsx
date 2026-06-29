@@ -39,7 +39,7 @@ function PageHeader({ title, desc }: { title: string; desc: string }) {
   );
 }
 
-const FIELD_TYPE_LABELS: Record<FieldType, string> = {
+export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   text: "Text", number: "Number", dropdown: "Dropdown", checkbox: "Checkbox",
   radio: "Radio", date: "Date", textarea: "Textarea", file: "File Upload", signature: "Signature",
 };
@@ -85,7 +85,7 @@ interface AddFieldDialogProps {
   editField?: RegField | null;
 }
 
-function AddFieldDialog({ open, onClose, onSave, editField }: AddFieldDialogProps) {
+export function AddFieldDialog({ open, onClose, onSave, editField }: AddFieldDialogProps) {
   const blank: RegField = { id: "", label: "", type: "text", required: false, enabled: true, options: [], placeholder: "" };
   const [form, setForm] = useState<RegField>(editField ?? blank);
   const [optionsRaw, setOptionsRaw] = useState((editField?.options ?? []).join("\n"));
@@ -173,7 +173,7 @@ interface FieldListEditorProps {
   conditionalFieldIds?: string[];
 }
 
-function FieldListEditor({ fields, onChange, allowAdd = true, conditionalFieldIds = [] }: FieldListEditorProps) {
+export function FieldListEditor({ fields, onChange, allowAdd = true, conditionalFieldIds = [] }: FieldListEditorProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [editField, setEditField] = useState<RegField | null>(null);
 

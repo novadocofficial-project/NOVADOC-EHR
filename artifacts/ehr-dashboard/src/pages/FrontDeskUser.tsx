@@ -17,7 +17,7 @@ import { QueueAppHeader, SEED_PATIENTS, timeAgo, Patient, WelfareEnrollment, uid
 import { useMultiStepQueue, MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useRegConfig, type RegField } from "@/hooks/useRegConfig";
 import { usePatients } from "@/hooks/usePatients";
-import { buildSeedSchemes } from "@/pages/WelfareSchemesModule";
+import { buildSeedSchemes, type WelfareSchemeForm } from "@/pages/WelfareSchemesModule";
 import { useBillingCatalogue } from "@/hooks/useBillingCatalogue";
 import type { BillCatItem, BillPackage } from "@/hooks/useBillingCatalogue";
 
@@ -59,7 +59,78 @@ export type SchemeOption = {
   maxMonthlyIncome: number;
   maxHouseholdMembers: number;
   requiredDocuments: string[];
+  forms?: WelfareSchemeForm[];
 };
+
+function WelfareFormField({ field, value, onChange }: { field: RegField; value: string; onChange: (v: string) => void }) {
+  const lbl = (
+    <label className="text-xs font-semibold text-slate-600 mb-1 block">
+      {field.label}{field.required && <span className="text-rose-500 ml-0.5">*</span>}
+    </label>
+  );
+  const base = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#4982CF]";
+  if (field.type === "textarea") return (
+    <div>
+      {lbl}
+      <textarea className={`${base} resize-none h-16`} placeholder={field.placeholder} value={value} onChange={e => onChange(e.target.value)} />
+    </div>
+  );
+  if (field.type === "dropdown") return (
+    <div>
+      {lbl}
+      <select value={value} onChange={e => onChange(e.target.value)} className={base}>
+        <option value="">— Select —</option>
+        {(field.options ?? []).map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  );
+  if (field.type === "checkbox") {
+    const checked = value ? value.split(",").filter(Boolean) : [];
+    return (
+      <div>
+        {lbl}
+        <div className="flex flex-wrap gap-2">
+          {(field.options ?? []).map(o => (
+            <label key={o} className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={checked.includes(o)}
+                onChange={e => { const next = e.target.checked ? [...checked, o] : checked.filter(x => x !== o); onChange(next.join(",")); }}
+                className="accent-[#4982CF]"
+              />
+              {o}
+            </label>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (field.type === "radio") return (
+    <div>
+      {lbl}
+      <div className="flex flex-wrap gap-3">
+        {(field.options ?? []).map(o => (
+          <label key={o} className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+            <input type="radio" name={`wff-${field.id}`} value={o} checked={value === o} onChange={() => onChange(o)} className="accent-[#4982CF]" />
+            {o}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <div>
+      {lbl}
+      <input
+        type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+        placeholder={field.placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className={base}
+      />
+    </div>
+  );
+}
 
 export function WelfareEnrollmentPanel({
   values, setVal, schemes,
@@ -149,6 +220,20 @@ export function WelfareEnrollmentPanel({
                   </div>
                 </div>
               </div>
+
+              {sel.forms && sel.forms.filter(form => form.fields.some(f => f.enabled)).map(form => (
+                <div key={form.id} className="rounded-lg border border-blue-200 bg-white p-3 space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{form.name}</p>
+                  {form.fields.filter(f => f.enabled).map(field => (
+                    <WelfareFormField
+                      key={field.id}
+                      field={field}
+                      value={values[`_wf_${form.id}_${field.id}`] ?? ""}
+                      onChange={v => setVal(`_wf_${form.id}_${field.id}`, v)}
+                    />
+                  ))}
+                </div>
+              ))}
 
               {sel.requiredDocuments.length > 0 && (
                 <div>

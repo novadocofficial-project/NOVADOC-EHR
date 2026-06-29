@@ -3,7 +3,7 @@ import {
   Plus, Heart, Edit2, Trash2, ChevronRight, Search,
   HandHeart, ClipboardList, ShieldCheck, Banknote,
   Users, CheckCircle2, AlertCircle, Clock, ArrowDownCircle,
-  BadgeCheck, BookOpen,
+  BadgeCheck, BookOpen, FileText, Check, X, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,18 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { type RegField, type FieldType } from "@/hooks/useRegConfig";
+import { AddFieldDialog, FieldListEditor, FIELD_TYPE_LABELS } from "@/pages/PatientRegistrationModule";
 
 const STORAGE_KEY = "ehr-welfare-schemes-v1";
 
 export type WelfareSchemeType = "govt" | "hospital" | "ngo" | "zakat" | "corporate";
+
+export type WelfareSchemeForm = {
+  id: string;
+  name: string;
+  fields: RegField[];
+};
 
 export type ServiceCoverageRule = {
   enabled: boolean;
@@ -57,6 +65,7 @@ export type WelfareScheme = {
   renewalPeriod: "6m" | "1y" | "2y";
   gracePeriodDays: number;
   ledger: WelfareLedgerEntry[];
+  forms: WelfareSchemeForm[];
   createdAt: string;
 };
 
@@ -164,6 +173,7 @@ export function buildSeedSchemes(): WelfareScheme[] {
         { id: "wl-1-2", date: "2024-08-15", type: "disbursement", amount: 87450, reference: "DISB-AUG-001", notes: "12 patient claims settled — Aug batch" },
         { id: "wl-1-3", date: "2024-10-01", type: "deposit", amount: 250000, reference: "PHI-Q4-2024", notes: "Q4 government fund release" },
       ]),
+      forms: [],
       createdAt: "2024-01-15T00:00:00.000Z",
     },
     {
@@ -198,6 +208,7 @@ export function buildSeedSchemes(): WelfareScheme[] {
         { id: "wl-2-1", date: "2024-01-01", type: "deposit", amount: 200000, reference: "HCF-ANNUAL-2024", notes: "Annual hospital charity budget allocation" },
         { id: "wl-2-2", date: "2024-09-30", type: "disbursement", amount: 63200, reference: "DISB-HCF-Q3", notes: "Q3 claims — 18 patients" },
       ]),
+      forms: [],
       createdAt: "2024-01-01T00:00:00.000Z",
     },
     {
@@ -233,6 +244,7 @@ export function buildSeedSchemes(): WelfareScheme[] {
         { id: "wl-3-2", date: "2024-06-30", type: "disbursement", amount: 145000, reference: "DISB-ZAK-H1", notes: "H1 patient claims — 22 patients" },
         { id: "wl-3-3", date: "2024-09-15", type: "deposit", amount: 150000, reference: "ZAK-Q3-2024", notes: "Quarterly Zakat supplemental fund" },
       ]),
+      forms: [],
       createdAt: "2024-04-01T00:00:00.000Z",
     },
     {
@@ -267,6 +279,7 @@ export function buildSeedSchemes(): WelfareScheme[] {
         { id: "wl-4-1", date: "2024-01-15", type: "deposit", amount: 400000, reference: "EOBI-ANN-2024", notes: "Annual EOBI welfare fund allocation" },
         { id: "wl-4-2", date: "2024-07-31", type: "disbursement", amount: 112000, reference: "DISB-EOBI-H1", notes: "H1 worker claims — 28 patients" },
       ]),
+      forms: [],
       createdAt: "2024-01-15T00:00:00.000Z",
     },
   ];
@@ -371,7 +384,7 @@ export function WelfareSchemesModule() {
         coverage: defaultCoverage(),
         annualCreditLimit: 0, maxOpdVisitsPerYear: 0,
         maxInpatientDaysPerYear: 0, renewalPeriod: "1y", gracePeriodDays: 30,
-        ledger: [], createdAt: new Date().toISOString(),
+        ledger: [], forms: [], createdAt: new Date().toISOString(),
       };
       persist([...schemes, next]);
       setSelectedId(id);
@@ -512,6 +525,7 @@ export function WelfareSchemesModule() {
                 <TabsTrigger value="coverage" className="text-xs gap-1.5"><ClipboardList className="h-3.5 w-3.5" />Coverage</TabsTrigger>
                 <TabsTrigger value="limits" className="text-xs gap-1.5"><BadgeCheck className="h-3.5 w-3.5" />Limits & Co-pay</TabsTrigger>
                 <TabsTrigger value="ledger" className="text-xs gap-1.5"><Banknote className="h-3.5 w-3.5" />Ledger</TabsTrigger>
+                <TabsTrigger value="forms" className="text-xs gap-1.5"><FileText className="h-3.5 w-3.5" />Welfare Forms</TabsTrigger>
               </TabsList>
 
               {/* ── OVERVIEW ── */}
@@ -601,6 +615,14 @@ export function WelfareSchemesModule() {
                 <LedgerTab
                   scheme={selected}
                   onAddDeposit={() => setShowDepositDialog(true)}
+                />
+              </TabsContent>
+
+              {/* ── WELFARE FORMS ── */}
+              <TabsContent value="forms" className="flex-1 overflow-y-auto p-6 mt-0">
+                <SchemeFormsTab
+                  scheme={selected}
+                  onUpdate={patch => updateScheme(selected.id, patch)}
                 />
               </TabsContent>
             </Tabs>
@@ -984,6 +1006,152 @@ function LimitsTab({ scheme, onUpdate }: { scheme: WelfareScheme; onUpdate: (p: 
 }
 
 /* ── Ledger Tab ────────────────────────────────────────────────────────────── */
+// ─── Scheme Forms Tab ──────────────────────────────────────────────────────────
+
+function SchemeFormsTab({ scheme, onUpdate }: { scheme: WelfareScheme; onUpdate: (patch: Partial<WelfareScheme>) => void }) {
+  const forms = scheme.forms ?? [];
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [addingName, setAddingName] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameVal, setRenameVal] = useState("");
+
+  function addForm() {
+    if (!newName.trim()) return;
+    const id = `wsf-${Date.now()}`;
+    const updated = [...forms, { id, name: newName.trim(), fields: [] }];
+    onUpdate({ forms: updated });
+    setExpanded(id);
+    setNewName("");
+    setAddingName(false);
+  }
+
+  function deleteForm(id: string) {
+    onUpdate({ forms: forms.filter(f => f.id !== id) });
+    if (expanded === id) setExpanded(null);
+  }
+
+  function updateFields(formId: string, fields: RegField[]) {
+    onUpdate({ forms: forms.map(f => f.id === formId ? { ...f, fields } : f) });
+  }
+
+  function commitRename(formId: string) {
+    if (renameVal.trim()) {
+      onUpdate({ forms: forms.map(f => f.id === formId ? { ...f, name: renameVal.trim() } : f) });
+    }
+    setRenamingId(null);
+  }
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Define custom forms for this scheme. When a patient selects this scheme during registration, all forms listed here will appear automatically so the additional data can be captured.
+        </p>
+        <Button
+          size="sm"
+          onClick={() => { setAddingName(true); setNewName(""); }}
+          className="flex-none bg-[#4982CF] hover:bg-[#3D73BC] text-white h-8 gap-1.5 text-xs"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Form
+        </Button>
+      </div>
+
+      {addingName && (
+        <div className="flex items-center gap-2 rounded-xl border border-[#4982CF]/30 bg-[#4982CF]/5 p-3">
+          <Input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            placeholder="Form name, e.g. Means Test Declaration"
+            className="h-8 text-sm flex-1"
+            autoFocus
+            onKeyDown={e => { if (e.key === "Enter") addForm(); if (e.key === "Escape") setAddingName(false); }}
+          />
+          <Button size="sm" onClick={addForm} disabled={!newName.trim()} className="h-8 px-3 bg-[#4982CF] hover:bg-[#3D73BC] text-white">
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setAddingName(false)} className="h-8 px-3">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {forms.length === 0 && !addingName && (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-14 text-center space-y-2">
+          <FileText className="h-8 w-8 mx-auto text-slate-300" />
+          <p className="text-sm font-semibold text-slate-400">No forms yet</p>
+          <p className="text-xs text-slate-400">Click "Add Form" to create one for this scheme.</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {forms.map(form => {
+          const isExp = expanded === form.id;
+          const enabledCount = form.fields.filter(f => f.enabled).length;
+          return (
+            <div key={form.id} className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              {/* Form header row */}
+              <div className="flex items-center gap-3 px-4 py-3">
+                <FileText className="h-4 w-4 text-[#4982CF] flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  {renamingId === form.id ? (
+                    <Input
+                      value={renameVal}
+                      autoFocus
+                      className="h-7 text-sm max-w-xs"
+                      onChange={e => setRenameVal(e.target.value)}
+                      onBlur={() => commitRename(form.id)}
+                      onKeyDown={e => { if (e.key === "Enter") commitRename(form.id); if (e.key === "Escape") setRenamingId(null); }}
+                    />
+                  ) : (
+                    <p
+                      className="text-sm font-bold text-slate-800 truncate cursor-pointer hover:text-[#4982CF] transition-colors"
+                      title="Click to rename"
+                      onClick={() => { setRenamingId(form.id); setRenameVal(form.name); }}
+                    >
+                      {form.name}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {enabledCount} field{enabledCount !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setExpanded(isExp ? null : form.id)}
+                    className="flex items-center gap-1 text-xs text-[#4982CF] font-semibold hover:opacity-70 transition-opacity"
+                  >
+                    {isExp ? "Collapse" : "Edit Fields"}
+                    {isExp ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  </button>
+                  <button
+                    onClick={() => deleteForm(form.id)}
+                    className="text-slate-300 hover:text-rose-500 transition-colors ml-1"
+                    title="Delete form"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Expanded fields editor */}
+              {isExp && (
+                <div className="border-t border-slate-100 bg-slate-50/40 px-4 py-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Fields</p>
+                  <FieldListEditor
+                    fields={form.fields}
+                    onChange={fields => updateFields(form.id, fields)}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function LedgerTab({ scheme, onAddDeposit }: { scheme: WelfareScheme; onAddDeposit: () => void }) {
   const totalDeposits = scheme.ledger.filter(e => e.type === "deposit").reduce((s, e) => s + e.amount, 0);
   const totalDisbursed = scheme.ledger.filter(e => e.type === "disbursement").reduce((s, e) => s + e.amount, 0);
