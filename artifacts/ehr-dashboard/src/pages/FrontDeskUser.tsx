@@ -931,8 +931,12 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
   const [cartDiscSource, setCartDiscSource] = useState<DiscountSource>("both");
   const [showCartDisc, setShowCartDisc]     = useState(false);
   const [selectedProviders, setSelectedProviders] = useState<Record<string, string | null>>({});
+  const [catSearch, setCatSearch] = useState("");
 
   const { categories, packages: billPackages } = useBillingCatalogue(apptContext);
+
+  // Reset search whenever the user enters or leaves a category
+  useEffect(() => { setCatSearch(""); }, [catId]);
 
   // Payment state
   const [payType, setPayType]     = useState<PayType | null>(null);
@@ -1043,42 +1047,53 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
       </div>
 
       {/* Scrollable selection + cart */}
-      <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
+      <div className="flex-1 flex flex-col min-h-0">
 
         {/* ── SERVICES — category grid ──────────────────────────────── */}
         {mode === "services" && !catId && (
-          <div className="grid grid-cols-2 gap-3">
-            {categories.map(cat => {
-              const style  = CAT_STYLE[cat.id] ?? { color: "text-slate-700", bg: "bg-slate-50 border-slate-200" };
-              const provId = selectedProviders[cat.id] ?? cat.defaultProviderId ?? null;
-              const count  = cat.getItems(provId).length;
-              const added  = cart.filter(c => c.catName === cat.label).length;
-              return (
-                <button key={cat.id} onClick={() => setCatId(cat.id)}
-                  className={`flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all hover:shadow-sm ${style.bg} relative`}>
-                  <div className={style.color}>{catIcon(cat.id)}</div>
-                  <div>
-                    <p className={`text-sm font-bold ${style.color}`}>{cat.label}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{count} services</p>
-                  </div>
-                  {added > 0 && (
-                    <span className="absolute top-2 right-2 h-5 w-5 rounded-full bg-[#4982CF] text-white text-[10px] font-black flex items-center justify-center">{added}</span>
-                  )}
-                </button>
-              );
-            })}
+          <div className="flex-1 overflow-y-auto px-5 pb-4 pt-4">
+            <div className="grid grid-cols-2 gap-3">
+              {categories.map(cat => {
+                const style  = CAT_STYLE[cat.id] ?? { color: "text-slate-700", bg: "bg-slate-50 border-slate-200" };
+                const provId = selectedProviders[cat.id] ?? cat.defaultProviderId ?? null;
+                const count  = cat.getItems(provId).length;
+                const added  = cart.filter(c => c.catName === cat.label).length;
+                return (
+                  <button key={cat.id} onClick={() => setCatId(cat.id)}
+                    className={`flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all hover:shadow-sm ${style.bg} relative`}>
+                    <div className={style.color}>{catIcon(cat.id)}</div>
+                    <div>
+                      <p className={`text-sm font-bold ${style.color}`}>{cat.label}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{count} services</p>
+                    </div>
+                    {added > 0 && (
+                      <span className="absolute top-2 right-2 h-5 w-5 rounded-full bg-[#4982CF] text-white text-[10px] font-black flex items-center justify-center">{added}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
         {/* ── SERVICES — category drill-down ────────────────────────── */}
         {mode === "services" && catId && currentCat && (() => {
           const style = CAT_STYLE[catId] ?? { color: "text-slate-700", bg: "bg-slate-50 border-slate-200" };
-
-          // Group consultation items by doctor (subLabel)
           const isConsult = catId === "consultation";
+
+          // Apply search filter
+          const q = catSearch.trim().toLowerCase();
+          const filteredItems = q
+            ? currentCatItems.filter(i =>
+                i.name.toLowerCase().includes(q) ||
+                (i.subLabel ?? "").toLowerCase().includes(q)
+              )
+            : currentCatItems;
+
+          // Group consultation items by doctor (subLabel) — after filtering
           const doctorGroups: Record<string, BillCatItem[]> = {};
           if (isConsult) {
-            for (const item of currentCatItems) {
+            for (const item of filteredItems) {
               const key = item.subLabel ?? "Other";
               (doctorGroups[key] ??= []).push(item);
             }
@@ -1112,67 +1127,100 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
           }
 
           return (
-            <div className="space-y-2">
-              <button onClick={() => setCatId(null)}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#4982CF] transition-colors mb-3">
-                <ChevronLeft className="h-3.5 w-3.5" /> Back to categories
-              </button>
+            <div className="flex flex-col flex-1 min-h-0">
+              {/* ── Sticky header ─────────────────────────────────────── */}
+              <div className="flex-shrink-0 bg-white border-b border-slate-100 px-5 pt-3 pb-3 space-y-2.5">
+                {/* Row: back + category label */}
+                <div className="flex items-center justify-between">
+                  <button onClick={() => setCatId(null)}
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#4982CF] transition-colors">
+                    <ChevronLeft className="h-3.5 w-3.5" /> Back to categories
+                  </button>
+                  <div className={`flex items-center gap-1.5 ${style.color}`}>
+                    {catIcon(catId, "h-3.5 w-3.5")}
+                    <span className="text-xs font-bold">{currentCat.label}</span>
+                  </div>
+                </div>
 
-              {/* Category header */}
-              <div className={`flex items-center gap-2 rounded-xl border p-3 mb-3 ${style.bg}`}>
-                <div className={style.color}>{catIcon(catId, "h-4 w-4")}</div>
-                <p className={`text-sm font-bold ${style.color}`}>{currentCat.label}</p>
+                {/* Search bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={catSearch}
+                    onChange={e => setCatSearch(e.target.value)}
+                    placeholder={`Search ${currentCat.label}...`}
+                    className="w-full h-9 pl-9 pr-8 rounded-lg border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF] transition-colors"
+                  />
+                  {catSearch && (
+                    <button onClick={() => setCatSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Provider picker — single provider pill or multi-provider tabs */}
                 {currentCat.providers.length === 1 && (
-                  <span className="ml-auto text-[10px] text-slate-400 font-medium">{currentCat.providers[0].name}</span>
+                  <p className="text-[10px] text-slate-400 font-medium">{currentCat.providers[0].name}</p>
+                )}
+                {currentCat.providers.length > 1 && (
+                  <div className="flex gap-2 flex-wrap">
+                    {currentCat.providers.map(p => (
+                      <button key={p.id}
+                        onClick={() => setSelectedProviders(prev => ({ ...prev, [catId]: p.id }))}
+                        className={`h-7 px-3 rounded-full text-xs font-bold border transition-all ${
+                          currentProviderId === p.id
+                            ? "bg-[#4982CF] text-white border-[#4982CF]"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-[#4982CF]/50"
+                        }`}>
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
 
-              {/* Provider picker — shown only when 2+ providers exist */}
-              {currentCat.providers.length > 1 && (
-                <div className="flex gap-2 mb-3 flex-wrap">
-                  {currentCat.providers.map(p => (
-                    <button key={p.id}
-                      onClick={() => setSelectedProviders(prev => ({ ...prev, [catId]: p.id }))}
-                      className={`h-7 px-3 rounded-full text-xs font-bold border transition-all ${
-                        currentProviderId === p.id
-                          ? "bg-[#4982CF] text-white border-[#4982CF]"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-[#4982CF]/50"
-                      }`}>
-                      {p.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Items — consultation grouped by doctor, others flat */}
-              {isConsult ? (
-                Object.entries(doctorGroups).map(([doctorName, items]) => (
-                  <div key={doctorName} className="mb-1">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 mt-3 first:mt-0 px-1">{doctorName}</p>
-                    <div className="space-y-2">
-                      {items.map(item => <ServiceRow key={item.id} item={item} />)}
-                    </div>
+              {/* ── Scrollable items ───────────────────────────────────── */}
+              <div className="flex-1 overflow-y-auto px-5 py-3">
+                {/* Empty state */}
+                {filteredItems.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <p className="text-sm font-medium text-slate-400">
+                      {catSearch ? "No matches found" : "No items configured"}
+                    </p>
+                    <p className="text-xs text-slate-300 mt-1">
+                      {catSearch ? "Try a different search term" : "Set up items in Admin Settings"}
+                    </p>
                   </div>
-                ))
-              ) : (
-                <div className="space-y-2">
-                  {currentCatItems.map(item => <ServiceRow key={item.id} item={item} />)}
-                </div>
-              )}
+                )}
 
-              {/* Empty state */}
-              {currentCatItems.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <p className="text-sm font-medium text-slate-400">No items configured</p>
-                  <p className="text-xs text-slate-300 mt-1">Set up items in Admin Settings</p>
-                </div>
-              )}
+                {/* Items — consultation grouped by doctor, others flat */}
+                {filteredItems.length > 0 && isConsult && (
+                  <div className="space-y-1 pb-4">
+                    {Object.entries(doctorGroups).map(([doctorName, items]) => (
+                      <div key={doctorName} className="mb-1">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 mt-3 first:mt-0 px-1">{doctorName}</p>
+                        <div className="space-y-2">
+                          {items.map(item => <ServiceRow key={item.id} item={item} />)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {filteredItems.length > 0 && !isConsult && (
+                  <div className="space-y-2 pb-4">
+                    {filteredItems.map(item => <ServiceRow key={item.id} item={item} />)}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })()}
 
         {/* ── PACKAGES ──────────────────────────────────────────────── */}
         {mode === "packages" && (
+          <div className="flex-1 overflow-y-auto px-5 pb-4 pt-4">
           <div className="space-y-3">
             {billPackages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-10 text-center">
@@ -1205,6 +1253,7 @@ export function BillingContent({ entry, onComplete, isFullscreen, apptContext }:
                 </div>
               );
             })}
+          </div>
           </div>
         )}
 
