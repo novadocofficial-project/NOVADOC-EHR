@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
-  ChevronLeft, X, Search, CheckCircle2, ClipboardCheck,
+  ChevronLeft, ChevronRight, X, Search, CheckCircle2, ClipboardCheck,
   FlaskConical, Plus, Layers, ListChecks, AlertCircle, Clock,
 } from "lucide-react";
 
@@ -332,6 +332,7 @@ export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsRead
   const [tab,               setTab]               = useState<"sets" | "browse">("browse");
   const [search,            setSearch]            = useState("");
   const [selectedCategory,  setSelectedCategory]  = useState(LAB_CATEGORIES[0]);
+  const catTabsRef = useRef<HTMLDivElement>(null);
 
   // edit mode pre-populates from savedData; add mode always starts empty
   // second-order mode (labResultsReady) also starts empty even if savedData is present
@@ -601,21 +602,33 @@ export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsRead
 
             {/* Category tabs */}
             {!search.trim() && (
-              <div className="flex gap-1 px-4 pb-2 overflow-x-auto flex-shrink-0" style={{ scrollbarWidth: "none" }}>
-                {LAB_CATEGORIES.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={[
-                      "flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-full border transition-all",
-                      selectedCategory === cat
-                        ? "text-white border-transparent"
-                        : "text-slate-500 border-slate-200 hover:border-amber-200 hover:text-amber-600",
-                    ].join(" ")}
-                    style={selectedCategory === cat ? { backgroundColor: ACCENT_LAB } : {}}>
-                    {cat}
-                  </button>
-                ))}
+              <div className="flex items-center gap-1 px-2 pb-2 flex-shrink-0">
+                <button
+                  onClick={() => catTabsRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
+                  className="flex-shrink-0 p-1.5 rounded-full border border-slate-200 bg-white shadow-sm text-slate-500 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors">
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <div ref={catTabsRef} className="flex gap-1 overflow-x-auto flex-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+                  {LAB_CATEGORIES.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={[
+                        "flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-full border transition-all",
+                        selectedCategory === cat
+                          ? "text-white border-transparent"
+                          : "text-slate-500 border-slate-200 hover:border-amber-200 hover:text-amber-600",
+                      ].join(" ")}
+                      style={selectedCategory === cat ? { backgroundColor: ACCENT_LAB } : {}}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => catTabsRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
+                  className="flex-shrink-0 p-1.5 rounded-full border border-slate-200 bg-white shadow-sm text-slate-500 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors">
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
               </div>
             )}
 
