@@ -795,7 +795,6 @@ export function AdminSettings() {
                 {subNavItem("nursing-triage",     <AlertCircle className="h-3.5 w-3.5" />,  "Triage")}
                 {subNavItem("nursing-history",    <ClipboardList className="h-3.5 w-3.5" />, "History")}
                 {subNavItem("nursing-vitals",     <Sliders className="h-3.5 w-3.5" />,       "Vital Signs")}
-                {subNavItem("nursing-procedures", <Stethoscope className="h-3.5 w-3.5" />,   "Procedure")}
               </div>
             )}
 
@@ -922,8 +921,9 @@ export function AdminSettings() {
             </button>
             {navExpanded.procedureCatalog && (
               <div className="ml-3 space-y-0.5 border-l-2 border-slate-100 pl-3">
-                {subNavItem("proc-master",   <FileText className="h-3.5 w-3.5" />,    "Procedure Master List")}
-                {subNavItem("proc-partners", <Stethoscope className="h-3.5 w-3.5" />, "Procedure Partners")}
+                {subNavItem("proc-master",      <FileText className="h-3.5 w-3.5" />,    "Procedure Master List")}
+                {subNavItem("proc-partners",    <Stethoscope className="h-3.5 w-3.5" />, "Procedure Partners")}
+                {subNavItem("nursing-procedures", <ClipboardList className="h-3.5 w-3.5" />, "Templates")}
               </div>
             )}
 
