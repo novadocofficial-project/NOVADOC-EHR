@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { loadRosConfig, RosConfigSystem, ROS_CONFIG_KEY } from "@/pages/RosPeSection";
+import { ICD_CODES, DX_FAVORITES, ICD10_CATALOGUE_KEY } from "@/pages/DiagnosisDrawer";
 import {
   Plus, Trash2, Edit2, Save, X, GripVertical, Search, Star,
   ChevronDown, CheckCircle2, AlertCircle, Eye,
@@ -155,31 +156,34 @@ function ChiefComplaintLibrary() {
 interface Icd10Code { id: string; code: string; description: string; bundleId: string; favourite: boolean; }
 interface Icd10Bundle { id: string; name: string; }
 
-const SEED_BUNDLES: Icd10Bundle[] = [
-  { id: "b0", name: "General" },
-  { id: "b1", name: "Cardiology Bundle" },
-  { id: "b2", name: "Respiratory Bundle" },
-  { id: "b3", name: "Endocrine Bundle" },
-];
+function buildIcd10Seed(): { codes: Icd10Code[]; bundles: Icd10Bundle[] } {
+  const specialties = [...new Set(ICD_CODES.map(c => c.specialty))];
+  const bundles: Icd10Bundle[] = specialties.map((s, i) => ({ id: `sb${i}`, name: s }));
+  const bundleIdx = new Map(specialties.map((s, i) => [s, `sb${i}`]));
+  const favSet = new Set(DX_FAVORITES);
+  const codes: Icd10Code[] = ICD_CODES.map((c, i) => ({
+    id: `si${i}`, code: c.code, description: c.name,
+    bundleId: bundleIdx.get(c.specialty) ?? "sb0",
+    favourite: favSet.has(c.code),
+  }));
+  return { codes, bundles };
+}
 
-const SEED_CODES: Icd10Code[] = [
-  { id: "i1",  code: "I10",   description: "Essential (primary) hypertension",               bundleId: "b1", favourite: true  },
-  { id: "i2",  code: "I21.9", description: "Acute myocardial infarction, unspecified",        bundleId: "b1", favourite: false },
-  { id: "i3",  code: "I48.0", description: "Paroxysmal atrial fibrillation",                  bundleId: "b1", favourite: false },
-  { id: "i4",  code: "J18.9", description: "Pneumonia, unspecified organism",                 bundleId: "b2", favourite: true  },
-  { id: "i5",  code: "J45.9", description: "Asthma, unspecified",                             bundleId: "b2", favourite: false },
-  { id: "i6",  code: "J44.1", description: "Chronic obstructive pulmonary disease with AE",  bundleId: "b2", favourite: false },
-  { id: "i7",  code: "E11.9", description: "Type 2 diabetes mellitus without complications",  bundleId: "b3", favourite: true  },
-  { id: "i8",  code: "E05.9", description: "Thyrotoxicosis, unspecified",                     bundleId: "b3", favourite: false },
-  { id: "i9",  code: "E78.5", description: "Hyperlipidaemia, unspecified",                    bundleId: "b3", favourite: false },
-  { id: "i10", code: "R51",   description: "Headache",                                        bundleId: "b0", favourite: false },
-  { id: "i11", code: "R05",   description: "Cough",                                           bundleId: "b0", favourite: false },
-  { id: "i12", code: "R07.9", description: "Chest pain, unspecified",                         bundleId: "b0", favourite: true  },
-];
+function initIcd10(): { codes: Icd10Code[]; bundles: Icd10Bundle[] } {
+  try {
+    const raw = localStorage.getItem(ICD10_CATALOGUE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* fall through */ }
+  return buildIcd10Seed();
+}
 
 function Icd10Catalogue() {
-  const [codes, setCodes]     = useState<Icd10Code[]>(SEED_CODES);
-  const [bundles, setBundles] = useState<Icd10Bundle[]>(SEED_BUNDLES);
+  const [codes, setCodes]     = useState<Icd10Code[]>(() => initIcd10().codes);
+  const [bundles, setBundles] = useState<Icd10Bundle[]>(() => initIcd10().bundles);
+
+  useEffect(() => {
+    localStorage.setItem(ICD10_CATALOGUE_KEY, JSON.stringify({ codes, bundles }));
+  }, [codes, bundles]);
   const [search, setSearch]   = useState("");
   const [selectedBundle, setSelectedBundle] = useState("all");
   const [addCode, setAddCode] = useState("");

@@ -8,6 +8,14 @@ import {
 
 const ACCENT_DX = "#6366f1";
 
+export const ICD10_CATALOGUE_KEY = "ehr-icd10-catalogue-v1";
+
+// ─── Admin catalogue types (shared with ClinicalLibrariesModule) ──────────────
+
+interface AdminBundle { id: string; name: string; }
+interface AdminCode   { id: string; code: string; description: string; bundleId: string; favourite: boolean; }
+interface AdminCatalogue { codes: AdminCode[]; bundles: AdminBundle[]; }
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface DiagnosisEntry {
@@ -264,6 +272,31 @@ interface DiagnosisDrawerProps {
 }
 
 export function DiagnosisDrawer({ isDone, savedData, onSave, onClose }: DiagnosisDrawerProps) {
+  // ── Load admin-managed catalogue from localStorage (fallback to built-ins) ──
+  const [{ effectiveCodes, favSet, specTabs }] = useState(() => {
+    try {
+      const raw = localStorage.getItem(ICD10_CATALOGUE_KEY);
+      if (raw) {
+        const cat = JSON.parse(raw) as AdminCatalogue;
+        const bundleMap = new Map(cat.bundles.map(b => [b.id, b.name]));
+        return {
+          effectiveCodes: cat.codes.map(c => ({
+            code:      c.code,
+            name:      c.description,
+            specialty: bundleMap.get(c.bundleId) ?? "General / Primary Care",
+          })),
+          favSet:   new Set(cat.codes.filter(c => c.favourite).map(c => c.code)),
+          specTabs: ["Favorites", ...cat.bundles.map(b => b.name)],
+        };
+      }
+    } catch { /* fall through */ }
+    return {
+      effectiveCodes: ICD_CODES,
+      favSet:         new Set(DX_FAVORITES),
+      specTabs:       DX_SPECIALTIES,
+    };
+  });
+
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>("Favorites");
   const [search,            setSearch]            = useState("");
   const [selections,        setSelections]        = useState<DiagnosisEntry[]>(savedData);
@@ -277,13 +310,13 @@ export function DiagnosisDrawer({ isDone, savedData, onSave, onClose }: Diagnosi
     const q = search.toLowerCase();
 
     if (selectedSpecialty === "Favorites") {
-      const favCodes = ICD_CODES.filter(c => DX_FAVORITES.includes(c.code));
+      const favCodes = effectiveCodes.filter(c => favSet.has(c.code));
       return q
         ? favCodes.filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q))
         : favCodes;
     }
 
-    const bySpec = ICD_CODES.filter(c => c.specialty === selectedSpecialty);
+    const bySpec = effectiveCodes.filter(c => c.specialty === selectedSpecialty);
     return q
       ? bySpec.filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q))
       : bySpec;
@@ -293,7 +326,7 @@ export function DiagnosisDrawer({ isDone, savedData, onSave, onClose }: Diagnosi
   function getAllFiltered(): IcdCode[] {
     const q = search.toLowerCase();
     if (!q) return getFilteredCodes();
-    return ICD_CODES.filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q));
+    return effectiveCodes.filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q));
   }
 
   const displayCodes = search.trim() ? getAllFiltered() : getFilteredCodes();
@@ -327,7 +360,7 @@ export function DiagnosisDrawer({ isDone, savedData, onSave, onClose }: Diagnosi
 
   function handleSave() { onSave(selections); }
 
-  const isFavorite = (code: string) => DX_FAVORITES.includes(code);
+  const isFavorite = (code: string) => favSet.has(code);
 
   return (
     <div className="absolute inset-y-0 right-0 w-[68%] bg-white shadow-2xl border-l border-slate-200 flex flex-col z-20">
@@ -396,7 +429,7 @@ export function DiagnosisDrawer({ isDone, savedData, onSave, onClose }: Diagnosi
           ref={tabsRef}
           className="flex gap-1 px-4 pb-2 overflow-x-auto flex-shrink-0 scrollbar-none"
           style={{ scrollbarWidth: "none" }}>
-          {DX_SPECIALTIES.map(spec => (
+          {specTabs.map(spec => (
             <button
               key={spec}
               onClick={() => setSelectedSpecialty(spec)}
