@@ -335,27 +335,40 @@ interface ProcedureOrdersChipsPanelProps {
 }
 
 export function ProcedureOrdersChipsPanel({ data, onOpen }: ProcedureOrdersChipsPanelProps) {
-  if (data.orders.length === 0) {
+  if (data.orders.length === 0 && !data.instructions) {
     return (
       <button onClick={onOpen}
-        className="text-xs font-bold border-2 border-dashed rounded-xl px-4 py-2.5 flex items-center gap-2 transition-all hover:border-teal-300 hover:text-teal-600 hover:bg-teal-50 w-full"
-        style={{ borderColor: "#99f6e4", color: ACCENT }}>
-        <Plus className="h-3.5 w-3.5" />
+        className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl bg-teal-50/60 border-2 border-dashed border-teal-200 text-teal-500 font-bold text-xs hover:border-teal-400 hover:bg-teal-50 transition-all">
+        <Plus className="h-4 w-4 flex-shrink-0" />
         Order a procedure…
       </button>
     );
   }
+
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="space-y-2">
       {data.orders.map(o => (
-        <button key={o.uid} onClick={onOpen}
-          className="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-xl border-2 transition-all hover:opacity-80"
-          style={{ background: "#f0fdfa", color: ACCENT, borderColor: "#99f6e4" }}>
-          <Stethoscope className="h-3 w-3" />
-          <span className="truncate max-w-[140px]">{o.name}</span>
-          {o.cpt && <span className="font-mono text-[8px] opacity-60">· {o.cpt}</span>}
-        </button>
+        <div key={o.uid} className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl border border-teal-100 bg-teal-50/40">
+          <Stethoscope className="h-3.5 w-3.5 text-teal-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-black text-teal-800">{o.name}</p>
+            {o.cpt && (
+              <p className="text-[10px] font-mono text-teal-500 mt-0.5">CPT {o.cpt}</p>
+            )}
+          </div>
+        </div>
       ))}
+      {data.instructions && (
+        <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-100">
+          <p className="text-[9px] font-black text-amber-600 uppercase tracking-wide">Special Instructions</p>
+          <p className="text-[10px] text-amber-700 mt-0.5">{data.instructions}</p>
+        </div>
+      )}
+      <button onClick={onOpen}
+        className="flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-xl border border-teal-200 text-teal-500 text-xs font-bold hover:bg-teal-50 transition-colors">
+        <Plus className="h-3.5 w-3.5" />
+        Edit procedure orders ({data.orders.length})
+      </button>
     </div>
   );
 }
