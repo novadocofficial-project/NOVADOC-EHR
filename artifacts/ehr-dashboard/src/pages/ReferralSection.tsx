@@ -1194,41 +1194,59 @@ interface ReferralChipsPanelProps {
 export function ReferralChipsPanel({ data, onOpen }: ReferralChipsPanelProps) {
   if (data.referrals.length === 0) {
     return (
-      <button
-        onClick={onOpen}
-        className="text-xs font-bold border-2 border-dashed rounded-xl px-4 py-2.5 flex items-center gap-2 transition-all hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 w-full"
-        style={{ borderColor: "#c7d2fe", color: "#6366f1" }}>
-        <Plus className="h-3.5 w-3.5" />
+      <button onClick={onOpen}
+        className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl bg-indigo-50/60 border-2 border-dashed border-indigo-200 text-indigo-500 font-bold text-xs hover:border-indigo-400 hover:bg-indigo-50 transition-all">
+        <Plus className="h-4 w-4 flex-shrink-0" />
         Add patient referral…
       </button>
     );
   }
+
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="space-y-2">
       {data.referrals.map(r => {
-        const typeColor = r.referralType === "Internal" ? "#6366f1" : "#0ea5e9";
-        const label = r.referralTarget === "Consultant"
-          ? (r.speciality || "Consultant")
+        const isInternal  = r.referralType === "Internal";
+        const typeColor   = isInternal ? "#6366f1" : "#0ea5e9";
+        const typeBg      = isInternal ? "bg-indigo-50/50 border-indigo-100" : "bg-sky-50/50 border-sky-100";
+        const iconColor   = isInternal ? "text-indigo-400" : "text-sky-400";
+        const mainColor   = isInternal ? "text-indigo-800" : "text-sky-800";
+        const subColor    = isInternal ? "text-indigo-400" : "text-sky-400";
+
+        const mainLabel = r.referralTarget === "Consultant"
+          ? (r.consultantName || r.speciality || "Consultant")
           : r.referralTarget === "Procedure"
           ? (r.procedureName || "Procedure")
           : r.referralTarget === "ER"
-          ? (r.erService || r.facilityName || "ER")
+          ? (r.erService || r.facilityName || "ER Referral")
           : (r.customTarget || "Custom");
+
+        const subLabel = r.referralTarget === "Consultant" && r.speciality
+          ? `${r.referralType} · ${r.speciality}`
+          : r.referralTarget === "Procedure" && r.procedureCategory
+          ? `${r.referralType} · ${r.procedureCategory}`
+          : r.referralTarget === "ER" && r.facilityName && r.erService
+          ? `${r.referralType} · ${r.facilityName}`
+          : r.referralType;
+
         return (
-          <button key={r.id} onClick={onOpen}
-            className="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-xl border-2 transition-all hover:opacity-80"
-            style={{ background: `${typeColor}10`, color: typeColor, borderColor: `${typeColor}30` }}>
-            <Users className="h-3 w-3" />
-            <span>{r.referralType}</span>
-            <ArrowRight className="h-2.5 w-2.5 opacity-50" />
-            <span className="truncate max-w-[140px]">{label}</span>
-          </button>
+          <div key={r.id}
+            className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border ${typeBg}`}>
+            <Users className={`h-3.5 w-3.5 flex-shrink-0 mt-0.5 ${iconColor}`} />
+            <div className="flex-1 min-w-0">
+              <p className={`text-[11px] font-black ${mainColor} truncate`}>{mainLabel}</p>
+              <p className={`text-[10px] ${subColor} mt-0.5`}>{subLabel}</p>
+            </div>
+            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0 mt-0.5"
+              style={{ background: `${typeColor}18`, color: typeColor }}>
+              {r.referralTarget === "ER" ? "ER" : r.referralTarget}
+            </span>
+          </div>
         );
       })}
       <button onClick={onOpen}
-        className="text-[10px] font-bold px-3 py-1.5 rounded-xl border-2 border-dashed transition-all hover:border-indigo-300 hover:bg-indigo-50"
-        style={{ borderColor: "#c7d2fe", color: "#6366f1" }}>
-        <Plus className="h-3 w-3" />
+        className="flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-xl border border-indigo-200 text-indigo-500 text-xs font-bold hover:bg-indigo-50 transition-colors">
+        <Plus className="h-3.5 w-3.5" />
+        Edit referrals ({data.referrals.length})
       </button>
     </div>
   );
