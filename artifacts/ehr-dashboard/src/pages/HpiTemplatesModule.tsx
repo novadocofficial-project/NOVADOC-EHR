@@ -80,6 +80,22 @@ const SEED_TEMPLATES: HpiTemplate[] = [
       { id: "fa10", label: "Patient Denies", type: "multi-select", required: false, options: ["Fever", "Nausea", "Vomiting", "Diarrhea", "Constipation", "Blood in stool", "Weight loss", "Jaundice", "Heartburn", "Flatulence"], placeholder: "" },
     ],
   },
+  {
+    id: "t4", name: "Cough Assessment", complaintId: "cough", complaintName: "Cough", active: true,
+    fields: [
+      { id: "fc1", label: "Duration", type: "radio", required: true, options: ["Acute (< 2 weeks)", "Subacute (3–8 weeks)", "Chronic (> 8 weeks)"], placeholder: "" },
+      { id: "fc2", label: "Character", type: "multi-select", required: false, options: ["Dry", "Productive", "Constant", "Early Morning", "Worse at night", "Only in Daytime", "All Day"], placeholder: "" },
+      { id: "fc3", label: "Cough Origin", type: "multi-select", required: false, options: ["Due to Throat Irritation", "PostNasal", "From the Chest", "Associated with Wheezing"], placeholder: "" },
+      { id: "fc4", label: "Sputum Amount", type: "radio", required: false, options: ["Scanty", "Copious"], placeholder: "" },
+      { id: "fc5", label: "Sputum Color", type: "multi-select", required: false, options: ["Clear", "White", "Yellow", "Green", "Rusty", "Tinged", "Associated with Blood"], placeholder: "" },
+      { id: "fc6", label: "Associated Symptoms", type: "multi-select", required: false, options: ["Wheezing", "SOB when lying flat", "Acid Reflux", "Wake up at Night due to SOB", "Ankle / Leg Edema", "Regurgitation", "Weight Loss", "Fever"], placeholder: "" },
+      { id: "fc7", label: "Symptoms in Children", type: "multi-select", required: false, options: ["Lethargic", "Irritable", "Refusal to Eat", "Stridor", "Very Rapid Breathing", "Spitting Up after Feedings"], placeholder: "" },
+      { id: "fc8", label: "Triggered By", type: "multi-select", required: false, options: ["Dust", "Allergens", "Cold Air", "Wood Burning Stove"], placeholder: "" },
+      { id: "fc9", label: "Other Trigger", type: "free-text", required: false, options: [], placeholder: "Enter text here…" },
+      { id: "fc10", label: "Hx of Contact", type: "multi-select", required: false, options: ["Person with Respiratory Infection", "Tuberculosis"], placeholder: "" },
+      { id: "fc11", label: "Other", type: "free-text", required: false, options: [], placeholder: "Enter text here…" },
+    ],
+  },
 ];
 
 const BLANK_FIELD = (): HpiField => ({ id: uid(), label: "", type: "free-text", required: false, options: [], placeholder: "" });
@@ -403,11 +419,11 @@ export function HpiTemplatesModule() {
       if (raw) {
         const stored = JSON.parse(raw) as HpiTemplate[];
         const builtInIds = SEED_TEMPLATES.filter(s => s.builtIn).map(s => s.id);
-        const missingBuiltIns = SEED_TEMPLATES.filter(
-          s => s.builtIn && !stored.some(t => t.id === s.id)
-        );
+        // Remove stale built-ins, keep user templates and non-builtIn seeds
         const pruned = stored.filter(t => !t.builtIn || builtInIds.includes(t.id));
-        return missingBuiltIns.length > 0 ? [...pruned, ...missingBuiltIns] : pruned;
+        // Auto-inject any seed (builtIn or not) that isn't already stored
+        const missing = SEED_TEMPLATES.filter(s => !pruned.some(t => t.id === s.id));
+        return missing.length > 0 ? [...pruned, ...missing] : pruned;
       }
     } catch { /**/ }
     return SEED_TEMPLATES;
