@@ -219,6 +219,28 @@ const PROCEDURES: ProcedureDef[] = [
 
 const PROCEDURE_CATEGORIES = [...new Set(PROCEDURES.map(p => p.category))];
 
+// ─── Admin-wired procedure loader ─────────────────────────────────────────────
+
+function loadProcedures(): ProcedureDef[] {
+  try {
+    const raw = localStorage.getItem("ehr-procedure-sections-v1");
+    if (raw) {
+      const sections = JSON.parse(raw) as {
+        id: string; name: string;
+        procedures: { id: string; name: string; code?: string }[];
+      }[];
+      const flat: ProcedureDef[] = [];
+      for (const s of sections) {
+        for (const p of s.procedures) {
+          flat.push({ id: p.id, name: p.name, category: s.name, cpt: p.code ?? "" });
+        }
+      }
+      if (flat.length > 0) return flat;
+    }
+  } catch { /**/ }
+  return PROCEDURES;
+}
+
 // ─── ER Facilities ─────────────────────────────────────────────────────────────
 
 interface ErService { id: string; name: string; }
@@ -568,6 +590,8 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
   const [erFacilities]  = useState<ErFacility[]>(loadErFacilities);
   const [specialtyMap]  = useState<Record<string, ConsultantDef[]>>(loadSpecialtyMap);
   const specialities    = Object.keys(specialtyMap).sort();
+  const [procedures]    = useState<ProcedureDef[]>(loadProcedures);
+  const procedureCategories = [...new Set(procedures.map(p => p.category))];
 
   const set = (k: keyof ReferralEntry, v: unknown) => onChange({ ...entry, [k]: v } as ReferralEntry);
 
@@ -577,7 +601,7 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
   const [procSearch,      setProcSearch]      = useState("");
   const [procCategory,    setProcCategory]    = useState("");
 
-  const filteredProcs = PROCEDURES.filter(p =>
+  const filteredProcs = procedures.filter(p =>
     (procCategory ? p.category === procCategory : true) &&
     (procSearch   ? p.name.toLowerCase().includes(procSearch.toLowerCase()) : true)
   );
@@ -711,7 +735,7 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
               style={procCategory === "" ? { background: "#6366f1", color: "white", borderColor: "#6366f1" } : { borderColor: "#e2e8f0", color: "#64748b" }}>
               All
             </button>
-            {PROCEDURE_CATEGORIES.map(cat => (
+            {procedureCategories.map(cat => (
               <button key={cat} onClick={() => setProcCategory(cat === procCategory ? "" : cat)}
                 className="text-[9px] font-bold px-2 py-1 rounded-full border transition-all"
                 style={procCategory === cat ? { background: "#6366f1", color: "white", borderColor: "#6366f1" } : { borderColor: "#e2e8f0", color: "#64748b" }}>
