@@ -815,14 +815,14 @@ export function AdminSettings() {
                 {subNavItem("clinical-complaints",   <Activity className="h-3.5 w-3.5" />,      "Chief Complaints")}
                 {subNavItem("hpi-templates",         <ClipboardList className="h-3.5 w-3.5" />, "HPI Templates")}
                 {subNavItem("clinical-allergies",    <Bell className="h-3.5 w-3.5" />,          "Allergies")}
+                {subNavItem("comorbidities",         <Heart    className="h-3.5 w-3.5" />,      "Comorbidities")}
+                {subNavItem("surgical-procedures",   <Scissors className="h-3.5 w-3.5" />,      "Surgical Procedures")}
                 {subNavItem("clinical-family",       <Users className="h-3.5 w-3.5" />,         "Family History")}
                 {subNavItem("clinical-social",       <UserRound className="h-3.5 w-3.5" />,     "Social History")}
                 {subNavItem("clinical-ros",          <ClipboardList className="h-3.5 w-3.5" />, "ROS Config")}
                 {subNavItem("pe-builder",            <Stethoscope className="h-3.5 w-3.5" />,   "PE Builder")}
                 {subNavItem("clinical-poc",          <FlaskConical className="h-3.5 w-3.5" />,  "POC Tests")}
                 {subNavItem("clinical-icd10",        <FileText className="h-3.5 w-3.5" />,      "ICD-10 Codes")}
-                {subNavItem("comorbidities",          <Heart    className="h-3.5 w-3.5" />,    "Comorbidities")}
-                {subNavItem("surgical-procedures",   <Scissors className="h-3.5 w-3.5" />,    "Surgical Procedures")}
                 {subNavItem("goals-library",         <Target className="h-3.5 w-3.5" />,        "Patient Goals")}
                 {subNavItem("referral-destinations", <MapPin className="h-3.5 w-3.5" />,        "Referral Destinations")}
                 {subNavItem("template-manager",      <FileText className="h-3.5 w-3.5" />,      "Template Manager")}
