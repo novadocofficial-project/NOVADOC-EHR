@@ -66,7 +66,7 @@ const SEED_TEMPLATES: HpiTemplate[] = [
     ],
   },
   {
-    id: "t3", name: "Abdominal Pain HPI", complaintId: "ap", complaintName: "Abdominal Pain", active: true, builtIn: true,
+    id: "t3", name: "Abdominal Pain HPI", complaintId: "ap", complaintName: "Abdominal Pain", active: true,
     fields: [
       { id: "fa1", label: "Quality", type: "multi-select", required: true, options: ["Aching", "Burning", "Colicky", "Cramping", "Dull", "Hot", "Pressure-like", "Sharp", "Shooting", "Stabbing", "Tingling", "None"], placeholder: "" },
       { id: "fa2", label: "Pain Score (0–10)", type: "number", required: true, options: [], placeholder: "0–10" },

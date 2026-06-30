@@ -549,28 +549,21 @@ interface HpiTemplateDrawerProps {
 function HpiTemplateDrawer({ complaint, isDone, savedData, onSave, dynamicSavedData, onDynamicSave, onClose }: HpiTemplateDrawerProps) {
   const [adminTemplate] = useState<HpiTemplateDef | null>(() => loadAdminHpiTemplate(complaint));
   const useDynamic = adminTemplate !== null;
-  const isAbdominalPain = !useDynamic && complaint.toLowerCase() === "abdominal pain";
 
   const [localState, setLocalState] = useState<CoughState>(savedData ?? COUGH_EMPTY);
   const [dynamicLocalState, setDynamicLocalState] = useState<Record<string, unknown>>(() => {
     if (dynamicSavedData && Object.keys(dynamicSavedData).length > 0) return dynamicSavedData;
-    if (isAbdominalPain) return ABDOMINAL_PAIN_EMPTY as unknown as Record<string, unknown>;
     return {};
   });
 
-  const usesDynamicStore = useDynamic || isAbdominalPain;
-  const emptyRef = isAbdominalPain
-    ? (ABDOMINAL_PAIN_EMPTY as unknown as Record<string, unknown>)
-    : {};
-
   const isDirty = isDone && (
-    usesDynamicStore
-      ? JSON.stringify(dynamicLocalState) !== JSON.stringify(dynamicSavedData ?? emptyRef)
+    useDynamic
+      ? JSON.stringify(dynamicLocalState) !== JSON.stringify(dynamicSavedData ?? {})
       : JSON.stringify(localState) !== JSON.stringify(savedData ?? COUGH_EMPTY)
   );
 
   function handleSave() {
-    if (usesDynamicStore) {
+    if (useDynamic) {
       onDynamicSave(dynamicLocalState);
     } else {
       onSave(localState);
@@ -641,11 +634,6 @@ function HpiTemplateDrawer({ complaint, isDone, savedData, onSave, dynamicSavedD
             fields={adminTemplate!.fields}
             state={dynamicLocalState}
             onChange={setDynamicLocalState}
-          />
-        ) : isAbdominalPain ? (
-          <AbdominalPainTemplate
-            state={dynamicLocalState as unknown as AbdominalPainState}
-            onChange={s => setDynamicLocalState(s as unknown as Record<string, unknown>)}
           />
         ) : complaint === "Cough" ? (
           <CoughHistoryTemplate state={localState} onChange={setLocalState} />
