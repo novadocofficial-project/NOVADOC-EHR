@@ -4,15 +4,6 @@ import {
   Search, Plus, X, ChevronDown, ChevronLeft, PenLine,
   Stethoscope, CheckCircle2, ClipboardCheck, ShieldCheck,
 } from "lucide-react";
-import {
-  AbdominalPeTemplate,
-  ABDOMINAL_PE_EMPTY,
-  ABDOMINAL_PE_ALL_NORMAL,
-  serializeAbdominalPe,
-  deserializeAbdominalPe,
-  isAbdominalPeData,
-  buildAbdominalPeNarrative,
-} from "@/pages/AbdominalPeTemplate";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -70,11 +61,11 @@ export const PE_TEMPLATES: Record<string, { section: string; items: string[] }[]
     { section: "Auscultation",         items: ["Breath sounds (bilateral)", "Adventitious sounds (crackles / wheeze / rub)", "Air entry (upper / lower zones)"] },
   ],
   gastrointestinal: [
-    { section: "Inspection",           items: ["Abdominal contour", "Visible peristalsis / pulsations", "Scars / distension / caput medusae"] },
+    { section: "Inspection",           items: ["Abdominal contour (flat / distended / scaphoid)", "Soft / Non-tender", "Visible peristalsis / pulsations", "Scars / caput medusae / other"] },
     { section: "Auscultation",         items: ["Bowel sounds (character)", "Bruits"] },
-    { section: "Palpation",            items: ["Superficial tenderness / guarding", "Deep palpation findings", "Liver (size / edge)", "Spleen palpation", "Kidneys / other masses"] },
+    { section: "Palpation",            items: ["Tenderness (site / severity)", "Guarding", "Rebound tenderness", "Mass", "Liver (size / edge / tenderness)", "Spleen palpation", "Kidneys / other masses", "CVA tenderness — Right", "CVA tenderness — Left"] },
     { section: "Percussion",           items: ["Liver dullness span", "Splenic dullness", "Shifting dullness / fluid thrill"] },
-    { section: "Other",                items: ["PR examination (if applicable)", "Hernia orifices"] },
+    { section: "Other",                items: ["Hernia orifices", "PR examination (if applicable)"] },
   ],
   genitourinary: [
     { section: "Bladder",              items: ["Suprapubic fullness / tenderness", "Bladder percussion"] },
@@ -128,22 +119,6 @@ export const PE_TEMPLATES: Record<string, { section: string; items: string[] }[]
 // ─── PE Summary card ──────────────────────────────────────────────────────────
 
 export function PeSummary({ systemId, savedData }: { systemId: string; savedData: Record<string, string> }) {
-  // Abdominal (GIT) — show auto-generated narrative
-  if (systemId === "gastrointestinal" && isAbdominalPeData(savedData)) {
-    const state = deserializeAbdominalPe(savedData);
-    const narrative = buildAbdominalPeNarrative(state);
-    if (!narrative.trim()) return null;
-    return (
-      <div className="mt-2 rounded-xl border border-cyan-100 bg-cyan-50/40 px-3 py-2.5">
-        <p className="text-[9px] font-black uppercase tracking-wider text-cyan-500 mb-1.5">
-          Abdominal Examination
-        </p>
-        <p className="text-[11px] text-slate-700 leading-relaxed">{narrative}</p>
-      </div>
-    );
-  }
-
-  // Generic systems — key:value list
   const template = PE_TEMPLATES[systemId] ?? [];
 
   const filledGroups = template
@@ -702,34 +677,13 @@ interface PeSystemDrawerProps {
 export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }: PeSystemDrawerProps) {
   const sys        = BODY_SYSTEMS.find(s => s.id === systemId);
   const template   = PE_TEMPLATES[systemId] ?? [];
-  const isAbdominal = systemId === "gastrointestinal";
 
-  const [findings, setFindings] = useState<Record<string, string>>(() => {
-    if (isAbdominal && !isAbdominalPeData(savedData)) {
-      return serializeAbdominalPe(ABDOMINAL_PE_EMPTY);
-    }
-    return savedData;
-  });
+  const [findings, setFindings] = useState<Record<string, string>>(() => savedData);
 
-  const abdominalState = isAbdominal ? deserializeAbdominalPe(findings) : null;
+  const isDirty = isDone && JSON.stringify(findings) !== JSON.stringify(savedData);
 
-  const isDirty = isDone && JSON.stringify(findings) !== JSON.stringify(
-    isAbdominal && !isAbdominalPeData(savedData) ? serializeAbdominalPe(ABDOMINAL_PE_EMPTY) : savedData
-  );
-
-  // Progress
-  const ABDOMINAL_TOTAL = 11; // 3 normals + 8 abnormals
-  const abdominalFilled = isAbdominal && abdominalState
-    ? [
-        abdominalState.normalFlat, abdominalState.normalSoft, abdominalState.normalBowelSounds,
-        abdominalState.distension, abdominalState.mass, abdominalState.tenderness,
-        abdominalState.hernia, abdominalState.guarding, abdominalState.rebound,
-        abdominalState.rightCva, abdominalState.leftCva,
-      ].filter(Boolean).length
-    : 0;
-
-  const totalItems  = isAbdominal ? ABDOMINAL_TOTAL : template.reduce((acc, s) => acc + s.items.length, 0);
-  const filledItems = isAbdominal ? abdominalFilled  : Object.values(findings).filter(v => v.trim()).length;
+  const totalItems  = template.reduce((acc, s) => acc + s.items.length, 0);
+  const filledItems = Object.values(findings).filter(v => v.trim()).length;
   const pct         = totalItems > 0 ? Math.round((filledItems / totalItems) * 100) : 0;
 
   function setFinding(key: string, val: string) {
@@ -742,10 +696,6 @@ export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }:
 
   /** Fill every field with "Normal" */
   function handleMarkAllNormal() {
-    if (isAbdominal) {
-      setFindings(serializeAbdominalPe(ABDOMINAL_PE_ALL_NORMAL));
-      return;
-    }
     const allNormal: Record<string, string> = {};
     for (const group of template) {
       for (const item of group.items) {
@@ -845,29 +795,7 @@ export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }:
 
       {/* Scrollable template body */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-        {isAbdominal && abdominalState ? (
-          <>
-            <AbdominalPeTemplate
-              state={abdominalState}
-              onChange={s => setFindings(serializeAbdominalPe(s))}
-            />
-            {/* Live narrative preview */}
-            {(abdominalState.normalFlat || abdominalState.normalSoft || abdominalState.normalBowelSounds ||
-              abdominalState.distension || abdominalState.mass || abdominalState.tenderness ||
-              abdominalState.hernia || abdominalState.guarding || abdominalState.rebound ||
-              abdominalState.rightCva || abdominalState.leftCva) && (
-              <div className="rounded-xl border border-sky-100 bg-sky-50/50 px-4 py-3">
-                <p className="text-[9px] font-black uppercase tracking-widest text-sky-500 mb-1.5">
-                  Auto-generated Narrative
-                </p>
-                <p className="text-xs text-slate-700 leading-relaxed">
-                  {buildAbdominalPeNarrative(abdominalState)}
-                </p>
-              </div>
-            )}
-          </>
-        ) : (
-          template.map(group => {
+        {template.map(group => {
             const sectionAllNormal = group.items.every(
               item => (findings[`${group.section}__${item}`] ?? "").trim() === "Normal"
             );
@@ -916,8 +844,7 @@ export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }:
                 </div>
               </div>
             );
-          })
-        )}
+          })}
       </div>
     </div>
   );
