@@ -1060,7 +1060,8 @@ export function FormularyDrawer({ savedData, patientAllergies, onSave, onClose }
         {medicines.length > 0 ? (
           <button onClick={saveAndClose}
             className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0 hover:bg-emerald-100 transition-colors">
-            <CheckCircle2 className="h-3 w-3" /> Done
+            <CheckCircle2 className="h-3 w-3" />
+            {savedData.medicines.length > 0 ? "Update" : "Mark Done"}
           </button>
         ) : (
           <button onClick={saveAndClose}
