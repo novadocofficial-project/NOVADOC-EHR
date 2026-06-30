@@ -53,6 +53,32 @@ const ALL_CONDITIONS = [...CHRONIC_CONDITIONS, ...RESOLVED_CONDITIONS].filter(
   (v, i, a) => a.indexOf(v) === i,
 );
 
+function useAdminFamilyConditions(): string[] {
+  return useMemo(() => {
+    try {
+      const raw = localStorage.getItem("ehr-family-conditions-v1");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { name: string }[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed.map(c => c.name);
+      }
+    } catch { /**/ }
+    return ALL_CONDITIONS;
+  }, []);
+}
+
+function useAdminGeneticDiseases(): string[] {
+  return useMemo(() => {
+    try {
+      const raw = localStorage.getItem("ehr-genetic-diseases-v1");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { name: string }[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed.map(g => g.name);
+      }
+    } catch { /**/ }
+    return GENETIC_DISEASES;
+  }, []);
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface FamilyRow {
@@ -179,11 +205,12 @@ export function ChipSelector({
 // ─── Family Row Entry ─────────────────────────────────────────────────────────
 
 function FamilyRowEntry({
-  row, onUpdate, onRemove,
+  row, onUpdate, onRemove, conditions,
 }: {
   row: FamilyRow;
   onUpdate: (id: string, field: "condition" | "relation", val: string) => void;
   onRemove: (id: string) => void;
+  conditions: string[];
 }) {
   const [condOpen, setCondOpen]     = useState(false);
   const [relOpen, setRelOpen]       = useState(false);
@@ -200,12 +227,12 @@ function FamilyRowEntry({
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  const filteredConds = ALL_CONDITIONS.filter(c =>
+  const filteredConds = conditions.filter(c =>
     c.toLowerCase().includes(condSearch.toLowerCase()),
   );
   const canCustom =
     condSearch.trim() !== "" &&
-    !ALL_CONDITIONS.some(c => c.toLowerCase() === condSearch.trim().toLowerCase());
+    !conditions.some(c => c.toLowerCase() === condSearch.trim().toLowerCase());
 
   function pickCond(val: string) {
     onUpdate(row.id, "condition", val);
@@ -371,6 +398,9 @@ interface FamilyHistoryPanelProps {
 export function FamilyHistoryPanel({
   rows, genetic, onRowsChange, onGeneticChange,
 }: FamilyHistoryPanelProps) {
+  const adminConditions    = useAdminFamilyConditions();
+  const adminGeneticList   = useAdminGeneticDiseases();
+
   function addRow() {
     onRowsChange([...rows, { id: `fhr-${Date.now()}`, condition: "", relation: "" }]);
   }
@@ -393,7 +423,7 @@ export function FamilyHistoryPanel({
             <div className="w-8 flex-shrink-0" />
           </div>
           {rows.map(row => (
-            <FamilyRowEntry key={row.id} row={row} onUpdate={updateRow} onRemove={removeRow} />
+            <FamilyRowEntry key={row.id} row={row} onUpdate={updateRow} onRemove={removeRow} conditions={adminConditions} />
           ))}
         </div>
       )}
@@ -411,7 +441,7 @@ export function FamilyHistoryPanel({
           Genetic Diseases
         </p>
         <ChipSelector
-          options={GENETIC_DISEASES}
+          options={adminGeneticList}
           selected={genetic}
           chipColor="#7c3aed"
           placeholder="Select genetic disease…"

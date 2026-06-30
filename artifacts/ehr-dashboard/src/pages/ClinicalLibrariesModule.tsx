@@ -881,23 +881,60 @@ interface GeneticDisease  { id: string; name: string; }
 
 const DEFAULT_RELATIONSHIPS = "Father, Mother, Sibling, Grandparent";
 
+const FAMILY_CONDITIONS_KEY  = "ehr-family-conditions-v1";
+const GENETIC_DISEASES_KEY   = "ehr-genetic-diseases-v1";
+
+const SEED_FAMILY_CONDITIONS: FamilyCondition[] = [
+  { id: "fc1", name: "Hypertension",    relationships: DEFAULT_RELATIONSHIPS },
+  { id: "fc2", name: "Diabetes",        relationships: DEFAULT_RELATIONSHIPS },
+  { id: "fc3", name: "Heart Disease",   relationships: DEFAULT_RELATIONSHIPS },
+  { id: "fc4", name: "Cancer",          relationships: DEFAULT_RELATIONSHIPS },
+  { id: "fc5", name: "Stroke",          relationships: DEFAULT_RELATIONSHIPS },
+];
+
+const SEED_GENETIC_DISEASES: GeneticDisease[] = [
+  { id: "gd1", name: "Sickle Cell Disease" },
+  { id: "gd2", name: "Thalassaemia"        },
+  { id: "gd3", name: "Cystic Fibrosis"     },
+  { id: "gd4", name: "Haemophilia"         },
+];
+
+function loadFamilyConditions(): FamilyCondition[] {
+  try {
+    const raw = localStorage.getItem(FAMILY_CONDITIONS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as FamilyCondition[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /**/ }
+  return SEED_FAMILY_CONDITIONS;
+}
+
+function loadGeneticDiseases(): GeneticDisease[] {
+  try {
+    const raw = localStorage.getItem(GENETIC_DISEASES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as GeneticDisease[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /**/ }
+  return SEED_GENETIC_DISEASES;
+}
+
 function FamilyHistory() {
   const [tab, setTab] = useState<"conditions" | "genetic">("conditions");
-  const [conditions, setConditions] = useState<FamilyCondition[]>([
-    { id: "fc1", name: "Hypertension",    relationships: DEFAULT_RELATIONSHIPS },
-    { id: "fc2", name: "Diabetes",        relationships: DEFAULT_RELATIONSHIPS },
-    { id: "fc3", name: "Heart Disease",   relationships: DEFAULT_RELATIONSHIPS },
-    { id: "fc4", name: "Cancer",          relationships: DEFAULT_RELATIONSHIPS },
-    { id: "fc5", name: "Stroke",          relationships: DEFAULT_RELATIONSHIPS },
-  ]);
-  const [genetic, setGenetic] = useState<GeneticDisease[]>([
-    { id: "gd1", name: "Sickle Cell Disease" },
-    { id: "gd2", name: "Thalassaemia"        },
-    { id: "gd3", name: "Cystic Fibrosis"     },
-    { id: "gd4", name: "Haemophilia"         },
-  ]);
+  const [conditions, setConditions] = useState<FamilyCondition[]>(loadFamilyConditions);
+  const [genetic, setGenetic]       = useState<GeneticDisease[]>(loadGeneticDiseases);
   const [draftFc, setDraftFc] = useState<{ name: string; relationships: string }>({ name: "", relationships: DEFAULT_RELATIONSHIPS });
   const [draftGd, setDraftGd] = useState("");
+
+  useEffect(() => {
+    try { localStorage.setItem(FAMILY_CONDITIONS_KEY, JSON.stringify(conditions)); } catch { /**/ }
+  }, [conditions]);
+
+  useEffect(() => {
+    try { localStorage.setItem(GENETIC_DISEASES_KEY, JSON.stringify(genetic)); } catch { /**/ }
+  }, [genetic]);
 
   return (
     <div className="space-y-4">
