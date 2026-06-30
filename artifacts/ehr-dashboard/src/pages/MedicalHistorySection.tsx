@@ -348,7 +348,7 @@ export function PastHistoryPanel({
           Resolved Illnesses
         </p>
         <ChipSelector
-          options={RESOLVED_CONDITIONS}
+          options={chronicOptions}
           selected={resolved}
           chipColor="#64748b"
           placeholder="Select resolved illness…"
