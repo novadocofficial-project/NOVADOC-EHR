@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import {
-  ChevronLeft, X, Search, Star, CheckCircle2,
+  ChevronLeft, ChevronRight, X, Search, Star, CheckCircle2,
   Tag, ClipboardCheck, Plus,
 } from "lucide-react";
 
@@ -425,25 +425,41 @@ export function DiagnosisDrawer({ isDone, savedData, onSave, onClose }: Diagnosi
 
       {/* ── Specialty Tabs ── */}
       {!isSearching && (
-        <div
-          ref={tabsRef}
-          className="flex gap-1 px-4 pb-2 overflow-x-auto flex-shrink-0 scrollbar-none"
-          style={{ scrollbarWidth: "none" }}>
-          {specTabs.map(spec => (
-            <button
-              key={spec}
-              onClick={() => setSelectedSpecialty(spec)}
-              className={[
-                "flex items-center gap-1.5 flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-full border transition-all",
-                selectedSpecialty === spec
-                  ? "text-white border-transparent"
-                  : "text-slate-500 border-slate-200 hover:border-indigo-200 hover:text-indigo-600",
-              ].join(" ")}
-              style={selectedSpecialty === spec ? { backgroundColor: ACCENT_DX } : {}}>
-              {spec === "Favorites" && <Star className="h-2.5 w-2.5" />}
-              {spec}
-            </button>
-          ))}
+        <div className="relative flex items-center flex-shrink-0 px-2 pb-2">
+          {/* Scroll left */}
+          <button
+            onClick={() => tabsRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
+            className="flex-shrink-0 p-1 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+
+          <div
+            ref={tabsRef}
+            className="flex gap-1 overflow-x-auto flex-1 scrollbar-none"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+            {specTabs.map(spec => (
+              <button
+                key={spec}
+                onClick={() => setSelectedSpecialty(spec)}
+                className={[
+                  "flex items-center gap-1.5 flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-full border transition-all",
+                  selectedSpecialty === spec
+                    ? "text-white border-transparent"
+                    : "text-slate-500 border-slate-200 hover:border-indigo-200 hover:text-indigo-600",
+                ].join(" ")}
+                style={selectedSpecialty === spec ? { backgroundColor: ACCENT_DX } : {}}>
+                {spec === "Favorites" && <Star className="h-2.5 w-2.5" />}
+                {spec}
+              </button>
+            ))}
+          </div>
+
+          {/* Scroll right */}
+          <button
+            onClick={() => tabsRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
+            className="flex-shrink-0 p-1 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 
