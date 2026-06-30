@@ -31,6 +31,32 @@ export interface LabOrder {
   returnedFromLab?: boolean; // set when Cancel Lab Queue is used; marks the order that triggered the lab visit
 }
 
+// ─── Admin catalogue loader ────────────────────────────────────────────────────
+
+function loadLabFromAdmin(): { categories: string[]; tests: LabTestEntry[] } | null {
+  try {
+    const raw = localStorage.getItem("ehr-lab-sections-v1");
+    if (!raw) return null;
+    const sections = JSON.parse(raw) as {
+      id: string; name: string;
+      tests: { id: string; name: string; sampleType?: string; fastingRequired?: boolean }[];
+    }[];
+    if (!sections.length) return null;
+    return {
+      categories: sections.map(s => s.name),
+      tests: sections.flatMap(s =>
+        s.tests.map(t => ({
+          id:              t.id,
+          name:            t.name,
+          category:        s.name,
+          fastingRequired: t.fastingRequired ?? false,
+          sampleType:      t.sampleType ?? "Blood",
+        }))
+      ),
+    };
+  } catch { return null; }
+}
+
 // ─── Lab Categories ───────────────────────────────────────────────────────────
 
 export const LAB_CATEGORIES = [
@@ -329,9 +355,16 @@ interface LabDrawerProps {
 }
 
 export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsReady = false, onSave, onClose }: LabDrawerProps) {
+  const [{ labCategories, labTests }] = useState(() => {
+    const admin = loadLabFromAdmin();
+    return admin
+      ? { labCategories: admin.categories, labTests: admin.tests }
+      : { labCategories: LAB_CATEGORIES,   labTests: LAB_TESTS   };
+  });
+
   const [tab,               setTab]               = useState<"sets" | "browse">("browse");
   const [search,            setSearch]            = useState("");
-  const [selectedCategory,  setSelectedCategory]  = useState(LAB_CATEGORIES[0]);
+  const [selectedCategory,  setSelectedCategory]  = useState(() => labCategories[0] ?? "");
   const catTabsRef = useRef<HTMLDivElement>(null);
 
   // edit mode pre-populates from savedData; add mode always starts empty
@@ -360,7 +393,7 @@ export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsRead
   const [sessionSets,       setSessionSets]       = useState<OrderSet[]>([]);
 
   const allOrderSets  = [...ORDER_SETS, ...sessionSets];
-  const selectedTests = LAB_TESTS.filter(t => selectedTestIds.includes(t.id));
+  const selectedTests = labTests.filter(t => selectedTestIds.includes(t.id));
 
   function buildOrder(): Omit<LabOrder, "id"> {
     return { tests: selectedTests, patientCondition, instructions, orderSetName };
@@ -405,11 +438,11 @@ export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsRead
   // Browse mode filtering
   const filteredTests = (() => {
     if (search.trim()) {
-      return LAB_TESTS.filter(t =>
+      return labTests.filter(t =>
         t.name.toLowerCase().includes(search.toLowerCase())
       );
     }
-    return LAB_TESTS.filter(t => t.category === selectedCategory);
+    return labTests.filter(t => t.category === selectedCategory);
   })();
 
   return (
@@ -517,7 +550,7 @@ export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsRead
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {set.testIds.slice(0, 4).map(id => {
-                        const t = LAB_TESTS.find(lt => lt.id === id);
+                        const t = labTests.find(lt => lt.id === id);
                         const isCompleted = previousTestIds.includes(id);
                         return t ? (
                           <span
@@ -609,7 +642,7 @@ export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsRead
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </button>
                 <div ref={catTabsRef} className="flex gap-1 overflow-x-auto flex-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-                  {LAB_CATEGORIES.map(cat => (
+                  {labCategories.map(cat => (
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
