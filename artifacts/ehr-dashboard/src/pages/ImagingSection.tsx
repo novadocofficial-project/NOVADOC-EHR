@@ -435,17 +435,11 @@ export function ImagingDrawer({ savedData, onSave, onClose, doctorName = "Dr. At
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Assessment &amp; Plan</p>
           <p className="text-sm font-black text-slate-800">Imaging Requisition</p>
         </div>
-        {orders.length > 0 ? (
-          <button onClick={saveAndClose}
-            className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0 hover:bg-emerald-100 transition-colors">
-            <CheckCircle2 className="h-3 w-3" /> Done
-          </button>
-        ) : (
-          <button onClick={saveAndClose}
-            className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-lg bg-cyan-500 text-white hover:bg-cyan-400 transition-colors flex-shrink-0">
-            <ClipboardCheck className="h-3.5 w-3.5" /> Save
-          </button>
-        )}
+        <button onClick={saveAndClose}
+          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white flex-shrink-0 hover:bg-emerald-600 transition-colors">
+          <ClipboardCheck className="h-3.5 w-3.5" />
+          {savedData.orders.length > 0 ? "Update" : "Mark Done"}
+        </button>
       </div>
 
       {/* ── Body ── */}

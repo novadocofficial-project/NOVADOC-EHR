@@ -1364,24 +1364,11 @@ export function HealthEdDrawer({ savedData, onSave, onClose }: HealthEdDrawerPro
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Assessment &amp; Plan</p>
           <p className="text-sm font-black text-slate-800">Health Education</p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {selected.size > 0 && (
-            <span className="text-[10px] font-black px-2 py-1 rounded-full bg-violet-100 text-violet-600">
-              {selected.size} selected
-            </span>
-          )}
-          {selected.size > 0 ? (
-            <button onClick={saveAndClose}
-              className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition-colors">
-              <CheckCircle2 className="h-3 w-3" /> Done
-            </button>
-          ) : (
-            <button onClick={saveAndClose}
-              className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-lg bg-violet-600 text-white hover:bg-violet-500 transition-colors">
-              <ClipboardCheck className="h-3.5 w-3.5" /> Save
-            </button>
-          )}
-        </div>
+        <button onClick={saveAndClose}
+          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white flex-shrink-0 hover:bg-emerald-600 transition-colors">
+          <ClipboardCheck className="h-3.5 w-3.5" />
+          {savedData.docIds.length > 0 ? "Update" : "Mark Done"}
+        </button>
       </div>
 
       {/* ── Search ── */}

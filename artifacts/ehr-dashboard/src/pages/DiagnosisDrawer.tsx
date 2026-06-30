@@ -377,26 +377,12 @@ export function DiagnosisDrawer({ isDone, savedData, onSave, onClose }: Diagnosi
           <p className="text-sm font-black text-slate-800">Diagnosis — ICD-10 Selection</p>
         </div>
 
-        {/* Done / Update / Mark Done */}
-        {isDone && !isDirty ? (
-          <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
-            <CheckCircle2 className="h-3 w-3" /> Done
-          </span>
-        ) : isDirty ? (
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white flex-shrink-0"
-            style={{ backgroundColor: "#f59e0b" }}>
-            <ClipboardCheck className="h-3.5 w-3.5" /> Update
-          </button>
-        ) : (
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white flex-shrink-0"
-            style={{ backgroundColor: ACCENT_DX }}>
-            <ClipboardCheck className="h-3.5 w-3.5" /> Mark Done
-          </button>
-        )}
+        <button
+          onClick={handleSave}
+          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white flex-shrink-0 hover:bg-emerald-600 transition-colors">
+          <ClipboardCheck className="h-3.5 w-3.5" />
+          {savedData.length > 0 ? "Update" : "Mark Done"}
+        </button>
 
         <button
           onClick={onClose}

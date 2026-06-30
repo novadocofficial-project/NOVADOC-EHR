@@ -505,14 +505,12 @@ export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsRead
             <FlaskConical className="h-3 w-3" /> Additional Order
           </span>
         )}
-        {/* Save Order / Update Order — disabled until at least one test is selected */}
         <button
           onClick={() => { if (selectedTests.length > 0) onSave(buildOrder()); }}
           disabled={selectedTests.length === 0}
-          className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white flex-shrink-0 disabled:opacity-40 transition-opacity"
-          style={{ backgroundColor: mode === "edit" ? "#f59e0b" : ACCENT_LAB }}>
+          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white flex-shrink-0 hover:bg-emerald-600 transition-colors disabled:opacity-40">
           <ClipboardCheck className="h-3.5 w-3.5" />
-          {mode === "edit" ? "Update Order" : "Save Order"}
+          {mode === "edit" ? "Update" : "Mark Done"}
         </button>
 
         <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">

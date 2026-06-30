@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   ChevronLeft, X, Plus, Star, CheckCircle2, Target,
   Calendar, AlertCircle, ChevronDown, Trash2, BookmarkPlus,
-  Bookmark, Search, GripVertical,
+  Bookmark, Search, GripVertical, ClipboardCheck,
 } from "lucide-react";
 
 // ─── localStorage keys ────────────────────────────────────────────────────────
@@ -564,17 +564,11 @@ export function PatientGoalsDrawer({ savedData, onSave, onClose }: PatientGoalsD
             <Target className="h-4 w-4 text-pink-500" /> Patient Goals
           </p>
         </div>
-        {goals.length > 0 ? (
-          <button onClick={saveAndClose}
-            className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-pink-50 text-pink-600 border border-pink-200 flex-shrink-0 hover:bg-pink-100 transition-colors">
-            <CheckCircle2 className="h-3 w-3" /> Done ({goals.length})
-          </button>
-        ) : (
-          <button onClick={saveAndClose}
-            className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-lg bg-pink-500 text-white hover:bg-pink-400 transition-colors flex-shrink-0">
-            <Star className="h-3.5 w-3.5" /> Save
-          </button>
-        )}
+        <button onClick={saveAndClose}
+          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white flex-shrink-0 hover:bg-emerald-600 transition-colors">
+          <ClipboardCheck className="h-3.5 w-3.5" />
+          {savedData.goals.length > 0 ? "Update" : "Mark Done"}
+        </button>
       </div>
 
       {/* Body */}
