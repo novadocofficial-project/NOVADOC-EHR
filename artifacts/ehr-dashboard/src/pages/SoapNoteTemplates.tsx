@@ -151,9 +151,10 @@ const SYSTEM_TEMPLATES: SoapTemplate[] = [
       } as CarePlanData,
       procedureOrders: {
         orders: [
-          { uid: "sys-ast-po1", procId: "nebulization", name: "Nebulization Therapy", cpt: "94640", isCustom: false, indication: "Acute bronchoconstriction", priority: "Urgent", timing: "Immediate", scheduledAt: "", repeat: false, instructions: "Salbutamol 2.5 mg in 2.5 mL NS", assignedTo: "" },
-          { uid: "sys-ast-po2", procId: "peak-flow",    name: "Peak Flow Measurement",cpt: "94150", isCustom: false, indication: "Assess airflow obstruction", priority: "Normal",timing: "Immediate", scheduledAt: "", repeat: true, instructions: "Pre- and post-bronchodilator", assignedTo: "" },
+          { uid: "sys-ast-po1", id: "nebulization", name: "Nebulization Therapy",  cpt: "94640" },
+          { uid: "sys-ast-po2", id: "peak-flow",    name: "Peak Flow Measurement", cpt: "94150" },
         ],
+        instructions: "Salbutamol 2.5 mg in 2.5 mL NS. Pre- and post-bronchodilator.",
       } as ProcedureOrdersData,
     },
   },
@@ -202,7 +203,10 @@ function mergeCarePlan(a: CarePlanData, b: CarePlanData): CarePlanData {
 }
 
 function mergeProcOrders(a: ProcedureOrdersData, b: ProcedureOrdersData): ProcedureOrdersData {
-  return { orders: [...a.orders, ...b.orders.map(o => ({ ...o, uid: uid() }))] };
+  return {
+    orders: [...a.orders, ...b.orders.map(o => ({ ...o, uid: uid() }))],
+    instructions: [a.instructions, b.instructions].filter(Boolean).join(" "),
+  };
 }
 
 function mergeFormulary(a: FormularyData, b: FormularyData): FormularyData {
@@ -657,26 +661,19 @@ function ProcedureOrdersEditor({ value, onChange }: { value: ProcedureOrdersData
   function addOrder() {
     const n = newName.trim();
     if (!n) return;
-    onChange({ orders: [...value.orders, { uid: uid(), procId: "custom", name: n, cpt: "", isCustom: true, indication: "", priority: "Normal", timing: "Immediate", scheduledAt: "", repeat: false, instructions: "", assignedTo: "" }] });
+    onChange({ ...value, orders: [...value.orders, { uid: uid(), id: "custom", name: n, cpt: "" }] });
     setNewName("");
   }
-  function removeOrder(i: number) { onChange({ orders: value.orders.filter((_, idx) => idx !== i) }); }
-  function editField(i: number, field: string, val: string) {
-    onChange({ orders: value.orders.map((o, idx) => idx === i ? { ...o, [field]: val } : o) });
-  }
-  function togglePriority(i: number) {
-    onChange({ orders: value.orders.map((o, idx) => idx === i ? { ...o, priority: o.priority === "Urgent" ? "Normal" : "Urgent" } : o) });
+  function removeOrder(i: number) { onChange({ ...value, orders: value.orders.filter((_, idx) => idx !== i) }); }
+  function editName(i: number, val: string) {
+    onChange({ ...value, orders: value.orders.map((o, idx) => idx === i ? { ...o, name: val } : o) });
   }
   return (
     <div className="space-y-2">
       {value.orders.map((o, i) => (
         <div key={o.uid} className="rounded-lg border border-teal-100 bg-teal-50/20 overflow-hidden group">
           <div className="flex items-center gap-2 px-2.5 py-1.5">
-            <button onClick={() => togglePriority(i)}
-              className={`text-[8px] font-black px-1.5 py-0.5 rounded flex-shrink-0 ${o.priority === "Urgent" ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-400"}`}>
-              {o.priority === "Urgent" ? "URG" : "NRM"}
-            </button>
-            <input value={o.name} onChange={e => editField(i, "name", e.target.value)}
+            <input value={o.name} onChange={e => editName(i, e.target.value)}
               className="flex-1 text-xs font-semibold text-slate-700 bg-transparent outline-none border-b border-transparent focus:border-teal-300 transition-colors" />
             {o.cpt && (
               <span className="font-mono text-[9px] text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100 flex-shrink-0">
@@ -687,11 +684,6 @@ function ProcedureOrdersEditor({ value, onChange }: { value: ProcedureOrdersData
               className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-300 hover:text-red-400 transition-colors flex-shrink-0">
               <X className="h-3 w-3" />
             </button>
-          </div>
-          <div className="px-2.5 pb-1.5">
-            <input value={o.indication} onChange={e => editField(i, "indication", e.target.value)}
-              placeholder="Indication / reason…"
-              className="w-full text-[10px] text-slate-500 bg-transparent outline-none placeholder:text-slate-300 border-b border-transparent focus:border-teal-200 transition-colors" />
           </div>
         </div>
       ))}
