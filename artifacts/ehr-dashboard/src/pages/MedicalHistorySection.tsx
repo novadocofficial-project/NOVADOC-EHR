@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { X, Plus, Search, ChevronDown, Check } from "lucide-react";
 
 // ─── Data Lists ───────────────────────────────────────────────────────────────
@@ -308,9 +308,25 @@ interface PastHistoryPanelProps {
   onResolvedChange: (items: string[]) => void;
 }
 
+function useAdminComorbidities(): string[] {
+  return useMemo(() => {
+    try {
+      const raw = localStorage.getItem("ehr-comorbidities-v1");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { name: string }[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(c => c.name);
+        }
+      }
+    } catch { /**/ }
+    return CHRONIC_CONDITIONS;
+  }, []);
+}
+
 export function PastHistoryPanel({
   active, resolved, onActiveChange, onResolvedChange,
 }: PastHistoryPanelProps) {
+  const chronicOptions = useAdminComorbidities();
   return (
     <div className="space-y-4">
       <div>
@@ -319,7 +335,7 @@ export function PastHistoryPanel({
           Active Chronic Conditions
         </p>
         <ChipSelector
-          options={CHRONIC_CONDITIONS}
+          options={chronicOptions}
           selected={active}
           chipColor="#ef4444"
           placeholder="Select active chronic illness…"

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus, Trash2, Edit2, Save, X, CheckCircle2, Search,
   ClipboardCheck, Target, MapPin, Heart, ChevronDown, ChevronRight,
@@ -326,8 +326,25 @@ function ReferralDestTab() {
 
 // ─── Comorbidities Tab ────────────────────────────────────────────────────────
 
+const COMORBIDITIES_KEY = "ehr-comorbidities-v1";
+
+function loadComorbidities(): Comorbidity[] {
+  try {
+    const raw = localStorage.getItem(COMORBIDITIES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Comorbidity[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /**/ }
+  return COMORBIDITY_SEED;
+}
+
 function ComorbiditiesTab() {
-  const [items, setItems]   = useState<Comorbidity[]>(COMORBIDITY_SEED);
+  const [items, setItems]   = useState<Comorbidity[]>(loadComorbidities);
+
+  useEffect(() => {
+    try { localStorage.setItem(COMORBIDITIES_KEY, JSON.stringify(items)); } catch { /**/ }
+  }, [items]);
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("All");
   const [editId, setEditId] = useState<string | null>(null);
