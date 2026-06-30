@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  Plus, Trash2, Edit2, Save, X, CheckCircle2, Search, Scissors,
+  Plus, Trash2, Edit2, Save, X, CheckCircle2, Search, Scissors, AlertTriangle,
   ClipboardCheck, Target, MapPin, Heart, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -495,6 +495,7 @@ const SURGICAL_PROC_SEED: SurgicalProcedure[] = [
 ];
 
 const SURGICAL_PROC_KEY = "ehr-surgical-procedures-v1";
+const SURGICAL_COMP_KEY = "ehr-surgical-complications-v1";
 
 function loadSurgicalProcedures(): SurgicalProcedure[] {
   try {
@@ -507,106 +508,227 @@ function loadSurgicalProcedures(): SurgicalProcedure[] {
   return SURGICAL_PROC_SEED;
 }
 
+const SURGICAL_COMP_SEED = [
+  "None", "Wound Infection", "Bleeding / Haemorrhage",
+  "Anastomotic Leak", "Adhesions / Bowel Obstruction",
+  "Post-op Pneumonia", "DVT / Pulmonary Embolism",
+  "Urinary Retention", "Nerve Damage", "Seroma / Haematoma",
+  "Incisional Hernia", "Keloid / Hypertrophic Scar",
+  "Re-operation Required", "ICU Admission Required",
+  "Prolonged Wound Healing", "Anaesthesia Reaction",
+];
+
+function loadSurgicalComplications(): string[] {
+  try {
+    const raw = localStorage.getItem(SURGICAL_COMP_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as string[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /**/ }
+  return SURGICAL_COMP_SEED;
+}
+
 function SurgicalProceduresTab() {
-  const [items, setItems]         = useState<SurgicalProcedure[]>(loadSurgicalProcedures);
-  const [search, setSearch]       = useState("");
+  const [subTab, setSubTab] = useState<"procedures" | "complications">("procedures");
+
+  // ── Procedures state ──────────────────────────────────────────────────────
+  const [procs, setProcs]         = useState<SurgicalProcedure[]>(loadSurgicalProcedures);
+  const [pSearch, setPSearch]     = useState("");
   const [filterCat, setFilterCat] = useState("All");
   const [editId, setEditId]       = useState<string | null>(null);
   const [editName, setEditName]   = useState("");
   const [editCat, setEditCat]     = useState("");
-  const [adding, setAdding]       = useState(false);
+  const [pAdding, setPAdding]     = useState(false);
   const [newName, setNewName]     = useState("");
   const [newCat, setNewCat]       = useState(SURGICAL_PROC_CATEGORIES[0]);
 
   useEffect(() => {
-    try { localStorage.setItem(SURGICAL_PROC_KEY, JSON.stringify(items)); } catch { /**/ }
-  }, [items]);
+    try { localStorage.setItem(SURGICAL_PROC_KEY, JSON.stringify(procs)); } catch { /**/ }
+  }, [procs]);
 
-  const cats = ["All", ...Array.from(new Set(items.map(i => i.category))).sort()];
-  const visible = items.filter(i =>
+  // ── Complications state ───────────────────────────────────────────────────
+  const [comps, setComps]         = useState<string[]>(loadSurgicalComplications);
+  const [cSearch, setCSearch]     = useState("");
+  const [cAdding, setCAdding]     = useState(false);
+  const [newComp, setNewComp]     = useState("");
+  const [editCId, setEditCId]     = useState<number | null>(null);
+  const [editCName, setEditCName] = useState("");
+
+  useEffect(() => {
+    try { localStorage.setItem(SURGICAL_COMP_KEY, JSON.stringify(comps)); } catch { /**/ }
+  }, [comps]);
+
+  // ── Procedures helpers ────────────────────────────────────────────────────
+  const cats = ["All", ...Array.from(new Set(procs.map(i => i.category))).sort()];
+  const visibleProcs = procs.filter(i =>
     (filterCat === "All" || i.category === filterCat) &&
-    i.name.toLowerCase().includes(search.toLowerCase())
+    i.name.toLowerCase().includes(pSearch.toLowerCase())
   );
-
   function startEdit(p: SurgicalProcedure) { setEditId(p.id); setEditName(p.name); setEditCat(p.category); }
-  function cancelEdit() { setEditId(null); }
-  function saveEdit(id: string) {
+  function cancelPEdit() { setEditId(null); }
+  function savePEdit(id: string) {
     if (!editName.trim()) return;
-    setItems(prev => prev.map(p => p.id === id ? { ...p, name: editName.trim(), category: editCat } : p));
+    setProcs(prev => prev.map(p => p.id === id ? { ...p, name: editName.trim(), category: editCat } : p));
     setEditId(null);
   }
-  function remove(id: string) { setItems(prev => prev.filter(p => p.id !== id)); }
-  function addItem() {
+  function removeProc(id: string) { setProcs(prev => prev.filter(p => p.id !== id)); }
+  function addProc() {
     if (!newName.trim()) return;
-    setItems(prev => [...prev, { id: uid(), name: newName.trim(), category: newCat }]);
-    setNewName(""); setAdding(false);
+    setProcs(prev => [...prev, { id: uid(), name: newName.trim(), category: newCat }]);
+    setNewName(""); setPAdding(false);
   }
+
+  // ── Complications helpers ─────────────────────────────────────────────────
+  const visibleComps = comps.filter(c => c.toLowerCase().includes(cSearch.toLowerCase()));
+  function addComp() {
+    if (!newComp.trim() || comps.includes(newComp.trim())) return;
+    setComps(prev => [...prev, newComp.trim()]);
+    setNewComp(""); setCAdding(false);
+  }
+  function saveCompEdit(idx: number) {
+    if (!editCName.trim()) return;
+    setComps(prev => prev.map((c, i) => i === idx ? editCName.trim() : c));
+    setEditCId(null);
+  }
+  function removeComp(idx: number) { setComps(prev => prev.filter((_, i) => i !== idx)); }
+
+  // ── Sub-tab bar ───────────────────────────────────────────────────────────
+  const subTabClass = (key: string) =>
+    `px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+      subTab === key
+        ? "border-[#4982CF] text-[#4982CF]"
+        : "border-transparent text-slate-500 hover:text-slate-700"
+    }`;
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50 flex-wrap">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search procedures…" className="pl-8 h-8 text-xs" />
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {cats.map(c => (
-            <button key={c} onClick={() => setFilterCat(c)}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                filterCat === c ? "text-white border-transparent" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-              }`}
-              style={filterCat === c ? { background: ACCENT } : {}}>
-              {c}
-            </button>
-          ))}
-        </div>
-        <Button size="sm" onClick={() => setAdding(true)} style={{ background: ACCENT }} className="text-white text-xs gap-1 ml-auto">
-          <Plus className="h-3.5 w-3.5" /> Add
-        </Button>
+      {/* Internal sub-tabs */}
+      <div className="flex border-b border-slate-200 bg-white px-4 flex-shrink-0">
+        <button className={subTabClass("procedures")} onClick={() => setSubTab("procedures")}>Procedures</button>
+        <button className={subTabClass("complications")} onClick={() => setSubTab("complications")}>Complications</button>
       </div>
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-1.5">
-        {adding && (
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200 rounded-lg">
-            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Procedure name" className="h-7 text-xs flex-1" autoFocus />
-            <select value={newCat} onChange={e => setNewCat(e.target.value)}
-              className="h-7 text-xs border border-slate-200 rounded px-1.5 bg-white">
-              {SURGICAL_PROC_CATEGORIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-            <Button size="sm" className="h-7 text-xs text-white" style={{ background: ACCENT }} onClick={addItem}>Add</Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAdding(false)}><X className="h-3.5 w-3.5" /></Button>
+
+      {/* ── Procedures panel ── */}
+      {subTab === "procedures" && (
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex items-center gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50 flex-wrap">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Input value={pSearch} onChange={e => setPSearch(e.target.value)} placeholder="Search procedures…" className="pl-8 h-8 text-xs" />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {cats.map(c => (
+                <button key={c} onClick={() => setFilterCat(c)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    filterCat === c ? "text-white border-transparent" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                  }`}
+                  style={filterCat === c ? { background: ACCENT } : {}}>
+                  {c}
+                </button>
+              ))}
+            </div>
+            <Button size="sm" onClick={() => setPAdding(true)} style={{ background: ACCENT }} className="text-white text-xs gap-1 ml-auto">
+              <Plus className="h-3.5 w-3.5" /> Add
+            </Button>
           </div>
-        )}
-        {visible.map(p => (
-          <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
-            <Scissors className="h-4 w-4 shrink-0 text-blue-400" />
-            {editId === p.id ? (
-              <>
-                <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-7 text-xs flex-1" autoFocus />
-                <select value={editCat} onChange={e => setEditCat(e.target.value)}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-1.5">
+            {pAdding && (
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200 rounded-lg">
+                <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Procedure name" className="h-7 text-xs flex-1" autoFocus />
+                <select value={newCat} onChange={e => setNewCat(e.target.value)}
                   className="h-7 text-xs border border-slate-200 rounded px-1.5 bg-white">
                   {SURGICAL_PROC_CATEGORIES.map(c => <option key={c}>{c}</option>)}
                 </select>
-                <Button size="sm" className="h-7 text-xs text-white" style={{ background: ACCENT }} onClick={() => saveEdit(p.id)}>
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={cancelEdit}><X className="h-3.5 w-3.5" /></Button>
-              </>
-            ) : (
-              <>
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm text-slate-700">{p.name}</span>
-                  <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">{p.category}</Badge>
-                </div>
-                <button onClick={() => startEdit(p)} className="text-slate-400 hover:text-slate-700"><Edit2 className="h-3.5 w-3.5" /></button>
-                <button onClick={() => remove(p.id)} className="text-slate-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
-              </>
+                <Button size="sm" className="h-7 text-xs text-white" style={{ background: ACCENT }} onClick={addProc}>Add</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setPAdding(false)}><X className="h-3.5 w-3.5" /></Button>
+              </div>
+            )}
+            {visibleProcs.map(p => (
+              <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
+                <Scissors className="h-4 w-4 shrink-0 text-blue-400" />
+                {editId === p.id ? (
+                  <>
+                    <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-7 text-xs flex-1" autoFocus />
+                    <select value={editCat} onChange={e => setEditCat(e.target.value)}
+                      className="h-7 text-xs border border-slate-200 rounded px-1.5 bg-white">
+                      {SURGICAL_PROC_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                    <Button size="sm" className="h-7 text-xs text-white" style={{ background: ACCENT }} onClick={() => savePEdit(p.id)}>
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={cancelPEdit}><X className="h-3.5 w-3.5" /></Button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm text-slate-700">{p.name}</span>
+                      <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">{p.category}</Badge>
+                    </div>
+                    <button onClick={() => startEdit(p)} className="text-slate-400 hover:text-slate-700"><Edit2 className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => removeProc(p.id)} className="text-slate-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </>
+                )}
+              </div>
+            ))}
+            {visibleProcs.length === 0 && !pAdding && (
+              <div className="text-center py-16 text-slate-400 text-sm">No procedures found.</div>
             )}
           </div>
-        ))}
-        {visible.length === 0 && !adding && (
-          <div className="text-center py-16 text-slate-400 text-sm">No procedures found.</div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* ── Complications panel ── */}
+      {subTab === "complications" && (
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex items-center gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Input value={cSearch} onChange={e => setCSearch(e.target.value)} placeholder="Search complications…" className="pl-8 h-8 text-xs" />
+            </div>
+            <Button size="sm" onClick={() => setCAdding(true)} style={{ background: ACCENT }} className="text-white text-xs gap-1 ml-auto">
+              <Plus className="h-3.5 w-3.5" /> Add
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-1.5">
+            {cAdding && (
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200 rounded-lg">
+                <Input value={newComp} onChange={e => setNewComp(e.target.value)} placeholder="Complication name" className="h-7 text-xs flex-1" autoFocus
+                  onKeyDown={e => e.key === "Enter" && addComp()} />
+                <Button size="sm" className="h-7 text-xs text-white" style={{ background: ACCENT }} onClick={addComp}>Add</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setCAdding(false)}><X className="h-3.5 w-3.5" /></Button>
+              </div>
+            )}
+            {visibleComps.map((c, idx) => {
+              const realIdx = comps.indexOf(c);
+              return (
+                <div key={idx} className="flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+                  {editCId === realIdx ? (
+                    <>
+                      <Input value={editCName} onChange={e => setEditCName(e.target.value)} className="h-7 text-xs flex-1" autoFocus
+                        onKeyDown={e => e.key === "Enter" && saveCompEdit(realIdx)} />
+                      <Button size="sm" className="h-7 text-xs text-white" style={{ background: ACCENT }} onClick={() => saveCompEdit(realIdx)}>
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditCId(null)}><X className="h-3.5 w-3.5" /></Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm text-slate-700">{c}</span>
+                      <button onClick={() => { setEditCId(realIdx); setEditCName(c); }} className="text-slate-400 hover:text-slate-700"><Edit2 className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => removeComp(realIdx)} className="text-slate-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+            {visibleComps.length === 0 && !cAdding && (
+              <div className="text-center py-16 text-slate-400 text-sm">No complications found.</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
