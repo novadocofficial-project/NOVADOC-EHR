@@ -66,6 +66,27 @@ function useAdminFamilyConditions(): string[] {
   }, []);
 }
 
+function useAdminFamilyRelationMap(): Record<string, string[]> {
+  return useMemo(() => {
+    try {
+      const raw = localStorage.getItem("ehr-family-conditions-v1");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { name: string; relationships: string }[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const map: Record<string, string[]> = {};
+          for (const c of parsed) {
+            if (c.relationships?.trim()) {
+              map[c.name] = c.relationships.split(",").map(r => r.trim()).filter(Boolean);
+            }
+          }
+          return map;
+        }
+      }
+    } catch { /**/ }
+    return {};
+  }, []);
+}
+
 function useAdminGeneticDiseases(): string[] {
   return useMemo(() => {
     try {
@@ -205,12 +226,13 @@ export function ChipSelector({
 // ─── Family Row Entry ─────────────────────────────────────────────────────────
 
 function FamilyRowEntry({
-  row, onUpdate, onRemove, conditions,
+  row, onUpdate, onRemove, conditions, relationMap,
 }: {
   row: FamilyRow;
   onUpdate: (id: string, field: "condition" | "relation", val: string) => void;
   onRemove: (id: string) => void;
   conditions: string[];
+  relationMap: Record<string, string[]>;
 }) {
   const [condOpen, setCondOpen]     = useState(false);
   const [relOpen, setRelOpen]       = useState(false);
@@ -233,6 +255,11 @@ function FamilyRowEntry({
   const canCustom =
     condSearch.trim() !== "" &&
     !conditions.some(c => c.toLowerCase() === condSearch.trim().toLowerCase());
+
+  const activeRelations: string[] =
+    row.condition && relationMap[row.condition]?.length
+      ? relationMap[row.condition]
+      : FAMILY_RELATIONS;
 
   function pickCond(val: string) {
     onUpdate(row.id, "condition", val);
@@ -302,7 +329,7 @@ function FamilyRowEntry({
         {relOpen && (
           <div className="absolute left-0 right-0 top-full mt-1 z-40 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden">
             <div className="max-h-44 overflow-y-auto">
-              {FAMILY_RELATIONS.map(r => (
+              {activeRelations.map(r => (
                 <button
                   key={r}
                   onClick={() => { onUpdate(row.id, "relation", r); setRelOpen(false); }}
@@ -399,6 +426,7 @@ export function FamilyHistoryPanel({
   rows, genetic, onRowsChange, onGeneticChange,
 }: FamilyHistoryPanelProps) {
   const adminConditions    = useAdminFamilyConditions();
+  const adminRelationMap   = useAdminFamilyRelationMap();
   const adminGeneticList   = useAdminGeneticDiseases();
 
   function addRow() {
@@ -423,7 +451,7 @@ export function FamilyHistoryPanel({
             <div className="w-8 flex-shrink-0" />
           </div>
           {rows.map(row => (
-            <FamilyRowEntry key={row.id} row={row} onUpdate={updateRow} onRemove={removeRow} conditions={adminConditions} />
+            <FamilyRowEntry key={row.id} row={row} onUpdate={updateRow} onRemove={removeRow} conditions={adminConditions} relationMap={adminRelationMap} />
           ))}
         </div>
       )}
