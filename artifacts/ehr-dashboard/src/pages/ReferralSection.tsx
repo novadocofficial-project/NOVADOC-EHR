@@ -279,6 +279,31 @@ const ER_FACILITIES: ErFacility[] = [
   },
 ];
 
+// ─── Admin-wired ER facility loader ───────────────────────────────────────────
+
+const REFERRAL_DEST_KEY = "ehr-referral-destinations-v1";
+
+function loadErFacilities(): ErFacility[] {
+  try {
+    const raw = localStorage.getItem(REFERRAL_DEST_KEY);
+    if (raw) {
+      const items = JSON.parse(raw) as {
+        id: string; name: string;
+        category: string; services: string[]; active: boolean;
+      }[];
+      const active = items.filter(d => d.active && d.services.length > 0);
+      if (active.length > 0) {
+        return active.map(d => ({
+          name: d.name,
+          type: d.category === "Hospital" ? "Hospital" : "Clinic",
+          services: d.services.map((s, i) => ({ id: `${d.id}-${i}`, name: s })),
+        }));
+      }
+    }
+  } catch { /**/ }
+  return ER_FACILITIES;
+}
+
 const COMORBIDITY_OPTIONS = [
   "Hypertension", "Type 2 Diabetes", "Type 1 Diabetes", "Hyperlipidaemia",
   "Asthma", "COPD", "Chronic Kidney Disease", "Heart Failure",
@@ -502,10 +527,12 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
   const [comorbInput,     setComorbInput]     = useState("");
   const [showComorbList,  setShowComorbList]  = useState(false);
 
+  const [erFacilities] = useState<ErFacility[]>(loadErFacilities);
+
   const set = (k: keyof ReferralEntry, v: unknown) => onChange({ ...entry, [k]: v } as ReferralEntry);
 
   const consultants       = entry.speciality ? (SPECIALITY_MAP[entry.speciality] ?? []) : [];
-  const erFacility        = ER_FACILITIES.find(f => f.name === entry.facilityName);
+  const erFacility        = erFacilities.find(f => f.name === entry.facilityName);
   const erServices        = erFacility?.services ?? [];
   const [procSearch,      setProcSearch]      = useState("");
   const [procCategory,    setProcCategory]    = useState("");
@@ -676,7 +703,7 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
         <div>
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Facility</p>
           <div className="grid grid-cols-1 gap-1.5 max-h-44 overflow-y-auto pr-1">
-            {ER_FACILITIES.map(f => (
+            {erFacilities.map(f => (
               <button key={f.name}
                 className="w-full text-left px-3 py-2 rounded-xl border-2 text-xs flex items-center gap-2 transition-all"
                 style={entry.facilityName === f.name

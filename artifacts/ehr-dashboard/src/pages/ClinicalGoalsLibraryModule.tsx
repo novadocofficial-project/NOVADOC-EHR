@@ -198,8 +198,22 @@ function GoalsTab() {
 
 // ─── Referral Destinations Tab ────────────────────────────────────────────────
 
+const REFERRAL_DEST_KEY = "ehr-referral-destinations-v1";
+
+function loadDestSeed(): ReferralDest[] {
+  try {
+    const raw = localStorage.getItem(REFERRAL_DEST_KEY);
+    if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed) && parsed.length) return parsed; }
+  } catch { /**/ }
+  return DEST_SEED;
+}
+
+function saveDestToStorage(items: ReferralDest[]) {
+  try { localStorage.setItem(REFERRAL_DEST_KEY, JSON.stringify(items)); } catch { /**/ }
+}
+
 function ReferralDestTab() {
-  const [dests, setDests]   = useState<ReferralDest[]>(DEST_SEED);
+  const [dests, setDests]   = useState<ReferralDest[]>(loadDestSeed);
   const [search, setSearch] = useState("");
   const [drawer, setDrawer] = useState<ReferralDest | null>(null);
   const [isNew, setIsNew]   = useState(false);
@@ -219,8 +233,11 @@ function ReferralDestTab() {
 
   function save() {
     if (!drawer?.name.trim()) return;
-    if (isNew) setDests(prev => [...prev, drawer]);
-    else setDests(prev => prev.map(d => d.id === drawer!.id ? drawer! : d));
+    const next = isNew
+      ? [...dests, drawer]
+      : dests.map(d => d.id === drawer!.id ? drawer! : d);
+    setDests(next);
+    saveDestToStorage(next);
     setDrawer(null);
   }
 
@@ -260,7 +277,7 @@ function ReferralDestTab() {
                 </div>
               </div>
               <button onClick={() => openEdit(d)} className="text-slate-400 hover:text-slate-700 transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
-              <button onClick={() => setDests(prev => prev.filter(x => x.id !== d.id))}
+              <button onClick={() => { const next = dests.filter(x => x.id !== d.id); setDests(next); saveDestToStorage(next); }}
                 className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>
           ))}
