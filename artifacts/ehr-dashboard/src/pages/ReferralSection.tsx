@@ -667,7 +667,7 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
         <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Refer To</p>
         <div className="flex gap-2 flex-wrap">
           {(entry.referralType === "Internal"
-            ? (["Consultant", "Procedure"] as ReferralTarget[])
+            ? (["Consultant", "Procedure", "Custom"] as ReferralTarget[])
             : (["Consultant", "Procedure", "ER", "Custom"] as ReferralTarget[])
           ).map(t => (
             <button key={t} onClick={() => set("referralTarget", t)}
