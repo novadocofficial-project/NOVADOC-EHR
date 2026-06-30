@@ -2070,14 +2070,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                 { id: "fhr-imp-2", condition: "Type 2 Diabetes Mellitus", relation: "Mother" },
               ]);
               set("fhGenetic",  ["Thalassemia"]);
-              set("socialHistory", {
-                tobacco:  { active: false, intake: "",   years: "",          quitWhen: "" },
-                vaping:   { active: false, intake: "",   years: "",          quitWhen: "" },
-                alcohol:  { active: true,  cage: "1",   units: "Units/week", frequency: "Occasionally" },
-                oral:     { active: false, type: "",     other: "" },
-                activity: "Light (1–2 days/week)",
-                sleep:    "6–7 hours",
-              });
+              set("socialHistory", {});
             }}>
 
             {/* Past Medical History */}

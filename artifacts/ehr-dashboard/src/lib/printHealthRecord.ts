@@ -751,8 +751,12 @@ function buildLiveClinical(note: NoteState): string {
   const hasPmh      = note.pmhActive.length > 0 || note.pmhResolved.length > 0;
   const hasSurgical = note.surgicalRows.length > 0;
   const hasFH       = note.fhRows.length > 0;
-  const sh          = note.socialHistory;
-  const hasSocial   = sh.tobacco.active || sh.alcohol.active || sh.vaping?.active || !!sh.activity || !!sh.sleep;
+  const sh          = (note.socialHistory ?? {}) as Record<string, { main: string | string[]; followUps: Record<string, string | string[]> }>;
+  const hasSocial   = Object.values(sh).some(a => {
+    if (!a) return false;
+    if (Array.isArray(a.main)) return a.main.length > 0;
+    return a.main !== "" && a.main !== "No";
+  });
 
   if (hasPmh || hasSurgical || hasFH || hasSocial) {
     let body = "";
@@ -775,11 +779,14 @@ function buildLiveClinical(note: NoteState): string {
     if (hasSocial) {
       body += `<div class="sys-heading">Social History</div>`;
       const si: string[] = [];
-      if (sh.tobacco.active) si.push("Smoking" + (sh.tobacco.intake ? ": " + esc(sh.tobacco.intake) : ""));
-      if (sh.alcohol.active) si.push("Alcohol" + (sh.alcohol.units ? ": " + esc(sh.alcohol.units) : ""));
-      if (sh.vaping?.active) si.push("Vaping");
-      if (sh.activity)       si.push("Activity: " + esc(sh.activity));
-      if (sh.sleep)          si.push("Sleep: " + esc(sh.sleep));
+      for (const ans of Object.values(sh)) {
+        if (!ans) continue;
+        if (Array.isArray(ans.main) ? ans.main.length === 0 : (!ans.main || ans.main === "No")) continue;
+        const displayVal = Array.isArray(ans.main) ? ans.main.join(", ") : ans.main;
+        const fuParts = Object.values(ans.followUps ?? {}).filter(v => v !== "" && (!Array.isArray(v) || v.length > 0));
+        const fuStr = fuParts.map(v => Array.isArray(v) ? v.join(", ") : v).join("; ");
+        si.push(esc(displayVal) + (fuStr ? ` (${esc(fuStr)})` : ""));
+      }
       body += `<div style="font-size:9.5pt">${si.join(", ")}</div>`;
     }
     parts.push(section("Medical, Surgical, Family &amp; Social History", body));
@@ -1008,8 +1015,12 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
       const hasPmh      = note.pmhActive.length > 0 || note.pmhResolved.length > 0;
       const hasSurgical = note.surgicalRows.length > 0;
       const hasFH       = note.fhRows.length > 0;
-      const sh          = note.socialHistory;
-      const hasSocial   = sh.tobacco.active || sh.alcohol.active || sh.vaping?.active || !!sh.activity || !!sh.sleep;
+      const sh2         = (note.socialHistory ?? {}) as Record<string, { main: string | string[]; followUps: Record<string, string | string[]> }>;
+      const hasSocial   = Object.values(sh2).some(a => {
+        if (!a) return false;
+        if (Array.isArray(a.main)) return a.main.length > 0;
+        return a.main !== "" && a.main !== "No";
+      });
       if (!hasPmh && !hasSurgical && !hasFH && !hasSocial) return "";
       let body = "";
       if (hasPmh) {
@@ -1031,11 +1042,14 @@ function buildSystemComponentHtml(id: string, note: NoteState): string {
       if (hasSocial) {
         body += `<div class="sys-heading">Social History</div>`;
         const si: string[] = [];
-        if (sh.tobacco.active) si.push("Smoking" + (sh.tobacco.intake ? ": " + esc(sh.tobacco.intake) : ""));
-        if (sh.alcohol.active) si.push("Alcohol" + (sh.alcohol.units ? ": " + esc(sh.alcohol.units) : ""));
-        if (sh.vaping?.active) si.push("Vaping");
-        if (sh.activity)       si.push("Activity: " + esc(sh.activity));
-        if (sh.sleep)          si.push("Sleep: " + esc(sh.sleep));
+        for (const ans of Object.values(sh2)) {
+          if (!ans) continue;
+          if (Array.isArray(ans.main) ? ans.main.length === 0 : (!ans.main || ans.main === "No")) continue;
+          const displayVal = Array.isArray(ans.main) ? ans.main.join(", ") : ans.main;
+          const fuParts = Object.values(ans.followUps ?? {}).filter(v => v !== "" && (!Array.isArray(v) || v.length > 0));
+          const fuStr = fuParts.map(v => Array.isArray(v) ? v.join(", ") : v).join("; ");
+          si.push(esc(displayVal) + (fuStr ? ` (${esc(fuStr)})` : ""));
+        }
         body += `<div style="font-size:9.5pt">${si.join(", ")}</div>`;
       }
       return section("Medical, Surgical, Family &amp; Social History", body);

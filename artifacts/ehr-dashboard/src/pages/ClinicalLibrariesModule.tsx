@@ -997,11 +997,11 @@ function FamilyHistory() {
 
 // ─── ⑧ Social History Dynamic Builder ────────────────────────────────────────
 
-type SocDisplayType = "Yes/No Radio" | "Single Dropdown" | "Multi Dropdown" | "Number Input" | "Text Input";
+export type SocDisplayType = "Yes/No Radio" | "Single Dropdown" | "Multi Dropdown" | "Number Input" | "Text Input";
 
-interface SocOption   { id: string; value: string; }
-interface SocFollowUp { id: string; label: string; type: Exclude<SocDisplayType, "Yes/No Radio">; options: SocOption[]; placeholder: string; }
-interface SocQuestion {
+export interface SocOption   { id: string; value: string; }
+export interface SocFollowUp { id: string; label: string; type: Exclude<SocDisplayType, "Yes/No Radio">; options: SocOption[]; placeholder: string; }
+export interface SocQuestion {
   id: string;
   name: string;
   displayType: SocDisplayType;
@@ -1011,7 +1011,7 @@ interface SocQuestion {
   active: boolean;
 }
 
-const SEED_SOC: SocQuestion[] = [
+export const SEED_SOC: SocQuestion[] = [
   { id: "sq1", name: "Tobacco / Smoking", displayType: "Yes/No Radio", placeholder: "", options: [], active: true,
     followUps: [
       { id: "sf1", label: "Type", type: "Single Dropdown", placeholder: "", options: [{ id: "o1", value: "Cigarettes" }, { id: "o2", value: "Hookah" }, { id: "o3", value: "Vape" }] },
@@ -1031,6 +1031,19 @@ const SEED_SOC: SocQuestion[] = [
     options: [{ id: "o11", value: "None" }, { id: "o12", value: "Occasional" }, { id: "o13", value: "Regular" }],
   },
 ];
+
+export const SOC_CONFIG_KEY = "ehr-social-history-config-v1";
+
+export function loadSocConfig(): SocQuestion[] {
+  try {
+    const raw = localStorage.getItem(SOC_CONFIG_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as SocQuestion[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /**/ }
+  return SEED_SOC;
+}
 
 function SocOptionList({ options, onChange }: { options: SocOption[]; onChange: (opts: SocOption[]) => void }) {
   const [draft, setDraft] = useState("");
@@ -1092,12 +1105,16 @@ function SocPreviewQuestion({ q }: { q: SocQuestion }) {
 }
 
 function SocialHistoryBuilder() {
-  const [questions, setQuestions] = useState<SocQuestion[]>(SEED_SOC);
+  const [questions, setQuestions] = useState<SocQuestion[]>(loadSocConfig);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dropIdx, setDropIdx] = useState<number | null>(null);
 
   const selected = questions.find(q => q.id === selectedId);
+
+  useEffect(() => {
+    try { localStorage.setItem(SOC_CONFIG_KEY, JSON.stringify(questions)); } catch { /**/ }
+  }, [questions]);
 
   function addQuestion() {
     const nq: SocQuestion = { id: uid(), name: "", displayType: "Yes/No Radio", placeholder: "", options: [], followUps: [], active: true };

@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { X, Plus, Search, ChevronDown, Check } from "lucide-react";
+import { loadSocConfig } from "@/pages/ClinicalLibrariesModule";
+import type { SocQuestion, SocFollowUp } from "@/pages/ClinicalLibrariesModule";
 
 // ─── Data Lists ───────────────────────────────────────────────────────────────
 
@@ -761,51 +763,10 @@ export function SurgicalHistoryPanel({ rows, onChange }: SurgicalHistoryPanelPro
 // ─── SOCIAL HISTORY ───────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const DAILY_INTAKE_OPTS = [
-  "Occasional (social)", "1–5/day", "Half pack/day",
-  "1 pack/day", "1.5 packs/day", "2 packs/day", "Heavy (3+ packs/day)",
-];
-const YEARS_OPTS = [
-  "< 1 year", "1–2 years", "3–5 years",
-  "5–10 years", "10–15 years", "15–20 years", "20+ years",
-];
-const QUIT_WHEN_OPTS = [
-  "Currently using", "< 6 months ago", "6–12 months ago",
-  "1–2 years ago", "3–5 years ago", "5–10 years ago", "10+ years ago",
-];
-const CAGE_OPTS = ["0 (No concern)", "1", "2", "3", "4 (Likely dependent)"];
-const ALCOHOL_UNITS_OPTS = ["Units/week", "Standard drinks/day", "Standard drinks/week", "Glasses/week"];
-const ALCOHOL_FREQ_OPTS = ["Daily", "5–6 days/week", "3–4 days/week", "1–2 days/week", "Weekends only", "Monthly", "Occasionally"];
-const ORAL_TYPE_OPTS = ["Naswar", "Gutka", "Paan (betel leaf)", "Paan Masala", "Tobacco chewing", "Betel nut (plain)", "Mawa", "Khaini"];
-const ORAL_OTHER_OPTS = ["With tobacco", "Without tobacco", "Plain betel leaf", "Flavoured", "Other"];
-const ACTIVITY_OPTS = [
-  "Sedentary (no exercise)", "Minimal (light walking)", "Light (1–2 days/week)",
-  "Moderate (3–4 days/week)", "Active (5–6 days/week)", "Athlete (daily intense training)",
-];
-const SLEEP_OPTS = [
-  "< 4 hours", "4–5 hours", "5–6 hours", "6–7 hours",
-  "7–8 hours (recommended)", "8–9 hours", "9+ hours", "Irregular / Shift work",
-];
-
-// ─── Social History Types ─────────────────────────────────────────────────────
-
-export interface SocialHistory {
-  tobacco:  { active: boolean; intake: string; years: string; quitWhen: string };
-  vaping:   { active: boolean; intake: string; years: string; quitWhen: string };
-  alcohol:  { active: boolean; cage: string;   units: string; frequency: string };
-  oral:     { active: boolean; type: string;   other: string };
-  activity: string;
-  sleep:    string;
-}
-
-export const EMPTY_SOCIAL_HISTORY: SocialHistory = {
-  tobacco:  { active: false, intake: "", years: "", quitWhen: "" },
-  vaping:   { active: false, intake: "", years: "", quitWhen: "" },
-  alcohol:  { active: false, cage: "",   units: "", frequency: "" },
-  oral:     { active: false, type: "",   other: "" },
-  activity: "",
-  sleep:    "",
-};
+export type SocAnswers = Record<string, { main: string | string[]; followUps: Record<string, string | string[]> }>;
+export type SocialHistory = SocAnswers;
+export const EMPTY_SOCIAL_HISTORY: SocAnswers = {};
+export const EMPTY_SOC_ANSWERS = EMPTY_SOCIAL_HISTORY;
 
 // ─── Inline styled select ─────────────────────────────────────────────────────
 
@@ -856,101 +817,116 @@ function RadioYesNo({ value, onChange }: { value: boolean; onChange: (v: boolean
 
 // ─── Social History Panel ─────────────────────────────────────────────────────
 
-interface SocialHistoryPanelProps {
-  value: SocialHistory;
-  onChange: (v: SocialHistory) => void;
-}
+export function SocialHistoryPanel({ value, onChange }: { value: SocAnswers; onChange: (v: SocAnswers) => void }) {
+  const questions = useMemo(() => loadSocConfig().filter(q => q.active), []);
 
-export function SocialHistoryPanel({ value, onChange }: SocialHistoryPanelProps) {
-  function setTobacco(patch: Partial<SocialHistory["tobacco"]>) {
-    onChange({ ...value, tobacco: { ...value.tobacco, ...patch } });
+  function getAns(qId: string) {
+    return value[qId] ?? { main: "", followUps: {} };
   }
-  function setVaping(patch: Partial<SocialHistory["vaping"]>) {
-    onChange({ ...value, vaping: { ...value.vaping, ...patch } });
+  function setMain(qId: string, val: string | string[]) {
+    const prev = getAns(qId);
+    onChange({ ...value, [qId]: { ...prev, main: val } });
   }
-  function setAlcohol(patch: Partial<SocialHistory["alcohol"]>) {
-    onChange({ ...value, alcohol: { ...value.alcohol, ...patch } });
-  }
-  function setOral(patch: Partial<SocialHistory["oral"]>) {
-    onChange({ ...value, oral: { ...value.oral, ...patch } });
+  function setFollowUp(qId: string, fuId: string, val: string | string[]) {
+    const prev = getAns(qId);
+    onChange({ ...value, [qId]: { ...prev, followUps: { ...prev.followUps, [fuId]: val } } });
   }
 
-  // Compact single-line row: [label] [radios] [dropdowns...]
-  const rowCls = "flex items-center gap-2";
-  const labelCls = "w-[130px] flex-shrink-0 text-[11px] font-semibold text-slate-500";
+  if (questions.length === 0) {
+    return (
+      <p className="text-xs text-slate-400 italic">
+        No social history questions configured. Add them in Admin → Soap Note → Social History.
+      </p>
+    );
+  }
+
+  const rowCls   = "flex items-start gap-3";
+  const labelCls = "w-[140px] flex-shrink-0 text-[11px] font-semibold text-slate-500 pt-1.5";
+
+  function renderFollowUpWidget(q: SocQuestion, fu: SocFollowUp) {
+    const raw    = getAns(q.id).followUps[fu.id] ?? "";
+    const strVal = Array.isArray(raw) ? "" : (raw as string);
+    const arrVal = Array.isArray(raw) ? (raw as string[]) : [];
+    if (fu.type === "Text Input")
+      return <input value={strVal} onChange={e => setFollowUp(q.id, fu.id, e.target.value)} placeholder={fu.placeholder || "Type…"} className="flex-1 h-8 text-xs border border-slate-200 rounded-xl bg-white px-3 focus:outline-none focus:border-[#4982CF]/50 transition-colors" />;
+    if (fu.type === "Number Input")
+      return <input type="number" value={strVal} onChange={e => setFollowUp(q.id, fu.id, e.target.value)} placeholder={fu.placeholder || "0"} className="w-24 h-8 text-xs border border-slate-200 rounded-xl bg-white px-3 focus:outline-none focus:border-[#4982CF]/50 transition-colors" />;
+    if (fu.type === "Single Dropdown")
+      return <SSelect value={strVal} onChange={v => setFollowUp(q.id, fu.id, v)} placeholder={fu.placeholder || "Select…"} options={fu.options.map(o => o.value)} className="flex-1" />;
+    if (fu.type === "Multi Dropdown")
+      return (
+        <div className="flex flex-wrap gap-1.5">
+          {fu.options.map(o => {
+            const on = arrVal.includes(o.value);
+            return (
+              <button key={o.id} type="button"
+                onClick={() => setFollowUp(q.id, fu.id, on ? arrVal.filter(x => x !== o.value) : [...arrVal, o.value])}
+                className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-colors ${on ? "text-white border-transparent" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+                style={on ? { background: "#4982CF" } : {}}>
+                {o.value}
+              </button>
+            );
+          })}
+        </div>
+      );
+    return null;
+  }
+
+  function renderMainWidget(q: SocQuestion) {
+    const raw    = getAns(q.id).main;
+    const strVal = Array.isArray(raw) ? "" : (raw as string);
+    const arrVal = Array.isArray(raw) ? (raw as string[]) : [];
+    if (q.displayType === "Yes/No Radio")
+      return <RadioYesNo value={strVal === "Yes"} onChange={v => setMain(q.id, v ? "Yes" : "No")} />;
+    if (q.displayType === "Text Input")
+      return <input value={strVal} onChange={e => setMain(q.id, e.target.value)} placeholder={q.placeholder || "Type…"} className="flex-1 h-8 text-xs border border-slate-200 rounded-xl bg-white px-3 focus:outline-none focus:border-[#4982CF]/50 transition-colors" />;
+    if (q.displayType === "Number Input")
+      return <input type="number" value={strVal} onChange={e => setMain(q.id, e.target.value)} placeholder={q.placeholder || "0"} className="w-24 h-8 text-xs border border-slate-200 rounded-xl bg-white px-3 focus:outline-none focus:border-[#4982CF]/50 transition-colors" />;
+    if (q.displayType === "Single Dropdown")
+      return <SSelect value={strVal} onChange={v => setMain(q.id, v)} placeholder={q.placeholder || "Select…"} options={q.options.map(o => o.value)} className="flex-1" />;
+    if (q.displayType === "Multi Dropdown")
+      return (
+        <div className="flex flex-wrap gap-1.5">
+          {q.options.map(o => {
+            const on = arrVal.includes(o.value);
+            return (
+              <button key={o.id} type="button"
+                onClick={() => setMain(q.id, on ? arrVal.filter(x => x !== o.value) : [...arrVal, o.value])}
+                className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-colors ${on ? "text-white border-transparent" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+                style={on ? { background: "#4982CF" } : {}}>
+                {o.value}
+              </button>
+            );
+          })}
+        </div>
+      );
+    return null;
+  }
 
   return (
-    <div className="space-y-1.5">
-      {/* Tobacco */}
-      <div className={rowCls}>
-        <span className={labelCls}>Tobacco Intake</span>
-        <RadioYesNo value={value.tobacco.active} onChange={v => setTobacco({ active: v })} />
-        {value.tobacco.active && (
-          <>
-            <SSelect value={value.tobacco.intake}   onChange={v => setTobacco({ intake: v })}   placeholder="Daily Intake" options={DAILY_INTAKE_OPTS} className="flex-1" />
-            <SSelect value={value.tobacco.years}    onChange={v => setTobacco({ years: v })}    placeholder="Years"        options={YEARS_OPTS}        className="w-28" />
-            <SSelect value={value.tobacco.quitWhen} onChange={v => setTobacco({ quitWhen: v })} placeholder="Quit When"    options={QUIT_WHEN_OPTS}    className="w-32" />
-          </>
-        )}
-      </div>
-
-      {/* Vaping */}
-      <div className={rowCls}>
-        <span className={labelCls}>Vaping Intake</span>
-        <RadioYesNo value={value.vaping.active} onChange={v => setVaping({ active: v })} />
-        {value.vaping.active && (
-          <>
-            <SSelect value={value.vaping.intake}   onChange={v => setVaping({ intake: v })}   placeholder="Daily Intake" options={DAILY_INTAKE_OPTS} className="flex-1" />
-            <SSelect value={value.vaping.years}    onChange={v => setVaping({ years: v })}    placeholder="Years"        options={YEARS_OPTS}        className="w-28" />
-            <SSelect value={value.vaping.quitWhen} onChange={v => setVaping({ quitWhen: v })} placeholder="Quit When"    options={QUIT_WHEN_OPTS}    className="w-32" />
-          </>
-        )}
-      </div>
-
-      {/* Alcohol */}
-      <div className={rowCls}>
-        <span className={labelCls}>Alcohol Use</span>
-        <RadioYesNo value={value.alcohol.active} onChange={v => setAlcohol({ active: v })} />
-        {value.alcohol.active && (
-          <>
-            <SSelect value={value.alcohol.cage}      onChange={v => setAlcohol({ cage: v })}      placeholder="CAGE Score" options={CAGE_OPTS}          className="flex-1" />
-            <SSelect value={value.alcohol.units}     onChange={v => setAlcohol({ units: v })}     placeholder="Units"      options={ALCOHOL_UNITS_OPTS} className="w-36" />
-            <SSelect value={value.alcohol.frequency} onChange={v => setAlcohol({ frequency: v })} placeholder="Frequency"  options={ALCOHOL_FREQ_OPTS}  className="w-28" />
-          </>
-        )}
-      </div>
-
-      {/* Oral Intake */}
-      <div className={rowCls}>
-        <span className={labelCls}>Oral Intake</span>
-        <RadioYesNo value={value.oral.active} onChange={v => setOral({ active: v })} />
-        {value.oral.active && (
-          <>
-            <SSelect value={value.oral.type}  onChange={v => setOral({ type: v })}  placeholder="Select Type"         options={ORAL_TYPE_OPTS} className="flex-1" />
-            <SSelect value={value.oral.other} onChange={v => setOral({ other: v })} placeholder="Other mention here"  options={ORAL_OTHER_OPTS} className="w-36" />
-          </>
-        )}
-      </div>
-
-      {/* Physical Activity + Sleep on same line */}
-      <div className={rowCls}>
-        <span className={labelCls}>Physical Activity</span>
-        <SSelect
-          value={value.activity}
-          onChange={v => onChange({ ...value, activity: v })}
-          placeholder="Select activity level"
-          options={ACTIVITY_OPTS}
-          className="flex-1"
-        />
-        <span className="flex-shrink-0 text-[11px] font-semibold text-slate-500 pl-2">Sleep</span>
-        <SSelect
-          value={value.sleep}
-          onChange={v => onChange({ ...value, sleep: v })}
-          placeholder="Hours"
-          options={SLEEP_OPTS}
-          className="w-44"
-        />
-      </div>
+    <div className="space-y-2">
+      {questions.map(q => {
+        const raw     = getAns(q.id).main;
+        const showFu  = q.displayType === "Yes/No Radio" && raw === "Yes" && q.followUps.length > 0;
+        return (
+          <div key={q.id}>
+            <div className={rowCls}>
+              <span className={labelCls}>{q.name}</span>
+              <div className="flex-1">{renderMainWidget(q)}</div>
+            </div>
+            {showFu && (
+              <div className="mt-1.5 ml-[152px] space-y-1.5 pl-3 border-l-2 border-slate-100">
+                {q.followUps.map(fu => (
+                  <div key={fu.id} className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-500 w-28 flex-shrink-0">{fu.label}</span>
+                    {renderFollowUpWidget(q, fu)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

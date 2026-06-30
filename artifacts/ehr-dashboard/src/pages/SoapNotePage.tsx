@@ -27,6 +27,8 @@ import { EMPTY_REFERRAL_DATA } from "@/pages/ReferralSection";
 import { EMPTY_PROCEDURE_ORDERS } from "@/pages/ProcedureOrdersSection";
 import { EMPTY_PATIENT_GOALS } from "@/pages/PatientGoalsSection";
 import { EMPTY_SOCIAL_HISTORY } from "@/pages/MedicalHistorySection";
+import type { SocAnswers } from "@/pages/MedicalHistorySection";
+import { loadSocConfig } from "@/pages/ClinicalLibrariesModule";
 import { SoapDummyNote, SOAP_DUMMY } from "@/data/soapDummy";
 export type { SoapDummyNote } from "@/data/soapDummy";
 export { SOAP_DUMMY } from "@/data/soapDummy";
@@ -198,8 +200,13 @@ function SpecialtyNotePreview({ form, data, note }: { form: SpecialtyForm; data:
         const hasPmh     = note.pmhActive.length > 0 || note.pmhResolved.length > 0;
         const hasSurgical = note.surgicalRows.length > 0;
         const hasFH      = note.fhRows.length > 0;
-        const sh         = note.socialHistory;
-        const hasSocial  = sh.tobacco.active || sh.alcohol.active || sh.vaping.active || !!sh.activity || !!sh.sleep;
+        const sh          = (note.socialHistory ?? {}) as SocAnswers;
+        const socQuestions = loadSocConfig();
+        const hasSocial   = Object.keys(sh).some(k => {
+          const a = sh[k]; if (!a) return false;
+          if (Array.isArray(a.main)) return a.main.length > 0;
+          return a.main !== "" && a.main !== "No";
+        });
         if (!hasPmh && !hasSurgical && !hasFH && !hasSocial) return null;
         return (
           <Section key="sc-mhx" icon={<FileText className="h-3.5 w-3.5" />} title="Medical, Surgical, Family & Social History" color="#6366f1">
@@ -247,22 +254,19 @@ function SpecialtyNotePreview({ form, data, note }: { form: SpecialtyForm; data:
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Social History</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {sh.tobacco.active && (
-                      <span className="text-[10px] px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200">
-                        Smoking{sh.tobacco.intake ? `: ${sh.tobacco.intake}` : ""}
-                      </span>
-                    )}
-                    {sh.alcohol.active && (
-                      <span className="text-[10px] px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200">
-                        Alcohol{sh.alcohol.units ? `: ${sh.alcohol.units}` : ""}
-                      </span>
-                    )}
-                    {sh.activity && (
-                      <span className="text-[10px] px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200">Activity: {sh.activity}</span>
-                    )}
-                    {sh.sleep && (
-                      <span className="text-[10px] px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200">Sleep: {sh.sleep}</span>
-                    )}
+                    {Object.entries(sh).map(([qId, ans]) => {
+                      if (!ans) return null;
+                      if (Array.isArray(ans.main) ? ans.main.length === 0 : (!ans.main || ans.main === "No")) return null;
+                      const q = socQuestions.find(x => x.id === qId);
+                      const label = q?.name ?? qId;
+                      const displayVal = Array.isArray(ans.main) ? ans.main.join(", ") : ans.main;
+                      const chipText = displayVal === "Yes" ? label : `${label}: ${displayVal}`;
+                      return (
+                        <span key={qId} className="text-[10px] px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200">
+                          {chipText}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               )}
