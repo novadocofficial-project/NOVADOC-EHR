@@ -137,6 +137,34 @@ const SPECIALITY_MAP: Record<string, ConsultantDef[]> = {
 
 const SPECIALITIES = Object.keys(SPECIALITY_MAP).sort();
 
+// ─── Admin-wired specialty / consultant loader ─────────────────────────────────
+
+function loadSpecialtyMap(): Record<string, ConsultantDef[]> {
+  try {
+    const raw = localStorage.getItem("ehr-doctors-v1");
+    if (raw) {
+      const docs = JSON.parse(raw) as {
+        name: string; status: string;
+        specialties: string[];
+        qualifications: { id: string; name: string }[];
+      }[];
+      const active = docs.filter(d => d.status === "active" && d.specialties.length > 0);
+      if (active.length > 0) {
+        const map: Record<string, ConsultantDef[]> = {};
+        for (const doc of active) {
+          const qualifier = doc.qualifications.map(q => q.name).filter(Boolean).join(", ");
+          for (const sp of doc.specialties) {
+            if (!map[sp]) map[sp] = [];
+            map[sp].push({ name: doc.name, qualifier });
+          }
+        }
+        if (Object.keys(map).length > 0) return map;
+      }
+    }
+  } catch { /**/ }
+  return SPECIALITY_MAP;
+}
+
 // ─── Procedure List ────────────────────────────────────────────────────────────
 
 interface ProcedureDef { id: string; name: string; category: string; cpt: string; }
@@ -537,11 +565,13 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
   const [comorbInput,     setComorbInput]     = useState("");
   const [showComorbList,  setShowComorbList]  = useState(false);
 
-  const [erFacilities] = useState<ErFacility[]>(loadErFacilities);
+  const [erFacilities]  = useState<ErFacility[]>(loadErFacilities);
+  const [specialtyMap]  = useState<Record<string, ConsultantDef[]>>(loadSpecialtyMap);
+  const specialities    = Object.keys(specialtyMap).sort();
 
   const set = (k: keyof ReferralEntry, v: unknown) => onChange({ ...entry, [k]: v } as ReferralEntry);
 
-  const consultants       = entry.speciality ? (SPECIALITY_MAP[entry.speciality] ?? []) : [];
+  const consultants       = entry.speciality ? (specialtyMap[entry.speciality] ?? []) : [];
   const erFacility        = erFacilities.find(f => f.name === entry.facilityName);
   const erServices        = erFacility?.services ?? [];
   const [procSearch,      setProcSearch]      = useState("");
@@ -641,7 +671,7 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
             value={entry.speciality}
             onChange={e => onChange({ ...entry, speciality: e.target.value, consultantName: "" })}>
             <option value="">— Select speciality —</option>
-            {SPECIALITIES.map(s => <option key={s} value={s}>{s}</option>)}
+            {specialities.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         {entry.speciality && (
