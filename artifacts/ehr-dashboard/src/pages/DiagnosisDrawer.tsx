@@ -429,7 +429,7 @@ export function DiagnosisDrawer({ isDone, savedData, onSave, onClose }: Diagnosi
           {/* Scroll left */}
           <button
             onClick={() => tabsRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
-            className="flex-shrink-0 p-1 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+            className="flex-shrink-0 p-1.5 rounded-full border border-slate-200 bg-white shadow-sm text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
 
@@ -457,7 +457,7 @@ export function DiagnosisDrawer({ isDone, savedData, onSave, onClose }: Diagnosi
           {/* Scroll right */}
           <button
             onClick={() => tabsRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
-            className="flex-shrink-0 p-1 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+            className="flex-shrink-0 p-1.5 rounded-full border border-slate-200 bg-white shadow-sm text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
