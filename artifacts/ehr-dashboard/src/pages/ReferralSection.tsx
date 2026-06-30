@@ -194,7 +194,17 @@ const PROCEDURE_CATEGORIES = [...new Set(PROCEDURES.map(p => p.category))];
 // ─── ER Facilities ─────────────────────────────────────────────────────────────
 
 interface ErService { id: string; name: string; }
-interface ErFacility { name: string; type: "Hospital" | "Clinic"; services: ErService[]; }
+type ErFacilityCategory = "Hospital" | "Clinic" | "Diagnostic Lab" | "Pharmacy" | "Rehab Centre" | "Other";
+interface ErFacility { name: string; type: ErFacilityCategory; services: ErService[]; }
+
+const FACILITY_BADGE: Record<ErFacilityCategory, string> = {
+  "Hospital":       "bg-red-100 text-red-600",
+  "Clinic":         "bg-orange-100 text-orange-600",
+  "Diagnostic Lab": "bg-purple-100 text-purple-600",
+  "Pharmacy":       "bg-green-100 text-green-600",
+  "Rehab Centre":   "bg-blue-100 text-blue-600",
+  "Other":          "bg-slate-100 text-slate-600",
+};
 
 const ER_FACILITIES: ErFacility[] = [
   {
@@ -295,7 +305,7 @@ function loadErFacilities(): ErFacility[] {
       if (active.length > 0) {
         return active.map(d => ({
           name: d.name,
-          type: d.category === "Hospital" ? "Hospital" : "Clinic",
+          type: d.category as ErFacilityCategory,
           services: d.services.map((s, i) => ({ id: `${d.id}-${i}`, name: s })),
         }));
       }
@@ -710,7 +720,7 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
                   ? { borderColor: "#ef4444", background: "#fef2f2", color: "#dc2626" }
                   : { borderColor: "#e2e8f0", background: "#f8fafc",  color: "#475569" }}
                 onClick={() => onChange({ ...entry, facilityName: f.name, erService: "" })}>
-                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${f.type === "Hospital" ? "bg-red-100 text-red-600" : "bg-orange-100 text-orange-600"}`}>
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${FACILITY_BADGE[f.type] ?? "bg-slate-100 text-slate-600"}`}>
                   {f.type}
                 </span>
                 <span className="font-bold flex-1">{f.name}</span>
