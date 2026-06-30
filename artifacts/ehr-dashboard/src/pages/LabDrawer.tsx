@@ -57,6 +57,45 @@ function loadLabFromAdmin(): { categories: string[]; tests: LabTestEntry[] } | n
   } catch { return null; }
 }
 
+// ─── Order sets catalogue loader ──────────────────────────────────────────────
+
+const OS_CAT_COLORS: Record<string, string> = {
+  "Routine Workup":    "#0ea5e9",
+  "Cardiac Panel":     "#ef4444",
+  "Pre-operative":     "#6366f1",
+  "Emergency / Acute": "#dc2626",
+  "Diabetes Screen":   "#f59e0b",
+  "Thyroid Panel":     "#10b981",
+  "Liver Screen":      "#f97316",
+  "Renal Screen":      "#06b6d4",
+  "Infection / Sepsis":"#22c55e",
+  "Oncology Panel":    "#8b5cf6",
+  "Paediatric":        "#ec4899",
+  "Custom":            "#64748b",
+};
+
+function loadOrderSetsFromAdmin(): OrderSet[] | null {
+  try {
+    const raw = localStorage.getItem("ehr-order-sets-v1");
+    if (!raw) return null;
+    const all = JSON.parse(raw) as {
+      id: string; name: string; description: string; category?: string;
+      items: { type: string; itemId: string }[];
+      active: boolean; setType: string;
+    }[];
+    const sets = all
+      .filter(s => s.setType === "lab" && s.active !== false)
+      .map(s => ({
+        id:          s.id,
+        name:        s.name,
+        description: s.description,
+        testIds:     s.items.filter(i => i.type === "lab").map(i => i.itemId),
+        color:       OS_CAT_COLORS[s.category ?? ""] ?? "#6366f1",
+      }));
+    return sets.length ? sets : null;
+  } catch { return null; }
+}
+
 // ─── Lab Categories ───────────────────────────────────────────────────────────
 
 export const LAB_CATEGORIES = [
@@ -355,11 +394,13 @@ interface LabDrawerProps {
 }
 
 export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsReady = false, onSave, onClose }: LabDrawerProps) {
-  const [{ labCategories, labTests }] = useState(() => {
+  const [{ labCategories, labTests, adminOrderSets }] = useState(() => {
     const admin = loadLabFromAdmin();
-    return admin
-      ? { labCategories: admin.categories, labTests: admin.tests }
-      : { labCategories: LAB_CATEGORIES,   labTests: LAB_TESTS   };
+    return {
+      labCategories: admin?.categories ?? LAB_CATEGORIES,
+      labTests:      admin?.tests      ?? LAB_TESTS,
+      adminOrderSets: loadOrderSetsFromAdmin(),
+    };
   });
 
   const [tab,               setTab]               = useState<"sets" | "browse">("browse");
@@ -392,7 +433,7 @@ export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsRead
   const [customSetName,     setCustomSetName]     = useState("");
   const [sessionSets,       setSessionSets]       = useState<OrderSet[]>([]);
 
-  const allOrderSets  = [...ORDER_SETS, ...sessionSets];
+  const allOrderSets  = [...(adminOrderSets ?? ORDER_SETS), ...sessionSets];
   const selectedTests = labTests.filter(t => selectedTestIds.includes(t.id));
 
   function buildOrder(): Omit<LabOrder, "id"> {

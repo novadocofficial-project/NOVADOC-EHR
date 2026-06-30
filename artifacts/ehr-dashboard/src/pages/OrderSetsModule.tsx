@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Plus, Trash2, Edit2, Search, ChevronDown, ChevronRight,
   FlaskConical, ScanLine, Stethoscope, FileText, Copy,
@@ -158,9 +158,17 @@ export function OrderSetsModule({
   procSections: ProcedureSection[];
   setType: "lab" | "imaging";
 }) {
-  const [orderSets, setOrderSets] = useState<OrderSet[]>(() =>
-    SEED_ORDER_SETS.filter(s => s.setType === setType)
-  );
+  const [orderSets, setOrderSets] = useState<OrderSet[]>(() => {
+    try {
+      const raw = localStorage.getItem("ehr-order-sets-v1");
+      if (raw) {
+        const all = JSON.parse(raw) as OrderSet[];
+        const mine = all.filter(s => s.setType === setType);
+        if (mine.length) return mine;
+      }
+    } catch { /**/ }
+    return SEED_ORDER_SETS.filter(s => s.setType === setType);
+  });
   const [search, setSearch]       = useState("");
   const [catFilter, setCatFilter] = useState<string>("All");
   const [showForm, setShowForm]   = useState(false);
@@ -174,6 +182,17 @@ export function OrderSetsModule({
   const [formCustomCat, setFormCustomCat] = useState("");
   const [formItems, setFormItems]   = useState<OrderSetItem[]>([]);
   const [itemSearch, setItemSearch] = useState("");
+
+  // Persist — read-merge-write so lab and imaging sets coexist under one key
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("ehr-order-sets-v1");
+      const others = raw
+        ? (JSON.parse(raw) as OrderSet[]).filter(s => s.setType !== setType)
+        : [];
+      localStorage.setItem("ehr-order-sets-v1", JSON.stringify([...others, ...orderSets]));
+    } catch { /**/ }
+  }, [orderSets, setType]);
 
   // Live imaging catalog from ehr-imaging-catalog-v2
   const [imagingCatalog] = useState(() => loadImagingCatalog());
