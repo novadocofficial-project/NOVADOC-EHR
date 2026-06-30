@@ -242,7 +242,7 @@ type ActiveModule =
   | "nursing-triage" | "nursing-history" | "nursing-vitals"
   | "nursing-procedures"
   | "clinical-complaints" | "clinical-icd10" | "clinical-poc" | "clinical-ros"
-  | "clinical-allergies" | "clinical-med-surgical" | "clinical-family" | "clinical-social"
+  | "clinical-allergies" | "clinical-family" | "clinical-social"
   | "goals-library" | "referral-destinations" | "comorbidities" | "surgical-procedures"
   | "lab-master" | "lab-providers" | "lab-result-templates"
   | "proc-master" | "proc-partners"
@@ -815,7 +815,6 @@ export function AdminSettings() {
                 {subNavItem("clinical-complaints",   <Activity className="h-3.5 w-3.5" />,      "Chief Complaints")}
                 {subNavItem("hpi-templates",         <ClipboardList className="h-3.5 w-3.5" />, "HPI Templates")}
                 {subNavItem("clinical-allergies",    <Bell className="h-3.5 w-3.5" />,          "Allergies")}
-                {subNavItem("clinical-med-surgical", <Stethoscope className="h-3.5 w-3.5" />,   "Med/Surgical History")}
                 {subNavItem("clinical-family",       <Users className="h-3.5 w-3.5" />,         "Family History")}
                 {subNavItem("clinical-social",       <UserRound className="h-3.5 w-3.5" />,     "Social History")}
                 {subNavItem("clinical-ros",          <ClipboardList className="h-3.5 w-3.5" />, "ROS Config")}
@@ -1214,7 +1213,6 @@ export function AdminSettings() {
             || activeModule === "clinical-poc"
             || activeModule === "clinical-ros"
             || activeModule === "clinical-allergies"
-            || activeModule === "clinical-med-surgical"
             || activeModule === "clinical-family"
             || activeModule === "clinical-social") && (
             <ClinicalLibrariesModule
@@ -1226,7 +1224,6 @@ export function AdminSettings() {
                 : activeModule === "clinical-poc"        ? "poc"
                 : activeModule === "clinical-ros"        ? "ros"
                 : activeModule === "clinical-allergies"  ? "allergies"
-                : activeModule === "clinical-med-surgical"? "med-surgical"
                 : activeModule === "clinical-family"     ? "family-history"
                 : "social-history"
               }
