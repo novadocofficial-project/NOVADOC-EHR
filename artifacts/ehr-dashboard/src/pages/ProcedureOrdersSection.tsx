@@ -178,7 +178,7 @@ export function ProcedureOrdersDrawer({ savedData, onSave, onClose }: ProcedureO
           className="flex items-center gap-1.5 text-xs font-black text-white px-4 py-2 rounded-xl flex-shrink-0 hover:opacity-90 transition-opacity"
           style={{ background: ACCENT }}>
           <ClipboardCheck className="h-3.5 w-3.5" />
-          Mark Done
+          {savedData.orders.length > 0 ? "Update Orders" : "Mark Done"}
         </button>
       </div>
 
