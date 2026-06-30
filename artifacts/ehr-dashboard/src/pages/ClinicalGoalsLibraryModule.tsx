@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  Plus, Trash2, Edit2, Save, X, CheckCircle2, Search,
+  Plus, Trash2, Edit2, Save, X, CheckCircle2, Search, Scissors,
   ClipboardCheck, Target, MapPin, Heart, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -62,7 +62,7 @@ const COMORBIDITY_SEED: Comorbidity[] = [
 const DEST_CATEGORIES: ReferralDest["category"][] = ["Hospital","Clinic","Diagnostic Lab","Pharmacy","Rehab Centre","Other"];
 const COMORBIDITY_CATEGORIES = ["Cardiovascular","Endocrine","Respiratory","Renal","Neurological","Musculoskeletal","Gastroenterology","Haematology","Other"];
 
-type TabKey = "goals" | "referral-dest" | "comorbidities";
+type TabKey = "goals" | "referral-dest" | "comorbidities" | "surgical-procedures";
 
 function uid() { return `x-${Date.now()}-${Math.random().toString(36).slice(2,6)}`; }
 
@@ -449,18 +449,182 @@ function ComorbiditiesTab() {
   );
 }
 
+// ─── Surgical Procedures Tab ──────────────────────────────────────────────────
+
+interface SurgicalProcedure {
+  id:       string;
+  name:     string;
+  category: string;
+}
+
+const SURGICAL_PROC_CATEGORIES = [
+  "General Surgery", "Orthopaedics", "Cardiothoracic", "Neurosurgery",
+  "Urology", "Gynaecology", "ENT", "Ophthalmology", "Vascular",
+  "Plastic Surgery", "Other",
+];
+
+const SURGICAL_PROC_SEED: SurgicalProcedure[] = [
+  { id: "sp1",  name: "Appendectomy",                        category: "General Surgery"  },
+  { id: "sp2",  name: "Cholecystectomy",                     category: "General Surgery"  },
+  { id: "sp3",  name: "Hernia Repair (Inguinal)",            category: "General Surgery"  },
+  { id: "sp4",  name: "Hernia Repair (Umbilical)",           category: "General Surgery"  },
+  { id: "sp5",  name: "Bowel Resection",                     category: "General Surgery"  },
+  { id: "sp6",  name: "Colostomy",                           category: "General Surgery"  },
+  { id: "sp7",  name: "Mastectomy",                          category: "General Surgery"  },
+  { id: "sp8",  name: "Thyroidectomy",                       category: "General Surgery"  },
+  { id: "sp9",  name: "Haemorrhoidectomy",                   category: "General Surgery"  },
+  { id: "sp10", name: "Gastric Bypass / Bariatric Surgery",  category: "General Surgery"  },
+  { id: "sp11", name: "Fistulotomy",                         category: "General Surgery"  },
+  { id: "sp12", name: "Wound Debridement",                   category: "General Surgery"  },
+  { id: "sp13", name: "Hip Replacement",                     category: "Orthopaedics"     },
+  { id: "sp14", name: "Knee Replacement",                    category: "Orthopaedics"     },
+  { id: "sp15", name: "Spinal Fusion / Laminectomy",         category: "Orthopaedics"     },
+  { id: "sp16", name: "CABG (Coronary Artery Bypass Graft)", category: "Cardiothoracic"   },
+  { id: "sp17", name: "Angioplasty / Stenting",              category: "Cardiothoracic"   },
+  { id: "sp18", name: "Pacemaker Insertion",                 category: "Cardiothoracic"   },
+  { id: "sp19", name: "Caesarean Section (C-section)",       category: "Gynaecology"      },
+  { id: "sp20", name: "Hysterectomy",                        category: "Gynaecology"      },
+  { id: "sp21", name: "Prostatectomy",                       category: "Urology"          },
+  { id: "sp22", name: "Nephrectomy",                         category: "Urology"          },
+  { id: "sp23", name: "Varicocelectomy",                     category: "Urology"          },
+  { id: "sp24", name: "Circumcision",                        category: "Urology"          },
+  { id: "sp25", name: "Tonsillectomy",                       category: "ENT"              },
+  { id: "sp26", name: "Tympanoplasty",                       category: "ENT"              },
+  { id: "sp27", name: "Cataract Surgery",                    category: "Ophthalmology"    },
+  { id: "sp28", name: "Skin Graft",                          category: "Plastic Surgery"  },
+];
+
+const SURGICAL_PROC_KEY = "ehr-surgical-procedures-v1";
+
+function loadSurgicalProcedures(): SurgicalProcedure[] {
+  try {
+    const raw = localStorage.getItem(SURGICAL_PROC_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as SurgicalProcedure[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /**/ }
+  return SURGICAL_PROC_SEED;
+}
+
+function SurgicalProceduresTab() {
+  const [items, setItems]         = useState<SurgicalProcedure[]>(loadSurgicalProcedures);
+  const [search, setSearch]       = useState("");
+  const [filterCat, setFilterCat] = useState("All");
+  const [editId, setEditId]       = useState<string | null>(null);
+  const [editName, setEditName]   = useState("");
+  const [editCat, setEditCat]     = useState("");
+  const [adding, setAdding]       = useState(false);
+  const [newName, setNewName]     = useState("");
+  const [newCat, setNewCat]       = useState(SURGICAL_PROC_CATEGORIES[0]);
+
+  useEffect(() => {
+    try { localStorage.setItem(SURGICAL_PROC_KEY, JSON.stringify(items)); } catch { /**/ }
+  }, [items]);
+
+  const cats = ["All", ...Array.from(new Set(items.map(i => i.category))).sort()];
+  const visible = items.filter(i =>
+    (filterCat === "All" || i.category === filterCat) &&
+    i.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  function startEdit(p: SurgicalProcedure) { setEditId(p.id); setEditName(p.name); setEditCat(p.category); }
+  function cancelEdit() { setEditId(null); }
+  function saveEdit(id: string) {
+    if (!editName.trim()) return;
+    setItems(prev => prev.map(p => p.id === id ? { ...p, name: editName.trim(), category: editCat } : p));
+    setEditId(null);
+  }
+  function remove(id: string) { setItems(prev => prev.filter(p => p.id !== id)); }
+  function addItem() {
+    if (!newName.trim()) return;
+    setItems(prev => [...prev, { id: uid(), name: newName.trim(), category: newCat }]);
+    setNewName(""); setAdding(false);
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50 flex-wrap">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search procedures…" className="pl-8 h-8 text-xs" />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {cats.map(c => (
+            <button key={c} onClick={() => setFilterCat(c)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                filterCat === c ? "text-white border-transparent" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+              }`}
+              style={filterCat === c ? { background: ACCENT } : {}}>
+              {c}
+            </button>
+          ))}
+        </div>
+        <Button size="sm" onClick={() => setAdding(true)} style={{ background: ACCENT }} className="text-white text-xs gap-1 ml-auto">
+          <Plus className="h-3.5 w-3.5" /> Add
+        </Button>
+      </div>
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-1.5">
+        {adding && (
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200 rounded-lg">
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Procedure name" className="h-7 text-xs flex-1" autoFocus />
+            <select value={newCat} onChange={e => setNewCat(e.target.value)}
+              className="h-7 text-xs border border-slate-200 rounded px-1.5 bg-white">
+              {SURGICAL_PROC_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+            </select>
+            <Button size="sm" className="h-7 text-xs text-white" style={{ background: ACCENT }} onClick={addItem}>Add</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAdding(false)}><X className="h-3.5 w-3.5" /></Button>
+          </div>
+        )}
+        {visible.map(p => (
+          <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
+            <Scissors className="h-4 w-4 shrink-0 text-blue-400" />
+            {editId === p.id ? (
+              <>
+                <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-7 text-xs flex-1" autoFocus />
+                <select value={editCat} onChange={e => setEditCat(e.target.value)}
+                  className="h-7 text-xs border border-slate-200 rounded px-1.5 bg-white">
+                  {SURGICAL_PROC_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+                <Button size="sm" className="h-7 text-xs text-white" style={{ background: ACCENT }} onClick={() => saveEdit(p.id)}>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={cancelEdit}><X className="h-3.5 w-3.5" /></Button>
+              </>
+            ) : (
+              <>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-slate-700">{p.name}</span>
+                  <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">{p.category}</Badge>
+                </div>
+                <button onClick={() => startEdit(p)} className="text-slate-400 hover:text-slate-700"><Edit2 className="h-3.5 w-3.5" /></button>
+                <button onClick={() => remove(p.id)} className="text-slate-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+              </>
+            )}
+          </div>
+        ))}
+        {visible.length === 0 && !adding && (
+          <div className="text-center py-16 text-slate-400 text-sm">No procedures found.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Module ──────────────────────────────────────────────────────────────
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-  { key: "goals",         label: "Patient Goals",        icon: <Target className="h-3.5 w-3.5" /> },
-  { key: "referral-dest", label: "Referral Destinations",icon: <MapPin className="h-3.5 w-3.5" /> },
-  { key: "comorbidities", label: "Comorbidities",        icon: <Heart className="h-3.5 w-3.5" /> },
+  { key: "goals",               label: "Patient Goals",        icon: <Target   className="h-3.5 w-3.5" /> },
+  { key: "referral-dest",       label: "Referral Destinations",icon: <MapPin   className="h-3.5 w-3.5" /> },
+  { key: "comorbidities",       label: "Comorbidities",        icon: <Heart    className="h-3.5 w-3.5" /> },
+  { key: "surgical-procedures", label: "Surgical Procedures",  icon: <Scissors className="h-3.5 w-3.5" /> },
 ];
 
 const TAB_META_GOALS: Record<TabKey, { title: string; sub: string }> = {
-  "goals":         { title: "Patient Goals",         sub: "Define goal templates and associated actions for patient care plans." },
-  "referral-dest": { title: "Referral Destinations", sub: "Manage the list of referral destinations available in the SOAP note." },
-  "comorbidities": { title: "Comorbidities",         sub: "Manage the comorbidity list used when documenting patient conditions." },
+  "goals":               { title: "Patient Goals",         sub: "Define goal templates and associated actions for patient care plans." },
+  "referral-dest":       { title: "Referral Destinations", sub: "Manage the list of referral destinations available in the SOAP note." },
+  "comorbidities":       { title: "Comorbidities",         sub: "Manage the comorbidity list used when documenting patient conditions." },
+  "surgical-procedures": { title: "Surgical Procedures",   sub: "Manage the surgical procedure list used in patient surgical history." },
 };
 
 interface Props { initialTab?: TabKey; standalone?: boolean; }
@@ -471,9 +635,10 @@ export function ClinicalGoalsLibraryModule({ initialTab = "goals", standalone }:
 
   const tabContent = (
     <>
-      {tab === "goals"         && <GoalsTab />}
-      {tab === "referral-dest" && <ReferralDestTab />}
-      {tab === "comorbidities" && <ComorbiditiesTab />}
+      {tab === "goals"               && <GoalsTab />}
+      {tab === "referral-dest"       && <ReferralDestTab />}
+      {tab === "comorbidities"       && <ComorbiditiesTab />}
+      {tab === "surgical-procedures" && <SurgicalProceduresTab />}
     </>
   );
 

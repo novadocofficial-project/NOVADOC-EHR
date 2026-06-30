@@ -49,6 +49,7 @@ import {
   Workflow,
   X,
   Zap,
+  Scissors,
 } from "lucide-react";
 import { DoctorsModule, Doctor, INITIAL_DOCTORS } from "@/pages/DoctorsModule";
 import { SpecialtiesModule } from "@/pages/SpecialtiesModule";
@@ -242,7 +243,7 @@ type ActiveModule =
   | "nursing-procedures"
   | "clinical-complaints" | "clinical-icd10" | "clinical-poc" | "clinical-ros"
   | "clinical-allergies" | "clinical-med-surgical" | "clinical-family" | "clinical-social"
-  | "goals-library" | "referral-destinations" | "comorbidities"
+  | "goals-library" | "referral-destinations" | "comorbidities" | "surgical-procedures"
   | "lab-master" | "lab-providers" | "lab-result-templates"
   | "proc-master" | "proc-partners"
   | "vacc-master" | "vacc-partners"
@@ -821,7 +822,8 @@ export function AdminSettings() {
                 {subNavItem("pe-builder",            <Stethoscope className="h-3.5 w-3.5" />,   "PE Builder")}
                 {subNavItem("clinical-poc",          <FlaskConical className="h-3.5 w-3.5" />,  "POC Tests")}
                 {subNavItem("clinical-icd10",        <FileText className="h-3.5 w-3.5" />,      "ICD-10 Codes")}
-                {subNavItem("comorbidities",         <Heart className="h-3.5 w-3.5" />,         "Comorbidities")}
+                {subNavItem("comorbidities",          <Heart    className="h-3.5 w-3.5" />,    "Comorbidities")}
+                {subNavItem("surgical-procedures",   <Scissors className="h-3.5 w-3.5" />,    "Surgical Procedures")}
                 {subNavItem("goals-library",         <Target className="h-3.5 w-3.5" />,        "Patient Goals")}
                 {subNavItem("referral-destinations", <MapPin className="h-3.5 w-3.5" />,        "Referral Destinations")}
                 {subNavItem("template-manager",      <FileText className="h-3.5 w-3.5" />,      "Template Manager")}
@@ -1112,7 +1114,7 @@ export function AdminSettings() {
         </AlertDialog>
 
         {/* Right Content */}
-        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","welfare-schemes","packages","display-settings","routing-rules","pe-builder","template-manager","goals-library","referral-destinations","comorbidities","permissions","signing-rules","formulary-catalogue","formulary-defaults","formulary-partners","formulary-bundles","formulary-interactions","formulary-pedi-dosing","formulary-non-formulary","imaging-tests","imaging-reasons","imaging-partners","consumables-master","consumables-providers","lab-order-sets","imaging-order-sets","nursing-triage"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
+        <main className={`flex-1 bg-slate-50/50 ${["fees","service-pricing","corporate-pricing","insurance-pricing","welfare-schemes","packages","display-settings","routing-rules","pe-builder","template-manager","goals-library","referral-destinations","comorbidities","surgical-procedures","permissions","signing-rules","formulary-catalogue","formulary-defaults","formulary-partners","formulary-bundles","formulary-interactions","formulary-pedi-dosing","formulary-non-formulary","imaging-tests","imaging-reasons","imaging-partners","consumables-master","consumables-providers","lab-order-sets","imaging-order-sets","nursing-triage"].includes(activeModule) ? "overflow-hidden" : "overflow-y-auto p-6"}`}>
 
           {activeModule === "doctors" && (
             <DoctorsModule departments={departments} doctors={doctors} setDoctors={setDoctors} onNavigateToForms={() => setActiveModule("specialty-forms")} />
@@ -1275,13 +1277,15 @@ export function AdminSettings() {
 
           {(activeModule === "goals-library"
             || activeModule === "referral-destinations"
-            || activeModule === "comorbidities") && (
+            || activeModule === "comorbidities"
+            || activeModule === "surgical-procedures") && (
             <ClinicalGoalsLibraryModule
               key={activeModule}
               standalone
               initialTab={
                 activeModule === "goals-library"          ? "goals"
                 : activeModule === "referral-destinations" ? "referral-dest"
+                : activeModule === "surgical-procedures"  ? "surgical-procedures"
                 : "comorbidities"
               }
             />

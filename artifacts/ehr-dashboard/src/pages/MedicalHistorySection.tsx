@@ -426,6 +426,19 @@ export function FamilyHistoryPanel({
 // ─── SURGICAL HISTORY ─────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 
+function useAdminSurgicalProcedures(): string[] {
+  return useMemo(() => {
+    try {
+      const raw = localStorage.getItem("ehr-surgical-procedures-v1");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { name: string }[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed.map(p => p.name);
+      }
+    } catch { /**/ }
+    return SURGERY_PROCEDURES;
+  }, []);
+}
+
 const SURGERY_PROCEDURES = [
   "Appendectomy", "Cholecystectomy (Gallbladder removal)",
   "Caesarean Section (C-section)", "Coronary Artery Bypass Graft (CABG)",
@@ -462,11 +475,12 @@ export interface SurgicalEntry {
 // ─── Surgical row ─────────────────────────────────────────────────────────────
 
 function SurgicalRow({
-  entry, onUpdate, onRemove,
+  entry, onUpdate, onRemove, procedures,
 }: {
   entry: SurgicalEntry;
   onUpdate: (id: string, field: keyof SurgicalEntry, val: string) => void;
   onRemove: (id: string) => void;
+  procedures: string[];
 }) {
   const [procOpen, setProcOpen]     = useState(false);
   const [compOpen, setCompOpen]     = useState(false);
@@ -484,12 +498,12 @@ function SurgicalRow({
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  const filteredProcs = SURGERY_PROCEDURES.filter(p =>
+  const filteredProcs = procedures.filter(p =>
     p.toLowerCase().includes(procSearch.toLowerCase()),
   );
   const canCustomProc =
     procSearch.trim() !== "" &&
-    !SURGERY_PROCEDURES.some(p => p.toLowerCase() === procSearch.trim().toLowerCase());
+    !procedures.some(p => p.toLowerCase() === procSearch.trim().toLowerCase());
 
   const filteredComps = SURGERY_COMPLICATIONS.filter(c =>
     c.toLowerCase().includes(compSearch.toLowerCase()),
@@ -632,6 +646,8 @@ interface SurgicalHistoryPanelProps {
 }
 
 export function SurgicalHistoryPanel({ rows, onChange }: SurgicalHistoryPanelProps) {
+  const adminProcedures = useAdminSurgicalProcedures();
+
   function addRow() {
     onChange([...rows, { id: `surg-${Date.now()}`, procedure: "", date: "", complications: "" }]);
   }
@@ -654,7 +670,7 @@ export function SurgicalHistoryPanel({ rows, onChange }: SurgicalHistoryPanelPro
             <div className="w-8 flex-shrink-0" />
           </div>
           {rows.map(row => (
-            <SurgicalRow key={row.id} entry={row} onUpdate={updateRow} onRemove={removeRow} />
+            <SurgicalRow key={row.id} entry={row} onUpdate={updateRow} onRemove={removeRow} procedures={adminProcedures} />
           ))}
         </div>
       )}
