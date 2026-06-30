@@ -1342,6 +1342,8 @@ export function HealthEdDrawer({ savedData, onSave, onClose }: HealthEdDrawerPro
     onClose();
   }
 
+  const isDirty = [...selected].sort().join(",") !== [...savedData.docIds].sort().join(",");
+
   const docsForCategory = (cat: HealthEdCategory): HealthEdDoc[] => {
     const list = filteredDocs.filter(d => d.category === cat);
     const favs_ = list.filter(d => favs.has(d.id));
@@ -1365,7 +1367,9 @@ export function HealthEdDrawer({ savedData, onSave, onClose }: HealthEdDrawerPro
           <p className="text-sm font-black text-slate-800">Health Education</p>
         </div>
         <button onClick={saveAndClose}
-          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white flex-shrink-0 hover:bg-emerald-600 transition-colors">
+          disabled={!isDirty}
+          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl text-white flex-shrink-0 hover:opacity-90 transition-opacity disabled:opacity-40"
+          style={{ backgroundColor: "#7c3aed" }}>
           <ClipboardCheck className="h-3.5 w-3.5" />
           {savedData.docIds.length > 0 ? "Update" : "Mark Done"}
         </button>

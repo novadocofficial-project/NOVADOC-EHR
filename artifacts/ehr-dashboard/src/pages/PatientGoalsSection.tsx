@@ -539,6 +539,8 @@ export function PatientGoalsDrawer({ savedData, onSave, onClose }: PatientGoalsD
     onClose();
   }
 
+  const isDirty = JSON.stringify(goals) !== JSON.stringify(savedData.goals);
+
   const editingGoal = editingUid ? goals.find(g => g.uid === editingUid) : null;
   const formInitial = pickedTpl
     ? {
@@ -565,7 +567,9 @@ export function PatientGoalsDrawer({ savedData, onSave, onClose }: PatientGoalsD
           </p>
         </div>
         <button onClick={saveAndClose}
-          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white flex-shrink-0 hover:bg-emerald-600 transition-colors">
+          disabled={!isDirty}
+          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl text-white flex-shrink-0 hover:opacity-90 transition-opacity disabled:opacity-40"
+          style={{ backgroundColor: "#ec4899" }}>
           <ClipboardCheck className="h-3.5 w-3.5" />
           {savedData.goals.length > 0 ? "Update" : "Mark Done"}
         </button>

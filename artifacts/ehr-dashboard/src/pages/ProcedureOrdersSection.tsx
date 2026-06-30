@@ -153,6 +153,7 @@ export function ProcedureOrdersDrawer({ savedData, onSave, onClose }: ProcedureO
   }
 
   const selectedCount = selectedIds.length;
+  const isDirty = JSON.stringify([...selectedIds].sort()) !== JSON.stringify([...savedData.orders.map(o => o.id)].sort()) || instructions !== (savedData.instructions ?? "");
 
   return (
     <div className="absolute inset-y-0 right-0 w-[68%] z-20 flex flex-col bg-white border-l border-slate-200 shadow-2xl">
@@ -175,7 +176,9 @@ export function ProcedureOrdersDrawer({ savedData, onSave, onClose }: ProcedureO
         </div>
         <button
           onClick={handleCommit}
-          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white flex-shrink-0 hover:bg-emerald-600 transition-colors">
+          disabled={!isDirty}
+          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl text-white flex-shrink-0 hover:opacity-90 transition-opacity disabled:opacity-40"
+          style={{ backgroundColor: ACCENT }}>
           <ClipboardCheck className="h-3.5 w-3.5" />
           {savedData.orders.length > 0 ? "Update" : "Mark Done"}
         </button>

@@ -302,7 +302,7 @@ export function DiagnosisDrawer({ isDone, savedData, onSave, onClose }: Diagnosi
   const [selections,        setSelections]        = useState<DiagnosisEntry[]>(savedData);
   const tabsRef = useRef<HTMLDivElement>(null);
 
-  const isDirty = isDone && JSON.stringify(selections) !== JSON.stringify(savedData);
+  const isDirty = JSON.stringify(selections) !== JSON.stringify(savedData);
 
   // ── Filtered ICD list ──────────────────────────────────────────────────────
 
@@ -379,7 +379,9 @@ export function DiagnosisDrawer({ isDone, savedData, onSave, onClose }: Diagnosi
 
         <button
           onClick={handleSave}
-          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white flex-shrink-0 hover:bg-emerald-600 transition-colors">
+          disabled={!isDirty}
+          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl text-white flex-shrink-0 hover:opacity-90 transition-opacity disabled:opacity-40"
+          style={{ backgroundColor: ACCENT_DX }}>
           <ClipboardCheck className="h-3.5 w-3.5" />
           {savedData.length > 0 ? "Update" : "Mark Done"}
         </button>

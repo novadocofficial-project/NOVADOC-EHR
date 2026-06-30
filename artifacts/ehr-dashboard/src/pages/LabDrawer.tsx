@@ -508,7 +508,8 @@ export function LabDrawer({ mode, savedData, awaitingLab = false, labResultsRead
         <button
           onClick={() => { if (selectedTests.length > 0) onSave(buildOrder()); }}
           disabled={selectedTests.length === 0}
-          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white flex-shrink-0 hover:bg-emerald-600 transition-colors disabled:opacity-40">
+          className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl text-white flex-shrink-0 hover:opacity-90 transition-opacity disabled:opacity-40"
+          style={{ backgroundColor: ACCENT_LAB }}>
           <ClipboardCheck className="h-3.5 w-3.5" />
           {mode === "edit" ? "Update" : "Mark Done"}
         </button>

@@ -1095,6 +1095,8 @@ export function ReferralDrawer({ savedData, patientAllergies, patientMeds, onSav
 
   function handleDelete(id: string) { setReferrals(prev => prev.filter(r => r.id !== id)); }
 
+  const isDirty = JSON.stringify(referrals) !== JSON.stringify(savedData.referrals);
+
   function handleCommit() {
     onSave({ referrals });
     onClose();
@@ -1123,7 +1125,9 @@ export function ReferralDrawer({ savedData, patientAllergies, patientMeds, onSav
         {!isEditing && (
           <button
             onClick={handleCommit}
-            className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white flex-shrink-0 hover:bg-emerald-600 transition-colors">
+            disabled={!isDirty}
+            className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl text-white flex-shrink-0 hover:opacity-90 transition-opacity disabled:opacity-40"
+            style={{ backgroundColor: "#6366f1" }}>
             <ClipboardCheck className="h-3.5 w-3.5" />
             {savedData.referrals.length > 0 ? "Update" : "Mark Done"}
           </button>
