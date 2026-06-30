@@ -591,7 +591,13 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
         <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Referral Type</p>
         <div className="flex gap-2">
           {(["Internal", "External"] as ReferralType[]).map(t => (
-            <button key={t} onClick={() => set("referralType", t)}
+            <button key={t}
+              onClick={() => {
+                const internalOnly = ["Consultant", "Procedure"] as ReferralTarget[];
+                const nextTarget = t === "Internal" && !internalOnly.includes(entry.referralTarget)
+                  ? "Consultant" : entry.referralTarget;
+                onChange({ ...entry, referralType: t, referralTarget: nextTarget });
+              }}
               className="flex-1 text-xs font-bold py-2 rounded-xl border-2 transition-all"
               style={entry.referralType === t
                 ? { background: "#6366f1", color: "white", borderColor: "#6366f1" }
@@ -606,7 +612,10 @@ function ReferralForm({ entry, patientAllergies, patientMeds, onChange, onSave, 
       <div>
         <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Refer To</p>
         <div className="flex gap-2 flex-wrap">
-          {(["Consultant", "Procedure", "ER", "Custom"] as ReferralTarget[]).map(t => (
+          {(entry.referralType === "Internal"
+            ? (["Consultant", "Procedure"] as ReferralTarget[])
+            : (["Consultant", "Procedure", "ER", "Custom"] as ReferralTarget[])
+          ).map(t => (
             <button key={t} onClick={() => set("referralTarget", t)}
               className="text-xs font-bold px-4 py-1.5 rounded-xl border-2 transition-all"
               style={entry.referralTarget === t
