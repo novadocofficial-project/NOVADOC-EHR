@@ -1754,15 +1754,12 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
       case "care-plan":
         return (
           <Section key="sc-cp" title="Care Plan" icon={ClipboardList} color="#10b981" filled={!!note.carePlan?.instructions?.trim()}>
-            {note.carePlan?.instructions?.trim() ? (
-              <p className="w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 leading-relaxed whitespace-pre-wrap select-text">
-                {note.carePlan.instructions}
-              </p>
-            ) : (
-              <p className="w-full text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200 rounded-xl px-3 py-2.5 italic">
-                No care plan recorded.
-              </p>
-            )}
+            <NoteField
+              value={note.carePlan?.instructions ?? ""}
+              onChange={v => set("carePlan", { ...note.carePlan, instructions: v })}
+              placeholder="Enter care plan instructions…"
+              rows={4}
+            />
           </Section>
         );
 
@@ -2431,15 +2428,12 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                 <ClipboardList className="h-3 w-3 text-emerald-500" />
                 Care Plan
               </p>
-              {note.carePlan?.instructions?.trim() ? (
-                <p className="w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 leading-relaxed whitespace-pre-wrap select-text">
-                  {note.carePlan.instructions}
-                </p>
-              ) : (
-                <p className="w-full text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200 rounded-xl px-3 py-2.5 italic">
-                  No care plan recorded.
-                </p>
-              )}
+              <NoteField
+                value={note.carePlan?.instructions ?? ""}
+                onChange={v => set("carePlan", { ...note.carePlan, instructions: v })}
+                placeholder="Enter care plan instructions…"
+                rows={4}
+              />
             </div>
 
           </Section>
