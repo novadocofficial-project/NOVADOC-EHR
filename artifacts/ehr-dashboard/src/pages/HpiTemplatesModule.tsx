@@ -20,6 +20,7 @@ export interface HpiField {
   required: boolean;
   options: string[];
   placeholder: string;
+  conditionalOn?: { fieldId: string; values: string[] };
 }
 
 export interface HpiTemplate {
@@ -72,6 +73,7 @@ const SEED_TEMPLATES: HpiTemplate[] = [
       { id: "fa2", label: "Pain Score (0–10)", type: "number", required: true, options: [], placeholder: "0–10" },
       { id: "fa3", label: "Location", type: "multi-select", required: true, options: ["RUQ", "LUQ", "Epigastric", "Periumbilical", "LLQ", "RLQ", "Suprapubic", "Diffusively", "CVA"], placeholder: "" },
       { id: "fa4", label: "Radiation", type: "radio", required: false, options: ["Without radiation", "With radiation"], placeholder: "" },
+      { id: "fa4b", label: "Radiation to", type: "multi-select", required: false, options: ["Right shoulder", "Left shoulder", "Right flank", "Left flank", "Groin", "Back", "Right scapula", "Epigastric region"], placeholder: "", conditionalOn: { fieldId: "fa4", values: ["With radiation"] } },
       { id: "fa5", label: "Onset", type: "free-text", required: true, options: [], placeholder: "e.g. 3 days" },
       { id: "fa6", label: "Course", type: "radio", required: true, options: ["Stable", "Unchanged", "Gradually worsening", "Rapidly worsening", "Gradually improving", "Rapidly improving", "Completely resolved", "Controlled"], placeholder: "" },
       { id: "fa7", label: "Aggravating Factors", type: "multi-select", required: false, options: ["Eating", "Fatty foods", "Spicy foods", "Alcohol", "Stress", "Movement", "Deep breathing", "Defecation", "Urination", "Hunger", "None"], placeholder: "" },
@@ -157,15 +159,17 @@ function OptionEditor({ options, onChange }: { options: string[]; onChange: (opt
 // ─── Field Row (in editor) ────────────────────────────────────────────────────
 
 function FieldRow({
-  field, onUpdate, onRemove,
+  field, siblingFields, onUpdate, onRemove,
   dragIdx, dropIdx, onDragStart, onDragOver, onDrop, onDragEnd,
 }: {
-  field: HpiField; onUpdate: (patch: Partial<HpiField>) => void; onRemove: () => void;
+  field: HpiField; siblingFields: HpiField[];
+  onUpdate: (patch: Partial<HpiField>) => void; onRemove: () => void;
   dragIdx: number | null; dropIdx: number | null;
   onDragStart: () => void; onDragOver: (e: React.DragEvent) => void;
   onDrop: () => void; onDragEnd: () => void;
 }) {
   const needsOpts = field.type === "multi-select" || field.type === "radio";
+  const hasSiblings = siblingFields.length > 0;
   return (
     <div draggable onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop} onDragEnd={onDragEnd}
       className={`bg-white border rounded-xl p-3 space-y-2 ${dropIdx !== null ? "border-[#4982CF] border-dashed" : "border-slate-100"}`}>
@@ -178,7 +182,7 @@ function FieldRow({
           className="flex-1 text-xs font-semibold text-slate-800 bg-transparent border-b border-slate-200 focus:border-[#4982CF] focus:outline-none py-0.5" />
         <select
           value={field.type}
-          onChange={e => onUpdate({ type: e.target.value as FieldType, options: [] })}
+          onChange={e => onUpdate({ type: e.target.value as FieldType, options: [], conditionalOn: undefined })}
           className="text-[10px] border border-slate-200 rounded-lg px-2 py-1 focus:outline-none text-slate-600 bg-white">
           {Object.entries(FIELD_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
@@ -204,6 +208,61 @@ function FieldRow({
       {needsOpts && (
         <OptionEditor options={field.options} onChange={opts => onUpdate({ options: opts })} />
       )}
+      {/* ── Conditional visibility ── */}
+      <div className="pt-2 border-t border-slate-50">
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={!!field.conditionalOn}
+            onCheckedChange={v => onUpdate({ conditionalOn: v && hasSiblings ? { fieldId: siblingFields[0].id, values: [] } : undefined })}
+            className="data-[state=checked]:bg-amber-500 scale-75"
+            disabled={!hasSiblings && !field.conditionalOn}
+          />
+          <span className="text-[10px] text-slate-400 font-medium">Show only when…</span>
+          {!hasSiblings && !field.conditionalOn && (
+            <span className="text-[10px] text-slate-300 italic">add a radio or multi-select field first</span>
+          )}
+        </div>
+        {field.conditionalOn && (
+          <div className="mt-2 ml-6 space-y-2.5 bg-amber-50/60 rounded-xl p-2.5 border border-amber-100">
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest shrink-0">When field</label>
+              <select
+                value={field.conditionalOn.fieldId}
+                onChange={e => onUpdate({ conditionalOn: { fieldId: e.target.value, values: [] } })}
+                className="flex-1 text-[10px] border border-slate-200 rounded-lg px-2 py-1 focus:outline-none text-slate-700 bg-white">
+                {siblingFields.map(sf => (
+                  <option key={sf.id} value={sf.id}>{sf.label || "(unlabelled)"}</option>
+                ))}
+              </select>
+            </div>
+            {(() => {
+              const parentOpts = siblingFields.find(sf => sf.id === field.conditionalOn!.fieldId)?.options ?? [];
+              return parentOpts.length > 0 ? (
+                <div>
+                  <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-1.5">Has value</label>
+                  <div className="flex flex-wrap gap-1">
+                    {parentOpts.map(opt => {
+                      const active = field.conditionalOn!.values.includes(opt);
+                      return (
+                        <button key={opt} type="button"
+                          onClick={() => {
+                            const next = active
+                              ? field.conditionalOn!.values.filter(v => v !== opt)
+                              : [...field.conditionalOn!.values, opt];
+                            onUpdate({ conditionalOn: { ...field.conditionalOn!, values: next } });
+                          }}
+                          className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border transition-all ${active ? "bg-amber-500 border-amber-500 text-white" : "border-slate-200 text-slate-600 hover:border-amber-400 hover:bg-amber-50"}`}>
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : <p className="text-[10px] text-amber-500 italic">Parent field has no options yet</p>;
+            })()}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -211,11 +270,42 @@ function FieldRow({
 // ─── Live Preview ─────────────────────────────────────────────────────────────
 
 function LivePreview({ fields, name, complaintName }: { fields: HpiField[]; name: string; complaintName: string }) {
+  const [pvState, setPvState] = useState<Record<string, unknown>>({});
+  const fieldKey = fields.map(f => f.id).join(",");
+  useEffect(() => { setPvState({}); }, [fieldKey]);
+
+  function pvVisible(f: HpiField): boolean {
+    if (!f.conditionalOn) return true;
+    const { fieldId, values } = f.conditionalOn;
+    const pv = pvState[fieldId];
+    if (!pv) return false;
+    if (Array.isArray(pv)) return (pv as string[]).some(v => values.includes(v));
+    return values.includes(pv as string);
+  }
+
+  function pvChange(fieldId: string, value: unknown) {
+    setPvState(prev => {
+      const next = { ...prev, [fieldId]: value };
+      for (const f of fields) {
+        if (f.conditionalOn?.fieldId === fieldId && !pvVisible({ ...f })) {
+          delete next[f.id];
+        }
+      }
+      return next;
+    });
+  }
+
+  const hasConditionals = fields.some(f => f.conditionalOn);
+  const visibleFields = fields.filter(f => f.label && pvVisible(f));
+
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl p-4 space-y-4 shadow-sm">
+    <div className="bg-white border border-slate-100 rounded-2xl p-4 space-y-4 shadow-sm sticky top-0">
       <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
         <Eye className="h-4 w-4 text-[#4982CF]" />
-        <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">Preview</span>
+        <span className="text-xs font-bold text-slate-600 uppercase tracking-widest flex-1">Preview</span>
+        {hasConditionals && (
+          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 border border-amber-200">Interactive</span>
+        )}
       </div>
       {!name && !complaintName ? (
         <p className="text-xs text-slate-400 text-center py-6">Fill in template details to see preview</p>
@@ -227,35 +317,47 @@ function LivePreview({ fields, name, complaintName }: { fields: HpiField[]; name
           </div>
           <div>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2">HPI — {name || "Untitled"}</p>
-            {fields.filter(f => f.label).map(f => (
-              <div key={f.id} className="mb-3">
-                <label className="text-xs font-bold text-slate-700">
+            {visibleFields.map(f => (
+              <div key={f.id} className={`mb-3 ${f.conditionalOn ? "pl-2.5 border-l-2 border-amber-300" : ""}`}>
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                   {f.label}
-                  {f.required && <span className="text-red-400 ml-0.5">*</span>}
+                  {f.required && <span className="text-red-400">*</span>}
+                  {f.conditionalOn && <span className="text-[9px] font-black text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">if selected</span>}
                 </label>
                 {f.type === "free-text" && (
-                  <div className="mt-1 h-16 border border-slate-200 rounded-lg bg-slate-50 px-2 py-1.5 text-[10px] text-slate-300">{f.placeholder || "Type here…"}</div>
+                  <div className="mt-1 h-12 border border-slate-200 rounded-lg bg-slate-50 px-2 py-1.5 text-[10px] text-slate-300">{f.placeholder || "Type here…"}</div>
                 )}
                 {f.type === "number" && (
                   <input disabled placeholder={f.placeholder || "0"} className="mt-1 h-7 border border-slate-200 rounded-lg bg-slate-50 px-2 text-xs w-24 block" />
                 )}
                 {f.type === "radio" && (
-                  <div className="mt-1 flex flex-wrap gap-2">
-                    {f.options.map(opt => (
-                      <label key={opt} className="flex items-center gap-1.5 text-[10px] text-slate-600 cursor-pointer">
-                        <input type="radio" name={f.id} disabled className="accent-[#4982CF]" /> {opt}
-                      </label>
-                    ))}
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {f.options.map(opt => {
+                      const sel = (pvState[f.id] as string) === opt;
+                      return (
+                        <button key={opt} type="button"
+                          onClick={() => pvChange(f.id, sel ? "" : opt)}
+                          className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border-2 transition-all ${sel ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-200 text-slate-600 hover:border-[#4982CF]/50"}`}>
+                          {opt}
+                        </button>
+                      );
+                    })}
                     {!f.options.length && <span className="text-[10px] text-slate-300">Add options above</span>}
                   </div>
                 )}
                 {f.type === "multi-select" && (
                   <div className="mt-1 flex flex-wrap gap-1.5">
-                    {f.options.map(opt => (
-                      <label key={opt} className="flex items-center gap-1 text-[10px] text-slate-600 bg-slate-50 border border-slate-100 rounded px-2 py-0.5 cursor-pointer">
-                        <input type="checkbox" disabled className="accent-[#4982CF]" /> {opt}
-                      </label>
-                    ))}
+                    {f.options.map(opt => {
+                      const arr = (pvState[f.id] as string[]) ?? [];
+                      const sel = arr.includes(opt);
+                      return (
+                        <button key={opt} type="button"
+                          onClick={() => pvChange(f.id, sel ? arr.filter(v => v !== opt) : [...arr, opt])}
+                          className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border-2 transition-all ${sel ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-100 text-slate-600 hover:border-[#4982CF]/50"}`}>
+                          {opt}
+                        </button>
+                      );
+                    })}
                     {!f.options.length && <span className="text-[10px] text-slate-300">Add options above</span>}
                   </div>
                 )}
@@ -263,6 +365,11 @@ function LivePreview({ fields, name, complaintName }: { fields: HpiField[]; name
             ))}
             {!fields.filter(f => f.label).length && (
               <p className="text-[10px] text-slate-300">Add fields to see them here</p>
+            )}
+            {hasConditionals && fields.filter(f => f.label).length > 0 && (
+              <p className="text-[9px] text-amber-500 mt-3 flex items-center gap-1">
+                <span className="font-black">↑</span> Click options above to reveal conditional fields
+              </p>
             )}
           </div>
         </div>
@@ -374,6 +481,7 @@ function TemplateEditor({
             {fields.map((f, i) => (
               <FieldRow
                 key={f.id} field={f}
+                siblingFields={fields.filter(sf => sf.id !== f.id && (sf.type === "radio" || sf.type === "multi-select"))}
                 onUpdate={p => updateField(i, p)}
                 onRemove={() => removeField(i)}
                 dragIdx={dragIdx} dropIdx={dropIdx === i ? i : null}
@@ -423,7 +531,19 @@ export function HpiTemplatesModule() {
         const pruned = stored.filter(t => !t.builtIn || builtInIds.includes(t.id));
         // Auto-inject any seed (builtIn or not) that isn't already stored
         const missing = SEED_TEMPLATES.filter(s => !pruned.some(t => t.id === s.id));
-        return missing.length > 0 ? [...pruned, ...missing] : pruned;
+        const base = missing.length > 0 ? [...pruned, ...missing] : pruned;
+        // Migrate t3: inject "Radiation to" conditional field after fa4 if absent
+        return base.map(t => {
+          if (t.id === "t3" && !t.fields.some((f: HpiField) => f.id === "fa4b")) {
+            const idx = t.fields.findIndex((f: HpiField) => f.id === "fa4");
+            if (idx >= 0) {
+              const next = [...t.fields];
+              next.splice(idx + 1, 0, { id: "fa4b", label: "Radiation to", type: "multi-select", required: false, options: ["Right shoulder", "Left shoulder", "Right flank", "Left flank", "Groin", "Back", "Right scapula", "Epigastric region"], placeholder: "", conditionalOn: { fieldId: "fa4", values: ["With radiation"] } });
+              return { ...t, fields: next };
+            }
+          }
+          return t;
+        });
       }
     } catch { /**/ }
     return SEED_TEMPLATES;

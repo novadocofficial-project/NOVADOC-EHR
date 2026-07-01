@@ -354,6 +354,7 @@ const HPI_TEMPLATES_STORAGE_KEY = "ehr-hpi-templates-v1";
 interface HpiFieldDef {
   id: string; label: string; type: "free-text" | "multi-select" | "radio" | "number";
   required: boolean; options: string[]; placeholder: string;
+  conditionalOn?: { fieldId: string; values: string[] };
 }
 interface HpiTemplateDef {
   id: string; name: string; complaintId: string; complaintName: string;
@@ -410,6 +411,16 @@ function generateHpiNarrative(
       // Admin-configured dynamic template → prose
       const s: string[] = [`Patient presents with ${complaint.toLowerCase()}.`];
       for (const field of template.fields) {
+        if (field.conditionalOn) {
+          const { fieldId, values } = field.conditionalOn;
+          const pv = dynamicSaved[fieldId];
+          const vis = pv
+            ? Array.isArray(pv)
+              ? (pv as string[]).some(v => values.includes(v))
+              : values.includes(pv as string)
+            : false;
+          if (!vis) continue;
+        }
         const val = dynamicSaved[field.id];
         if (val === undefined || val === null || val === "") continue;
         if (Array.isArray(val) && val.length === 0) continue;
@@ -463,6 +474,15 @@ function HpiNarrativeBlock({
 
 // ─── Dynamic HPI form renderer ─────────────────────────────────────────────────
 
+function isHpiFieldVisible(field: HpiFieldDef, state: Record<string, unknown>): boolean {
+  if (!field.conditionalOn) return true;
+  const { fieldId, values } = field.conditionalOn;
+  const pv = state[fieldId];
+  if (!pv) return false;
+  if (Array.isArray(pv)) return (pv as string[]).some(v => values.includes(v));
+  return values.includes(pv as string);
+}
+
 function DynamicHpiForm({
   fields, state, onChange,
 }: {
@@ -470,10 +490,20 @@ function DynamicHpiForm({
   state: Record<string, unknown>;
   onChange: (s: Record<string, unknown>) => void;
 }) {
+  function handleChange(fieldId: string, value: unknown) {
+    const next: Record<string, unknown> = { ...state, [fieldId]: value };
+    for (const f of fields) {
+      if (f.conditionalOn?.fieldId === fieldId && !isHpiFieldVisible(f, next)) {
+        delete next[f.id];
+      }
+    }
+    onChange(next);
+  }
+
   return (
     <div className="space-y-5">
-      {fields.map(field => (
-        <div key={field.id} className="pb-4 border-b border-slate-100 last:border-0">
+      {fields.filter(f => isHpiFieldVisible(f, state)).map(field => (
+        <div key={field.id} className={`pb-4 border-b border-slate-100 last:border-0 ${field.conditionalOn ? "pl-3 border-l-2 border-amber-200 ml-1" : ""}`}>
           <p className="text-xs font-black text-slate-800 mb-2.5">
             {field.label}
             {field.required && <span className="text-red-400 ml-0.5">*</span>}
@@ -481,7 +511,7 @@ function DynamicHpiForm({
           {field.type === "free-text" && (
             <textarea
               value={(state[field.id] as string) ?? ""}
-              onChange={e => onChange({ ...state, [field.id]: e.target.value })}
+              onChange={e => handleChange(field.id, e.target.value)}
               placeholder={field.placeholder || "Enter text…"}
               rows={3}
               className="w-full text-xs text-slate-700 placeholder-slate-300 border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF] resize-none"
@@ -491,7 +521,7 @@ function DynamicHpiForm({
             <input
               type="number"
               value={(state[field.id] as string) ?? ""}
-              onChange={e => onChange({ ...state, [field.id]: e.target.value })}
+              onChange={e => handleChange(field.id, e.target.value)}
               placeholder={field.placeholder || "0"}
               className="w-32 text-xs text-slate-700 placeholder-slate-300 border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF]"
             />
@@ -502,7 +532,7 @@ function DynamicHpiForm({
                 const selected = (state[field.id] as string) === opt;
                 return (
                   <button key={opt}
-                    onClick={() => onChange({ ...state, [field.id]: selected ? "" : opt })}
+                    onClick={() => handleChange(field.id, selected ? "" : opt)}
                     className={["text-xs font-semibold px-3 py-1.5 rounded-xl border-2 transition-all", selected ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-200 text-slate-600 hover:border-[#4982CF]/50 hover:bg-blue-50/40"].join(" ")}>
                     {opt}
                   </button>
@@ -517,10 +547,7 @@ function DynamicHpiForm({
                 const selected = arr.includes(opt);
                 return (
                   <button key={opt}
-                    onClick={() => {
-                      const next = selected ? arr.filter(v => v !== opt) : [...arr, opt];
-                      onChange({ ...state, [field.id]: next });
-                    }}
+                    onClick={() => handleChange(field.id, selected ? arr.filter(v => v !== opt) : [...arr, opt])}
                     className={["text-xs font-semibold px-3 py-1.5 rounded-xl border-2 transition-all", selected ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-200 text-slate-600 hover:border-[#4982CF]/50 hover:bg-blue-50/40"].join(" ")}>
                     {opt}
                   </button>
