@@ -116,6 +116,62 @@ export const PE_TEMPLATES: Record<string, { section: string; items: string[] }[]
   ],
 };
 
+// ─── PE Builder Config (admin-configured abnormal options per item) ───────────
+
+export interface PeItemCfg {
+  normalText: string;
+  abnormalOptions: string[];
+}
+
+export const PE_BUILDER_KEY = "ehr-pe-builder-v1";
+
+const PE_BUILDER_SEEDS: Record<string, PeItemCfg> = {
+  // General — Vital Signs
+  "general__Vital Signs__Blood Pressure (mmHg)":              { normalText: "Normal", abnormalOptions: ["Hypertensive (>140/90 mmHg)", "Hypotensive (<90/60 mmHg)", "Stage 2 HTN (>160/100 mmHg)"] },
+  "general__Vital Signs__Heart Rate (bpm)":                   { normalText: "Normal", abnormalOptions: ["Tachycardia (>100 bpm)", "Bradycardia (<60 bpm)", "Irregular rate"] },
+  "general__Vital Signs__Respiratory Rate (/min)":            { normalText: "Normal", abnormalOptions: ["Tachypnoea (>20/min)", "Bradypnoea (<12/min)"] },
+  "general__Vital Signs__SpO₂ (%)":                          { normalText: "Normal", abnormalOptions: ["Hypoxic (<94%)", "Severely hypoxic (<88%)", "On supplemental O₂"] },
+  "general__General Appearance__Level of alertness / distress": { normalText: "Normal", abnormalOptions: ["Drowsy / obtunded", "Acute distress", "Confused / disoriented"] },
+  // Cardiovascular
+  "cardiovascular__Auscultation__Heart rate & rhythm":        { normalText: "Normal", abnormalOptions: ["Tachycardia", "Bradycardia", "Irregularly irregular rhythm", "Regularly irregular rhythm"] },
+  "cardiovascular__Auscultation__S1 / S2 quality":            { normalText: "Normal", abnormalOptions: ["Soft S1", "Loud P2 / S2", "Widely split S2"] },
+  "cardiovascular__Auscultation__Murmurs (grade / location / radiation)": { normalText: "No murmur", abnormalOptions: ["Systolic murmur", "Diastolic murmur", "Ejection systolic murmur (aortic area)", "Pan-systolic murmur (mitral)"] },
+  "cardiovascular__Peripheral__Pedal / peripheral edema":     { normalText: "No oedema", abnormalOptions: ["Bilateral pitting oedema", "Unilateral pitting oedema", "Non-pitting oedema"] },
+  // Respiratory
+  "respiratory__Auscultation__Breath sounds (bilateral)":     { normalText: "Normal", abnormalOptions: ["Reduced air entry bilateral", "Reduced air entry right", "Reduced air entry left", "Bilateral wheeze"] },
+  "respiratory__Auscultation__Adventitious sounds (crackles / wheeze / rub)": { normalText: "None", abnormalOptions: ["Fine crepitations", "Coarse crepitations", "Expiratory wheeze", "Inspiratory stridor", "Pleural friction rub"] },
+  "respiratory__Inspection__Use of accessory muscles":        { normalText: "None", abnormalOptions: ["Accessory muscle use present", "Intercostal recession", "Nasal flaring"] },
+  // Gastrointestinal
+  "gastrointestinal__Inspection__Abdominal contour (flat / distended / scaphoid)": { normalText: "Flat / Scaphoid", abnormalOptions: ["Distended", "Gaseous distension", "Ascites"] },
+  "gastrointestinal__Palpation__Tenderness (site / severity)": { normalText: "Non-tender", abnormalOptions: ["Localised tenderness", "Generalised tenderness", "Tenderness with guarding"] },
+  "gastrointestinal__Palpation__Guarding":                    { normalText: "Absent", abnormalOptions: ["Voluntary guarding", "Involuntary guarding / rigidity"] },
+  "gastrointestinal__Palpation__Rebound tenderness":          { normalText: "Absent", abnormalOptions: ["Rebound tenderness positive", "Peritonism present"] },
+  "gastrointestinal__Palpation__Liver (size / edge / tenderness)": { normalText: "Not palpable", abnormalOptions: ["Hepatomegaly (2 cm below costal margin)", "Tender hepatomegaly", "Nodular liver edge"] },
+  // Neurological
+  "neurological__Motor__Tone (upper / lower)":                { normalText: "Normal tone", abnormalOptions: ["Increased tone (spasticity)", "Increased tone (rigidity)", "Decreased tone (flaccidity)"] },
+  "neurological__Motor__Power (upper / lower limbs)":         { normalText: "5/5 bilaterally", abnormalOptions: ["Proximal weakness upper limbs", "Distal weakness lower limbs", "Hemiparesis", "Paraparesis"] },
+  "neurological__Reflexes__Plantar reflex (Babinski)":        { normalText: "Flexor bilaterally", abnormalOptions: ["Extensor plantar response (Babinski +ve)", "Absent plantar response", "Equivocal"] },
+  // Dermatology
+  "dermatology__Skin__Color (pallor / jaundice / cyanosis / erythema)": { normalText: "Normal", abnormalOptions: ["Pallor", "Jaundice / icterus", "Peripheral cyanosis", "Central cyanosis"] },
+  // Hematologic
+  "hematologic__Signs of Anemia / Bleeding__Pallor (conjunctival / palmar)": { normalText: "No pallor", abnormalOptions: ["Conjunctival pallor", "Palmar pallor", "Severe pallor"] },
+};
+
+export function loadPeBuilderConfig(): Record<string, PeItemCfg> {
+  try {
+    const raw = localStorage.getItem(PE_BUILDER_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, PeItemCfg>;
+      return { ...PE_BUILDER_SEEDS, ...parsed };
+    }
+  } catch { /**/ }
+  return { ...PE_BUILDER_SEEDS };
+}
+
+export function savePeBuilderConfig(cfg: Record<string, PeItemCfg>): void {
+  try { localStorage.setItem(PE_BUILDER_KEY, JSON.stringify(cfg)); } catch { /**/ }
+}
+
 // ─── PE Summary card ──────────────────────────────────────────────────────────
 
 export function PeSummary({ systemId, savedData }: { systemId: string; savedData: Record<string, string> }) {
@@ -678,7 +734,9 @@ export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }:
   const sys        = BODY_SYSTEMS.find(s => s.id === systemId);
   const template   = PE_TEMPLATES[systemId] ?? [];
 
-  const [findings, setFindings] = useState<Record<string, string>>(() => savedData);
+  const [findings,     setFindings]     = useState<Record<string, string>>(() => savedData);
+  const [openAbnormal, setOpenAbnormal] = useState<string | null>(null);
+  const [peConfig]                      = useState<Record<string, PeItemCfg>>(() => loadPeBuilderConfig());
 
   const isDirty = isDone && JSON.stringify(findings) !== JSON.stringify(savedData);
 
@@ -690,28 +748,40 @@ export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }:
     setFindings(prev => ({ ...prev, [key]: val }));
   }
 
-  function handleSave() {
-    onSave(findings);
-  }
+  function handleSave() { onSave(findings); }
 
-  /** Fill every field with "Normal" */
   function handleMarkAllNormal() {
     const allNormal: Record<string, string> = {};
     for (const group of template) {
       for (const item of group.items) {
-        allNormal[`${group.section}__${item}`] = "Normal";
+        const cfgKey = `${systemId}__${group.section}__${item}`;
+        allNormal[`${group.section}__${item}`] = peConfig[cfgKey]?.normalText ?? "Normal";
       }
     }
     setFindings(allNormal);
   }
 
-  /** Fill every field in one section with "Normal" */
   function handleSectionNormal(section: string, items: string[]) {
     setFindings(prev => {
       const next = { ...prev };
-      for (const item of items) next[`${section}__${item}`] = "Normal";
+      for (const item of items) {
+        const cfgKey = `${systemId}__${section}__${item}`;
+        next[`${section}__${item}`] = peConfig[cfgKey]?.normalText ?? "Normal";
+      }
       return next;
     });
+  }
+
+  function toggleAbnormalOption(key: string, opt: string) {
+    const current = (findings[key] ?? "").split(", ").map(s => s.trim()).filter(Boolean);
+    const normalTexts = new Set(["Normal", "normal"]);
+    const withoutNormal = current.filter(s => !normalTexts.has(s));
+    const idx = withoutNormal.indexOf(opt);
+    const next = idx >= 0
+      ? withoutNormal.filter((_, i) => i !== idx)
+      : [...withoutNormal, opt];
+    setFinding(key, next.join(", "));
+    if (next.length === 0) setOpenAbnormal(null);
   }
 
   return (
@@ -719,47 +789,36 @@ export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }:
 
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
-        <button
-          onClick={onClose}
+        <button onClick={onClose}
           className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0">
           <ChevronLeft className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Physical Examination Template</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Physical Examination</p>
           <p className="text-sm font-black text-slate-800 truncate">{sys?.label}</p>
         </div>
-
-        {/* All Normal button */}
-        <button
-          onClick={handleMarkAllNormal}
-          title="Fill all fields with 'Normal'"
+        <button onClick={handleMarkAllNormal}
           className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors flex-shrink-0">
           <ShieldCheck className="h-3.5 w-3.5" /> All Normal
         </button>
-
-        {/* Action: Done badge / Update / Mark Done */}
         {isDone && !isDirty ? (
           <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
             <CheckCircle2 className="h-3 w-3" /> Done
           </span>
         ) : isDirty ? (
-          <button
-            onClick={handleSave}
+          <button onClick={handleSave}
             className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 flex-shrink-0"
             style={{ backgroundColor: "#f59e0b" }}>
             <ClipboardCheck className="h-3.5 w-3.5" /> Update
           </button>
         ) : (
-          <button
-            onClick={handleSave}
+          <button onClick={handleSave}
             className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 flex-shrink-0"
             style={{ backgroundColor: ACCENT_PE }}>
             <ClipboardCheck className="h-3.5 w-3.5" /> Mark Done
           </button>
         )}
-
-        <button
-          onClick={onClose}
+        <button onClick={onClose}
           className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
           <X className="h-4 w-4" />
         </button>
@@ -783,68 +842,154 @@ export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }:
           )}
         </div>
         <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{
-              width: `${pct}%`,
-              backgroundColor: pct < 33 ? "#f59e0b" : pct < 66 ? ACCENT_PE : "#10b981",
-            }}
-          />
+          <div className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${pct}%`, backgroundColor: pct < 33 ? "#f59e0b" : pct < 66 ? ACCENT_PE : "#10b981" }} />
         </div>
       </div>
 
       {/* Scrollable template body */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
         {template.map(group => {
-            const sectionAllNormal = group.items.every(
-              item => (findings[`${group.section}__${item}`] ?? "").trim() === "Normal"
-            );
-            return (
-              <div key={group.section}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="h-px flex-1 bg-slate-100" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 whitespace-nowrap">
-                    {group.section}
-                  </p>
-                  {/* Per-section Normal button */}
-                  <button
-                    onClick={() => handleSectionNormal(group.section, group.items)}
-                    title={`Mark all "${group.section}" findings as Normal`}
-                    className={`flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full border transition-colors flex-shrink-0 ${
-                      sectionAllNormal
-                        ? "bg-emerald-100 border-emerald-300 text-emerald-700"
-                        : "bg-slate-100 border-slate-200 text-slate-400 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700"
-                    }`}>
-                    <ShieldCheck className="h-2.5 w-2.5" /> Normal
-                  </button>
-                  <span className="h-px flex-1 bg-slate-100" />
-                </div>
-                <div className="space-y-2">
-                  {group.items.map(item => {
-                    const key = `${group.section}__${item}`;
-                    const val = findings[key] ?? "";
-                    const isNormal = val.trim() === "Normal";
-                    return (
-                      <div key={item}>
-                        <p className="text-[10px] font-bold text-slate-600 mb-1">{item}</p>
-                        <input
-                          value={val}
-                          onChange={e => setFinding(key, e.target.value)}
-                          placeholder="Enter finding…"
-                          className={`w-full text-xs text-slate-700 placeholder-slate-300 border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
-                            isNormal
-                              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                              : "bg-slate-50 border-slate-200"
-                          }`}
-                          style={{ "--tw-ring-color": ACCENT_PE } as React.CSSProperties}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
+          const sectionAllNormal = group.items.every(item => {
+            const cfgKey = `${systemId}__${group.section}__${item}`;
+            const nText = peConfig[cfgKey]?.normalText ?? "Normal";
+            return (findings[`${group.section}__${item}`] ?? "").trim() === nText;
+          });
+          return (
+            <div key={group.section}>
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="h-px flex-1 bg-slate-100" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 whitespace-nowrap">
+                  {group.section}
+                </p>
+                <button
+                  onClick={() => handleSectionNormal(group.section, group.items)}
+                  className={`flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full border transition-colors flex-shrink-0 ${
+                    sectionAllNormal
+                      ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                      : "bg-slate-100 border-slate-200 text-slate-400 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700"
+                  }`}>
+                  <ShieldCheck className="h-2.5 w-2.5" /> Normal
+                </button>
+                <span className="h-px flex-1 bg-slate-100" />
               </div>
-            );
-          })}
+
+              <div className="space-y-3">
+                {group.items.map(item => {
+                  const key     = `${group.section}__${item}`;
+                  const cfgKey  = `${systemId}__${group.section}__${item}`;
+                  const cfg     = peConfig[cfgKey];
+                  const normalText = cfg?.normalText ?? "Normal";
+                  const val     = findings[key] ?? "";
+                  const isNormal   = val.trim() === normalText;
+                  const parts   = val.split(", ").map(s => s.trim()).filter(Boolean);
+                  const selectedAbnormals = cfg?.abnormalOptions
+                    ? parts.filter(p => cfg.abnormalOptions.includes(p))
+                    : [];
+                  const isAbnormal = !isNormal && val.trim().length > 0;
+                  const isDropOpen = openAbnormal === key;
+
+                  return (
+                    <div key={item} className="rounded-xl border border-slate-100 bg-slate-50/40 p-2.5">
+                      {/* Label */}
+                      <p className="text-[10px] font-bold text-slate-600 mb-2">{item}</p>
+
+                      {/* Normal / Abnormal toggle buttons */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <button
+                          type="button"
+                          onClick={() => { setFinding(key, normalText); setOpenAbnormal(null); }}
+                          className={`flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg border transition-all ${
+                            isNormal
+                              ? "bg-emerald-500 border-emerald-500 text-white"
+                              : "bg-white border-slate-200 text-slate-500 hover:border-emerald-400 hover:text-emerald-700"
+                          }`}>
+                          <ShieldCheck className="h-3 w-3" /> Normal
+                        </button>
+
+                        {cfg?.abnormalOptions && cfg.abnormalOptions.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setOpenAbnormal(isDropOpen ? null : key)}
+                            className={`flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg border transition-all ${
+                              isAbnormal
+                                ? "bg-red-500 border-red-500 text-white"
+                                : isDropOpen
+                                  ? "bg-orange-100 border-orange-400 text-orange-700"
+                                  : "bg-white border-slate-200 text-slate-500 hover:border-orange-400 hover:text-orange-700"
+                            }`}>
+                            <ChevronDown className={`h-3 w-3 transition-transform ${isDropOpen ? "rotate-180" : ""}`} />
+                            Abnormal{selectedAbnormals.length > 0 ? ` (${selectedAbnormals.length})` : ""}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setFinding(key, ""); setOpenAbnormal(null); }}
+                            className={`flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg border transition-all ${
+                              isAbnormal
+                                ? "bg-red-500 border-red-500 text-white"
+                                : "bg-white border-slate-200 text-slate-500 hover:border-red-400 hover:text-red-600"
+                            }`}>
+                            Abnormal
+                          </button>
+                        )}
+
+                        {val && (
+                          <button
+                            type="button"
+                            onClick={() => { setFinding(key, ""); setOpenAbnormal(null); }}
+                            className="ml-auto p-0.5 text-slate-300 hover:text-red-400 transition-colors flex-shrink-0">
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Abnormal options dropdown */}
+                      {isDropOpen && cfg?.abnormalOptions && (
+                        <div className="mb-2 p-2 bg-white rounded-xl border border-orange-100 shadow-sm">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-orange-400 mb-1.5">Select abnormal findings</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {cfg.abnormalOptions.map(opt => {
+                              const isSelected = selectedAbnormals.includes(opt);
+                              return (
+                                <button
+                                  key={opt}
+                                  type="button"
+                                  onClick={() => toggleAbnormalOption(key, opt)}
+                                  className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all ${
+                                    isSelected
+                                      ? "bg-red-500 border-red-500 text-white"
+                                      : "bg-white border-slate-200 text-slate-600 hover:border-red-400 hover:bg-red-50"
+                                  }`}>
+                                  {opt}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Free-text input */}
+                      <input
+                        value={val}
+                        onChange={e => setFinding(key, e.target.value)}
+                        placeholder={isNormal ? normalText : "Type custom finding or use buttons above…"}
+                        className={`w-full text-xs placeholder-slate-300 border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                          isNormal
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                            : isAbnormal
+                              ? "bg-red-50 border-red-200 text-red-800"
+                              : "bg-white border-slate-200 text-slate-700"
+                        }`}
+                        style={{ "--tw-ring-color": ACCENT_PE } as React.CSSProperties}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
