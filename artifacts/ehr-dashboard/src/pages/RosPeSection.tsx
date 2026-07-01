@@ -189,20 +189,16 @@ export function PeSummary({ systemId, savedData }: { systemId: string; savedData
   if (filledGroups.length === 0) return null;
 
   return (
-    <div className="mt-2 rounded-xl border border-cyan-100 bg-cyan-50/40 px-3 py-2.5 space-y-2">
-      {filledGroups.map(g => (
-        <div key={g.section}>
-          <p className="text-[9px] font-black uppercase tracking-wider text-cyan-500 mb-1">{g.section}</p>
-          <div className="space-y-0.5">
-            {g.items.map(({ item, value }) => (
-              <div key={item} className="flex gap-1.5 items-baseline">
-                <span className="text-[10px] font-bold text-slate-500 flex-shrink-0">{item}:</span>
-                <span className="text-[10px] text-slate-700 leading-relaxed">{value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
+    <div className="space-y-1.5">
+      {filledGroups.map(g => {
+        const sentence = g.items.map(({ item, value }) => `${item}: ${value}`).join(". ") + ".";
+        return (
+          <p key={g.section} className="text-[11px] leading-relaxed text-slate-600 bg-white border border-slate-200 rounded-lg px-3.5 py-2.5">
+            <span className="font-semibold text-slate-500">{g.section} — </span>
+            {sentence}
+          </p>
+        );
+      })}
     </div>
   );
 }
