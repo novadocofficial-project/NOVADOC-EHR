@@ -772,11 +772,13 @@ export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }:
     });
   }
 
-  function toggleAbnormalOption(key: string, opt: string) {
+  function toggleAbnormalOption(key: string, opt: string, itemNormalText: string) {
     const current = (findings[key] ?? "").split(", ").map(s => s.trim()).filter(Boolean);
-    const normalTexts = new Set(["Normal", "normal"]);
-    const withoutNormal = current.filter(s => !normalTexts.has(s));
-    const idx = withoutNormal.indexOf(opt);
+    const strippable = new Set(
+      [itemNormalText.trim(), "Normal"].map(s => s.toLowerCase())
+    );
+    const withoutNormal = current.filter(s => !strippable.has(s.toLowerCase()));
+    const idx = withoutNormal.findIndex(s => s === opt);
     const next = idx >= 0
       ? withoutNormal.filter((_, i) => i !== idx)
       : [...withoutNormal, opt];
@@ -955,7 +957,7 @@ export function PeSystemDrawer({ systemId, isDone, savedData, onSave, onClose }:
                                 <button
                                   key={opt}
                                   type="button"
-                                  onClick={() => toggleAbnormalOption(key, opt)}
+                                  onClick={() => toggleAbnormalOption(key, opt, normalText)}
                                   className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all ${
                                     isSelected
                                       ? "bg-red-500 border-red-500 text-white"
