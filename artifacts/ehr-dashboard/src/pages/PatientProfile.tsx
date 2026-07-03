@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { QueueAppHeader } from "@/pages/QueuePageLayout";
 import type { Patient } from "@/pages/QueuePageLayout";
 import type { ReceiptInfo } from "@/pages/FrontDeskUser";
-import { usePatientSoapRepo } from "@/hooks/usePatientSoapRepo";
+import { usePatientSoapData } from "@/hooks/usePatientSoapData";
 
 const ACCENT = "#4982CF";
 
@@ -597,7 +597,7 @@ function SoapTabContent({ mrn }: { mrn: string }) {
     [],
   );
   const [activeId, setActiveId] = useState<string>(() => sections[0]?.id ?? "");
-  const repo = usePatientSoapRepo(mrn);
+  const { data: repo } = usePatientSoapData(mrn);
 
   if (sections.length === 0) {
     return (
@@ -632,16 +632,10 @@ function SoapTabContent({ mrn }: { mrn: string }) {
     switch (id) {
 
       case "chief-complaints": {
-        const nursingCCs = repo.nursingHistory.flatMap(h =>
-          h.sections
-            .filter(s => s.name.toLowerCase().includes("chief"))
-            .flatMap(s => s.lines.flatMap(l => l.split(",").map(x => x.trim()).filter(Boolean))),
-        );
-        const all = Array.from(new Set([...repo.chiefComplaints, ...nursingCCs]));
-        if (!all.length) return null;
+        if (!repo.chiefComplaints.length) return null;
         return (
           <div className="flex flex-wrap gap-2">
-            {all.map((c, i) => (
+            {repo.chiefComplaints.map((c, i) => (
               <span key={i} className="px-3 py-1.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">{c}</span>
             ))}
           </div>

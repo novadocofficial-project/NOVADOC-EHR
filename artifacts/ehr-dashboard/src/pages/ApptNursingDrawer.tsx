@@ -28,6 +28,8 @@ import {
 } from "@/hooks/useNursingConfig";
 import { TriageRunner, loadSessionsFromKey, APPT_SESSIONS_KEY, OUTCOME_CFG, type StepAnswer, type TriageSession } from "@/pages/TriageRunner";
 import { mergeNursingHistoryIntoSnapshot } from "@/hooks/useSoapNoteDraft";
+import { mergePatientSoapSection } from "@/hooks/usePatientSoapData";
+import type { PatientSoapRepo } from "@/hooks/usePatientSoapData";
 import { SOAP_DUMMY } from "@/data/soapDummy";
 import type { SignedRecord } from "@/pages/SoapNotePage";
 import { getHealthEdDocs } from "@/pages/HealthEdSection";
@@ -2024,6 +2026,54 @@ function ApptHistorySplitPanel({ appt }: { appt: Appointment }) {
     setRecords(prev => { const next = [...prev, record]; persistApptHistoryRecords(next); return next; });
     if (appt.patientMrn) {
       mergeNursingHistoryIntoSnapshot(appt.patientMrn, snapshot.sections);
+      if (activeDraft) {
+        const template = config.templates.find(t => t.id === snapshot.templateId);
+        if (template) {
+          const sv = activeDraft.systemValues;
+          const patch: Partial<PatientSoapRepo> = {};
+          for (const comp of template.components) {
+            if (comp.type !== "system") continue;
+            const raw = sv[comp.id] ?? "";
+            switch (comp.systemKey) {
+              case "chief-complaint": {
+                const ccs = parseChiefComplaints(raw);
+                if (ccs.length) patch.chiefComplaints = ccs;
+                break;
+              }
+              case "allergies": {
+                const entries = parseAllergyEntries(raw);
+                if (entries.length) patch.allergies = entries;
+                break;
+              }
+              case "past-history": {
+                const { active, resolved } = parsePastHistory(raw);
+                if (active.length)   patch.pmhActive   = active;
+                if (resolved.length) patch.pmhResolved  = resolved;
+                break;
+              }
+              case "surgical-history": {
+                const rows = parseSurgicalHistory(raw).filter(r => r.procedure);
+                if (rows.length) patch.surgicalRows = rows;
+                break;
+              }
+              case "family-history": {
+                const { rows } = parseFamilyHistory(raw);
+                const filled = rows.filter(r => r.condition || r.relation);
+                if (filled.length) patch.fhRows = filled;
+                break;
+              }
+              case "current-medicines": {
+                const formulary = parseFormularyData(raw);
+                if (formulary.medicines.length) patch.medicines = formulary.medicines;
+                break;
+              }
+            }
+          }
+          if (Object.keys(patch).length > 0) {
+            mergePatientSoapSection(appt.patientMrn, patch);
+          }
+        }
+      }
     }
     if (activeDraftId) mutateDrafts(prev => prev.filter(d => d.draftId !== activeDraftId));
     setActiveDraftId(null);

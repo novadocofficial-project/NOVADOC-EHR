@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { MultiEntry } from "@/hooks/useMultiStepQueue";
 import { useSoapNoteDraft, saveRoutingSnapshot, savePendingLabOrders, savePatientClinicalSnapshot } from "@/hooks/useSoapNoteDraft";
+import { mergePatientSoapNote } from "@/hooks/usePatientSoapData";
 import { getPatientIdByMrn } from "@/hooks/usePatients";
 import { Button } from "@/components/ui/button";
 import { View360Drawer } from "@/pages/View360Drawer";
@@ -1260,6 +1261,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
   const [showAddendumDrawer, setShowAddendumDrawer] = useState(false);
   const [addendumRows, setAddendumRows]         = useState<AddendumRow[]>([]);
   const menuRef                                 = useRef<HTMLDivElement | null>(null);
+  const draftRepoTimerRef                       = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Stamp an initial draft immediately on mount so hasSoapDraft() returns true
   // as soon as the doctor closes the note — even without editing anything.
@@ -1744,7 +1746,16 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
           onSaveAndClose={onSaveAndClose}
           signed={signedRecords.length > 0}
           initialNote={draft ?? undefined}
-          onNoteChange={saveDraft}
+          onNoteChange={(note) => {
+              saveDraft(note);
+              if (entry.patient?.mrn) {
+                if (draftRepoTimerRef.current) clearTimeout(draftRepoTimerRef.current);
+                draftRepoTimerRef.current = setTimeout(() => {
+                  mergePatientSoapNote(entry.patient!.mrn, note);
+                  draftRepoTimerRef.current = null;
+                }, 1500);
+              }
+            }}
           onDoctorSign={() => {
             // Capture routing flags before wiping the draft — handleFaceSheetComplete reads these
             const unsentOrders = (draft?.labOrders ?? []).filter(o => !o.sentAt && !o.voided);
@@ -1760,6 +1771,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
             // across signed visits so Patient Profile can read from signed history.
             if (draft && entry.patient?.mrn) {
               savePatientClinicalSnapshot(draft, entry.patient.mrn);
+              mergePatientSoapNote(entry.patient.mrn, draft);
             }
             const noteStateToPersist = draft;
             clearDraft();
