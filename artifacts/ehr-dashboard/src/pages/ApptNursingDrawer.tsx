@@ -5,6 +5,7 @@ import {
   ClipboardList, Stethoscope, Target, CheckCircle2, Check, FileText,
   Maximize2, Minimize2, Plus, Trash2, Pill, Receipt, ShieldCheck,
   DollarSign, Layers, SkipForward, RotateCcw, Search, GripVertical,
+  ArrowRight,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -29,6 +30,17 @@ import { TriageRunner, loadSessionsFromKey, APPT_SESSIONS_KEY, OUTCOME_CFG, type
 import { SOAP_DUMMY } from "@/data/soapDummy";
 import type { SignedRecord } from "@/pages/SoapNotePage";
 import { getHealthEdDocs } from "@/pages/HealthEdSection";
+import { AllergySelector } from "@/pages/AllergySelector";
+import type { AllergyEntry } from "@/pages/AllergySelector";
+import {
+  PastHistoryPanel, SurgicalHistoryPanel, FamilyHistoryPanel, SocialHistoryPanel,
+} from "@/pages/MedicalHistorySection";
+import type { SocAnswers, SurgicalEntry, FamilyRow } from "@/pages/MedicalHistorySection";
+import { FormularyChipsPanel, FormularyDrawer, EMPTY_FORMULARY } from "@/pages/FormularySection";
+import type { FormularyData } from "@/pages/FormularySection";
+import { HPI_TEMPLATES_KEY } from "@/pages/HpiTemplatesModule";
+import type { HpiTemplate, HpiField } from "@/pages/HpiTemplatesModule";
+import { loadSocConfig } from "@/pages/ClinicalLibrariesModule";
 
 // ─── Category types ───────────────────────────────────────────────────────────
 
@@ -240,12 +252,234 @@ function parseChiefComplaints(raw: string): string[] {
 }
 
 function isSystemValueBlank(v: string): boolean {
-  if (!v.trim() || v.trim() === "[]") return true;
+  const t = v.trim();
+  if (!t || t === "[]" || t === "{}") return true;
   try {
-    const p = JSON.parse(v);
+    const p = JSON.parse(t);
     if (Array.isArray(p)) return p.length === 0;
+    if (typeof p === "object" && p !== null) {
+      if (Object.keys(p).length === 0) return true;
+      // PastHistory {active, resolved}
+      if (Array.isArray(p.active) && Array.isArray(p.resolved))
+        return p.active.length === 0 && p.resolved.length === 0;
+      // FamilyHistory {rows, genetic}
+      if (Array.isArray(p.rows) && Array.isArray(p.genetic))
+        return p.rows.length === 0 && p.genetic.length === 0;
+      // FormularyData {medicines}
+      if (Array.isArray(p.medicines))
+        return p.medicines.length === 0 && !p.pharmacistInstructions?.trim();
+    }
   } catch { /* */ }
   return false;
+}
+
+// ─── System-value parse helpers ───────────────────────────────────────────────
+
+function parseAllergyEntries(raw: string): AllergyEntry[] {
+  if (!raw.trim() || raw.trim() === "[]") return [];
+  try { const p = JSON.parse(raw); if (Array.isArray(p)) return p as AllergyEntry[]; } catch { /**/ }
+  return [];
+}
+function parsePastHistory(raw: string): { active: string[]; resolved: string[] } {
+  if (!raw.trim()) return { active: [], resolved: [] };
+  try { const p = JSON.parse(raw); if (p && typeof p === "object" && Array.isArray(p.active)) return p as { active: string[]; resolved: string[] }; } catch { /**/ }
+  return { active: [], resolved: [] };
+}
+function parseSurgicalHistory(raw: string): SurgicalEntry[] {
+  if (!raw.trim() || raw.trim() === "[]") return [];
+  try { const p = JSON.parse(raw); if (Array.isArray(p)) return p as SurgicalEntry[]; } catch { /**/ }
+  return [];
+}
+function parseFamilyHistory(raw: string): { rows: FamilyRow[]; genetic: string[] } {
+  if (!raw.trim()) return { rows: [], genetic: [] };
+  try { const p = JSON.parse(raw); if (p && typeof p === "object" && Array.isArray(p.rows)) return p as { rows: FamilyRow[]; genetic: string[] }; } catch { /**/ }
+  return { rows: [], genetic: [] };
+}
+function parseSocAnswers(raw: string): SocAnswers {
+  if (!raw.trim() || raw.trim() === "{}") return {};
+  try { const p = JSON.parse(raw); if (p && typeof p === "object" && !Array.isArray(p)) return p as SocAnswers; } catch { /**/ }
+  return {};
+}
+function parseFormularyData(raw: string): FormularyData {
+  if (!raw.trim()) return EMPTY_FORMULARY;
+  try { const p = JSON.parse(raw); if (p && typeof p === "object" && Array.isArray(p.medicines)) return p as FormularyData; } catch { /**/ }
+  return EMPTY_FORMULARY;
+}
+function parseHpiData(raw: string): Record<string, Record<string, unknown>> {
+  if (!raw.trim() || raw.trim() === "{}") return {};
+  try { const p = JSON.parse(raw); if (p && typeof p === "object" && !Array.isArray(p)) return p as Record<string, Record<string, unknown>>; } catch { /**/ }
+  return {};
+}
+function loadHpiTemplates(): HpiTemplate[] {
+  try { const raw = localStorage.getItem(HPI_TEMPLATES_KEY); if (raw) return JSON.parse(raw) as HpiTemplate[]; } catch { /**/ }
+  return [];
+}
+
+// ─── HPI complaint mini-form (nursing) ────────────────────────────────────────
+
+function NursingHpiComplaintForm({
+  complaint, savedAnswers, onSave, onClose,
+}: {
+  complaint: string;
+  savedAnswers: Record<string, unknown>;
+  onSave: (answers: Record<string, unknown>) => void;
+  onClose: () => void;
+}) {
+  const templates = useMemo(() => loadHpiTemplates().filter(t => t.active), []);
+  const template: HpiTemplate | null = useMemo(() => {
+    const exact = templates.find(t =>
+      t.complaintName.toLowerCase().trim() === complaint.toLowerCase().trim()
+    );
+    if (exact) return exact;
+    return templates.find(t =>
+      complaint.toLowerCase().includes(t.complaintName.toLowerCase()) ||
+      t.complaintName.toLowerCase().includes(complaint.toLowerCase())
+    ) ?? null;
+  }, [templates, complaint]);
+
+  const [answers, setAnswers] = useState<Record<string, unknown>>(() => savedAnswers ?? {});
+
+  function isFieldVisible(field: HpiField): boolean {
+    if (!field.conditionalOn) return true;
+    const { fieldId, values } = field.conditionalOn;
+    const pv = answers[fieldId];
+    if (!pv) return false;
+    if (Array.isArray(pv)) return (pv as string[]).some(v => values.includes(v));
+    return values.includes(pv as string);
+  }
+
+  function setAnswer(fieldId: string, value: unknown) {
+    setAnswers(prev => ({ ...prev, [fieldId]: value }));
+  }
+
+  const header = (
+    <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 flex-shrink-0">
+      <div className="h-8 w-8 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0">
+        <ClipboardList className="h-4 w-4 text-purple-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-black text-slate-800 truncate">HPI — {complaint}</p>
+        <p className="text-[10px] text-slate-400">{template ? template.name : "Free-text note"}</p>
+      </div>
+      <button onClick={onClose} className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors flex-shrink-0">
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+
+  const footer = (
+    <div className="flex gap-2 px-4 py-3 border-t border-slate-100 flex-shrink-0">
+      <button onClick={onClose} className="flex-1 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors">Cancel</button>
+      <button onClick={() => onSave(answers)} className="flex-1 py-2 rounded-xl bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">Save HPI</button>
+    </div>
+  );
+
+  if (!template) {
+    return (
+      <div className="flex flex-col h-full">
+        {header}
+        <div className="flex-1 overflow-y-auto p-4">
+          <p className="text-[11px] text-slate-400 mb-2 italic">No template configured for this complaint — enter notes manually.</p>
+          <textarea
+            value={typeof answers["_notes"] === "string" ? answers["_notes"] as string : ""}
+            onChange={e => setAnswer("_notes", e.target.value)}
+            placeholder="Enter HPI notes…"
+            className="w-full h-40 px-3 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50 resize-none focus:outline-none focus:ring-1 focus:ring-purple-400 focus:border-purple-300"
+          />
+        </div>
+        {footer}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {header}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {template.fields.filter(f => f.label && isFieldVisible(f)).map(field => (
+          <div key={field.id} className={field.conditionalOn ? "pl-3 border-l-2 border-amber-200" : ""}>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              {field.label}{field.required && <span className="text-red-400 ml-0.5">*</span>}
+            </label>
+            {field.type === "free-text" && (
+              <textarea
+                value={typeof answers[field.id] === "string" ? answers[field.id] as string : ""}
+                onChange={e => setAnswer(field.id, e.target.value)}
+                placeholder={field.placeholder || "Type here…"}
+                className="w-full h-16 px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white resize-none focus:outline-none focus:ring-1 focus:ring-purple-400 focus:border-purple-300"
+              />
+            )}
+            {field.type === "number" && (
+              <input
+                type="number"
+                value={typeof answers[field.id] === "string" || typeof answers[field.id] === "number" ? String(answers[field.id]) : ""}
+                onChange={e => setAnswer(field.id, e.target.value)}
+                placeholder={field.placeholder || "0"}
+                className="w-28 h-8 px-3 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-purple-400 focus:border-purple-300"
+              />
+            )}
+            {field.type === "radio" && (
+              <div className="flex flex-wrap gap-1.5">
+                {field.options.map(opt => {
+                  const sel = answers[field.id] === opt;
+                  return (
+                    <button key={opt} type="button"
+                      onClick={() => setAnswer(field.id, sel ? "" : opt)}
+                      className={["text-[11px] font-semibold px-3 py-1.5 rounded-lg border-2 transition-all",
+                        sel ? "border-purple-500 bg-purple-500 text-white" : "border-slate-200 text-slate-600 hover:border-purple-300 bg-white",
+                      ].join(" ")}>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {field.type === "multi-select" && (
+              <div className="flex flex-wrap gap-1.5">
+                {field.options.map(opt => {
+                  const arr = Array.isArray(answers[field.id]) ? answers[field.id] as string[] : [];
+                  const sel = arr.includes(opt);
+                  return (
+                    <button key={opt} type="button"
+                      onClick={() => setAnswer(field.id, sel ? arr.filter(v => v !== opt) : [...arr, opt])}
+                      className={["text-[11px] font-semibold px-3 py-1.5 rounded-lg border-2 transition-all",
+                        sel ? "border-purple-500 bg-purple-500 text-white" : "border-slate-200 text-slate-600 hover:border-purple-300 bg-white",
+                      ].join(" ")}>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+        {template.fields.filter(f => f.label).length === 0 && (
+          <p className="text-xs text-slate-400 italic">This template has no fields configured.</p>
+        )}
+      </div>
+      {footer}
+    </div>
+  );
+}
+
+// ─── Shared card wrapper for system component views ───────────────────────────
+
+function SystemCompCard({ def, children }: {
+  def?: { name: string; desc: string };
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3 mb-2">
+      <div className="flex items-start gap-2 mb-3">
+        <Activity className="h-3.5 w-3.5 text-[#4982CF] flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-xs font-semibold text-[#4982CF]">{def?.name ?? "System Component"}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">{def?.desc ?? "Shared library data"}</p>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
 }
 
 // ─── Nursing Chief Complaint chip selector ────────────────────────────────────
@@ -440,28 +674,173 @@ function NursingChiefComplaintSelector({ selected, onChange }: { selected: strin
 
 // ─── System component view (history) ─────────────────────────────────────────
 
-function SystemComponentView({ systemKey, value, onChange }: { systemKey?: string; value: string; onChange: (v: string) => void }) {
+function SystemComponentView({
+  systemKey, value, onChange, chiefComplaints = [],
+}: {
+  systemKey?: string;
+  value: string;
+  onChange: (v: string) => void;
+  chiefComplaints?: string[];
+}) {
+  const [formularyOpen, setFormularyOpen] = useState(false);
+  const [hpiOpenComplaint, setHpiOpenComplaint] = useState<string | null>(null);
   const def = SYSTEM_COMPONENTS.find(c => c.key === systemKey);
 
   if (systemKey === "chief-complaint") {
     const selected = parseChiefComplaints(value);
     return (
-      <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3 mb-2">
-        <div className="flex items-start gap-2 mb-3">
-          <Activity className="h-3.5 w-3.5 text-[#4982CF] flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs font-semibold text-[#4982CF]">{def?.name ?? "Chief Complaint"}</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">{def?.desc ?? "Primary reason for visit"}</p>
-          </div>
-        </div>
+      <SystemCompCard def={def}>
         <NursingChiefComplaintSelector
           selected={selected}
           onChange={items => onChange(JSON.stringify(items))}
         />
-      </div>
+      </SystemCompCard>
     );
   }
 
+  if (systemKey === "allergies") {
+    const entries = parseAllergyEntries(value);
+    return (
+      <SystemCompCard def={def}>
+        <AllergySelector entries={entries} onChange={items => onChange(JSON.stringify(items))} />
+      </SystemCompCard>
+    );
+  }
+
+  if (systemKey === "past-history") {
+    const { active, resolved } = parsePastHistory(value);
+    return (
+      <SystemCompCard def={def}>
+        <PastHistoryPanel
+          active={active}
+          resolved={resolved}
+          onActiveChange={a => onChange(JSON.stringify({ active: a, resolved }))}
+          onResolvedChange={r => onChange(JSON.stringify({ active, resolved: r }))}
+        />
+      </SystemCompCard>
+    );
+  }
+
+  if (systemKey === "surgical-history") {
+    const rows = parseSurgicalHistory(value);
+    return (
+      <SystemCompCard def={def}>
+        <SurgicalHistoryPanel rows={rows} onChange={r => onChange(JSON.stringify(r))} />
+      </SystemCompCard>
+    );
+  }
+
+  if (systemKey === "family-history") {
+    const { rows, genetic } = parseFamilyHistory(value);
+    return (
+      <SystemCompCard def={def}>
+        <FamilyHistoryPanel
+          rows={rows}
+          genetic={genetic}
+          onRowsChange={r => onChange(JSON.stringify({ rows: r, genetic }))}
+          onGeneticChange={g => onChange(JSON.stringify({ rows, genetic: g }))}
+        />
+      </SystemCompCard>
+    );
+  }
+
+  if (systemKey === "social-history") {
+    const answers = parseSocAnswers(value);
+    return (
+      <SystemCompCard def={def}>
+        <SocialHistoryPanel value={answers} onChange={v => onChange(JSON.stringify(v))} />
+      </SystemCompCard>
+    );
+  }
+
+  if (systemKey === "current-medicines") {
+    const formulary = parseFormularyData(value);
+    return (
+      <>
+        <SystemCompCard def={def}>
+          <FormularyChipsPanel data={formulary} onOpen={() => setFormularyOpen(true)} />
+        </SystemCompCard>
+        {formularyOpen && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-end justify-center sm:items-center bg-black/40 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
+              <FormularyDrawer
+                savedData={formulary}
+                patientAllergies={[]}
+                onSave={data => { onChange(JSON.stringify(data)); setFormularyOpen(false); }}
+                onClose={() => setFormularyOpen(false)}
+              />
+            </div>
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  }
+
+  if (systemKey === "hpi") {
+    const hpiData = parseHpiData(value);
+    const doneComplaints = Object.keys(hpiData);
+    return (
+      <>
+        <SystemCompCard def={def}>
+          {chiefComplaints.length === 0 ? (
+            <div className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
+              <ClipboardList className="h-4 w-4 text-slate-300 flex-shrink-0" />
+              <p className="text-xs text-slate-400">Select Chief Complaints above — each will appear here as an HPI entry.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Click a complaint to fill in history</p>
+              <div className="flex flex-wrap gap-2">
+                {chiefComplaints.map((complaint, idx) => {
+                  const isDone = doneComplaints.includes(complaint);
+                  const isOpen = hpiOpenComplaint === complaint;
+                  return (
+                    <button key={complaint}
+                      onClick={() => setHpiOpenComplaint(isOpen ? null : complaint)}
+                      className={[
+                        "flex items-center gap-2 px-3.5 py-2 rounded-xl border-2 text-xs font-bold transition-all",
+                        isOpen  ? "text-white border-[#8b5cf6] bg-[#8b5cf6] shadow-md"
+                        : isDone  ? "text-emerald-700 border-emerald-200 bg-emerald-50"
+                        : "text-slate-600 border-slate-200 bg-white hover:border-[#8b5cf6]/50",
+                      ].join(" ")}>
+                      <span className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${isOpen ? "bg-white/25 text-white" : isDone ? "bg-emerald-200 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{idx + 1}</span>
+                      {complaint}
+                      {isDone
+                        ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                        : <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />}
+                    </button>
+                  );
+                })}
+              </div>
+              {doneComplaints.length > 0 && (
+                <p className="text-[10px] text-slate-400">{doneComplaints.length}/{chiefComplaints.length} complaint{chiefComplaints.length !== 1 ? "s" : ""} documented</p>
+              )}
+            </div>
+          )}
+        </SystemCompCard>
+        {hpiOpenComplaint && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-end justify-center sm:items-center bg-black/40 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-lg max-h-[85vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
+              <NursingHpiComplaintForm
+                complaint={hpiOpenComplaint}
+                savedAnswers={hpiData[hpiOpenComplaint] ?? {}}
+                onSave={answers => {
+                  const next = { ...hpiData, [hpiOpenComplaint]: answers };
+                  onChange(JSON.stringify(next));
+                  setHpiOpenComplaint(null);
+                }}
+                onClose={() => setHpiOpenComplaint(null)}
+              />
+            </div>
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  }
+
+  // Fallback (demographics, ros, comorbidities, etc.)
   return (
     <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3 mb-2">
       <div className="flex items-start gap-2 mb-2">
@@ -1289,8 +1668,15 @@ function HistoryTabContent({ initialTemplateId, initialData, initialSystemValues
 
   const hasContent = useMemo(() => {
     const dataFilled = Object.values(data).some(entries => entries.some(entry => Object.values(entry).some(v => v.trim() !== "")));
-    return dataFilled || Object.values(systemValues).some(v => v.trim() !== "");
+    return dataFilled || Object.values(systemValues).some(v => !isSystemValueBlank(v));
   }, [data, systemValues]);
+
+  const chiefComplaintsForHpi = useMemo(() => {
+    if (!activeTemplate) return [];
+    const ccComp = activeTemplate.components.find(c => c.type === "system" && c.systemKey === "chief-complaint");
+    if (!ccComp) return [];
+    return parseChiefComplaints(systemValues[ccComp.id] ?? "");
+  }, [activeTemplate, systemValues]);
 
   function getEntries(compId: string): Record<string, string>[] { return data[compId] ?? [{}]; }
   function setEntry(compId: string, idx: number, values: Record<string, string>) {
@@ -1316,11 +1702,99 @@ function HistoryTabContent({ initialTemplateId, initialData, initialSystemValues
     const sections = activeTemplate.components.map(comp => {
       if (comp.type === "system") {
         const raw = systemValues[comp.id] ?? "";
-        if (comp.systemKey === "chief-complaint") {
-          const arr = parseChiefComplaints(raw);
-          return { name: comp.name, lines: arr.length > 0 ? [arr.join(", ")] : [] };
+        switch (comp.systemKey) {
+          case "chief-complaint": {
+            const arr = parseChiefComplaints(raw);
+            return { name: comp.name, lines: arr.length > 0 ? [arr.join(", ")] : [] };
+          }
+          case "allergies": {
+            const entries = parseAllergyEntries(raw);
+            const lines = entries.map(e => {
+              const parts = [e.name];
+              if (e.reaction) parts.push(e.reaction);
+              parts.push(`(${(e.severity ?? "").replace("_", " ")})`);
+              return parts.join(" — ");
+            });
+            return { name: comp.name, lines };
+          }
+          case "past-history": {
+            const { active, resolved } = parsePastHistory(raw);
+            const lines: string[] = [];
+            if (active.length > 0)   lines.push(`Active: ${active.join(", ")}`);
+            if (resolved.length > 0) lines.push(`Resolved: ${resolved.join(", ")}`);
+            return { name: comp.name, lines };
+          }
+          case "surgical-history": {
+            const rows = parseSurgicalHistory(raw);
+            const lines = rows.filter(r => r.procedure).map(r => {
+              const parts = [r.procedure];
+              if (r.date) parts.push(`(${r.date})`);
+              if (r.complications && r.complications !== "None") parts.push(`Complications: ${r.complications}`);
+              return parts.join(" ");
+            });
+            return { name: comp.name, lines };
+          }
+          case "family-history": {
+            const { rows, genetic } = parseFamilyHistory(raw);
+            const lines: string[] = rows
+              .filter(r => r.condition)
+              .map(r => r.relation ? `${r.relation}: ${r.condition}` : r.condition);
+            if (genetic.length > 0) lines.push(`Genetic: ${genetic.join(", ")}`);
+            return { name: comp.name, lines };
+          }
+          case "social-history": {
+            const answers = parseSocAnswers(raw);
+            const questions = loadSocConfig().filter(q => q.active);
+            const lines = questions.flatMap(q => {
+              const ans = answers[q.id];
+              if (!ans) return [];
+              const mainVal = Array.isArray(ans.main)
+                ? (ans.main as string[]).join(", ")
+                : (ans.main as string);
+              return mainVal?.trim() ? [`${q.name}: ${mainVal}`] : [];
+            });
+            return { name: comp.name, lines };
+          }
+          case "current-medicines": {
+            const formulary = parseFormularyData(raw);
+            const lines = formulary.medicines.map((m: { brand: string; strength: string; dose?: string; unit?: string; route?: string; frequency?: string }) => {
+              const parts = [`${m.brand} ${m.strength}`.trim()];
+              if (m.dose && m.unit) parts.push(`${m.dose} ${m.unit}`);
+              if (m.route) parts.push(m.route);
+              if (m.frequency) parts.push(m.frequency);
+              return parts.join(" · ");
+            });
+            if (formulary.pharmacistInstructions?.trim())
+              lines.push(`Note: ${formulary.pharmacistInstructions}`);
+            return { name: comp.name, lines };
+          }
+          case "hpi": {
+            const hpiData = parseHpiData(raw);
+            const templates = loadHpiTemplates();
+            const lines = Object.entries(hpiData).map(([complaint, answers]) => {
+              const tmpl = templates.find(t =>
+                t.complaintName.toLowerCase().trim() === complaint.toLowerCase().trim() && t.active
+              );
+              if (!tmpl) return `${complaint}: documented`;
+              const parts = tmpl.fields
+                .filter(f => {
+                  const val = answers[f.id];
+                  if (val === undefined || val === null || val === "") return false;
+                  if (Array.isArray(val)) return val.length > 0;
+                  return true;
+                })
+                .map(f => {
+                  const val = answers[f.id];
+                  const s = Array.isArray(val) ? (val as string[]).join(", ") : String(val);
+                  return `${f.label}: ${s}`;
+                });
+              return parts.length > 0 ? `${complaint} — ${parts.join("; ")}` : `${complaint}: documented`;
+            });
+            return { name: comp.name, lines };
+          }
+          default:
+            return { name: comp.name, lines: raw.trim() ? [raw] : [] };
         }
-        return { name: comp.name, lines: raw.trim() ? [raw] : [] };
       }
       const entries = data[comp.id] ?? [{}];
       const lines: string[] = [];
@@ -1353,7 +1827,7 @@ function HistoryTabContent({ initialTemplateId, initialData, initialSystemValues
             {activeTemplate.components.map(comp => (
               <Collapsible key={comp.id} title={comp.name} defaultOpen>
                 {comp.type === "system" ? (
-                  <SystemComponentView systemKey={comp.systemKey} value={systemValues[comp.id] ?? ""} onChange={v => setSystemValues(prev => ({ ...prev, [comp.id]: v }))} />
+                  <SystemComponentView systemKey={comp.systemKey} value={systemValues[comp.id] ?? ""} onChange={v => setSystemValues(prev => ({ ...prev, [comp.id]: v }))} chiefComplaints={chiefComplaintsForHpi} />
                 ) : (
                   <div className="pb-2">
                     {(() => {
