@@ -1922,19 +1922,17 @@ function HistoryTabContent({ initialTemplateId, initialData, initialSystemValues
         </div>
       )}
 
-      {/* Current Medicines Drawer — slides in from right within this panel */}
+      {/* Current Medicines Drawer — absolute panels position relative to this container */}
       {formularyOpen && formularyComp && (
-        <div className="absolute inset-0 bg-white shadow-2xl flex flex-col z-20">
-          <FormularyDrawer
-            savedData={formularyData}
-            patientAllergies={[]}
-            onSave={data => {
-              setSystemValues(prev => ({ ...prev, [formularyComp.id]: JSON.stringify(data) }));
-              setFormularyOpen(false);
-            }}
-            onClose={() => setFormularyOpen(false)}
-          />
-        </div>
+        <FormularyDrawer
+          savedData={formularyData}
+          patientAllergies={[]}
+          onSave={data => {
+            setSystemValues(prev => ({ ...prev, [formularyComp.id]: JSON.stringify(data) }));
+            setFormularyOpen(false);
+          }}
+          onClose={() => setFormularyOpen(false)}
+        />
       )}
 
       {/* HPI Template Drawer — slides in from right within this panel */}
