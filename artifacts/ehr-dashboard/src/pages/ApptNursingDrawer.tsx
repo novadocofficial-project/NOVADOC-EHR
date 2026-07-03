@@ -27,6 +27,7 @@ import {
   type ConditionalRule,
 } from "@/hooks/useNursingConfig";
 import { TriageRunner, loadSessionsFromKey, APPT_SESSIONS_KEY, OUTCOME_CFG, type StepAnswer, type TriageSession } from "@/pages/TriageRunner";
+import { mergeNursingHistoryIntoSnapshot } from "@/hooks/useSoapNoteDraft";
 import { SOAP_DUMMY } from "@/data/soapDummy";
 import type { SignedRecord } from "@/pages/SoapNotePage";
 import { getHealthEdDocs } from "@/pages/HealthEdSection";
@@ -2021,6 +2022,9 @@ function ApptHistorySplitPanel({ appt }: { appt: Appointment }) {
       sections: snapshot.sections, completedAt: Date.now(),
     };
     setRecords(prev => { const next = [...prev, record]; persistApptHistoryRecords(next); return next; });
+    if (appt.patientMrn) {
+      mergeNursingHistoryIntoSnapshot(appt.patientMrn, snapshot.sections);
+    }
     if (activeDraftId) mutateDrafts(prev => prev.filter(d => d.draftId !== activeDraftId));
     setActiveDraftId(null);
     setPendingTemplateId(computeDefaultTemplateId());

@@ -139,13 +139,27 @@ const CLINICAL_PFX = "soap_clinical_";
 
 /** Aggregated clinical snapshot for a patient across all signed visits. */
 export interface PatientClinicalSnapshot {
-  allergies:     unknown[];
-  medicines:     unknown[];
-  labOrders:     unknown[];
-  imagingOrders: unknown[];
-  fhRows:        unknown[];
-  diagnoses:     unknown[];
-  vitals:        VitalEntry[];
+  allergies:        unknown[];
+  medicines:        unknown[];
+  labOrders:        unknown[];
+  imagingOrders:    unknown[];
+  fhRows:           unknown[];
+  diagnoses:        unknown[];
+  vitals:           VitalEntry[];
+  // Extended SOAP sections — persisted since Patient SOAP repository feature
+  chiefComplaints?: string[];
+  hpi?:             string;
+  pmhActive?:       string[];
+  pmhResolved?:     string[];
+  surgicalRows?:    unknown[];
+  pocTests?:        unknown[];
+  ros?:             Record<string, string[]>;
+  peSystems?:       string[];
+  carePlan?:        unknown | null;
+  referrals?:       unknown | null;
+  procedureOrders?: unknown | null;
+  patientGoals?:    unknown | null;
+  healthEd?:        unknown | null;
 }
 
 export function readPatientClinicalSnapshot(mrn: string): PatientClinicalSnapshot | null {
@@ -231,14 +245,107 @@ export function savePatientClinicalSnapshot(note: NoteState, mrn: string): void 
       if (k) vitalMap.set(k, v);
     }
 
+    // Access extended NoteState fields safely (typed via intersection)
+    type AnyNote = typeof note & Record<string, unknown>;
+    const n = note as AnyNote;
+    function nonEmptyArr(v: unknown): boolean { return Array.isArray(v) && v.length > 0; }
+    function nonEmptyStr(v: unknown): boolean { return typeof v === "string" && v.trim().length > 0; }
+    function nonEmptyObj(v: unknown): boolean { return v !== null && typeof v === "object" && Object.keys(v as object).length > 0; }
+
     const snapshot: PatientClinicalSnapshot = {
       allergies, medicines, labOrders, imagingOrders, fhRows, diagnoses,
       vitals: Array.from(vitalMap.values()),
+      // Extended: prefer current note if non-empty, else keep prior
+      chiefComplaints: nonEmptyArr(n.chiefComplaints)
+        ? (n.chiefComplaints as string[]) : (prior?.chiefComplaints ?? []),
+      hpi: nonEmptyStr(n.hpi)
+        ? (n.hpi as string) : (prior?.hpi ?? ""),
+      pmhActive: nonEmptyArr(n.pmhActive)
+        ? (n.pmhActive as string[]) : (prior?.pmhActive ?? []),
+      pmhResolved: nonEmptyArr(n.pmhResolved)
+        ? (n.pmhResolved as string[]) : (prior?.pmhResolved ?? []),
+      surgicalRows: nonEmptyArr(n.surgicalRows)
+        ? (n.surgicalRows as unknown[]) : (prior?.surgicalRows ?? []),
+      pocTests: nonEmptyArr(n.pocTests)
+        ? (n.pocTests as unknown[]) : (prior?.pocTests ?? []),
+      ros: nonEmptyObj(n.ros)
+        ? (n.ros as Record<string, string[]>) : (prior?.ros ?? {}),
+      peSystems: nonEmptyArr(n.peSystems)
+        ? (n.peSystems as string[]) : (prior?.peSystems ?? []),
+      carePlan:        n.carePlan        != null ? (n.carePlan        as unknown) : (prior?.carePlan        ?? null),
+      referrals:       n.referrals       != null ? (n.referrals       as unknown) : (prior?.referrals       ?? null),
+      procedureOrders: n.procedureOrders != null ? (n.procedureOrders as unknown) : (prior?.procedureOrders ?? null),
+      patientGoals:    n.patientGoals    != null ? (n.patientGoals    as unknown) : (prior?.patientGoals    ?? null),
+      healthEd:        n.healthEd        != null ? (n.healthEd        as unknown) : (prior?.healthEd        ?? null),
     };
     localStorage.setItem(`${CLINICAL_PFX}${mrn}`, JSON.stringify(snapshot));
   } catch {
     // storage quota — silently ignore
   }
+}
+
+/**
+ * Merge nursing history sections into the per-patient clinical snapshot.
+ * Extracts chief complaints, allergies, and PMH from nursing history records
+ * and merges them (append-deduplicate) into the shared patient snapshot.
+ */
+export function mergeNursingHistoryIntoSnapshot(
+  mrn: string,
+  sections: { name: string; lines: string[] }[],
+): void {
+  if (!mrn) return;
+  try {
+    const prior: PatientClinicalSnapshot = readPatientClinicalSnapshot(mrn) ?? {
+      allergies: [], medicines: [], labOrders: [], imagingOrders: [],
+      fhRows: [], diagnoses: [], vitals: [],
+    };
+    let changed = false;
+
+    // Extract chief complaints
+    const ccSec = sections.find(s => s.name.toLowerCase().includes("chief"));
+    if (ccSec && ccSec.lines.length > 0) {
+      const set = new Set<string>(prior.chiefComplaints ?? []);
+      const before = set.size;
+      ccSec.lines.forEach(l => l.split(",").map(s => s.trim()).filter(Boolean).forEach(c => set.add(c)));
+      if (set.size !== before) { prior.chiefComplaints = Array.from(set); changed = true; }
+    }
+
+    // Extract allergies (format: "Name — Reaction (Severity)")
+    const allergySec = sections.find(s => s.name.toLowerCase().includes("allerg"));
+    if (allergySec && allergySec.lines.length > 0) {
+      type AllergyLike = { name?: string; reaction?: string; severity?: string };
+      const parsed: AllergyLike[] = allergySec.lines.map(line => {
+        const dashIdx = line.indexOf(" — ");
+        const namePart = dashIdx !== -1 ? line.slice(0, dashIdx).trim() : line.trim();
+        const rest = dashIdx !== -1 ? line.slice(dashIdx + 3) : "";
+        const sevMatch = rest.match(/\(([^)]+)\)$/);
+        const severity = sevMatch?.[1]?.replace(/_/g, " ") ?? "Moderate";
+        const reaction = rest.replace(/\s*\([^)]+\)$/, "").trim();
+        return { name: namePart, reaction, severity };
+      });
+      const map = new Map<string, AllergyLike>(
+        ((prior.allergies ?? []) as AllergyLike[]).map(a => [a.name?.toLowerCase() ?? "", a]),
+      );
+      const before = map.size;
+      parsed.forEach(a => { if (a.name) map.set(a.name.toLowerCase(), a); });
+      if (map.size !== before) { prior.allergies = Array.from(map.values()); changed = true; }
+    }
+
+    // Extract past medical history (active conditions)
+    const pmhSec = sections.find(
+      s => s.name.toLowerCase().includes("past") && s.name.toLowerCase().includes("hist"),
+    );
+    if (pmhSec && pmhSec.lines.length > 0) {
+      const set = new Set<string>(prior.pmhActive ?? []);
+      const before = set.size;
+      pmhSec.lines.forEach(l => l.split(",").map(s => s.trim()).filter(Boolean).forEach(c => set.add(c)));
+      if (set.size !== before) { prior.pmhActive = Array.from(set); changed = true; }
+    }
+
+    if (changed) {
+      localStorage.setItem(`${CLINICAL_PFX}${mrn}`, JSON.stringify(prior));
+    }
+  } catch { /**/ }
 }
 
 // ─── Active lab order persistence ─────────────────────────────────────────────

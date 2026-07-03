@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { QueueAppHeader } from "@/pages/QueuePageLayout";
 import type { Patient } from "@/pages/QueuePageLayout";
 import type { ReceiptInfo } from "@/pages/FrontDeskUser";
+import { usePatientSoapRepo } from "@/hooks/usePatientSoapRepo";
 
 const ACCENT = "#4982CF";
 
@@ -588,14 +589,15 @@ const SOAP_SECTION_META: Record<string, { icon: React.ElementType; color: string
   "health-ed":        { icon: BookOpen,      color: "#8b5cf6"  },
 };
 
-function SoapTabContent() {
-  const sections = useMemo(() =>
-    loadNoteStructure().filter(
-      s => s.id !== "vitals" && s.active !== false && s.visibility !== "hidden"
+function SoapTabContent({ mrn }: { mrn: string }) {
+  const sections = useMemo(
+    () => loadNoteStructure().filter(
+      s => s.id !== "vitals" && s.active !== false && s.visibility !== "hidden",
     ),
-  []);
-
+    [],
+  );
   const [activeId, setActiveId] = useState<string>(() => sections[0]?.id ?? "");
+  const repo = usePatientSoapRepo(mrn);
 
   if (sections.length === 0) {
     return (
@@ -615,14 +617,421 @@ function SoapTabContent() {
   const meta = SOAP_SECTION_META[current.id] ?? { icon: FileText, color: "#4982CF" };
   const Icon = meta.icon;
 
+  const SEV_COLOR: Record<string, string> = {
+    Severe: "#ef4444", Moderate: "#f97316", Mild: "#eab308",
+  };
+  const POC_STATUS: Record<string, { label: string; color: string }> = {
+    pending:     { label: "Pending",     color: "#94a3b8" },
+    positive:    { label: "Positive",    color: "#ef4444" },
+    negative:    { label: "Negative",    color: "#10b981" },
+    sent_to_lab: { label: "Sent to Lab", color: "#f59e0b" },
+  };
+
+  function renderContent(): React.ReactNode {
+    const id = current.id;
+    switch (id) {
+
+      case "chief-complaints": {
+        const nursingCCs = repo.nursingHistory.flatMap(h =>
+          h.sections
+            .filter(s => s.name.toLowerCase().includes("chief"))
+            .flatMap(s => s.lines.flatMap(l => l.split(",").map(x => x.trim()).filter(Boolean))),
+        );
+        const all = Array.from(new Set([...repo.chiefComplaints, ...nursingCCs]));
+        if (!all.length) return null;
+        return (
+          <div className="flex flex-wrap gap-2">
+            {all.map((c, i) => (
+              <span key={i} className="px-3 py-1.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">{c}</span>
+            ))}
+          </div>
+        );
+      }
+
+      case "hpi": {
+        if (!repo.hpi) return null;
+        return (
+          <div className="bg-white rounded-xl border border-slate-200 p-4 max-w-2xl">
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{repo.hpi}</p>
+          </div>
+        );
+      }
+
+      case "allergies": {
+        if (!repo.allergies.length) return null;
+        return (
+          <div className="space-y-2 max-w-xl">
+            {repo.allergies.map((a, i) => {
+              const c = SEV_COLOR[a.severity] ?? "#94a3b8";
+              return (
+                <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-slate-200 bg-white">
+                  <div className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: c }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800">{a.name}</p>
+                    {a.reaction && <p className="text-[10px] text-slate-400">{a.reaction}</p>}
+                  </div>
+                  <span
+                    className="text-[10px] font-black px-2 py-0.5 rounded-full border flex-shrink-0"
+                    style={{ color: c, backgroundColor: `${c}15`, borderColor: `${c}40` }}
+                  >{a.severity}</span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+
+      case "medical-history": {
+        const filledFh = repo.fhRows.filter(r => r.condition || r.relation);
+        if (!repo.pmhActive.length && !repo.pmhResolved.length && !repo.surgicalRows.length && !filledFh.length) return null;
+        return (
+          <div className="space-y-5 max-w-xl">
+            {repo.pmhActive.length > 0 && (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Active Conditions</p>
+                <div className="space-y-1.5">
+                  {repo.pmhActive.map((c, i) => (
+                    <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-red-50 border border-red-100">
+                      <div className="h-2 w-2 rounded-full bg-red-400 flex-shrink-0" />
+                      <p className="text-xs font-semibold text-red-800">{c}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {repo.pmhResolved.length > 0 && (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Resolved</p>
+                <div className="space-y-1.5">
+                  {repo.pmhResolved.map((c, i) => (
+                    <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100">
+                      <div className="h-2 w-2 rounded-full bg-slate-300 flex-shrink-0" />
+                      <p className="text-xs text-slate-600">{c}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {repo.surgicalRows.length > 0 && (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Surgical History</p>
+                <div className="space-y-1.5">
+                  {repo.surgicalRows.map((r, i) => (
+                    <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-amber-50 border border-amber-100">
+                      <div className="h-2 w-2 rounded-full bg-amber-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-amber-800">{r.procedure || "—"}</p>
+                        {r.date && <p className="text-[10px] text-amber-500">{r.date}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {filledFh.length > 0 && (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Family History</p>
+                <div className="space-y-1.5">
+                  {filledFh.map((row, i) => (
+                    <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-pink-50 border border-pink-100">
+                      <Users className="h-3 w-3 text-pink-400 flex-shrink-0" />
+                      <p className="text-xs font-semibold text-pink-800">{row.condition || "—"}</p>
+                      {row.relation && <span className="ml-auto text-[10px] text-pink-500">{row.relation}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      case "ros": {
+        const entries = Object.entries(repo.ros).filter(([, f]) => f.length > 0);
+        if (!entries.length) return null;
+        return (
+          <div className="space-y-3 max-w-2xl">
+            {entries.map(([sys, findings]) => (
+              <div key={sys} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
+                  <p className="text-xs font-black text-slate-700">{sys}</p>
+                </div>
+                <div className="px-4 py-2.5 flex flex-wrap gap-1.5">
+                  {findings.map((f, i) => (
+                    <span key={i} className="px-2 py-1 rounded-lg bg-sky-50 text-sky-700 border border-sky-100 text-[10px] font-bold">{f}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      case "physical-exam": {
+        if (!repo.peSystems.length) return null;
+        return (
+          <div className="space-y-2 max-w-xl">
+            {repo.peSystems.map((sys, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-slate-200 bg-white">
+                <Stethoscope className="h-3.5 w-3.5 text-cyan-500 flex-shrink-0" />
+                <p className="text-xs font-semibold text-slate-700">{sys}</p>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      case "poc-labs": {
+        if (!repo.pocTests.length) return null;
+        return (
+          <div className="space-y-2 max-w-xl">
+            {repo.pocTests.map((t, i) => {
+              const st = POC_STATUS[t.status] ?? { label: t.status, color: "#94a3b8" };
+              return (
+                <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-slate-200 bg-white">
+                  <FlaskConical className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800">{t.name}</p>
+                    <p className="text-[10px] text-slate-400">{t.category}</p>
+                  </div>
+                  <span
+                    className="text-[10px] font-black px-2 py-0.5 rounded-full border flex-shrink-0"
+                    style={{ color: st.color, backgroundColor: `${st.color}15`, borderColor: `${st.color}40` }}
+                  >{st.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+
+      case "diagnosis": {
+        if (!repo.diagnoses.length) return null;
+        return (
+          <div className="space-y-3 max-w-xl">
+            {repo.diagnoses.map((dx, i) => (
+              <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white">
+                <div className="h-7 w-7 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                  <Microscope className="h-3.5 w-3.5 text-indigo-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-slate-800">{dx.name}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {dx.code}{dx.specialty ? ` · ${dx.specialty}` : ""}
+                  </p>
+                </div>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border flex-shrink-0 ${
+                  dx.isFinal
+                    ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                    : "bg-amber-50 text-amber-600 border-amber-200"
+                }`}>
+                  {dx.isFinal ? "Final" : "Provisional"}
+                </span>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      case "labs": {
+        const active = repo.labOrders.filter(lo => !lo.voided);
+        if (!active.length) return null;
+        return (
+          <div className="space-y-4 max-w-2xl">
+            {active.map((lo, i) => (
+              <div key={i} className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                  <p className="text-xs font-black text-slate-700">{lo.orderSetName ?? "Lab Order"}</p>
+                  {lo.sentAt && (
+                    <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full">Sent</span>
+                  )}
+                </div>
+                <div className="px-4 py-3 flex flex-wrap gap-1.5">
+                  {lo.tests.map((t, j) => (
+                    <span key={j} className="px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold">{t.name}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      case "imaging": {
+        if (!repo.imagingOrders.length) return null;
+        return (
+          <div className="space-y-3 max-w-xl">
+            {repo.imagingOrders.map((io, i) => (
+              <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white">
+                <ScanLine className="h-3.5 w-3.5 text-cyan-500 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-slate-800">{io.modality} — {io.bodyPart}</p>
+                  {io.protocol && <p className="text-[10px] text-slate-500 mt-0.5">{io.protocol}</p>}
+                  {io.specialInstructions && (
+                    <p className="text-[10px] text-slate-400 italic mt-0.5">{io.specialInstructions}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      case "formulary": {
+        if (!repo.medicines.length) return null;
+        return (
+          <div className="space-y-3 max-w-xl">
+            {repo.medicines.map((m, i) => (
+              <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl border border-indigo-100 bg-indigo-50/30">
+                <Pill className="h-3.5 w-3.5 text-indigo-400 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-indigo-800">{m.brand} {m.strength}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    {[m.dose && `${m.dose} ${m.unit}`, m.route, m.frequency, m.duration].filter(Boolean).join(" · ")}
+                  </p>
+                  {m.genericName && <p className="text-[9px] text-slate-400 italic mt-0.5">{m.genericName}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      case "procedures": {
+        type ProcOrd = { orders?: { uid: string; name: string; cpt?: string; category?: string }[]; instructions?: string };
+        const d = repo.procedureOrders as ProcOrd | null;
+        if (!d?.orders?.length) return null;
+        return (
+          <div className="space-y-2 max-w-xl">
+            {d.orders.map((o, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-teal-100 bg-teal-50/30">
+                <Stethoscope className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-teal-800">{o.name}</p>
+                  {o.cpt && <p className="text-[9px] text-teal-500">CPT {o.cpt}{o.category ? ` · ${o.category}` : ""}</p>}
+                </div>
+              </div>
+            ))}
+            {d.instructions && (
+              <div className="px-3 py-2 rounded-lg bg-amber-50 border border-amber-100 mt-1">
+                <p className="text-[10px] text-amber-700">{d.instructions}</p>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      case "care-plan": {
+        type CPlan = { tasks?: { uid: string; title: string; priority?: string; dueDate?: string; notes?: string }[]; instructions?: string };
+        const d = repo.carePlan as CPlan | null;
+        if (!d?.tasks?.length) return null;
+        return (
+          <div className="space-y-2 max-w-xl">
+            {d.tasks.map((t, i) => (
+              <div key={i} className="flex items-start gap-3 px-4 py-2.5 rounded-xl border border-emerald-100 bg-emerald-50/30">
+                <BookMarked className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-emerald-800">{t.title}</p>
+                  {t.dueDate && <p className="text-[10px] text-emerald-600">Due {t.dueDate}</p>}
+                  {t.notes && <p className="text-[10px] text-slate-400 italic mt-0.5">{t.notes}</p>}
+                </div>
+                {t.priority && (
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0 ${t.priority === "Urgent" ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-500"}`}>
+                    {t.priority}
+                  </span>
+                )}
+              </div>
+            ))}
+            {d.instructions && (
+              <div className="px-3 py-2 rounded-lg bg-amber-50 border border-amber-100 mt-1">
+                <p className="text-[10px] text-amber-700">{d.instructions}</p>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      case "referrals": {
+        type Ref = { referrals?: { id: string; speciality?: string; consultantName?: string; reason?: string }[] };
+        const d = repo.referrals as Ref | null;
+        if (!d?.referrals?.length) return null;
+        return (
+          <div className="space-y-3 max-w-xl">
+            {d.referrals.map((r, i) => (
+              <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl border border-indigo-100 bg-white">
+                <Users className="h-3.5 w-3.5 text-indigo-400 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-slate-800">{r.speciality ?? "—"}</p>
+                  {r.consultantName && <p className="text-[10px] text-slate-500 mt-0.5">{r.consultantName}</p>}
+                  {r.reason && <p className="text-[10px] text-slate-400 italic mt-0.5">{r.reason}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      case "patient-goals": {
+        type GoalD = { goals?: { uid: string; title: string; priority?: string; targetDate?: string }[] };
+        const d = repo.patientGoals as GoalD | null;
+        if (!d?.goals?.length) return null;
+        const P_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+          High:   { bg: "#fff1f2", text: "#e11d48", border: "#fecdd3" },
+          Normal: { bg: "#eff6ff", text: "#2563eb", border: "#bfdbfe" },
+          Low:    { bg: "#f0fdf4", text: "#16a34a", border: "#bbf7d0" },
+        };
+        return (
+          <div className="space-y-2 max-w-xl">
+            {d.goals.map((g, i) => {
+              const cs = P_COLORS[g.priority ?? "Normal"] ?? P_COLORS.Normal;
+              return (
+                <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-slate-200 bg-white">
+                  <Target className="h-3.5 w-3.5 text-pink-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800">{g.title}</p>
+                    {g.targetDate && <p className="text-[10px] text-slate-400">Target: {g.targetDate}</p>}
+                  </div>
+                  {g.priority && (
+                    <span
+                      className="text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0"
+                      style={{ background: cs.bg, color: cs.text, border: `1px solid ${cs.border}` }}
+                    >{g.priority}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+
+      case "health-ed": {
+        const d = repo.healthEd as { docIds?: string[] } | null;
+        if (!d?.docIds?.length) return null;
+        return (
+          <div className="space-y-2 max-w-xl">
+            {d.docIds.map((docId, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-purple-100 bg-purple-50/30">
+                <BookOpen className="h-3.5 w-3.5 text-purple-500 flex-shrink-0" />
+                <p className="text-xs font-semibold text-purple-800">{docId}</p>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      default:
+        return null;
+    }
+  }
+
+  const content = renderContent();
+
   return (
     <div className="flex h-full overflow-hidden">
 
       {/* Left sub-nav */}
       <div className="w-52 flex-none border-r border-slate-200 bg-white overflow-y-auto py-3">
-        <p className="px-4 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-          Sections
-        </p>
+        <p className="px-4 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Sections</p>
         {sections.map(s => {
           const m = SOAP_SECTION_META[s.id] ?? { icon: FileText, color: "#4982CF" };
           const SIcon = m.icon;
@@ -632,19 +1041,12 @@ function SoapTabContent() {
               key={s.id}
               onClick={() => setActiveId(s.id)}
               className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold transition-colors text-left ${
-                isActive
-                  ? "text-[#4982CF] bg-[#4982CF]/[0.07]"
-                  : "text-slate-600 hover:bg-slate-50"
+                isActive ? "text-[#4982CF] bg-[#4982CF]/[0.07]" : "text-slate-600 hover:bg-slate-50"
               }`}
             >
               <SIcon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: m.color }} />
               <span className="flex-1 truncate">{s.label}</span>
-              {isActive && (
-                <div
-                  className="w-1 h-4 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: m.color }}
-                />
-              )}
+              {isActive && <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: m.color }} />}
             </button>
           );
         })}
@@ -652,7 +1054,6 @@ function SoapTabContent() {
 
       {/* Right panel */}
       <div className="flex-1 overflow-y-auto p-6 flex flex-col">
-        {/* Section header */}
         <div className="flex items-center gap-3 mb-6">
           <div
             className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -666,19 +1067,22 @@ function SoapTabContent() {
           </div>
         </div>
 
-        {/* Empty state */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 py-16">
-          <div
-            className="h-14 w-14 rounded-2xl flex items-center justify-center"
-            style={{ backgroundColor: `${meta.color}12` }}
-          >
-            <Icon className="h-6 w-6" style={{ color: meta.color }} />
+        {content ? (
+          <div className="flex-1">{content}</div>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 py-16">
+            <div
+              className="h-14 w-14 rounded-2xl flex items-center justify-center"
+              style={{ backgroundColor: `${meta.color}12` }}
+            >
+              <Icon className="h-6 w-6" style={{ color: meta.color }} />
+            </div>
+            <p className="text-sm font-semibold text-slate-500">{current.label}</p>
+            <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed">
+              {current.label} data will appear here once it has been recorded and signed in a SOAP note.
+            </p>
           </div>
-          <p className="text-sm font-semibold text-slate-500">{current.label}</p>
-          <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed">
-            {current.label} data will appear here once it has been recorded and signed in a SOAP note.
-          </p>
-        </div>
+        )}
       </div>
 
     </div>
@@ -1129,7 +1533,7 @@ export function PatientProfile() {
               </div>
             )}
 
-            {activeTab === "soap" && <SoapTabContent />}
+            {activeTab === "soap" && <SoapTabContent mrn={patient.mrn} />}
 
             {activeTab === "health" && (
               <div className="h-full overflow-y-auto p-6 max-w-2xl">
