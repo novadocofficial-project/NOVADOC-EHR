@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   X, ChevronRight, ChevronLeft, ChevronDown, AlertCircle, Heart, Activity,
   ClipboardList, Stethoscope, Target, CheckCircle2, Check, FileText,
   Maximize2, Minimize2, Plus, Trash2, Pill, Receipt, ShieldCheck,
-  DollarSign, Layers, SkipForward, RotateCcw,
+  DollarSign, Layers, SkipForward, RotateCcw, Search, GripVertical,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -217,10 +218,250 @@ function CustomComponentForm({ component, values, onChange, entryLayout, columns
   );
 }
 
+// ─── Chief complaint options (mirrored from ClinicalNoteDrawer) ───────────────
+
+const NURSING_COMPLAINT_OPTIONS = [
+  "Fever", "Cough", "Sore Throat", "Headache", "Fatigue",
+  "Shortness of Breath", "Chest Pain", "Nausea / Vomiting",
+  "Abdominal Pain", "Back Pain", "Dizziness", "Rash",
+  "Joint Pain", "Loss of Appetite", "Diarrhea", "Constipation",
+  "Ear Pain / Earache", "Eye Redness / Pain", "Urinary Symptoms",
+  "Runny Nose / Congestion", "Muscle Aches", "Swelling / Edema",
+  "Palpitations", "Anxiety / Stress",
+];
+
+function parseChiefComplaints(raw: string): string[] {
+  if (!raw.trim() || raw.trim() === "[]") return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed as string[];
+  } catch { /* */ }
+  return raw.split(",").map(s => s.trim()).filter(Boolean);
+}
+
+function isSystemValueBlank(v: string): boolean {
+  if (!v.trim() || v.trim() === "[]") return true;
+  try {
+    const p = JSON.parse(v);
+    if (Array.isArray(p)) return p.length === 0;
+  } catch { /* */ }
+  return false;
+}
+
+// ─── Nursing Chief Complaint chip selector ────────────────────────────────────
+
+const NURSING_ACCENT = "#4982CF";
+
+function NursingChiefComplaintSelector({ selected, onChange }: { selected: string[]; onChange: (items: string[]) => void }) {
+  const [open,      setOpen]    = useState(false);
+  const [search,    setSearch]  = useState("");
+  const [custom,    setCustom]  = useState("");
+  const [dragIdx,   setDragIdx] = useState<number | null>(null);
+  const [overIdx,   setOverIdx] = useState<number | null>(null);
+  const [dropPos,   setDropPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef              = useRef<HTMLButtonElement>(null);
+  const dropdownRef             = useRef<HTMLDivElement>(null);
+
+  function updatePos() {
+    if (!triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setDropPos({ top: r.bottom + 6, left: r.left, width: r.width });
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      const t = e.target as Node;
+      if (!triggerRef.current?.contains(t) && !dropdownRef.current?.contains(t)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [open]);
+
+  function toggle(item: string) {
+    onChange(selected.includes(item) ? selected.filter(s => s !== item) : [...selected, item]);
+  }
+  function remove(item: string) { onChange(selected.filter(s => s !== item)); }
+  function addCustom() {
+    const val = custom.trim();
+    if (val && !selected.includes(val)) onChange([...selected, val]);
+    setCustom("");
+  }
+  function onDragStart(idx: number) { setDragIdx(idx); }
+  function onDragOver(e: React.DragEvent, idx: number) { e.preventDefault(); setOverIdx(idx); }
+  function onDrop(idx: number) {
+    if (dragIdx === null || dragIdx === idx) return;
+    const next = [...selected];
+    const [moved] = next.splice(dragIdx, 1);
+    next.splice(idx, 0, moved);
+    onChange(next);
+    setDragIdx(null); setOverIdx(null);
+  }
+  function onDragEnd() { setDragIdx(null); setOverIdx(null); }
+
+  const filtered = NURSING_COMPLAINT_OPTIONS.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="relative">
+      <button
+        ref={triggerRef}
+        onClick={() => { if (open) { setOpen(false); } else { updatePos(); setOpen(true); } }}
+        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-[#4982CF]/50 transition-colors text-left">
+        {selected.length === 0 ? (
+          <span className="text-xs text-slate-300 flex-1">Select chief complaints…</span>
+        ) : (
+          <span className="text-xs font-semibold flex-1" style={{ color: NURSING_ACCENT }}>
+            {selected.length} complaint{selected.length > 1 ? "s" : ""} selected
+          </span>
+        )}
+        <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{ position: "fixed", top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
+          className="bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100">
+            <Search className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+            <input
+              autoFocus
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search complaints…"
+              className="flex-1 text-xs outline-none text-slate-700 placeholder-slate-300 bg-transparent"
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="text-slate-300 hover:text-slate-500">
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+          <div className="max-h-48 overflow-y-auto py-1">
+            {filtered.map(opt => {
+              const checked = selected.includes(opt);
+              const rank    = selected.indexOf(opt) + 1;
+              return (
+                <button
+                  key={opt}
+                  onClick={() => toggle(opt)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${checked ? "bg-blue-50/60" : "hover:bg-slate-50"}`}>
+                  <div
+                    className="h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all"
+                    style={checked ? { backgroundColor: NURSING_ACCENT, borderColor: NURSING_ACCENT } : { borderColor: "#cbd5e1" }}>
+                    {checked && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                  </div>
+                  <span className="text-xs text-slate-700 flex-1">{opt}</span>
+                  {checked && (
+                    <span className="text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center text-white flex-shrink-0"
+                      style={{ backgroundColor: NURSING_ACCENT }}>{rank}</span>
+                  )}
+                </button>
+              );
+            })}
+            {filtered.length === 0 && (
+              <p className="px-4 py-4 text-xs text-center text-slate-400">No matches — add as custom below</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2.5 border-t border-slate-100 bg-slate-50/50">
+            <Plus className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+            <input
+              value={custom}
+              onChange={e => setCustom(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
+              placeholder="Add custom complaint…"
+              className="flex-1 text-xs outline-none text-slate-700 placeholder-slate-300 bg-transparent"
+            />
+            <button
+              onClick={addCustom}
+              disabled={!custom.trim()}
+              className="text-[10px] font-bold px-2.5 py-1 rounded-lg text-white transition-opacity disabled:opacity-30"
+              style={{ backgroundColor: NURSING_ACCENT }}>
+              Add
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {selected.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {selected.map((item, idx) => {
+            const isPrimary  = idx === 0;
+            const isDragging = dragIdx === idx;
+            const isOver     = overIdx === idx && dragIdx !== idx;
+            return (
+              <div
+                key={item}
+                draggable
+                onDragStart={() => onDragStart(idx)}
+                onDragOver={e => onDragOver(e, idx)}
+                onDrop={() => onDrop(idx)}
+                onDragEnd={onDragEnd}
+                className={[
+                  "flex items-center gap-2.5 px-3 py-2 rounded-xl border-2 cursor-grab active:cursor-grabbing select-none transition-all duration-150",
+                  isDragging ? "opacity-40 scale-[0.97]" : "",
+                  isOver     ? "border-[#4982CF] shadow-md scale-[1.02]" : "",
+                  isPrimary
+                    ? "bg-[#4982CF] text-white border-[#4982CF] shadow-sm"
+                    : "bg-blue-50 text-blue-800 border-blue-200",
+                ].join(" ")}>
+                <GripVertical className="h-3.5 w-3.5 opacity-50 flex-shrink-0" />
+                <span className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  isPrimary ? "bg-white/25 text-white" : "bg-[#4982CF] text-white"
+                }`}>{idx + 1}</span>
+                <span className="text-xs font-semibold flex-1">{item}</span>
+                {isPrimary && (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-white/20 text-white/90 flex-shrink-0">Primary</span>
+                )}
+                <button
+                  onClick={e => { e.stopPropagation(); remove(item); }}
+                  className={`hover:opacity-70 transition-opacity flex-shrink-0 ${isPrimary ? "text-white/70" : "text-blue-400"}`}>
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            );
+          })}
+          <p className="text-[10px] text-slate-400 flex items-center gap-1 pt-0.5">
+            <GripVertical className="h-3 w-3" />
+            Drag to reorder · <span className="font-semibold text-slate-500">Position 1 = Primary Complaint</span>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── System component view (history) ─────────────────────────────────────────
 
 function SystemComponentView({ systemKey, value, onChange }: { systemKey?: string; value: string; onChange: (v: string) => void }) {
   const def = SYSTEM_COMPONENTS.find(c => c.key === systemKey);
+
+  if (systemKey === "chief-complaint") {
+    const selected = parseChiefComplaints(value);
+    return (
+      <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3 mb-2">
+        <div className="flex items-start gap-2 mb-3">
+          <Activity className="h-3.5 w-3.5 text-[#4982CF] flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-semibold text-[#4982CF]">{def?.name ?? "Chief Complaint"}</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">{def?.desc ?? "Primary reason for visit"}</p>
+          </div>
+        </div>
+        <NursingChiefComplaintSelector
+          selected={selected}
+          onChange={items => onChange(JSON.stringify(items))}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3 mb-2">
       <div className="flex items-start gap-2 mb-2">
@@ -1006,7 +1247,7 @@ interface HistoryRecord {
 
 function isHistoryDraftBlank(d: HistoryDraft): boolean {
   const dataFilled = Object.values(d.data).some(entries => entries.some(entry => Object.values(entry).some(v => v.trim() !== "")));
-  return !dataFilled && !Object.values(d.systemValues).some(v => v.trim() !== "");
+  return !dataFilled && !Object.values(d.systemValues).some(v => !isSystemValueBlank(v));
 }
 function loadApptHistoryDrafts(): HistoryDraft[] {
   try { const raw = localStorage.getItem(APPT_HISTORY_DRAFTS_KEY); if (raw) return JSON.parse(raw) as HistoryDraft[]; } catch { /**/ }
@@ -1073,7 +1314,14 @@ function HistoryTabContent({ initialTemplateId, initialData, initialSystemValues
   function handleComplete() {
     if (!activeTemplate || !onComplete) return;
     const sections = activeTemplate.components.map(comp => {
-      if (comp.type === "system") { const val = systemValues[comp.id] ?? ""; return { name: comp.name, lines: val.trim() ? [val] : [] }; }
+      if (comp.type === "system") {
+        const raw = systemValues[comp.id] ?? "";
+        if (comp.systemKey === "chief-complaint") {
+          const arr = parseChiefComplaints(raw);
+          return { name: comp.name, lines: arr.length > 0 ? [arr.join(", ")] : [] };
+        }
+        return { name: comp.name, lines: raw.trim() ? [raw] : [] };
+      }
       const entries = data[comp.id] ?? [{}];
       const lines: string[] = [];
       for (const entry of entries) {
