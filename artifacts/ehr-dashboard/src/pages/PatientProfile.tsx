@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   ArrowLeft, User, Phone, Calendar, Hash, Edit2,
   FileText, Folder, FlaskConical, Scan, Users, Receipt,
   AlertCircle, Activity, Pill, Maximize2, Minimize2, X,
   Printer, Upload, History, CalendarPlus, Ticket, Mail,
-  ChevronRight, GitBranch,
+  ChevronRight, GitBranch, ClipboardList, BookOpen, Heart,
+  Stethoscope, Microscope, ScanLine, BookMarked, Target,
 } from "lucide-react";
+import { loadNoteStructure } from "@/pages/SoapConfigModule";
 import { PatientFilesExplorer, loadPatientFilesLatest, formatFileSize } from "@/pages/PatientFilesExplorer";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -565,11 +567,130 @@ function QuickActions({ onEdit, onComingSoon }: { onEdit: () => void; onComingSo
   );
 }
 
+// ─── SOAP Tab ─────────────────────────────────────────────────────────────────
+
+const SOAP_SECTION_META: Record<string, { icon: React.ElementType; color: string }> = {
+  "chief-complaints": { icon: ClipboardList, color: "#4982CF"  },
+  "hpi":              { icon: BookOpen,      color: "#6366f1"  },
+  "allergies":        { icon: Heart,         color: "#ef4444"  },
+  "medical-history":  { icon: FileText,      color: "#10b981"  },
+  "ros":              { icon: ClipboardList, color: "#0ea5e9"  },
+  "physical-exam":    { icon: Stethoscope,   color: "#06b6d4"  },
+  "poc-labs":         { icon: FlaskConical,  color: "#f59e0b"  },
+  "diagnosis":        { icon: Microscope,    color: "#6366f1"  },
+  "labs":             { icon: FlaskConical,  color: "#f59e0b"  },
+  "imaging":          { icon: ScanLine,      color: "#06b6d4"  },
+  "formulary":        { icon: Pill,          color: "#8b5cf6"  },
+  "procedures":       { icon: Stethoscope,   color: "#14b8a6"  },
+  "care-plan":        { icon: BookMarked,    color: "#10b981"  },
+  "referrals":        { icon: Users,         color: "#6366f1"  },
+  "patient-goals":    { icon: Target,        color: "#ec4899"  },
+  "health-ed":        { icon: BookOpen,      color: "#8b5cf6"  },
+};
+
+function SoapTabContent() {
+  const sections = useMemo(() =>
+    loadNoteStructure().filter(
+      s => s.id !== "vitals" && s.active !== false && s.visibility !== "hidden"
+    ),
+  []);
+
+  const [activeId, setActiveId] = useState<string>(() => sections[0]?.id ?? "");
+
+  if (sections.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 p-8 text-center">
+        <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center">
+          <ClipboardList className="h-5 w-5 text-slate-300" />
+        </div>
+        <p className="text-sm font-semibold text-slate-500">No SOAP sections visible</p>
+        <p className="text-xs text-slate-400 max-w-xs">
+          Enable sections in Admin › Soap Note › Note Structure to see them here.
+        </p>
+      </div>
+    );
+  }
+
+  const current = sections.find(s => s.id === activeId) ?? sections[0];
+  const meta = SOAP_SECTION_META[current.id] ?? { icon: FileText, color: "#4982CF" };
+  const Icon = meta.icon;
+
+  return (
+    <div className="flex h-full overflow-hidden">
+
+      {/* Left sub-nav */}
+      <div className="w-52 flex-none border-r border-slate-200 bg-white overflow-y-auto py-3">
+        <p className="px-4 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          Sections
+        </p>
+        {sections.map(s => {
+          const m = SOAP_SECTION_META[s.id] ?? { icon: FileText, color: "#4982CF" };
+          const SIcon = m.icon;
+          const isActive = s.id === current.id;
+          return (
+            <button
+              key={s.id}
+              onClick={() => setActiveId(s.id)}
+              className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold transition-colors text-left ${
+                isActive
+                  ? "text-[#4982CF] bg-[#4982CF]/[0.07]"
+                  : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <SIcon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: m.color }} />
+              <span className="flex-1 truncate">{s.label}</span>
+              {isActive && (
+                <div
+                  className="w-1 h-4 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: m.color }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Right panel */}
+      <div className="flex-1 overflow-y-auto p-6 flex flex-col">
+        {/* Section header */}
+        <div className="flex items-center gap-3 mb-6">
+          <div
+            className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: `${meta.color}15` }}
+          >
+            <Icon className="h-4 w-4" style={{ color: meta.color }} />
+          </div>
+          <div>
+            <h2 className="text-base font-black text-slate-800">{current.label}</h2>
+            <p className="text-xs text-slate-400">Patient SOAP record</p>
+          </div>
+        </div>
+
+        {/* Empty state */}
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 py-16">
+          <div
+            className="h-14 w-14 rounded-2xl flex items-center justify-center"
+            style={{ backgroundColor: `${meta.color}12` }}
+          >
+            <Icon className="h-6 w-6" style={{ color: meta.color }} />
+          </div>
+          <p className="text-sm font-semibold text-slate-500">{current.label}</p>
+          <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed">
+            {current.label} data will appear here once it has been recorded and signed in a SOAP note.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 type TabId =
   | "overview" | "health" | "labs" | "radiology" | "files"
-  | "medications" | "allergies" | "vitals" | "family" | "family-tree" | "invoices";
+  | "medications" | "allergies" | "vitals" | "family" | "family-tree" | "invoices"
+  | "soap";
 
 export function PatientProfile() {
   const { id }        = useParams<{ id: string }>();
@@ -668,6 +789,7 @@ export function PatientProfile() {
 
   const TABS: { id: TabId; label: string; icon: React.ElementType; color: string; count?: number }[] = [
     { id: "overview",    label: "Overview",       icon: FileText,     color: "#4982CF" },
+    { id: "soap",        label: "SOAP",           icon: ClipboardList,color: "#4982CF" },
     { id: "health",      label: "Appointments",   icon: FileText,     color: "#4982CF", count: visitCount   || undefined },
     { id: "labs",        label: "Lab Reports",    icon: FlaskConical, color: "#f59e0b", count: labCount     || undefined },
     { id: "radiology",   label: "Radiology",      icon: Scan,         color: "#0ea5e9", count: radCount     || undefined },
@@ -1006,6 +1128,8 @@ export function PatientProfile() {
 
               </div>
             )}
+
+            {activeTab === "soap" && <SoapTabContent />}
 
             {activeTab === "health" && (
               <div className="h-full overflow-y-auto p-6 max-w-2xl">
