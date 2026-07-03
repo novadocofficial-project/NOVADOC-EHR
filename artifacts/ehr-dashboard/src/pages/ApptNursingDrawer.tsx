@@ -1924,7 +1924,7 @@ function HistoryTabContent({ initialTemplateId, initialData, initialSystemValues
 
       {/* Current Medicines Drawer — slides in from right within this panel */}
       {formularyOpen && formularyComp && (
-        <div className="absolute inset-y-0 right-0 w-[65%] bg-white shadow-2xl border-l border-slate-200 flex flex-col z-20">
+        <div className="absolute inset-0 bg-white shadow-2xl flex flex-col z-20">
           <FormularyDrawer
             savedData={formularyData}
             patientAllergies={[]}
