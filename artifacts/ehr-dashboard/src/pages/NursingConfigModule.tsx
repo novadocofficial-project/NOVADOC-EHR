@@ -687,7 +687,7 @@ function TemplateEditor({
   }
 
   return (
-    <div className={`rounded-2xl border shadow-sm overflow-hidden ${template.enabled ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"}`}>
+    <div className={`rounded-2xl border shadow-sm ${template.enabled ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"}`}>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="h-9 w-9 rounded-xl bg-teal-50 flex items-center justify-center flex-shrink-0">
@@ -1155,7 +1155,7 @@ function ProcedureTemplateEditor({
   }
 
   return (
-    <div className={`rounded-2xl border shadow-sm overflow-hidden ${template.enabled ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"}`}>
+    <div className={`rounded-2xl border shadow-sm ${template.enabled ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"}`}>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="h-9 w-9 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0">
