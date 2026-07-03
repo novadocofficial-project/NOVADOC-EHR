@@ -717,6 +717,7 @@ function NursingChiefComplaintSelector({ selected, onChange }: { selected: strin
 function SystemComponentView({
   systemKey, value, onChange, chiefComplaints = [],
   hpiOpenComplaint = null, onHpiComplaintClick,
+  formularyOpen = false, onFormularyOpen,
 }: {
   systemKey?: string;
   value: string;
@@ -724,8 +725,9 @@ function SystemComponentView({
   chiefComplaints?: string[];
   hpiOpenComplaint?: string | null;
   onHpiComplaintClick?: (complaint: string) => void;
+  formularyOpen?: boolean;
+  onFormularyOpen?: () => void;
 }) {
-  const [formularyOpen, setFormularyOpen] = useState(false);
   const def = SYSTEM_COMPONENTS.find(c => c.key === systemKey);
 
   if (systemKey === "chief-complaint") {
@@ -798,24 +800,9 @@ function SystemComponentView({
   if (systemKey === "current-medicines") {
     const formulary = parseFormularyData(value);
     return (
-      <>
-        <SystemCompCard def={def}>
-          <FormularyChipsPanel data={formulary} onOpen={() => setFormularyOpen(true)} />
-        </SystemCompCard>
-        {formularyOpen && createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-end justify-center sm:items-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
-              <FormularyDrawer
-                savedData={formulary}
-                patientAllergies={[]}
-                onSave={data => { onChange(JSON.stringify(data)); setFormularyOpen(false); }}
-                onClose={() => setFormularyOpen(false)}
-              />
-            </div>
-          </div>,
-          document.body
-        )}
-      </>
+      <SystemCompCard def={def}>
+        <FormularyChipsPanel data={formulary} onOpen={() => onFormularyOpen?.()} />
+      </SystemCompCard>
     );
   }
 
@@ -1701,6 +1688,17 @@ function HistoryTabContent({ initialTemplateId, initialData, initialSystemValues
     return parseChiefComplaints(systemValues[ccComp.id] ?? "");
   }, [activeTemplate, systemValues]);
 
+  const [formularyOpen, setFormularyOpen] = useState(false);
+
+  const formularyComp = useMemo(() =>
+    activeTemplate?.components.find(c => c.type === "system" && c.systemKey === "current-medicines") ?? null,
+    [activeTemplate]
+  );
+  const formularyData = useMemo(() =>
+    formularyComp ? parseFormularyData(systemValues[formularyComp.id] ?? "") : EMPTY_FORMULARY,
+    [formularyComp, systemValues]
+  );
+
   const [hpiOpenComplaint, setHpiOpenComplaint] = useState<string | null>(null);
 
   const hpiComp = useMemo(() =>
@@ -1875,6 +1873,8 @@ function HistoryTabContent({ initialTemplateId, initialData, initialSystemValues
                     chiefComplaints={chiefComplaintsForHpi}
                     hpiOpenComplaint={hpiOpenComplaint}
                     onHpiComplaintClick={c => setHpiOpenComplaint(c || null)}
+                    formularyOpen={formularyOpen}
+                    onFormularyOpen={() => setFormularyOpen(true)}
                   />
                 ) : (
                   <div className="pb-2">
@@ -1919,6 +1919,21 @@ function HistoryTabContent({ initialTemplateId, initialData, initialSystemValues
             className="w-full py-2 rounded-xl bg-[#4982CF] text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#3a6fb8] transition-colors">
             Save &amp; Complete
           </button>
+        </div>
+      )}
+
+      {/* Current Medicines Drawer — slides in from right within this panel */}
+      {formularyOpen && formularyComp && (
+        <div className="absolute inset-y-0 right-0 w-[65%] bg-white shadow-2xl border-l border-slate-200 flex flex-col z-20">
+          <FormularyDrawer
+            savedData={formularyData}
+            patientAllergies={[]}
+            onSave={data => {
+              setSystemValues(prev => ({ ...prev, [formularyComp.id]: JSON.stringify(data) }));
+              setFormularyOpen(false);
+            }}
+            onClose={() => setFormularyOpen(false)}
+          />
         </div>
       )}
 
