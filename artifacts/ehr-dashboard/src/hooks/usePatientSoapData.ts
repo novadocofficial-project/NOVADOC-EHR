@@ -4,7 +4,7 @@ import type { MedicineEntry } from "@/pages/FormularySection";
 import type { LabOrder } from "@/pages/LabDrawer";
 import type { ImagingOrder } from "@/pages/ImagingSection";
 import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
-import type { SurgicalEntry, FamilyRow } from "@/pages/MedicalHistorySection";
+import type { SurgicalEntry, FamilyRow, SocAnswers } from "@/pages/MedicalHistorySection";
 import type { PocTestResult } from "@/pages/PocLabsSection";
 import type { NoteState } from "@/pages/ClinicalNoteDrawer";
 
@@ -20,6 +20,7 @@ export interface PatientSoapRepo {
   pmhResolved:     string[];
   surgicalRows:    SurgicalEntry[];
   fhRows:          FamilyRow[];
+  socialHistory:   SocAnswers;
   ros:             Record<string, string[]>;
   peSystems:       string[];
   pocTests:        PocTestResult[];
@@ -37,6 +38,7 @@ export interface PatientSoapRepo {
 export const EMPTY_SOAP_REPO: PatientSoapRepo = {
   chiefComplaints: [], hpi: "", allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [],
+  socialHistory: {},
   ros: {}, peSystems: [], pocTests: [], diagnoses: [],
   labOrders: [], imagingOrders: [], medicines: [],
   carePlan: null, referrals: null, procedureOrders: null,
@@ -142,6 +144,9 @@ export function mergePatientSoapSection(mrn: string, patch: Partial<PatientSoapR
       r => (r as unknown as FamilyRow).id,
     ) as unknown as FamilyRow[];
 
+  if (patch.socialHistory && Object.keys(patch.socialHistory).length)
+    prior.socialHistory = { ...(prior.socialHistory ?? {}), ...patch.socialHistory };
+
   if (patch.ros && Object.keys(patch.ros).length) {
     const merged = { ...prior.ros };
     for (const [sys, findings] of Object.entries(patch.ros)) {
@@ -216,6 +221,8 @@ export function mergePatientSoapNote(mrn: string, note: NoteState): void {
   if (note.pmhResolved?.length)                  patch.pmhResolved     = note.pmhResolved;
   if (note.surgicalRows?.length)                 patch.surgicalRows    = note.surgicalRows;
   if (note.fhRows?.length)                       patch.fhRows          = note.fhRows;
+  if (note.socialHistory && Object.keys(note.socialHistory).length)
+                                                 patch.socialHistory   = note.socialHistory as SocAnswers;
   if (note.ros && Object.keys(note.ros).length)  patch.ros             = note.ros;
   if (note.peSystems?.length)                    patch.peSystems       = note.peSystems;
   if (note.pocTests?.length)                     patch.pocTests        = note.pocTests;

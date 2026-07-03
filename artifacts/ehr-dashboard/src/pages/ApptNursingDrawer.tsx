@@ -2062,6 +2062,11 @@ function ApptHistorySplitPanel({ appt }: { appt: Appointment }) {
                 if (filled.length) patch.fhRows = filled;
                 break;
               }
+              case "social-history": {
+                const answers = parseSocAnswers(raw);
+                if (Object.keys(answers).length) patch.socialHistory = answers;
+                break;
+              }
               case "current-medicines": {
                 const formulary = parseFormularyData(raw);
                 if (formulary.medicines.length) patch.medicines = formulary.medicines;

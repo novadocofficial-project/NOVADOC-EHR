@@ -29,6 +29,7 @@ import { QueueAppHeader } from "@/pages/QueuePageLayout";
 import type { Patient } from "@/pages/QueuePageLayout";
 import type { ReceiptInfo } from "@/pages/FrontDeskUser";
 import { usePatientSoapData } from "@/hooks/usePatientSoapData";
+import { loadSocConfig } from "@/pages/ClinicalLibrariesModule";
 
 const ACCENT = "#4982CF";
 
@@ -677,7 +678,8 @@ function SoapTabContent({ mrn }: { mrn: string }) {
 
       case "medical-history": {
         const filledFh = repo.fhRows.filter(r => r.condition || r.relation);
-        if (!repo.pmhActive.length && !repo.pmhResolved.length && !repo.surgicalRows.length && !filledFh.length) return null;
+        const socQuestions = loadSocConfig().filter(q => q.active && repo.socialHistory[q.id]);
+        if (!repo.pmhActive.length && !repo.pmhResolved.length && !repo.surgicalRows.length && !filledFh.length && !socQuestions.length) return null;
         return (
           <div className="space-y-5 max-w-xl">
             {repo.pmhActive.length > 0 && (
@@ -733,6 +735,29 @@ function SoapTabContent({ mrn }: { mrn: string }) {
                       {row.relation && <span className="ml-auto text-[10px] text-pink-500">{row.relation}</span>}
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+            {socQuestions.length > 0 && (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Social History</p>
+                <div className="space-y-1.5">
+                  {socQuestions.map(q => {
+                    const ans = repo.socialHistory[q.id];
+                    const main = Array.isArray(ans?.main)
+                      ? (ans.main as string[]).filter(Boolean).join(", ")
+                      : (ans?.main as string | undefined) ?? "";
+                    if (!main) return null;
+                    return (
+                      <div key={q.id} className="flex items-start gap-2.5 px-3 py-2 rounded-lg bg-violet-50 border border-violet-100">
+                        <div className="h-2 w-2 rounded-full bg-violet-400 flex-shrink-0 mt-1" />
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-black text-violet-500 uppercase tracking-wide">{q.name}</p>
+                          <p className="text-xs font-semibold text-violet-900">{main}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
