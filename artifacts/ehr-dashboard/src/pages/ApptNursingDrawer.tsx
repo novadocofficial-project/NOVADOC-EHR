@@ -5,7 +5,7 @@ import {
   ClipboardList, Stethoscope, Target, CheckCircle2, Check, FileText,
   Maximize2, Minimize2, Plus, Trash2, Pill, Receipt, ShieldCheck,
   DollarSign, Layers, SkipForward, RotateCcw, Search, GripVertical,
-  ArrowRight,
+  ArrowRight, ClipboardCheck,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -317,7 +317,7 @@ function loadHpiTemplates(): HpiTemplate[] {
 
 // ─── HPI complaint mini-form (nursing) ────────────────────────────────────────
 
-function NursingHpiComplaintForm({
+function NursingHpiDrawer({
   complaint, savedAnswers, onSave, onClose,
 }: {
   complaint: string;
@@ -339,6 +339,9 @@ function NursingHpiComplaintForm({
 
   const [answers, setAnswers] = useState<Record<string, unknown>>(() => savedAnswers ?? {});
 
+  const isDone = Object.keys(savedAnswers ?? {}).length > 0;
+  const isDirty = JSON.stringify(answers) !== JSON.stringify(savedAnswers ?? {});
+
   function isFieldVisible(field: HpiField): boolean {
     if (!field.conditionalOn) return true;
     const { fieldId, values } = field.conditionalOn;
@@ -352,112 +355,149 @@ function NursingHpiComplaintForm({
     setAnswers(prev => ({ ...prev, [fieldId]: value }));
   }
 
-  const header = (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 flex-shrink-0">
-      <div className="h-8 w-8 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0">
-        <ClipboardList className="h-4 w-4 text-purple-500" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-black text-slate-800 truncate">HPI — {complaint}</p>
-        <p className="text-[10px] text-slate-400">{template ? template.name : "Free-text note"}</p>
-      </div>
-      <button onClick={onClose} className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors flex-shrink-0">
-        <X className="h-4 w-4" />
-      </button>
-    </div>
-  );
-
-  const footer = (
-    <div className="flex gap-2 px-4 py-3 border-t border-slate-100 flex-shrink-0">
-      <button onClick={onClose} className="flex-1 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors">Cancel</button>
-      <button onClick={() => onSave(answers)} className="flex-1 py-2 rounded-xl bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">Save HPI</button>
-    </div>
-  );
-
-  if (!template) {
-    return (
-      <div className="flex flex-col h-full">
-        {header}
-        <div className="flex-1 overflow-y-auto p-4">
-          <p className="text-[11px] text-slate-400 mb-2 italic">No template configured for this complaint — enter notes manually.</p>
-          <textarea
-            value={typeof answers["_notes"] === "string" ? answers["_notes"] as string : ""}
-            onChange={e => setAnswer("_notes", e.target.value)}
-            placeholder="Enter HPI notes…"
-            className="w-full h-40 px-3 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50 resize-none focus:outline-none focus:ring-1 focus:ring-purple-400 focus:border-purple-300"
-          />
-        </div>
-        {footer}
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-full">
-      {header}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {template.fields.filter(f => f.label && isFieldVisible(f)).map(field => (
-          <div key={field.id} className={field.conditionalOn ? "pl-3 border-l-2 border-amber-200" : ""}>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              {field.label}{field.required && <span className="text-red-400 ml-0.5">*</span>}
-            </label>
-            {field.type === "free-text" && (
+    <div className="absolute inset-y-0 right-0 w-[65%] bg-white shadow-2xl border-l border-slate-200 flex flex-col z-20">
+
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
+        <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0">
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">History Taking Template</p>
+          <p className="text-sm font-black text-slate-800 truncate">{complaint}</p>
+        </div>
+        {template && (
+          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200 flex-shrink-0">
+            {template.name}
+          </span>
+        )}
+        {isDone && !isDirty ? (
+          <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
+            <CheckCircle2 className="h-3 w-3" /> Done
+          </span>
+        ) : isDirty ? (
+          <button onClick={() => onSave(answers)}
+            className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white bg-amber-500 transition-opacity hover:opacity-90 flex-shrink-0">
+            <ClipboardCheck className="h-3.5 w-3.5" /> Update
+          </button>
+        ) : (
+          <button onClick={() => onSave(answers)}
+            className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg text-white bg-[#8b5cf6] transition-opacity hover:opacity-90 flex-shrink-0">
+            <ClipboardCheck className="h-3.5 w-3.5" /> Save
+          </button>
+        )}
+        <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Complaint badge strip */}
+      <div className="px-4 py-3 border-b border-slate-100 flex-shrink-0 bg-slate-50/60">
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+            <ClipboardList className="h-3.5 w-3.5 text-purple-500" />
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-400 font-medium">Chief Complaint</p>
+            <p className="text-xs font-black text-slate-800">{complaint}</p>
+          </div>
+          {isDirty && (
+            <span className="ml-auto text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
+              Unsaved changes
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Template body */}
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        {!template ? (
+          <div className="space-y-4">
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200">
+              <AlertCircle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700 leading-relaxed">
+                No structured template configured for <strong>{complaint}</strong>.
+                Go to <strong>Admin › SOAP Config › HPI Templates</strong> to create one.
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-black text-slate-800 mb-2">History of Present Illness — {complaint}</p>
               <textarea
-                value={typeof answers[field.id] === "string" ? answers[field.id] as string : ""}
-                onChange={e => setAnswer(field.id, e.target.value)}
-                placeholder={field.placeholder || "Type here…"}
-                className="w-full h-16 px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white resize-none focus:outline-none focus:ring-1 focus:ring-purple-400 focus:border-purple-300"
+                value={typeof answers["_generic"] === "string" ? answers["_generic"] as string : ""}
+                onChange={e => setAnswer("_generic", e.target.value)}
+                placeholder={`Describe the history of ${complaint}…`}
+                rows={8}
+                className="w-full text-xs text-slate-700 placeholder-slate-300 border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF] resize-none"
               />
-            )}
-            {field.type === "number" && (
-              <input
-                type="number"
-                value={typeof answers[field.id] === "string" || typeof answers[field.id] === "number" ? String(answers[field.id]) : ""}
-                onChange={e => setAnswer(field.id, e.target.value)}
-                placeholder={field.placeholder || "0"}
-                className="w-28 h-8 px-3 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-purple-400 focus:border-purple-300"
-              />
-            )}
-            {field.type === "radio" && (
-              <div className="flex flex-wrap gap-1.5">
-                {field.options.map(opt => {
-                  const sel = answers[field.id] === opt;
-                  return (
-                    <button key={opt} type="button"
-                      onClick={() => setAnswer(field.id, sel ? "" : opt)}
-                      className={["text-[11px] font-semibold px-3 py-1.5 rounded-lg border-2 transition-all",
-                        sel ? "border-purple-500 bg-purple-500 text-white" : "border-slate-200 text-slate-600 hover:border-purple-300 bg-white",
-                      ].join(" ")}>
-                      {opt}
-                    </button>
-                  );
-                })}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {template.fields.filter(f => f.label && isFieldVisible(f)).map(field => (
+              <div key={field.id} className={`pb-4 border-b border-slate-100 last:border-0 ${field.conditionalOn ? "pl-3 border-l-2 border-amber-200 ml-1" : ""}`}>
+                <p className="text-xs font-black text-slate-800 mb-2.5">
+                  {field.label}{field.required && <span className="text-red-400 ml-0.5">*</span>}
+                </p>
+                {field.type === "free-text" && (
+                  <textarea
+                    value={typeof answers[field.id] === "string" ? answers[field.id] as string : ""}
+                    onChange={e => setAnswer(field.id, e.target.value)}
+                    placeholder={field.placeholder || "Enter text…"}
+                    rows={3}
+                    className="w-full text-xs text-slate-700 placeholder-slate-300 border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF] resize-none"
+                  />
+                )}
+                {field.type === "number" && (
+                  <input
+                    type="number"
+                    value={typeof answers[field.id] === "string" || typeof answers[field.id] === "number" ? String(answers[field.id]) : ""}
+                    onChange={e => setAnswer(field.id, e.target.value)}
+                    placeholder={field.placeholder || "0"}
+                    className="w-32 text-xs text-slate-700 placeholder-slate-300 border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4982CF]/30 focus:border-[#4982CF]"
+                  />
+                )}
+                {field.type === "radio" && (
+                  <div className="flex flex-wrap gap-2">
+                    {field.options.map(opt => {
+                      const sel = answers[field.id] === opt;
+                      return (
+                        <button key={opt} type="button"
+                          onClick={() => setAnswer(field.id, sel ? "" : opt)}
+                          className={["text-xs font-semibold px-3 py-1.5 rounded-xl border-2 transition-all",
+                            sel ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-200 text-slate-600 hover:border-[#4982CF]/50 hover:bg-blue-50/40"
+                          ].join(" ")}>
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {field.type === "multi-select" && (
+                  <div className="flex flex-wrap gap-2">
+                    {field.options.map(opt => {
+                      const arr = Array.isArray(answers[field.id]) ? answers[field.id] as string[] : [];
+                      const sel = arr.includes(opt);
+                      return (
+                        <button key={opt} type="button"
+                          onClick={() => setAnswer(field.id, sel ? arr.filter(v => v !== opt) : [...arr, opt])}
+                          className={["text-xs font-semibold px-3 py-1.5 rounded-xl border-2 transition-all",
+                            sel ? "border-[#4982CF] bg-[#4982CF] text-white" : "border-slate-200 text-slate-600 hover:border-[#4982CF]/50 hover:bg-blue-50/40"
+                          ].join(" ")}>
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-            {field.type === "multi-select" && (
-              <div className="flex flex-wrap gap-1.5">
-                {field.options.map(opt => {
-                  const arr = Array.isArray(answers[field.id]) ? answers[field.id] as string[] : [];
-                  const sel = arr.includes(opt);
-                  return (
-                    <button key={opt} type="button"
-                      onClick={() => setAnswer(field.id, sel ? arr.filter(v => v !== opt) : [...arr, opt])}
-                      className={["text-[11px] font-semibold px-3 py-1.5 rounded-lg border-2 transition-all",
-                        sel ? "border-purple-500 bg-purple-500 text-white" : "border-slate-200 text-slate-600 hover:border-purple-300 bg-white",
-                      ].join(" ")}>
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
+            ))}
+            {template.fields.filter(f => f.label).length === 0 && (
+              <p className="text-xs text-slate-400 italic">This template has no fields configured.</p>
             )}
           </div>
-        ))}
-        {template.fields.filter(f => f.label).length === 0 && (
-          <p className="text-xs text-slate-400 italic">This template has no fields configured.</p>
         )}
       </div>
-      {footer}
     </div>
   );
 }
@@ -676,14 +716,16 @@ function NursingChiefComplaintSelector({ selected, onChange }: { selected: strin
 
 function SystemComponentView({
   systemKey, value, onChange, chiefComplaints = [],
+  hpiOpenComplaint = null, onHpiComplaintClick,
 }: {
   systemKey?: string;
   value: string;
   onChange: (v: string) => void;
   chiefComplaints?: string[];
+  hpiOpenComplaint?: string | null;
+  onHpiComplaintClick?: (complaint: string) => void;
 }) {
   const [formularyOpen, setFormularyOpen] = useState(false);
-  const [hpiOpenComplaint, setHpiOpenComplaint] = useState<string | null>(null);
   const def = SYSTEM_COMPONENTS.find(c => c.key === systemKey);
 
   if (systemKey === "chief-complaint") {
@@ -781,62 +823,43 @@ function SystemComponentView({
     const hpiData = parseHpiData(value);
     const doneComplaints = Object.keys(hpiData);
     return (
-      <>
-        <SystemCompCard def={def}>
-          {chiefComplaints.length === 0 ? (
-            <div className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
-              <ClipboardList className="h-4 w-4 text-slate-300 flex-shrink-0" />
-              <p className="text-xs text-slate-400">Select Chief Complaints above — each will appear here as an HPI entry.</p>
+      <SystemCompCard def={def}>
+        {chiefComplaints.length === 0 ? (
+          <div className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
+            <ClipboardList className="h-4 w-4 text-slate-300 flex-shrink-0" />
+            <p className="text-xs text-slate-400">Select Chief Complaints above — each will appear here as an HPI entry.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Click a complaint to open its history template</p>
+            <div className="flex flex-wrap gap-2">
+              {chiefComplaints.map((complaint, idx) => {
+                const isDone = doneComplaints.includes(complaint);
+                const isOpen = hpiOpenComplaint === complaint;
+                return (
+                  <button key={complaint}
+                    onClick={() => onHpiComplaintClick?.(isOpen ? "" : complaint)}
+                    className={[
+                      "flex items-center gap-2 px-3.5 py-2 rounded-xl border-2 text-xs font-bold transition-all",
+                      isOpen  ? "text-white border-[#8b5cf6] bg-[#8b5cf6] shadow-md"
+                      : isDone  ? "text-emerald-700 border-emerald-200 bg-emerald-50"
+                      : "text-slate-600 border-slate-200 bg-white hover:border-[#8b5cf6]/50 hover:bg-purple-50/40",
+                    ].join(" ")}>
+                    <span className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${isOpen ? "bg-white/25 text-white" : isDone ? "bg-emerald-200 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{idx + 1}</span>
+                    {complaint}
+                    {isDone
+                      ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                      : <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />}
+                  </button>
+                );
+              })}
             </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Click a complaint to fill in history</p>
-              <div className="flex flex-wrap gap-2">
-                {chiefComplaints.map((complaint, idx) => {
-                  const isDone = doneComplaints.includes(complaint);
-                  const isOpen = hpiOpenComplaint === complaint;
-                  return (
-                    <button key={complaint}
-                      onClick={() => setHpiOpenComplaint(isOpen ? null : complaint)}
-                      className={[
-                        "flex items-center gap-2 px-3.5 py-2 rounded-xl border-2 text-xs font-bold transition-all",
-                        isOpen  ? "text-white border-[#8b5cf6] bg-[#8b5cf6] shadow-md"
-                        : isDone  ? "text-emerald-700 border-emerald-200 bg-emerald-50"
-                        : "text-slate-600 border-slate-200 bg-white hover:border-[#8b5cf6]/50",
-                      ].join(" ")}>
-                      <span className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${isOpen ? "bg-white/25 text-white" : isDone ? "bg-emerald-200 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{idx + 1}</span>
-                      {complaint}
-                      {isDone
-                        ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
-                        : <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />}
-                    </button>
-                  );
-                })}
-              </div>
-              {doneComplaints.length > 0 && (
-                <p className="text-[10px] text-slate-400">{doneComplaints.length}/{chiefComplaints.length} complaint{chiefComplaints.length !== 1 ? "s" : ""} documented</p>
-              )}
-            </div>
-          )}
-        </SystemCompCard>
-        {hpiOpenComplaint && createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-end justify-center sm:items-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-lg max-h-[85vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
-              <NursingHpiComplaintForm
-                complaint={hpiOpenComplaint}
-                savedAnswers={hpiData[hpiOpenComplaint] ?? {}}
-                onSave={answers => {
-                  const next = { ...hpiData, [hpiOpenComplaint]: answers };
-                  onChange(JSON.stringify(next));
-                  setHpiOpenComplaint(null);
-                }}
-                onClose={() => setHpiOpenComplaint(null)}
-              />
-            </div>
-          </div>,
-          document.body
+            {doneComplaints.length > 0 && (
+              <p className="text-[10px] text-slate-400">{doneComplaints.length}/{chiefComplaints.length} complaint{chiefComplaints.length !== 1 ? "s" : ""} documented</p>
+            )}
+          </div>
         )}
-      </>
+      </SystemCompCard>
     );
   }
 
@@ -1678,6 +1701,24 @@ function HistoryTabContent({ initialTemplateId, initialData, initialSystemValues
     return parseChiefComplaints(systemValues[ccComp.id] ?? "");
   }, [activeTemplate, systemValues]);
 
+  const [hpiOpenComplaint, setHpiOpenComplaint] = useState<string | null>(null);
+
+  const hpiComp = useMemo(() =>
+    activeTemplate?.components.find(c => c.type === "system" && c.systemKey === "hpi") ?? null,
+    [activeTemplate]
+  );
+  const hpiData = useMemo(() =>
+    hpiComp ? parseHpiData(systemValues[hpiComp.id] ?? "") : {},
+    [hpiComp, systemValues]
+  );
+
+  function handleHpiSave(complaint: string, answers: Record<string, unknown>) {
+    if (!hpiComp) return;
+    const next = { ...hpiData, [complaint]: answers };
+    setSystemValues(prev => ({ ...prev, [hpiComp.id]: JSON.stringify(next) }));
+    setHpiOpenComplaint(null);
+  }
+
   function getEntries(compId: string): Record<string, string>[] { return data[compId] ?? [{}]; }
   function setEntry(compId: string, idx: number, values: Record<string, string>) {
     setData(prev => { const entries = [...(prev[compId] ?? [{}])]; entries[idx] = values; return { ...prev, [compId]: entries }; });
@@ -1820,14 +1861,21 @@ function HistoryTabContent({ initialTemplateId, initialData, initialSystemValues
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden relative">
       <div className="flex-1 overflow-y-auto px-5 py-5">
         {activeTemplate && (
           <div className="space-y-3">
             {activeTemplate.components.map(comp => (
               <Collapsible key={comp.id} title={comp.name} defaultOpen>
                 {comp.type === "system" ? (
-                  <SystemComponentView systemKey={comp.systemKey} value={systemValues[comp.id] ?? ""} onChange={v => setSystemValues(prev => ({ ...prev, [comp.id]: v }))} chiefComplaints={chiefComplaintsForHpi} />
+                  <SystemComponentView
+                    systemKey={comp.systemKey}
+                    value={systemValues[comp.id] ?? ""}
+                    onChange={v => setSystemValues(prev => ({ ...prev, [comp.id]: v }))}
+                    chiefComplaints={chiefComplaintsForHpi}
+                    hpiOpenComplaint={hpiOpenComplaint}
+                    onHpiComplaintClick={c => setHpiOpenComplaint(c || null)}
+                  />
                 ) : (
                   <div className="pb-2">
                     {(() => {
@@ -1872,6 +1920,17 @@ function HistoryTabContent({ initialTemplateId, initialData, initialSystemValues
             Save &amp; Complete
           </button>
         </div>
+      )}
+
+      {/* HPI Template Drawer — slides in from right within this panel */}
+      {hpiOpenComplaint && hpiComp && (
+        <NursingHpiDrawer
+          key={hpiOpenComplaint}
+          complaint={hpiOpenComplaint}
+          savedAnswers={hpiData[hpiOpenComplaint] ?? {}}
+          onSave={answers => handleHpiSave(hpiOpenComplaint, answers)}
+          onClose={() => setHpiOpenComplaint(null)}
+        />
       )}
     </div>
   );
