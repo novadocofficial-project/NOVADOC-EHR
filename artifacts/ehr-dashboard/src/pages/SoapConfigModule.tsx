@@ -13,7 +13,7 @@ import type { Department } from "@/pages/AdminSettings";
 
 type Visibility = "required" | "optional" | "hidden";
 
-interface SoapSection {
+export interface SoapSection {
   id:           string;
   label:        string;
   defaultLabel: string;
@@ -77,7 +77,20 @@ const DEFAULT_VITALS: VitalConfig[] = [
   { id: "pain",   name: "Pain Score",     unit: "/10",   custom: false, opd: "optional", consult: "optional", followup: "optional",  emergency: "required",  refMin: "0",      refMax: "3",      color: "#f43f5e" },
 ];
 
-export const VITALS_STORAGE_KEY = "ehr-vitals-config-v1";
+export const VITALS_STORAGE_KEY    = "ehr-vitals-config-v1";
+export const NOTE_STRUCTURE_KEY    = "ehr-note-structure-v1";
+
+export function loadNoteStructure(specialty = "general"): SoapSection[] {
+  try {
+    const raw = localStorage.getItem(NOTE_STRUCTURE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, SoapSection[]>;
+      const secs = parsed[specialty] ?? parsed["general"];
+      if (Array.isArray(secs) && secs.length > 0) return secs;
+    }
+  } catch { /**/ }
+  return makeDefaultSections();
+}
 
 export function loadVitalsConfig(): VitalConfig[] {
   try {
@@ -174,8 +187,18 @@ function NoteStructurePanel({ departments }: NoteStructurePanelProps) {
   ];
 
   const [selectedSpecialty, setSelectedSpecialty] = useState("general");
-  const [configMap, setConfigMap] = useState<Record<string, SoapSection[]>>({
-    general: makeDefaultSections(),
+  const [configMap, setConfigMap] = useState<Record<string, SoapSection[]>>(() => {
+    try {
+      const raw = localStorage.getItem(NOTE_STRUCTURE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, SoapSection[]>;
+        if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+          if (!parsed.general) parsed.general = makeDefaultSections();
+          return parsed;
+        }
+      }
+    } catch { /**/ }
+    return { general: makeDefaultSections() };
   });
   const [saved, setSaved] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -219,7 +242,10 @@ function NoteStructurePanel({ departments }: NoteStructurePanelProps) {
     setSaved(false);
   }
 
-  function handleSave() { setSaved(true); }
+  function handleSave() {
+    try { localStorage.setItem(NOTE_STRUCTURE_KEY, JSON.stringify(configMap)); } catch { /**/ }
+    setSaved(true);
+  }
 
   return (
     <div className="space-y-4">

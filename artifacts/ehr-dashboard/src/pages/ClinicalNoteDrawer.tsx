@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import type { VitalEntry } from "@/types/vitals";
 
@@ -46,6 +46,7 @@ import type { ProcedureOrdersData } from "@/pages/ProcedureOrdersSection";
 import { PatientGoalsChipsPanel, PatientGoalsDrawer, EMPTY_PATIENT_GOALS } from "@/pages/PatientGoalsSection";
 import type { PatientGoalsData } from "@/pages/PatientGoalsSection";
 import { TemplateDrawer } from "@/pages/SoapNoteTemplates";
+import { loadNoteStructure } from "@/pages/SoapConfigModule";
 import {
   PastHistoryPanel, FamilyHistoryPanel,
   SurgicalHistoryPanel, SocialHistoryPanel,
@@ -1570,6 +1571,16 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
     set(key, value);
   }
 
+  // ── Note structure visibility (from Admin › SOAP Config › Note Structure) ──
+  const secVisible = useMemo(() => {
+    const secs = loadNoteStructure();
+    const map = Object.fromEntries(secs.map(s => [s.id, s]));
+    return (id: string): boolean => {
+      const s = map[id];
+      return !s || (s.active !== false && s.visibility !== "hidden");
+    };
+  }, []);
+
   // ── System component renderer ─────────────────────────────────────────────
   // Renders a single standard SOAP component section by ID, reusing all state
   // and handlers already present in this component. Used in specialty mode when
@@ -1578,6 +1589,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
   function renderSystemComponent(id: string): React.ReactNode {
     switch (id) {
       case "chief-complaint":
+        if (!secVisible("chief-complaints")) return null;
         return (
           <Section key="sc-cc" title="Chief Complaint" icon={PenLine} color="#4982CF" required filled={note.chiefComplaints.length > 0}>
             <ChiefComplaintSelector
@@ -1588,6 +1600,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         );
 
       case "hpi":
+        if (!secVisible("hpi")) return null;
         return (
           <Section key="sc-hpi" title="History of Present Illness" icon={ClipboardList} color="#8b5cf6" filled={hpiDoneComplaints.length > 0}>
             {note.chiefComplaints.length === 0 ? (
@@ -1630,6 +1643,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         );
 
       case "allergies":
+        if (!secVisible("allergies")) return null;
         return (
           <Section key="sc-allg" title="Allergies" icon={AlertCircle} color="#ef4444" required filled={note.allergies.length > 0}>
             <AllergySelector entries={note.allergies} onChange={entries => set("allergies", entries)} />
@@ -1637,6 +1651,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         );
 
       case "medical-history":
+        if (!secVisible("medical-history")) return null;
         return (
           <Section key="sc-mhx" title="Medical, Surgical, Family & Social History" icon={Users} color="#10b981" defaultOpen={false}
             filled={(note.pmhActive ?? []).length > 0 || (note.pmhResolved ?? []).length > 0 || (note.surgicalRows ?? []).length > 0 || (note.fhRows ?? []).length > 0}>
@@ -1668,6 +1683,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         );
 
       case "ros":
+        if (!secVisible("ros")) return null;
         return (
           <Section key="sc-ros" title="Review of Systems" icon={Stethoscope} color="#0ea5e9" filled={Object.values(note.ros).some(arr => (arr?.length ?? 0) > 0)}>
             <RosSummary checked={note.ros} onEdit={() => setRosDrawerOpen(true)} />
@@ -1675,6 +1691,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         );
 
       case "physical-exam":
+        if (!secVisible("physical-exam")) return null;
         return (
           <Section key="sc-pe" title="Physical Examination" icon={Stethoscope} color="#06b6d4" filled={peDoneSystemIds.length > 0}>
             <PeSystemSelector selected={note.peSystems} onChange={systems => set("peSystems", systems)} />
@@ -1691,6 +1708,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         );
 
       case "poc-labs":
+        if (!secVisible("poc-labs")) return null;
         return (
           <Section key="sc-poc" title="Point of Care Labs" icon={FlaskConical} color="#f59e0b" defaultOpen={false} filled={(note.pocTests ?? []).length > 0}>
             <PocLabsChipsPanel tests={note.pocTests ?? []} onOpen={() => setPocOpen(true)} />
@@ -1698,6 +1716,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         );
 
       case "diagnosis":
+        if (!secVisible("diagnosis")) return null;
         return (
           <Section key="sc-dx" title="Diagnosis" icon={Tag} color="#6366f1" required filled={diagnosisDone}>
             {diagnosisDone && (
@@ -1710,6 +1729,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         );
 
       case "lab-orders": {
+        if (!secVisible("labs")) return null;
         const hasActiveSent = awaitingLab && !activeOrderIsVoided;
         return (
           <Section key="sc-lab" title="Lab Orders" icon={FlaskConical} color="#f59e0b" filled={labDone}>
@@ -1765,6 +1785,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
       }
 
       case "formulary":
+        if (!secVisible("formulary")) return null;
         return (
           <Section key="sc-rx" title="Prescriptions / Formulary" icon={Pill} color="#8b5cf6" filled={(note.formulary?.medicines?.length ?? 0) > 0}>
             <FormularyChipsPanel data={note.formulary ?? EMPTY_FORMULARY} onOpen={() => openDrawer("formulary")} />
@@ -1772,6 +1793,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         );
 
       case "imaging":
+        if (!secVisible("imaging")) return null;
         return (
           <Section key="sc-img" title="Imaging" icon={Scan} color="#0ea5e9" filled={(note.imaging?.orders?.length ?? 0) > 0}>
             <ImagingChipsPanel data={note.imaging ?? EMPTY_IMAGING} onOpen={() => openDrawer("imaging")} />
@@ -1779,6 +1801,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         );
 
       case "care-plan":
+        if (!secVisible("care-plan")) return null;
         return (
           <Section key="sc-cp" title="Care Plan" icon={ClipboardList} color="#10b981" filled={!!note.carePlan?.instructions?.trim()}>
             <NoteField
@@ -1791,6 +1814,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         );
 
       case "referrals":
+        if (!secVisible("referrals")) return null;
         return (
           <Section key="sc-ref" title="Referrals" icon={Users} color="#6366f1" filled={(note.referrals?.referrals?.length ?? 0) > 0}>
             <ReferralChipsPanel data={note.referrals ?? EMPTY_REFERRAL_DATA} onOpen={() => openDrawer("referral")} />
@@ -1798,6 +1822,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
         );
 
       case "patient-goals":
+        if (!secVisible("patient-goals")) return null;
         return (
           <Section key="sc-pg" title="Patient Goals" icon={CheckCircle2} color="#ec4899" filled={(note.patientGoals?.goals?.length ?? 0) > 0}>
             <PatientGoalsChipsPanel data={note.patientGoals ?? EMPTY_PATIENT_GOALS} onOpen={() => openDrawer("patientGoals")} />
@@ -1982,15 +2007,15 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
 
           <div className={activeMode === "specialty" && assignedForm ? "hidden" : ""}>
           {/* 1. Chief Complaint */}
-          <Section title="Chief Complaint" icon={PenLine} color="#4982CF" required filled={note.chiefComplaints.length > 0}>
+          {secVisible("chief-complaints") && <Section title="Chief Complaint" icon={PenLine} color="#4982CF" required filled={note.chiefComplaints.length > 0}>
             <ChiefComplaintSelector
               selected={note.chiefComplaints}
               onChange={items => set("chiefComplaints", items)}
             />
-          </Section>
+          </Section>}
 
           {/* 2. HPI — driven by Chief Complaints */}
-          <Section
+          {secVisible("hpi") && <Section
             title="History of Present Illness"
             icon={ClipboardList}
             color="#8b5cf6"
@@ -2054,20 +2079,20 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                 )}
               </div>
             )}
-          </Section>
+          </Section>}
 
           {/* 3. Allergies */}
-          <Section
+          {secVisible("allergies") && <Section
             title="Allergies" icon={AlertCircle} color="#ef4444"
             required filled={note.allergies.length > 0}>
             <AllergySelector
               entries={note.allergies}
               onChange={entries => set("allergies", entries)}
             />
-          </Section>
+          </Section>}
 
           {/* 4. History group */}
-          <Section
+          {secVisible("medical-history") && <Section
             title="Medical, Surgical, Family & Social History"
             icon={Users} color="#10b981" defaultOpen={false}
             filled={(note.pmhActive ?? []).length > 0 || (note.pmhResolved ?? []).length > 0 || (note.surgicalRows ?? []).length > 0 || (note.fhRows ?? []).length > 0}
@@ -2136,10 +2161,10 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                 onChange={v => set("socialHistory", v)}
               />
             </div>
-          </Section>
+          </Section>}
 
           {/* 5. ROS */}
-          <Section
+          {secVisible("ros") && <Section
             title="Review of Systems"
             icon={Stethoscope} color="#0ea5e9"
             filled={Object.values(note.ros).some(arr => (arr?.length ?? 0) > 0)}>
@@ -2147,10 +2172,10 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
               checked={note.ros}
               onEdit={() => setRosDrawerOpen(true)}
             />
-          </Section>
+          </Section>}
 
           {/* 5b. Physical Examination (independent from ROS) */}
-          <Section
+          {secVisible("physical-exam") && <Section
             title="Physical Examination"
             icon={Stethoscope} color="#06b6d4"
             filled={peDoneSystemIds.length > 0}>
@@ -2167,23 +2192,23 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
                 openSystemId={peOpenSystem}
               />
             </div>
-          </Section>
+          </Section>}
 
           {/* 6. Point of Care Labs */}
-          <Section title="Point of Care Labs" icon={FlaskConical} color="#f59e0b" defaultOpen={false}
+          {secVisible("poc-labs") && <Section title="Point of Care Labs" icon={FlaskConical} color="#f59e0b" defaultOpen={false}
             filled={(note.pocTests ?? []).length > 0}>
             <PocLabsChipsPanel
               tests={note.pocTests ?? []}
               onOpen={() => setPocOpen(true)}
             />
-          </Section>
+          </Section>}
 
           {/* 7. Assessment / Plan */}
           <Section title="Assessment & Plan" icon={Tag} color="#6366f1" required
             filled={diagnosisDone || note.planTags.length > 0}>
 
             {/* 7a. Diagnosis (ICD Selection) */}
-            <div className="mb-4">
+            <div className={!secVisible("diagnosis") ? "hidden" : "mb-4"}>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <Tag className="h-3 w-3 text-indigo-500" />
                 Diagnosis
@@ -2200,7 +2225,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             </div>
 
             {/* 7b. Lab Orders */}
-            <div className="mb-4">
+            <div className={!secVisible("labs") ? "hidden" : "mb-4"}>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <FlaskConical className="h-3 w-3 text-amber-500" />
                 Lab Orders
@@ -2348,7 +2373,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             </div>
 
             {/* 7c. Formulary / Prescriptions */}
-            <div className="mb-4">
+            <div className={!secVisible("formulary") ? "hidden" : "mb-4"}>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <Pill className="h-3 w-3 text-indigo-400" />
                 Prescriptions
@@ -2365,7 +2390,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             </div>
 
             {/* 7d. Imaging */}
-            <div className="mb-4">
+            <div className={!secVisible("imaging") ? "hidden" : "mb-4"}>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <ScanLine className="h-3 w-3 text-cyan-500" />
                 Imaging
@@ -2382,7 +2407,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             </div>
 
             {/* 7e. Procedure Orders */}
-            <div className="mb-4">
+            <div className={!secVisible("procedures") ? "hidden" : "mb-4"}>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <Stethoscope className="h-3 w-3 text-teal-500" />
                 Procedure Orders
@@ -2399,7 +2424,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             </div>
 
             {/* 7f. Referrals */}
-            <div className="mb-4">
+            <div className={!secVisible("referrals") ? "hidden" : "mb-4"}>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <Users className="h-3 w-3 text-indigo-500" />
                 Referrals
@@ -2416,7 +2441,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             </div>
 
             {/* 7g. Patient Goals */}
-            <div className="mb-4">
+            <div className={!secVisible("patient-goals") ? "hidden" : "mb-4"}>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <CheckCircle2 className="h-3 w-3 text-pink-500" />
                 Patient Goals
@@ -2433,7 +2458,7 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
             </div>
 
             {/* 7h. Health Education */}
-            <div className="mb-4">
+            <div className={!secVisible("health-ed") ? "hidden" : "mb-4"}>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                 <BookOpen className="h-3 w-3 text-violet-500" />
                 Health Education
