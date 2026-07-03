@@ -22,8 +22,7 @@ export interface NursingField {
 
 export type SystemComponentKey =
   | "chief-complaint" | "allergies" | "past-history" | "surgical-history"
-  | "family-history" | "social-history" | "demographics" | "current-medicines"
-  | "ros" | "hpi" | "comorbidities";
+  | "family-history" | "social-history" | "current-medicines" | "hpi";
 
 export const SYSTEM_COMPONENTS: { key: SystemComponentKey; name: string; desc: string }[] = [
   { key: "chief-complaint",   name: "Chief Complaint",     desc: "Primary reason for visit (Chief Complaint Library)" },
@@ -32,11 +31,8 @@ export const SYSTEM_COMPONENTS: { key: SystemComponentKey; name: string; desc: s
   { key: "surgical-history",  name: "Surgical History",    desc: "Previous surgeries (Clinical Libraries)" },
   { key: "family-history",    name: "Family History",      desc: "Family medical history (Clinical Libraries)" },
   { key: "social-history",    name: "Social History",      desc: "Lifestyle and social factors (Clinical Libraries)" },
-  { key: "demographics",      name: "Demographics",        desc: "Patient demographics (Patient Registration)" },
   { key: "current-medicines", name: "Current Medicines",   desc: "Active medication list (Formulary)" },
-  { key: "ros",               name: "Review of Systems",   desc: "Systems review (Clinical Libraries)" },
   { key: "hpi",               name: "HPI",                 desc: "History of present illness (HPI Templates)" },
-  { key: "comorbidities",     name: "Comorbidities",       desc: "Chronic conditions (Clinical Goals Library)" },
 ];
 
 // ─── Procedure System Components ──────────────────────────────────────────────

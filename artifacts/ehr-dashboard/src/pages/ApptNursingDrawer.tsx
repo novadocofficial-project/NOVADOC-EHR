@@ -863,7 +863,7 @@ function SystemComponentView({
     );
   }
 
-  // Fallback (demographics, ros, comorbidities, etc.)
+  // Fallback — unknown / unmapped system key
   return (
     <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3 mb-2">
       <div className="flex items-start gap-2 mb-2">
