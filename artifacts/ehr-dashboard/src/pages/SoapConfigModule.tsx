@@ -66,6 +66,16 @@ function makeDefaultSections(): SoapSection[] {
   }));
 }
 
+const SECTION_ICON_MAP = new Map(DEFAULT_SECTIONS.map(s => [s.id, s.icon]));
+
+/** JSON cannot serialize functions; restore icon refs after parsing from localStorage. */
+function hydrateIcons(secs: SoapSection[]): SoapSection[] {
+  return secs.map(s => ({
+    ...s,
+    icon: (typeof s.icon === "function" ? s.icon : null) ?? SECTION_ICON_MAP.get(s.id) ?? FileText,
+  }));
+}
+
 const DEFAULT_VITALS: VitalConfig[] = [
   { id: "bp",     name: "Blood Pressure", unit: "mmHg",  custom: false, opd: "required", consult: "required", followup: "required",  emergency: "required",  refMin: "90/60",  refMax: "140/90", color: "#4982CF" },
   { id: "pulse",  name: "Pulse",          unit: "bpm",   custom: false, opd: "required", consult: "required", followup: "required",  emergency: "required",  refMin: "60",     refMax: "100",    color: "#ef4444" },
@@ -86,7 +96,7 @@ export function loadNoteStructure(specialty = "general"): SoapSection[] {
     if (raw) {
       const parsed = JSON.parse(raw) as Record<string, SoapSection[]>;
       const secs = parsed[specialty] ?? parsed["general"];
-      if (Array.isArray(secs) && secs.length > 0) return secs;
+      if (Array.isArray(secs) && secs.length > 0) return hydrateIcons(secs);
     }
   } catch { /**/ }
   return makeDefaultSections();
@@ -193,6 +203,9 @@ function NoteStructurePanel({ departments }: NoteStructurePanelProps) {
       if (raw) {
         const parsed = JSON.parse(raw) as Record<string, SoapSection[]>;
         if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+          for (const key of Object.keys(parsed)) {
+            parsed[key] = hydrateIcons(parsed[key]);
+          }
           if (!parsed.general) parsed.general = makeDefaultSections();
           return parsed;
         }
