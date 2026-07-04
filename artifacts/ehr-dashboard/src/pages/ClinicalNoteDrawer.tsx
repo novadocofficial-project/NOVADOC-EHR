@@ -1253,8 +1253,29 @@ function SpecialtyFormPanel({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Read nursing-entered chief complaints for this appointment from the soapLog. */
+function getNursingCCs(patientMrn: string, appointmentId: string): string[] {
+  try {
+    const raw = localStorage.getItem("ehr-soap-data-v1");
+    if (!raw) return [];
+    const all = JSON.parse(raw) as Record<string, { soapLog?: Array<{ appointmentId?: string; source?: string; patch?: Record<string, unknown> }> }>;
+    const repo = all[patientMrn];
+    if (!repo?.soapLog?.length) return [];
+    const seen = new Set<string>();
+    for (const entry of repo.soapLog) {
+      if (entry.appointmentId !== appointmentId || entry.source !== "nurse") continue;
+      const cc = entry.patch?.chiefComplaints;
+      if (Array.isArray(cc)) {
+        for (const c of cc) if (typeof c === "string" && c.trim()) seen.add(c.trim());
+      }
+    }
+    return Array.from(seen);
+  } catch { return []; }
+}
+
 interface ClinicalNoteDrawerProps {
   entryId?: string;
+  patientMrn?: string;
   patientName: string;
   doctorId?: string;
   faceSheetOpenedAt?: number;
@@ -1275,7 +1296,7 @@ interface ClinicalNoteDrawerProps {
   noteLabel?: string;
 }
 
-export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOpenedAt, awaitingLab = false, labResultsReady = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, onNoteChange, isAddendumMode = false, onAddendum, onCancel, noteLabel }: ClinicalNoteDrawerProps) {
+export function ClinicalNoteDrawer({ entryId, patientMrn, patientName, doctorId, faceSheetOpenedAt, awaitingLab = false, labResultsReady = false, signed = false, onSendToLab, onDiscardLab, onDoctorSign, onSaveAndClose, onClose, initialNote, onNoteChange, isAddendumMode = false, onAddendum, onCancel, noteLabel }: ClinicalNoteDrawerProps) {
   const [fullscreen,        setFullscreen]        = useState(false);
   const [isPrinting,        setIsPrinting]        = useState(false);
   const [note,              setNote]              = useState<NoteState>(() => initialNote ?? EMPTY_NOTE);
@@ -1297,6 +1318,18 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
   const [peOpenSystem,      setPeOpenSystem]      = useState<string | null>(null);
   const [peDoneSystemIds,   setPeDoneSystemIds]   = useState<string[]>(() => initialNote?.peDoneSystemIds ?? []);
   const [peSavedData,       setPeSavedData]       = useState<Record<string, Record<string, string>>>(() => initialNote?.peSavedData ?? {});
+
+  const nursingCCs = useMemo(() => {
+    if (!patientMrn || !entryId) return [];
+    return getNursingCCs(patientMrn, entryId);
+  }, [patientMrn, entryId]);
+
+  function handleImportCCs() {
+    const existing = new Set(note.chiefComplaints);
+    const toAdd = nursingCCs.filter(c => !existing.has(c));
+    if (toAdd.length) set("chiefComplaints", [...note.chiefComplaints, ...toAdd]);
+  }
+
   const [diagnosisDone,     setDiagnosisDone]     = useState(() => initialNote?.diagnosisDone ?? false);
   const [diagnosisSaved,    setDiagnosisSaved]    = useState<DiagnosisEntry[]>(() => initialNote?.diagnoses ?? []);
   const [diagnosisOpen,     setDiagnosisOpen]     = useState(false);
@@ -1591,7 +1624,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
       case "chief-complaint":
         if (!secVisible("chief-complaints")) return null;
         return (
-          <Section key="sc-cc" title="Chief Complaint" icon={PenLine} color="#4982CF" required filled={note.chiefComplaints.length > 0}>
+          <Section key="sc-cc" title="Chief Complaint" icon={PenLine} color="#4982CF" required filled={note.chiefComplaints.length > 0}
+            onImport={nursingCCs.length > 0 ? handleImportCCs : undefined}>
             <ChiefComplaintSelector
               selected={note.chiefComplaints}
               onChange={items => set("chiefComplaints", items)}
@@ -2007,7 +2041,8 @@ export function ClinicalNoteDrawer({ entryId, patientName, doctorId, faceSheetOp
 
           <div className={activeMode === "specialty" && assignedForm ? "hidden" : ""}>
           {/* 1. Chief Complaint */}
-          {secVisible("chief-complaints") && <Section title="Chief Complaint" icon={PenLine} color="#4982CF" required filled={note.chiefComplaints.length > 0}>
+          {secVisible("chief-complaints") && <Section title="Chief Complaint" icon={PenLine} color="#4982CF" required filled={note.chiefComplaints.length > 0}
+            onImport={nursingCCs.length > 0 ? handleImportCCs : undefined}>
             <ChiefComplaintSelector
               selected={note.chiefComplaints}
               onChange={items => set("chiefComplaints", items)}

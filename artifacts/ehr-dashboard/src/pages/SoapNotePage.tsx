@@ -1735,6 +1735,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
       {showNoteDrawer && (
         <ClinicalNoteDrawer
           entryId={entry.id}
+          patientMrn={entry.patient?.mrn}
           patientName={name}
           doctorId={doctorId}
           faceSheetOpenedAt={faceSheetOpenedAt}
