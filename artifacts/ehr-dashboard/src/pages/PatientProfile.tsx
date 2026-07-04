@@ -9,6 +9,7 @@ import {
   Stethoscope, Microscope, ScanLine, BookMarked, Target,
 } from "lucide-react";
 import { loadNoteStructure } from "@/pages/SoapConfigModule";
+import { PeSummary, BODY_SYSTEMS } from "@/pages/RosPeSection";
 import { PatientFilesExplorer, loadPatientFilesLatest, formatFileSize } from "@/pages/PatientFilesExplorer";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -597,7 +598,7 @@ const SECTION_PATCH_KEYS: Record<string, (keyof PatientSoapRepo)[]> = {
   "allergies":        ["allergies"],
   "medical-history":  ["pmhActive", "pmhResolved", "surgicalRows", "fhRows", "socialHistory"],
   "ros":              ["ros"],
-  "physical-exam":    ["peSystems"],
+  "physical-exam":    ["peSystems", "peFindings"],
   "poc-labs":         ["pocTests"],
   "diagnosis":        ["diagnoses"],
   "labs":             ["labOrders"],
@@ -855,14 +856,30 @@ function SoapTabContent({ mrn }: { mrn: string }) {
 
       case "physical-exam": {
         if (!repo.peSystems.length) return null;
+        const peFindingsMap = (repo.peFindings ?? {}) as Record<string, Record<string, string>>;
+        const activeSystems = BODY_SYSTEMS.filter(s => repo.peSystems.includes(s.id));
         return (
-          <div className="space-y-2 max-w-xl">
-            {repo.peSystems.map((sys, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-slate-200 bg-white">
-                <Stethoscope className="h-3.5 w-3.5 text-cyan-500 flex-shrink-0" />
-                <p className="text-xs font-semibold text-slate-700">{sys}</p>
-              </div>
-            ))}
+          <div className="space-y-3 max-w-xl">
+            {activeSystems.map(sys => {
+              const findings = peFindingsMap[sys.id];
+              const hasFindings = findings && Object.values(findings).some(v => v.trim());
+              return (
+                <div key={sys.id} className="space-y-1.5">
+                  <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50">
+                    <Stethoscope className="h-3.5 w-3.5 text-cyan-500 flex-shrink-0" />
+                    <p className="text-xs font-bold text-slate-700">{sys.label}</p>
+                    {!hasFindings && (
+                      <span className="ml-auto text-[10px] text-slate-400 italic">No findings recorded</span>
+                    )}
+                  </div>
+                  {hasFindings && (
+                    <div className="pl-4">
+                      <PeSummary systemId={sys.id} savedData={findings} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
       }

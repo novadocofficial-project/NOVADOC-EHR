@@ -31,6 +31,7 @@ export interface PatientSoapRepo {
   socialHistory:   SocAnswers;
   ros:             Record<string, string[]>;
   peSystems:       string[];
+  peFindings:      Record<string, Record<string, string>>;
   pocTests:        PocTestResult[];
   diagnoses:       DiagnosisEntry[];
   labOrders:       LabOrder[];
@@ -48,7 +49,7 @@ export const EMPTY_SOAP_REPO: PatientSoapRepo = {
   chiefComplaints: [], hpi: [], allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [],
   socialHistory: {},
-  ros: {}, peSystems: [], pocTests: [], diagnoses: [],
+  ros: {}, peSystems: [], peFindings: {}, pocTests: [], diagnoses: [],
   labOrders: [], imagingOrders: [], medicines: [],
   carePlan: null, referrals: null, procedureOrders: null,
   patientGoals: null, healthEd: null, soapLog: [],
@@ -209,6 +210,13 @@ export function mergePatientSoapSection(
   if (patch.peSystems?.length)
     prior.peSystems = mergeStrSet(prior.peSystems, patch.peSystems);
 
+  if (patch.peFindings && Object.keys(patch.peFindings).length) {
+    prior.peFindings = prior.peFindings ?? {};
+    for (const [sysId, findings] of Object.entries(patch.peFindings)) {
+      prior.peFindings[sysId] = { ...(prior.peFindings[sysId] ?? {}), ...findings };
+    }
+  }
+
   if (patch.pocTests?.length)
     prior.pocTests = mergeArr(
       prior.pocTests as unknown as Record<string, unknown>[],
@@ -302,6 +310,8 @@ export function mergePatientSoapNote(
                                                  patch.socialHistory   = note.socialHistory as SocAnswers;
   if (note.ros && Object.keys(note.ros).length)  patch.ros             = note.ros;
   if (note.peSystems?.length)                    patch.peSystems       = note.peSystems;
+  if (note.peSavedData && Object.keys(note.peSavedData).length)
+                                                 patch.peFindings      = note.peSavedData;
   if (note.pocTests?.length)                     patch.pocTests        = note.pocTests;
   if (note.diagnoses?.length)                    patch.diagnoses       = note.diagnoses;
 
