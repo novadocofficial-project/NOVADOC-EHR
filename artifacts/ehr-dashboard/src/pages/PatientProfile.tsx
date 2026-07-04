@@ -644,10 +644,20 @@ function SoapTabContent({ mrn }: { mrn: string }) {
       }
 
       case "hpi": {
-        if (!repo.hpi) return null;
+        const hpiEntries = (repo.hpi ?? []).filter(Boolean);
+        if (!hpiEntries.length) return null;
         return (
-          <div className="bg-white rounded-xl border border-slate-200 p-4 max-w-2xl">
-            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{repo.hpi}</p>
+          <div className="space-y-3 max-w-2xl">
+            {hpiEntries.map((entry, i) => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 p-4">
+                {hpiEntries.length > 1 && (
+                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2">
+                    Entry {i + 1}
+                  </p>
+                )}
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{entry}</p>
+              </div>
+            ))}
           </div>
         );
       }

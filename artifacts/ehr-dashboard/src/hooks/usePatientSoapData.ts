@@ -14,7 +14,7 @@ const REPO_KEY = "ehr-soap-data-v1";
 
 export interface PatientSoapRepo {
   chiefComplaints: string[];
-  hpi:             string;
+  hpi:             string[];
   allergies:       AllergyEntry[];
   pmhActive:       string[];
   pmhResolved:     string[];
@@ -36,7 +36,7 @@ export interface PatientSoapRepo {
 }
 
 export const EMPTY_SOAP_REPO: PatientSoapRepo = {
-  chiefComplaints: [], hpi: "", allergies: [],
+  chiefComplaints: [], hpi: [], allergies: [],
   pmhActive: [], pmhResolved: [], surgicalRows: [], fhRows: [],
   socialHistory: {},
   ros: {}, peSystems: [], pocTests: [], diagnoses: [],
@@ -114,8 +114,15 @@ export function mergePatientSoapSection(mrn: string, patch: Partial<PatientSoapR
   if (patch.chiefComplaints?.length)
     prior.chiefComplaints = mergeStrSet(prior.chiefComplaints, patch.chiefComplaints);
 
-  if (patch.hpi?.trim())
-    prior.hpi = patch.hpi;
+  if (Array.isArray(patch.hpi)) {
+    const existing = prior.hpi ?? [];
+    for (const entry of patch.hpi) {
+      const trimmed = entry?.trim();
+      if (trimmed && !existing.includes(trimmed))
+        existing.push(trimmed);
+    }
+    prior.hpi = existing;
+  }
 
   if (patch.allergies?.length)
     prior.allergies = mergeArr(
@@ -215,7 +222,7 @@ export function mergePatientSoapNote(mrn: string, note: NoteState): void {
   const patch: Partial<PatientSoapRepo> = {};
 
   if (note.chiefComplaints?.length)              patch.chiefComplaints = note.chiefComplaints;
-  if (note.hpi?.trim())                          patch.hpi             = note.hpi;
+  if (note.hpi?.trim())                          patch.hpi             = [note.hpi];
   if (note.allergies?.length)                    patch.allergies       = note.allergies;
   if (note.pmhActive?.length)                    patch.pmhActive       = note.pmhActive;
   if (note.pmhResolved?.length)                  patch.pmhResolved     = note.pmhResolved;

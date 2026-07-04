@@ -2159,7 +2159,7 @@ function ApptHistorySplitPanel({ appt }: { appt: Appointment }) {
                   if (s.length > 1) narrativeParts.push(s.join(" "));
                 }
                 const hpiNarrativePatch = narrativeParts.join("\n\n");
-                if (hpiNarrativePatch) patch.hpi = hpiNarrativePatch;
+                if (hpiNarrativePatch) patch.hpi = [hpiNarrativePatch];
                 break;
               }
               case "current-medicines": {
