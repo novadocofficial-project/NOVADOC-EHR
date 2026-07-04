@@ -2084,6 +2084,9 @@ function ApptHistorySplitPanel({ appt }: { appt: Appointment }) {
         if (template) {
           const sv = activeDraft.systemValues;
           const patch: Partial<PatientSoapRepo> = {};
+          // Pre-extract chief complaints so HPI narrative can iterate in order
+          const ccComp = template.components.find(c => c.type === "system" && c.systemKey === "chief-complaint");
+          const preExtractedCCs = ccComp ? parseChiefComplaints(sv[ccComp.id] ?? "") : [];
           for (const comp of template.components) {
             if (comp.type !== "system") continue;
             const raw = sv[comp.id] ?? "";
@@ -2118,6 +2121,45 @@ function ApptHistorySplitPanel({ appt }: { appt: Appointment }) {
               case "social-history": {
                 const answers = parseSocAnswers(raw);
                 if (Object.keys(answers).length) patch.socialHistory = answers;
+                break;
+              }
+              case "hpi": {
+                const hpiData = parseHpiData(raw);
+                const doneComplaints = Object.keys(hpiData);
+                if (!doneComplaints.length) break;
+                const hpiTmplList = loadHpiTemplates();
+                const orderedComplaints = preExtractedCCs.length ? preExtractedCCs : doneComplaints;
+                const narrativeParts: string[] = [];
+                for (const complaint of orderedComplaints) {
+                  if (!doneComplaints.includes(complaint)) continue;
+                  const answers = hpiData[complaint] ?? {};
+                  const hpiTmpl = hpiTmplList.find(
+                    t => t.complaintName.toLowerCase().trim() === complaint.toLowerCase().trim() && t.active
+                  );
+                  const s: string[] = [`Patient presents with ${complaint.toLowerCase()}.`];
+                  if (hpiTmpl) {
+                    for (const f of hpiTmpl.fields) {
+                      if (f.conditionalOn) {
+                        const { fieldId, values } = f.conditionalOn;
+                        const pv = answers[fieldId];
+                        const vis = pv
+                          ? Array.isArray(pv)
+                            ? (pv as string[]).some(v => values.includes(v))
+                            : values.includes(pv as string)
+                          : false;
+                        if (!vis) continue;
+                      }
+                      const val = answers[f.id];
+                      if (val === undefined || val === null || val === "") continue;
+                      if (Array.isArray(val) && (val as unknown[]).length === 0) continue;
+                      const display = Array.isArray(val) ? (val as string[]).join(", ") : String(val);
+                      s.push(`${f.label}: ${display}.`);
+                    }
+                  }
+                  if (s.length > 1) narrativeParts.push(s.join(" "));
+                }
+                const hpiNarrativePatch = narrativeParts.join("\n\n");
+                if (hpiNarrativePatch) patch.hpi = hpiNarrativePatch;
                 break;
               }
               case "current-medicines": {
