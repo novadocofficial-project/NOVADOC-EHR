@@ -1253,17 +1253,24 @@ function SpecialtyFormPanel({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Read nursing-entered chief complaints for this appointment from the soapLog. */
-function getNursingCCs(patientMrn: string, appointmentId: string): string[] {
+/** Read nursing-entered chief complaints for this patient from today's soapLog entries.
+ *  We intentionally skip the appointmentId filter because the nurse may use the
+ *  appointment-scheduler ID (Appointment.id) while the doctor uses the queue entry ID
+ *  (MultiEntry.id) — they are different systems.  Matching by MRN + today's date is
+ *  sufficient and covers both paths. */
+function getNursingCCs(patientMrn: string): string[] {
   try {
     const raw = localStorage.getItem("ehr-soap-data-v1");
     if (!raw) return [];
-    const all = JSON.parse(raw) as Record<string, { soapLog?: Array<{ appointmentId?: string; source?: string; patch?: Record<string, unknown> }> }>;
+    const all = JSON.parse(raw) as Record<string, { soapLog?: Array<{ source?: string; savedAt?: number; patch?: Record<string, unknown> }> }>;
     const repo = all[patientMrn];
     if (!repo?.soapLog?.length) return [];
+    const todayStr = new Date().toDateString();
     const seen = new Set<string>();
     for (const entry of repo.soapLog) {
-      if (entry.appointmentId !== appointmentId || entry.source !== "nurse") continue;
+      if (entry.source !== "nurse") continue;
+      // Only import from today's nursing entries to avoid pulling in stale visits
+      if (entry.savedAt && new Date(entry.savedAt).toDateString() !== todayStr) continue;
       const cc = entry.patch?.chiefComplaints;
       if (Array.isArray(cc)) {
         for (const c of cc) if (typeof c === "string" && c.trim()) seen.add(c.trim());
@@ -1320,9 +1327,9 @@ export function ClinicalNoteDrawer({ entryId, patientMrn, patientName, doctorId,
   const [peSavedData,       setPeSavedData]       = useState<Record<string, Record<string, string>>>(() => initialNote?.peSavedData ?? {});
 
   const nursingCCs = useMemo(() => {
-    if (!patientMrn || !entryId) return [];
-    return getNursingCCs(patientMrn, entryId);
-  }, [patientMrn, entryId]);
+    if (!patientMrn) return [];
+    return getNursingCCs(patientMrn);
+  }, [patientMrn]);
 
   function handleImportCCs() {
     const existing = new Set(note.chiefComplaints);
