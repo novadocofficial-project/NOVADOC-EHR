@@ -776,6 +776,48 @@ function Section({
   );
 }
 
+// ─── Nursing HPI reference banner ────────────────────────────────────────────
+
+function NursingHPIBanner({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [copied,   setCopied]   = useState(false);
+  const lines = text.split("\n").filter(Boolean);
+  const preview = lines.slice(0, 3).join(" · ");
+  const isLong = lines.length > 3 || text.length > 220;
+
+  function copy() {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  }
+
+  return (
+    <div className="mb-3 rounded-xl border border-purple-100 bg-purple-50/60 px-3 py-2.5">
+      <div className="flex items-center gap-2 mb-1.5">
+        <Stethoscope className="h-3 w-3 text-purple-400 flex-shrink-0" />
+        <span className="text-[9px] font-black text-purple-500 uppercase tracking-widest">Nursing Note</span>
+        <button
+          onClick={copy}
+          className="ml-auto flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-500 hover:bg-purple-200 transition-colors">
+          {copied ? <Check className="h-2.5 w-2.5" /> : <Download className="h-2.5 w-2.5" />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+        {isLong && (
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="text-[9px] font-bold text-purple-400 hover:text-purple-600">
+            {expanded ? "Less" : "More"}
+          </button>
+        )}
+      </div>
+      <p className="text-[11px] text-slate-600 leading-relaxed whitespace-pre-wrap">
+        {expanded || !isLong ? text : preview + "…"}
+      </p>
+    </div>
+  );
+}
+
 // ─── Textarea field ───────────────────────────────────────────────────────────
 
 function NoteField({
@@ -1253,6 +1295,28 @@ function SpecialtyFormPanel({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Read nursing-entered HPI narrative for this patient from today's soapLog entries. */
+function getNursingHPI(patientMrn: string): string {
+  try {
+    const raw = localStorage.getItem("ehr-soap-data-v1");
+    if (!raw) return "";
+    const all = JSON.parse(raw) as Record<string, { soapLog?: Array<{ source?: string; savedAt?: number; patch?: Record<string, unknown> }> }>;
+    const repo = all[patientMrn];
+    if (!repo?.soapLog?.length) return "";
+    const todayStr = new Date().toDateString();
+    const parts: string[] = [];
+    for (const entry of repo.soapLog) {
+      if (entry.source !== "nurse") continue;
+      if (entry.savedAt && new Date(entry.savedAt).toDateString() !== todayStr) continue;
+      const hpi = entry.patch?.hpi;
+      if (Array.isArray(hpi)) {
+        for (const h of hpi) if (typeof h === "string" && h.trim()) parts.push(h.trim());
+      }
+    }
+    return [...new Set(parts)].join("\n\n");
+  } catch { return ""; }
+}
+
 /** Read nursing-entered chief complaints for this patient from today's soapLog entries.
  *  We intentionally skip the appointmentId filter because the nurse may use the
  *  appointment-scheduler ID (Appointment.id) while the doctor uses the queue entry ID
@@ -1329,6 +1393,11 @@ export function ClinicalNoteDrawer({ entryId, patientMrn, patientName, doctorId,
   const nursingCCs = useMemo(() => {
     if (!patientMrn) return [];
     return getNursingCCs(patientMrn);
+  }, [patientMrn]);
+
+  const nursingHPI = useMemo(() => {
+    if (!patientMrn) return "";
+    return getNursingHPI(patientMrn);
   }, [patientMrn]);
 
   function handleImportCCs() {
@@ -1644,6 +1713,7 @@ export function ClinicalNoteDrawer({ entryId, patientMrn, patientName, doctorId,
         if (!secVisible("hpi")) return null;
         return (
           <Section key="sc-hpi" title="History of Present Illness" icon={ClipboardList} color="#8b5cf6" filled={hpiDoneComplaints.length > 0}>
+            {nursingHPI && <NursingHPIBanner text={nursingHPI} />}
             {note.chiefComplaints.length === 0 ? (
               <div className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
                 <ClipboardList className="h-4 w-4 text-slate-300 flex-shrink-0" />
@@ -2062,6 +2132,7 @@ export function ClinicalNoteDrawer({ entryId, patientMrn, patientName, doctorId,
             icon={ClipboardList}
             color="#8b5cf6"
             filled={hpiDoneComplaints.length > 0}>
+            {nursingHPI && <NursingHPIBanner text={nursingHPI} />}
             {note.chiefComplaints.length === 0 ? (
               <div className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
                 <ClipboardList className="h-4 w-4 text-slate-300 flex-shrink-0" />
