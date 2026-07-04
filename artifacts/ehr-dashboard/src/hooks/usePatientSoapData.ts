@@ -12,6 +12,14 @@ const REPO_KEY = "ehr-soap-data-v1";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface SoapLogEntry {
+  logId:   string;
+  savedAt: number;
+  savedBy: string;
+  source:  "doctor" | "nurse";
+  patch:   Record<string, unknown>;
+}
+
 export interface PatientSoapRepo {
   chiefComplaints: string[];
   hpi:             string[];
@@ -33,6 +41,7 @@ export interface PatientSoapRepo {
   procedureOrders: unknown;
   patientGoals:    unknown;
   healthEd:        unknown;
+  soapLog:         SoapLogEntry[];
 }
 
 export const EMPTY_SOAP_REPO: PatientSoapRepo = {
@@ -42,7 +51,7 @@ export const EMPTY_SOAP_REPO: PatientSoapRepo = {
   ros: {}, peSystems: [], pocTests: [], diagnoses: [],
   labOrders: [], imagingOrders: [], medicines: [],
   carePlan: null, referrals: null, procedureOrders: null,
-  patientGoals: null, healthEd: null,
+  patientGoals: null, healthEd: null, soapLog: [],
 };
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
@@ -106,7 +115,11 @@ function mergeStrSet(existing: string[], incoming: string[]): string[] {
  *   - hpi             → last non-empty string wins
  *   - complex sections → last-write-wins (null/undefined skipped)
  */
-export function mergePatientSoapSection(mrn: string, patch: Partial<PatientSoapRepo>): void {
+export function mergePatientSoapSection(
+  mrn: string,
+  patch: Partial<PatientSoapRepo>,
+  author?: { savedBy: string; source: "doctor" | "nurse" },
+): void {
   if (!mrn) return;
   const all = loadAll();
   const prior: PatientSoapRepo = all[mrn] ?? { ...EMPTY_SOAP_REPO };
@@ -212,6 +225,28 @@ export function mergePatientSoapSection(mrn: string, patch: Partial<PatientSoapR
   if (patch.patientGoals    != null) prior.patientGoals    = patch.patientGoals;
   if (patch.healthEd        != null) prior.healthEd        = patch.healthEd;
 
+  if (author) {
+    const logPatch: Record<string, unknown> = { ...patch };
+    delete logPatch.soapLog;
+    const hasContent = Object.values(logPatch).some(v => {
+      if (v === null || v === undefined) return false;
+      if (Array.isArray(v)) return v.length > 0;
+      if (typeof v === "object") return Object.keys(v as object).length > 0;
+      if (typeof v === "string") return v.trim().length > 0;
+      return false;
+    });
+    if (hasContent) {
+      const entry: SoapLogEntry = {
+        logId:   `sl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        savedAt: Date.now(),
+        savedBy: author.savedBy,
+        source:  author.source,
+        patch:   logPatch,
+      };
+      prior.soapLog = [...(prior.soapLog ?? []), entry];
+    }
+  }
+
   all[mrn] = prior;
   saveAll(all);
 }
@@ -220,7 +255,11 @@ export function mergePatientSoapSection(mrn: string, patch: Partial<PatientSoapR
  * Merge all populated sections from a NoteState into the repo for the given MRN.
  * Call this at SOAP-note sign time and (debounced) on draft saves.
  */
-export function mergePatientSoapNote(mrn: string, note: NoteState): void {
+export function mergePatientSoapNote(
+  mrn: string,
+  note: NoteState,
+  author?: { savedBy: string; source: "doctor" | "nurse" },
+): void {
   if (!mrn) return;
   const patch: Partial<PatientSoapRepo> = {};
 
@@ -251,7 +290,7 @@ export function mergePatientSoapNote(mrn: string, note: NoteState): void {
   if ((note.healthEd?.docIds?.length ?? 0) > 0)       patch.healthEd        = note.healthEd;
 
   if (Object.keys(patch).length === 0) return;
-  mergePatientSoapSection(mrn, patch);
+  mergePatientSoapSection(mrn, patch, author);
 }
 
 // ─── React hook ───────────────────────────────────────────────────────────────

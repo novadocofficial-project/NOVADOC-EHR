@@ -1751,7 +1751,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
               if (entry.patient?.mrn) {
                 if (draftRepoTimerRef.current) clearTimeout(draftRepoTimerRef.current);
                 draftRepoTimerRef.current = setTimeout(() => {
-                  mergePatientSoapNote(entry.patient!.mrn, note);
+                  mergePatientSoapNote(entry.patient!.mrn, note, { savedBy: "Doctor", source: "doctor" });
                   draftRepoTimerRef.current = null;
                 }, 1500);
               }
@@ -1771,7 +1771,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
             // across signed visits so Patient Profile can read from signed history.
             if (draft && entry.patient?.mrn) {
               savePatientClinicalSnapshot(draft, entry.patient.mrn);
-              mergePatientSoapNote(entry.patient.mrn, draft);
+              mergePatientSoapNote(entry.patient.mrn, draft, { savedBy: "Doctor", source: "doctor" });
             }
             const noteStateToPersist = draft;
             clearDraft();

@@ -28,7 +28,8 @@ import { Input } from "@/components/ui/input";
 import { QueueAppHeader } from "@/pages/QueuePageLayout";
 import type { Patient } from "@/pages/QueuePageLayout";
 import type { ReceiptInfo } from "@/pages/FrontDeskUser";
-import { usePatientSoapData } from "@/hooks/usePatientSoapData";
+import { usePatientSoapData, EMPTY_SOAP_REPO } from "@/hooks/usePatientSoapData";
+import type { PatientSoapRepo, SoapLogEntry } from "@/hooks/usePatientSoapData";
 import { loadSocConfig } from "@/pages/ClinicalLibrariesModule";
 
 const ACCENT = "#4982CF";
@@ -590,6 +591,39 @@ const SOAP_SECTION_META: Record<string, { icon: React.ElementType; color: string
   "health-ed":        { icon: BookOpen,      color: "#8b5cf6"  },
 };
 
+const SECTION_PATCH_KEYS: Record<string, (keyof PatientSoapRepo)[]> = {
+  "chief-complaints": ["chiefComplaints"],
+  "hpi":              ["hpi"],
+  "allergies":        ["allergies"],
+  "medical-history":  ["pmhActive", "pmhResolved", "surgicalRows", "fhRows", "socialHistory"],
+  "ros":              ["ros"],
+  "physical-exam":    ["peSystems"],
+  "poc-labs":         ["pocTests"],
+  "diagnosis":        ["diagnoses"],
+  "labs":             ["labOrders"],
+  "imaging":          ["imagingOrders"],
+  "formulary":        ["medicines"],
+  "procedures":       ["procedureOrders"],
+  "care-plan":        ["carePlan"],
+  "referrals":        ["referrals"],
+  "patient-goals":    ["patientGoals"],
+  "health-ed":        ["healthEd"],
+};
+
+function fmtDate(ts: number): string {
+  return new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+function fmtTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+function hasLogData(v: unknown): boolean {
+  if (v === null || v === undefined) return false;
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === "object") return Object.keys(v as object).length > 0;
+  if (typeof v === "string") return (v as string).trim().length > 0;
+  return false;
+}
+
 function SoapTabContent({ mrn }: { mrn: string }) {
   const sections = useMemo(
     () => loadNoteStructure().filter(
@@ -599,6 +633,28 @@ function SoapTabContent({ mrn }: { mrn: string }) {
   );
   const [activeId, setActiveId] = useState<string>(() => sections[0]?.id ?? "");
   const { data: repo } = usePatientSoapData(mrn);
+  const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
+
+  const relevantLogs = useMemo((): SoapLogEntry[] => {
+    const keys = SECTION_PATCH_KEYS[activeId] ?? [];
+    return (repo.soapLog ?? [])
+      .filter(log => keys.some(key => hasLogData((log.patch as Record<string, unknown>)[key])))
+      .sort((a, b) => a.savedAt - b.savedAt);
+  }, [repo.soapLog, activeId]);
+
+  useEffect(() => {
+    setSelectedLogId(
+      relevantLogs.length > 0 ? relevantLogs[relevantLogs.length - 1].logId : null,
+    );
+  }, [activeId]);
+
+  const selectedLog: SoapLogEntry | null =
+    relevantLogs.find(e => e.logId === selectedLogId) ??
+    (relevantLogs.length > 0 ? relevantLogs[relevantLogs.length - 1] : null);
+
+  const displayData: PatientSoapRepo = selectedLog
+    ? { ...EMPTY_SOAP_REPO, ...(selectedLog.patch as Partial<PatientSoapRepo>) }
+    : repo;
 
   if (sections.length === 0) {
     return (
@@ -628,7 +684,8 @@ function SoapTabContent({ mrn }: { mrn: string }) {
     sent_to_lab: { label: "Sent to Lab", color: "#f59e0b" },
   };
 
-  function renderContent(): React.ReactNode {
+  function renderContent(viewData: PatientSoapRepo): React.ReactNode {
+    const repo = viewData;
     const id = current.id;
     switch (id) {
 
@@ -1053,12 +1110,12 @@ function SoapTabContent({ mrn }: { mrn: string }) {
     }
   }
 
-  const content = renderContent();
+  const content = renderContent(displayData);
 
   return (
     <div className="flex h-full overflow-hidden">
 
-      {/* Left sub-nav */}
+      {/* ── Section nav (fixed width) ─────────────────────────────────── */}
       <div className="w-52 flex-none border-r border-slate-200 bg-white overflow-y-auto py-3">
         <p className="px-4 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Sections</p>
         {sections.map(s => {
@@ -1081,37 +1138,113 @@ function SoapTabContent({ mrn }: { mrn: string }) {
         })}
       </div>
 
-      {/* Right panel */}
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col">
-        <div className="flex items-center gap-3 mb-6">
+      {/* ── Entry timeline (40% of remaining space) ───────────────────── */}
+      <div className="flex-none border-r border-slate-200 flex flex-col overflow-hidden" style={{ width: "40%" }}>
+        <div className="px-4 py-3 border-b border-slate-100 flex-none bg-white">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">History</p>
+          <p className="text-[9px] text-slate-400 mt-0.5">
+            {relevantLogs.length} {relevantLogs.length === 1 ? "entry" : "entries"} · chronological
+          </p>
+        </div>
+
+        {relevantLogs.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div
+              className="h-10 w-10 rounded-2xl flex items-center justify-center mb-3"
+              style={{ backgroundColor: `${meta.color}12` }}
+            >
+              <Icon className="h-5 w-5" style={{ color: meta.color }} />
+            </div>
+            <p className="text-xs text-slate-400">No entries recorded yet</p>
+            <p className="text-[10px] text-slate-300 mt-1 max-w-[160px] leading-relaxed">
+              Data saved from SOAP notes or nursing will appear here
+            </p>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+            {relevantLogs.map(log => {
+              const isSelected = log.logId === (selectedLog?.logId ?? "");
+              return (
+                <button
+                  key={log.logId}
+                  onClick={() => setSelectedLogId(log.logId)}
+                  className={`w-full text-left px-4 py-3 transition-colors hover:bg-slate-50 ${
+                    isSelected
+                      ? "bg-[#4982CF]/[0.05] border-l-[3px] border-l-[#4982CF]"
+                      : "border-l-[3px] border-l-transparent"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full tracking-wide uppercase flex-shrink-0 ${
+                      log.source === "doctor"
+                        ? "bg-[#4982CF]/10 text-[#4982CF]"
+                        : "bg-emerald-50 text-emerald-600"
+                    }`}>
+                      {log.source === "doctor" ? "Doctor" : "Nurse"}
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-600 truncate">{log.savedBy}</span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-700">{fmtDate(log.savedAt)}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{fmtTime(log.savedAt)}</p>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Detail view (60% of remaining space) ─────────────────────── */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3 flex-none bg-white">
           <div
             className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: `${meta.color}15` }}
           >
             <Icon className="h-4 w-4" style={{ color: meta.color }} />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h2 className="text-base font-black text-slate-800">{current.label}</h2>
-            <p className="text-xs text-slate-400">Patient SOAP record</p>
+            {selectedLog ? (
+              <p className="text-xs text-slate-400 truncate">
+                {fmtDate(selectedLog.savedAt)} · {fmtTime(selectedLog.savedAt)}
+                <span className={`ml-2 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase ${
+                  selectedLog.source === "doctor"
+                    ? "bg-[#4982CF]/10 text-[#4982CF]"
+                    : "bg-emerald-50 text-emerald-600"
+                }`}>
+                  {selectedLog.savedBy}
+                </span>
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400">Patient SOAP record</p>
+            )}
           </div>
         </div>
 
-        {content ? (
-          <div className="flex-1">{content}</div>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 py-16">
-            <div
-              className="h-14 w-14 rounded-2xl flex items-center justify-center"
-              style={{ backgroundColor: `${meta.color}12` }}
-            >
-              <Icon className="h-6 w-6" style={{ color: meta.color }} />
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {content ? (
+            content
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full gap-3 py-16">
+              <div
+                className="h-14 w-14 rounded-2xl flex items-center justify-center"
+                style={{ backgroundColor: `${meta.color}12` }}
+              >
+                <Icon className="h-6 w-6" style={{ color: meta.color }} />
+              </div>
+              <p className="text-sm font-semibold text-slate-500">
+                {relevantLogs.length > 0 ? "Select an entry to view details" : current.label}
+              </p>
+              <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed">
+                {relevantLogs.length > 0
+                  ? "Click an entry in the timeline to see what was recorded"
+                  : `${current.label} data will appear here once it has been recorded and signed in a SOAP note.`}
+              </p>
             </div>
-            <p className="text-sm font-semibold text-slate-500">{current.label}</p>
-            <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed">
-              {current.label} data will appear here once it has been recorded and signed in a SOAP note.
-            </p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
     </div>
