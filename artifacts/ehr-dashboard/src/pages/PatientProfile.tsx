@@ -644,7 +644,7 @@ function SoapTabContent({ mrn }: { mrn: string }) {
       }
 
       case "hpi": {
-        const hpiEntries = (repo.hpi ?? []).filter(Boolean);
+        const hpiEntries = (Array.isArray(repo.hpi) ? repo.hpi : repo.hpi ? [repo.hpi as unknown as string] : []).filter(Boolean);
         if (!hpiEntries.length) return null;
         return (
           <div className="space-y-3 max-w-2xl">

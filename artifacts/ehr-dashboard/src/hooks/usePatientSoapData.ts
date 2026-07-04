@@ -115,7 +115,10 @@ export function mergePatientSoapSection(mrn: string, patch: Partial<PatientSoapR
     prior.chiefComplaints = mergeStrSet(prior.chiefComplaints, patch.chiefComplaints);
 
   if (Array.isArray(patch.hpi)) {
-    const existing = prior.hpi ?? [];
+    // Normalize existing value — old localStorage data may still be a plain string
+    const existing: string[] = Array.isArray(prior.hpi)
+      ? prior.hpi
+      : prior.hpi ? [prior.hpi as unknown as string] : [];
     for (const entry of patch.hpi) {
       const trimmed = entry?.trim();
       if (trimmed && !existing.includes(trimmed))
