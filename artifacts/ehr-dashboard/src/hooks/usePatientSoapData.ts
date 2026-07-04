@@ -13,11 +13,12 @@ const REPO_KEY = "ehr-soap-data-v1";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface SoapLogEntry {
-  logId:   string;
-  savedAt: number;
-  savedBy: string;
-  source:  "doctor" | "nurse";
-  patch:   Record<string, unknown>;
+  logId:         string;
+  appointmentId: string;
+  savedAt:       number;
+  savedBy:       string;
+  source:        "doctor" | "nurse";
+  patch:         Record<string, unknown>;
 }
 
 export interface PatientSoapRepo {
@@ -146,7 +147,7 @@ function mergeStrSet(existing: string[], incoming: string[]): string[] {
 export function mergePatientSoapSection(
   mrn: string,
   patch: Partial<PatientSoapRepo>,
-  author?: { savedBy: string; source: "doctor" | "nurse" },
+  author?: { savedBy: string; source: "doctor" | "nurse"; appointmentId?: string },
 ): void {
   if (!mrn) return;
   const all = loadAll();
@@ -273,11 +274,12 @@ export function mergePatientSoapSection(
     });
     if (hasContent) {
       const entry: SoapLogEntry = {
-        logId:   `sl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        savedAt: Date.now(),
-        savedBy: author.savedBy,
-        source:  author.source,
-        patch:   logPatch,
+        logId:         `sl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        appointmentId: author.appointmentId ?? "",
+        savedAt:       Date.now(),
+        savedBy:       author.savedBy,
+        source:        author.source,
+        patch:         logPatch,
       };
       prior.soapLog = [...(prior.soapLog ?? []), entry];
     }
@@ -294,7 +296,7 @@ export function mergePatientSoapSection(
 export function mergePatientSoapNote(
   mrn: string,
   note: NoteState,
-  author?: { savedBy: string; source: "doctor" | "nurse" },
+  author?: { savedBy: string; source: "doctor" | "nurse"; appointmentId?: string },
 ): void {
   if (!mrn) return;
   const patch: Partial<PatientSoapRepo> = {};

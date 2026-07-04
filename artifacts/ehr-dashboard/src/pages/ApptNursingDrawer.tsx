@@ -2170,7 +2170,7 @@ function ApptHistorySplitPanel({ appt }: { appt: Appointment }) {
             }
           }
           if (Object.keys(patch).length > 0) {
-            mergePatientSoapSection(appt.patientMrn, patch, { savedBy: "Nursing Staff", source: "nurse" });
+            mergePatientSoapSection(appt.patientMrn, patch, { savedBy: "Nursing Staff", source: "nurse", appointmentId: appt.id });
           }
         }
       }

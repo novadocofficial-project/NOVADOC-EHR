@@ -1775,7 +1775,7 @@ export function SoapNotePage({ entry, onBack, doctorId, faceSheetOpenedAt, onSen
                 draftRepoTimerRef.current = null;
               }
               savePatientClinicalSnapshot(draft, entry.patient.mrn);
-              mergePatientSoapNote(entry.patient.mrn, draft, { savedBy: "Doctor", source: "doctor" });
+              mergePatientSoapNote(entry.patient.mrn, draft, { savedBy: "Doctor", source: "doctor", appointmentId: entry.id });
             }
             const noteStateToPersist = draft;
             clearDraft();
