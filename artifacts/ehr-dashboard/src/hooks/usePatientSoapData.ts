@@ -243,7 +243,8 @@ export function mergePatientSoapNote(mrn: string, note: NoteState): void {
 
   if (note.imaging?.orders?.length)              patch.imagingOrders   = note.imaging.orders;
   if (note.formulary?.medicines?.length)         patch.medicines       = note.formulary.medicines;
-  if ((note.carePlan?.tasks?.length ?? 0) > 0)   patch.carePlan        = note.carePlan;
+  if ((note.carePlan?.tasks?.length ?? 0) > 0 || note.carePlan?.instructions?.trim())
+                                                 patch.carePlan        = note.carePlan;
   if ((note.referrals?.referrals?.length ?? 0) > 0) patch.referrals    = note.referrals;
   if ((note.procedureOrders?.orders?.length ?? 0) > 0) patch.procedureOrders = note.procedureOrders;
   if ((note.patientGoals?.goals?.length ?? 0) > 0)    patch.patientGoals    = note.patientGoals;

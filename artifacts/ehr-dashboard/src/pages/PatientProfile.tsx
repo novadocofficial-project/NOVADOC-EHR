@@ -953,10 +953,10 @@ function SoapTabContent({ mrn }: { mrn: string }) {
       case "care-plan": {
         type CPlan = { tasks?: { uid: string; title: string; priority?: string; dueDate?: string; notes?: string }[]; instructions?: string };
         const d = repo.carePlan as CPlan | null;
-        if (!d?.tasks?.length) return null;
+        if (!d?.tasks?.length && !d?.instructions?.trim()) return null;
         return (
           <div className="space-y-2 max-w-xl">
-            {d.tasks.map((t, i) => (
+            {(d.tasks ?? []).map((t, i) => (
               <div key={i} className="flex items-start gap-3 px-4 py-2.5 rounded-xl border border-emerald-100 bg-emerald-50/30">
                 <BookMarked className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
