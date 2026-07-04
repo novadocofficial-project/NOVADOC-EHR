@@ -56,6 +56,33 @@ export const EMPTY_SOAP_REPO: PatientSoapRepo = {
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
+/**
+ * Collapse soapLog entries from the same author+source that fall within a
+ * 2-minute window into a single entry (keep the latest — it has the most
+ * complete patch). Prevents duplicate rows when a debounced auto-save and a
+ * sign event both fire within the same session.
+ */
+function deduplicateSoapLog(log: SoapLogEntry[]): SoapLogEntry[] {
+  if (!log || log.length <= 1) return log ?? [];
+  const WINDOW_MS = 2 * 60 * 1000;
+  const sorted = [...log].sort((a, b) => a.savedAt - b.savedAt);
+  const result: SoapLogEntry[] = [];
+  for (const entry of sorted) {
+    const prev = result[result.length - 1];
+    if (
+      prev &&
+      prev.source === entry.source &&
+      prev.savedBy === entry.savedBy &&
+      entry.savedAt - prev.savedAt < WINDOW_MS
+    ) {
+      result[result.length - 1] = entry;
+    } else {
+      result.push(entry);
+    }
+  }
+  return result;
+}
+
 function loadAll(): Record<string, PatientSoapRepo> {
   try {
     const raw = localStorage.getItem(REPO_KEY);
@@ -123,6 +150,7 @@ export function mergePatientSoapSection(
   if (!mrn) return;
   const all = loadAll();
   const prior: PatientSoapRepo = all[mrn] ?? { ...EMPTY_SOAP_REPO };
+  prior.soapLog = deduplicateSoapLog(prior.soapLog ?? []);
 
   if (patch.chiefComplaints?.length)
     prior.chiefComplaints = mergeStrSet(prior.chiefComplaints, patch.chiefComplaints);
@@ -307,7 +335,9 @@ export function usePatientSoapData(mrn: string): {
   const [data, setData] = useState<PatientSoapRepo>(() => {
     if (!mrn) return { ...EMPTY_SOAP_REPO };
     const all = loadAll();
-    return all[mrn] ?? { ...EMPTY_SOAP_REPO };
+    const repo = all[mrn] ?? { ...EMPTY_SOAP_REPO };
+    repo.soapLog = deduplicateSoapLog(repo.soapLog ?? []);
+    return repo;
   });
 
   const mergeSection = useCallback((patch: Partial<PatientSoapRepo>) => {
