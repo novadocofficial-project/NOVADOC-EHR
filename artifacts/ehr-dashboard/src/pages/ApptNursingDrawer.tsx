@@ -5,7 +5,7 @@ import {
   ClipboardList, Stethoscope, Target, CheckCircle2, Check, FileText,
   Maximize2, Minimize2, Plus, Trash2, Pill, Receipt, ShieldCheck,
   DollarSign, Layers, SkipForward, RotateCcw, Search, GripVertical,
-  ArrowRight, ClipboardCheck,
+  ArrowRight, ClipboardCheck, Sparkles,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -812,6 +812,42 @@ function SystemComponentView({
   if (systemKey === "hpi") {
     const hpiData = parseHpiData(value);
     const doneComplaints = Object.keys(hpiData);
+
+    // Build a prose narrative from saved HPI answers (mirrors SOAP-note HpiNarrativeBlock)
+    const hpiNarrative = (() => {
+      const templates = loadHpiTemplates();
+      const parts: string[] = [];
+      for (const complaint of chiefComplaints) {
+        if (!doneComplaints.includes(complaint)) continue;
+        const answers = hpiData[complaint] ?? {};
+        const tmpl = templates.find(
+          t => t.complaintName.toLowerCase().trim() === complaint.toLowerCase().trim() && t.active
+        );
+        const s: string[] = [`Patient presents with ${complaint.toLowerCase()}.`];
+        if (tmpl) {
+          for (const f of tmpl.fields) {
+            if (f.conditionalOn) {
+              const { fieldId, values } = f.conditionalOn;
+              const pv = answers[fieldId];
+              const vis = pv
+                ? Array.isArray(pv)
+                  ? (pv as string[]).some(v => values.includes(v))
+                  : values.includes(pv as string)
+                : false;
+              if (!vis) continue;
+            }
+            const val = answers[f.id];
+            if (val === undefined || val === null || val === "") continue;
+            if (Array.isArray(val) && (val as unknown[]).length === 0) continue;
+            const display = Array.isArray(val) ? (val as string[]).join(", ") : String(val);
+            s.push(`${f.label}: ${display}.`);
+          }
+        }
+        if (s.length > 1) parts.push(s.join(" "));
+      }
+      return parts.join("\n\n");
+    })();
+
     return (
       <SystemCompCard def={def}>
         {chiefComplaints.length === 0 ? (
@@ -846,6 +882,23 @@ function SystemComponentView({
             </div>
             {doneComplaints.length > 0 && (
               <p className="text-[10px] text-slate-400">{doneComplaints.length}/{chiefComplaints.length} complaint{chiefComplaints.length !== 1 ? "s" : ""} documented</p>
+            )}
+            {hpiNarrative && (
+              <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-purple-500 flex items-center gap-1.5">
+                    <Sparkles className="h-3 w-3" /> HPI Narrative
+                  </p>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(hpiNarrative)}
+                    className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border border-slate-200 text-slate-500 bg-slate-50 hover:bg-slate-100 transition-colors">
+                    <ClipboardCheck className="h-2.5 w-2.5" /> Copy
+                  </button>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap bg-purple-50/20 rounded-xl border border-purple-100 px-3 py-2.5">
+                  {hpiNarrative}
+                </p>
+              </div>
             )}
           </div>
         )}
