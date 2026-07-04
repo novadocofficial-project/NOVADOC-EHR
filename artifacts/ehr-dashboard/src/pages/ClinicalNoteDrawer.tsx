@@ -28,7 +28,7 @@ import { DiagnosisDrawer, DiagnosisChipsPanel } from "@/pages/DiagnosisDrawer";
 import type { DiagnosisEntry } from "@/pages/DiagnosisDrawer";
 import { LabDrawer, LabChipsPanel } from "@/pages/LabDrawer";
 import type { LabOrder } from "@/pages/LabDrawer";
-import { saveActiveLabOrder, readActiveLabOrder } from "@/hooks/useSoapNoteDraft";
+import { saveActiveLabOrder, readActiveLabOrder, readPatientClinicalSnapshot } from "@/hooks/useSoapNoteDraft";
 import { PocLabsChipsPanel, PocLabsDrawer } from "@/pages/PocLabsSection";
 import type { PocTestResult } from "@/pages/PocLabsSection";
 import { FormularyChipsPanel, FormularyDrawer, EMPTY_FORMULARY } from "@/pages/FormularySection";
@@ -1295,6 +1295,15 @@ function SpecialtyFormPanel({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Read allergies recorded in the patient profile (clinical snapshot) for import into the SOAP note. */
+function getProfileAllergies(patientMrn: string): AllergyEntry[] {
+  try {
+    const snapshot = readPatientClinicalSnapshot(patientMrn);
+    if (!snapshot?.allergies?.length) return [];
+    return (snapshot.allergies as AllergyEntry[]).filter(a => a.name);
+  } catch { return []; }
+}
+
 /** Read nursing-entered HPI narrative for this patient from today's soapLog entries. */
 function getNursingHPI(patientMrn: string): string {
   try {
@@ -1399,6 +1408,17 @@ export function ClinicalNoteDrawer({ entryId, patientMrn, patientName, doctorId,
     if (!patientMrn) return "";
     return getNursingHPI(patientMrn);
   }, [patientMrn]);
+
+  const profileAllergies = useMemo(() => {
+    if (!patientMrn) return [];
+    return getProfileAllergies(patientMrn);
+  }, [patientMrn]);
+
+  function handleImportAllergies() {
+    const existing = new Set(note.allergies.map(a => a.name.toLowerCase()));
+    const toAdd = profileAllergies.filter(a => !existing.has(a.name.toLowerCase()));
+    if (toAdd.length) set("allergies", [...note.allergies, ...toAdd]);
+  }
 
   function handleImportCCs() {
     const existing = new Set(note.chiefComplaints);
@@ -1756,7 +1776,8 @@ export function ClinicalNoteDrawer({ entryId, patientMrn, patientName, doctorId,
       case "allergies":
         if (!secVisible("allergies")) return null;
         return (
-          <Section key="sc-allg" title="Allergies" icon={AlertCircle} color="#ef4444" required filled={note.allergies.length > 0}>
+          <Section key="sc-allg" title="Allergies" icon={AlertCircle} color="#ef4444" required filled={note.allergies.length > 0}
+            onImport={profileAllergies.length > 0 ? handleImportAllergies : undefined}>
             <AllergySelector entries={note.allergies} onChange={entries => set("allergies", entries)} />
           </Section>
         );
@@ -2197,7 +2218,8 @@ export function ClinicalNoteDrawer({ entryId, patientMrn, patientName, doctorId,
           {/* 3. Allergies */}
           {secVisible("allergies") && <Section
             title="Allergies" icon={AlertCircle} color="#ef4444"
-            required filled={note.allergies.length > 0}>
+            required filled={note.allergies.length > 0}
+            onImport={profileAllergies.length > 0 ? handleImportAllergies : undefined}>
             <AllergySelector
               entries={note.allergies}
               onChange={entries => set("allergies", entries)}
