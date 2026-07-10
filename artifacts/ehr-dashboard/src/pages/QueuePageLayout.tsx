@@ -597,20 +597,18 @@ export function QueueAppHeader() {
   const [location, setLocation] = useLocation();
 
   return (
-    <header className="z-20 flex h-14 flex-none items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm">
-      <div className="flex items-center gap-6">
-        <div className="flex items-center">
-          <img src="/novadoc-logo.png" alt="NovaDoc" className="h-8 w-auto" />
-        </div>
-        <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
-          <HomeNavButton />
-          <QueueNavDropdown />
-          <AppointmentsNavDropdown />
-          <PatientsNavButton />
-          <HealthRecordsNavButton />
-          <ReportsNavDropdown />
-        </nav>
+    <header className="z-20 relative flex h-14 flex-none items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm">
+      <div className="flex items-center">
+        <img src="/novadoc-logo.png" alt="NovaDoc" className="h-8 w-auto" />
       </div>
+      <nav className="hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1 text-sm font-medium text-slate-600 md:flex">
+        <HomeNavButton />
+        <QueueNavDropdown />
+        <AppointmentsNavDropdown />
+        <PatientsNavButton />
+        <HealthRecordsNavButton />
+        <ReportsNavDropdown />
+      </nav>
       <div className="flex items-center gap-3">
         <div className="relative hidden sm:block">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
