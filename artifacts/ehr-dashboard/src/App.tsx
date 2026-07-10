@@ -16,6 +16,7 @@ import { LabUser } from "@/pages/LabUser";
 import { AppointmentFrontDesk } from "@/pages/AppointmentFrontDesk";
 import { PatientProfile } from "@/pages/PatientProfile";
 import { PatientsListPage } from "@/pages/PatientsListPage";
+import { HealthRecordsListPage } from "@/pages/HealthRecordsListPage";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ function Router() {
         {() => <AppointmentFrontDesk key="doctor-doc-asif" role="doctor" lockedDoctorId="doc-asif" />}
       </Route>
       <Route path="/patients" component={PatientsListPage} />
+      <Route path="/health-records" component={HealthRecordsListPage} />
       <Route path="/patients/:id" component={PatientProfile} />
       <Route component={NotFound} />
     </Switch>
