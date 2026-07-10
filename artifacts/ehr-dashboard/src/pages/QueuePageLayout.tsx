@@ -2,7 +2,7 @@ import { useLocation, Link } from "wouter";
 import {
   Bell, Search, Ticket, ChevronDown, Zap, Users, Workflow, BarChart2, Receipt,
   X, Printer, ArrowRight, Heart, Stethoscope, FlaskConical, LayoutDashboard, Calendar,
-  FileText,
+  FileText, MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -336,6 +336,27 @@ export function HealthRecordsNavButton() {
   );
 }
 
+// ─── Messaging Nav Button (shared across all headers) ────────────────────────
+
+export function MessagingNavButton() {
+  const [location, setLocation] = useLocation();
+  const isActive = location === "/messaging";
+  return (
+    <Button
+      variant="ghost"
+      onClick={() => setLocation("/messaging")}
+      className={`h-9 px-3 gap-1.5 text-sm font-medium ${
+        isActive
+          ? "bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15"
+          : "text-slate-600 hover:bg-slate-100"
+      }`}
+    >
+      <MessageSquare className="h-4 w-4" />
+      Messaging
+    </Button>
+  );
+}
+
 // ─── Queue Nav Dropdown (shared across all headers) ───────────────────────────
 
 export function QueueNavDropdown() {
@@ -607,6 +628,7 @@ export function QueueAppHeader() {
         <AppointmentsNavDropdown />
         <PatientsNavButton />
         <HealthRecordsNavButton />
+        <MessagingNavButton />
         <ReportsNavDropdown />
       </nav>
       <div className="flex items-center gap-3">

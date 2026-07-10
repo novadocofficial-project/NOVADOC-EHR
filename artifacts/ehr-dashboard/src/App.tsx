@@ -17,6 +17,7 @@ import { AppointmentFrontDesk } from "@/pages/AppointmentFrontDesk";
 import { PatientProfile } from "@/pages/PatientProfile";
 import { PatientsListPage } from "@/pages/PatientsListPage";
 import { HealthRecordsListPage } from "@/pages/HealthRecordsListPage";
+import { MessagingPage } from "@/pages/MessagingPage";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ function Router() {
       </Route>
       <Route path="/patients" component={PatientsListPage} />
       <Route path="/health-records" component={HealthRecordsListPage} />
+      <Route path="/messaging" component={MessagingPage} />
       <Route path="/patients/:id" component={PatientProfile} />
       <Route component={NotFound} />
     </Switch>
