@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import {
   Activity,
@@ -80,10 +81,12 @@ function LiveBadge() {
   );
 }
 
-function ActiveTile({ mod }: { mod: Mod & { active: true } }) {
+function ActiveTile({ mod }: { mod: Mod }) {
   const Icon = mod.icon;
+  const href = mod.active ? mod.href : "#";
+  const desc = mod.active ? mod.desc : "Preview mode — module not yet wired up";
   return (
-    <Link href={mod.href}>
+    <Link href={href}>
       <div className="group relative flex flex-col items-center gap-3 rounded-2xl border-2 border-[#4982CF] bg-white px-4 py-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer h-full">
         <div className="absolute top-3 left-3">
           <LiveBadge />
@@ -96,7 +99,7 @@ function ActiveTile({ mod }: { mod: Mod & { active: true } }) {
         </div>
         <div className="text-center space-y-0.5">
           <p className="text-xs font-bold text-slate-800 leading-snug">{mod.label}</p>
-          <p className="text-[10px] text-slate-400 leading-tight">{mod.desc}</p>
+          <p className="text-[10px] text-slate-400 leading-tight">{desc}</p>
         </div>
       </div>
     </Link>
@@ -121,13 +124,39 @@ function InactiveTile({ mod }: { mod: Mod & { active: false } }) {
   );
 }
 
+function LiveAllToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      title={checked ? "Showing all modules as Live" : "Showing only currently Live modules"}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-4 w-7 flex-none items-center rounded-full transition-colors duration-200 focus:outline-none ${
+        checked ? "bg-emerald-500" : "bg-slate-300"
+      }`}
+    >
+      <span
+        className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform duration-200 ${
+          checked ? "translate-x-3.5" : "translate-x-0.5"
+        }`}
+      />
+    </button>
+  );
+}
+
 export function Home() {
+  const [showAllLive, setShowAllLive] = useState(false);
+
   const today = new Date().toLocaleDateString("en-GB", {
     weekday: "long",
     day: "2-digit",
     month: "long",
     year: "numeric",
   });
+
+  const activeCount = MODULES.filter(m => m.active).length;
+  const inactiveCount = MODULES.length - activeCount;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-50">
@@ -174,16 +203,28 @@ export function Home() {
 
       {/* Module grid */}
       <main className="flex-1 overflow-y-auto px-8 py-8">
-        <div className="flex items-baseline gap-3 mb-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Available Modules</p>
-          <span className="text-[10px] text-slate-300">—</span>
-          <p className="text-[10px] text-slate-400">
-            <span className="font-semibold text-emerald-600">5 active</span> · 16 coming soon
-          </p>
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-baseline gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Available Modules</p>
+            <span className="text-[10px] text-slate-300">—</span>
+            <p className="text-[10px] text-slate-400">
+              {showAllLive ? (
+                <span className="font-semibold text-emerald-600">{MODULES.length} active</span>
+              ) : (
+                <>
+                  <span className="font-semibold text-emerald-600">{activeCount} active</span> · {inactiveCount} coming soon
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Show all as Live</span>
+            <LiveAllToggle checked={showAllLive} onChange={setShowAllLive} />
+          </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-3">
           {MODULES.map(mod =>
-            mod.active
+            mod.active || showAllLive
               ? <ActiveTile key={mod.id} mod={mod} />
               : <InactiveTile key={mod.id} mod={mod} />
           )}
