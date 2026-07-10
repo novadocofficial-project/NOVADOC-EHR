@@ -59,7 +59,20 @@ export type Patient = {
   dob: string;
   gender: "M" | "F" | "O";
   welfareEnrollment?: WelfareEnrollment;
+  /** Patient category used for billing/registration grouping (e.g. General, VIP, Corporate). */
+  patientType?: string;
+  /** Whether the patient record is currently active. Defaults to "active" when unset. */
+  status?: "active" | "inactive";
+  /** Preferred / usual consulting doctor — used for the "Consultation" filter on the Patients list. */
+  preferredDoctorId?: string;
+  /** Most recent appointment type recorded for this patient (New Patient, Follow-up, Walk-in, Referral). */
+  appointmentType?: string;
+  /** Most recent visit type id (references SEED_VISIT_TYPES) recorded for this patient. */
+  visitTypeId?: string;
 };
+
+export const PATIENT_TYPES = ["General", "VIP", "Corporate", "Insurance"];
+export const APPOINTMENT_TYPES = ["New Patient", "Follow-up", "Walk-in", "Referral"];
 
 export type VisitType = {
   id: string;
@@ -83,14 +96,18 @@ export const SEED_DOCTORS: Doctor[] = [
 ];
 
 export const SEED_PATIENTS: Patient[] = [
-  { id: "p-1", mrn: "MR-40291", name: "Sarah Jenkins",    phone: "+92 300 234-9182", dob: "1985-03-12", gender: "F" },
-  { id: "p-2", mrn: "MR-39102", name: "Michael Chang",    phone: "+92 311 882-1023", dob: "1990-07-22", gender: "M" },
-  { id: "p-3", mrn: "MR-38201", name: "Aisha Patel",      phone: "+92 321 441-2903", dob: "1978-11-05", gender: "F" },
-  { id: "p-4", mrn: "MR-41103", name: "Carlos Rivera",    phone: "+92 333 763-0018", dob: "2001-08-19", gender: "M" },
-  { id: "p-5", mrn: "MR-42210", name: "Emma Thompson",    phone: "+92 345 301-4782", dob: "1965-02-28", gender: "F" },
-  { id: "p-6", mrn: "MR-43001", name: "Raj Sharma",       phone: "+92 300 529-7201", dob: "1993-06-14", gender: "M" },
-  { id: "p-7", mrn: "MR-44120", name: "Fatima Al-Hassan", phone: "+92 312 917-3340", dob: "1982-09-30", gender: "F" },
-  { id: "p-8", mrn: "MR-45000", name: "David Okonkwo",    phone: "+92 321 643-8827", dob: "1977-12-01", gender: "M" },
+  { id: "p-1",  mrn: "MR-40291", name: "Sarah Jenkins",    phone: "+92 300 234-9182", dob: "1985-03-12", gender: "F", patientType: "General",   status: "active",   preferredDoctorId: "doc-1", appointmentType: "Follow-up",  visitTypeId: "vt-1" },
+  { id: "p-2",  mrn: "MR-39102", name: "Michael Chang",    phone: "+92 311 882-1023", dob: "1990-07-22", gender: "M", patientType: "Corporate",  status: "active",   preferredDoctorId: "doc-2", appointmentType: "New Patient", visitTypeId: "vt-1" },
+  { id: "p-3",  mrn: "MR-38201", name: "Aisha Patel",      phone: "+92 321 441-2903", dob: "1978-11-05", gender: "F", patientType: "General",   status: "inactive", preferredDoctorId: "doc-3", appointmentType: "Follow-up",  visitTypeId: "vt-3" },
+  { id: "p-4",  mrn: "MR-41103", name: "Carlos Rivera",    phone: "+92 333 763-0018", dob: "2001-08-19", gender: "M", patientType: "Insurance",  status: "active",   preferredDoctorId: "doc-1", appointmentType: "Walk-in",    visitTypeId: "vt-2" },
+  { id: "p-5",  mrn: "MR-42210", name: "Emma Thompson",    phone: "+92 345 301-4782", dob: "1965-02-28", gender: "F", patientType: "VIP",        status: "active",   preferredDoctorId: "doc-2", appointmentType: "Follow-up",  visitTypeId: "vt-1" },
+  { id: "p-6",  mrn: "MR-43001", name: "Raj Sharma",       phone: "+92 300 529-7201", dob: "1993-06-14", gender: "M", patientType: "General",   status: "inactive", preferredDoctorId: "doc-3", appointmentType: "New Patient", visitTypeId: "vt-1" },
+  { id: "p-7",  mrn: "MR-44120", name: "Fatima Al-Hassan", phone: "+92 312 917-3340", dob: "1982-09-30", gender: "F", patientType: "Corporate",  status: "active",   preferredDoctorId: "doc-1", appointmentType: "Referral",   visitTypeId: "vt-3" },
+  { id: "p-8",  mrn: "MR-45000", name: "David Okonkwo",    phone: "+92 321 643-8827", dob: "1977-12-01", gender: "M", patientType: "General",   status: "active",   preferredDoctorId: "doc-2", appointmentType: "Walk-in",    visitTypeId: "vt-2" },
+  { id: "p-9",  mrn: "MR-45812", name: "Layla Ahmadi",     phone: "+92 302 118-4477", dob: "1995-04-09", gender: "F", patientType: "Insurance",  status: "active",   preferredDoctorId: "doc-3", appointmentType: "New Patient", visitTypeId: "vt-1" },
+  { id: "p-10", mrn: "MR-46203", name: "Tom Baxter",       phone: "+92 313 559-2201", dob: "1970-01-17", gender: "M", patientType: "VIP",        status: "inactive", preferredDoctorId: "doc-1", appointmentType: "Follow-up",  visitTypeId: "vt-3" },
+  { id: "p-11", mrn: "MR-46955", name: "Nadia Yusuf",      phone: "+92 320 774-6689", dob: "1988-10-25", gender: "F", patientType: "General",   status: "active",   preferredDoctorId: "doc-2", appointmentType: "Walk-in",    visitTypeId: "vt-2" },
+  { id: "p-12", mrn: "MR-47502", name: "Hassan Iqbal",     phone: "+92 331 902-3315", dob: "1999-05-30", gender: "M", patientType: "Corporate",  status: "active",   preferredDoctorId: "doc-3", appointmentType: "New Patient", visitTypeId: "vt-1" },
 ];
 
 export const SEED_VISIT_TYPES: VisitType[] = [
@@ -272,6 +289,27 @@ export function HomeNavButton() {
     >
       <LayoutDashboard className="h-4 w-4" />
       Home
+    </Button>
+  );
+}
+
+// ─── Patients Nav Button (shared across all headers) ─────────────────────────
+
+export function PatientsNavButton() {
+  const [location, setLocation] = useLocation();
+  const isActive = location === "/patients";
+  return (
+    <Button
+      variant="ghost"
+      onClick={() => setLocation("/patients")}
+      className={`h-9 px-3 gap-1.5 text-sm font-medium ${
+        isActive
+          ? "bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15"
+          : "text-slate-600 hover:bg-slate-100"
+      }`}
+    >
+      <Users className="h-4 w-4" />
+      Patients
     </Button>
   );
 }
@@ -544,6 +582,7 @@ export function QueueAppHeader() {
         </div>
         <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
           <HomeNavButton />
+          <PatientsNavButton />
           <QueueNavDropdown />
           <AppointmentsNavDropdown />
           <ReportsNavDropdown />

@@ -52,5 +52,13 @@ export function usePatients() {
     });
   }, []);
 
-  return { patients, addPatient, updatePatient };
+  const deletePatient = useCallback((id: string) => {
+    setPatients(prev => {
+      const next = prev.filter(p => p.id !== id);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  return { patients, addPatient, updatePatient, deletePatient };
 }

@@ -447,7 +447,7 @@ function SectionCard({
 
 // ─── Edit Profile Drawer ──────────────────────────────────────────────────────
 
-function EditProfileDrawer({
+export function EditProfileDrawer({
   patient, onClose, onSave,
 }: {
   patient: Patient;
