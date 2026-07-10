@@ -604,10 +604,10 @@ export function QueueAppHeader() {
         </div>
         <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
           <HomeNavButton />
-          <PatientsNavButton />
-          <HealthRecordsNavButton />
           <QueueNavDropdown />
           <AppointmentsNavDropdown />
+          <PatientsNavButton />
+          <HealthRecordsNavButton />
           <ReportsNavDropdown />
         </nav>
       </div>
