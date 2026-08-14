@@ -1,0 +1,9 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "EwnNIEEPjI43F3Am6uODk"
+uri = "file://novadoc-ehr-features.csv"
+type = "table"
+title = "NovaDoc EHR Feature Checklist"
+description = "Complete feature checklist with 200+ features across 16 modules, ready to share with your client."

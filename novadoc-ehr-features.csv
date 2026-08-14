@@ -1,0 +1,242 @@
+Module,Feature,Status
+Home & Navigation,Central home dashboard with quick-access cards to all modules,☐
+Home & Navigation,Persistent top navigation bar with centered menu (Home / Queue / Appointments / Patients / Health Records / Messaging / Reports),☐
+Home & Navigation,Role-aware user profile display in header with settings access,☐
+Home & Navigation,Notification bell in header,☐
+Patient Management,Full patient directory with searchable and filterable list,☐
+Patient Management,Search by MRN / name / contact details,☐
+Patient Management,Patient registration form with demographics and contact info,☐
+Patient Management,Quick registration flow for walk-in patients,☐
+Patient Management,Unique MRN auto-assignment per patient,☐
+Patient Management,Patient profile — Face Sheet (demographics summary),☐
+Patient Management,Patient profile — Allergies & Medications tab,☐
+Patient Management,Patient profile — Lab & Imaging History tab,☐
+Patient Management,Patient profile — Clinical / SOAP Notes history tab,☐
+Patient Management,Patient profile — Scanned Documents & Files tab,☐
+Patient Management,Patient profile — Care Plan & Goals tab,☐
+Patient Management,Patient profile — Referrals tab,☐
+Patient Management,Patient profile — Health Education tab,☐
+Patient Management,Patient profile — Medical History tab,☐
+Patient Management,Custom registration sections and fields (admin-configurable),☐
+Patient Management,Patient type configuration (OPD / corporate / VIP etc.),☐
+Patient Management,Registration workflow builder (admin-configurable required/visible fields),☐
+Patient Management,Patient welfare scheme enrollment,☐
+Queue — Single Queue,Walk-in token generation with auto-increment numbering,☐
+Queue — Single Queue,Token display with waiting / called / completed status,☐
+Queue — Single Queue,Staff-triggered Call Next action,☐
+Queue — Single Queue,Token recall and skip functionality,☐
+Queue — Partitioned Queue,Per-doctor partition queues with separate token series,☐
+Queue — Partitioned Queue,Custom prefix per doctor partition,☐
+Queue — Partitioned Queue,Multi-counter support with independent queues,☐
+Queue — Multi-Step Visit,Full visit pipeline: Nursing → Doctor → Lab → Pharmacy,☐
+Queue — Multi-Step Visit,Patient cards move step-to-step automatically,☐
+Queue — Multi-Step Visit,Priority flag on patient cards,☐
+Queue — Multi-Step Visit,No-show / skip handling at each step,☐
+Queue — Multi-Step Visit,Single-consultation lock (prevents duplicate simultaneous sessions),☐
+Queue — Multi-Step Visit,Real-time cross-tab synchronization (BroadcastChannel),☐
+Queue — Multi-Step Visit,Queue statistics display (waiting / in-progress / completed counts),☐
+Queue — Front Desk View,FIFO queue with only first token callable at a time,☐
+Queue — Front Desk View,30-second call window with auto-skip after 3 failed attempts,☐
+Queue — Front Desk View,Skipped tokens panel with one-click Recall,☐
+Queue — Front Desk View,Registration drawer (search existing / register new patient),☐
+Queue — Front Desk View,Billing drawer (payment method / quick-amount chips / mark complete),☐
+Queue — Front Desk View,Appointment linking during check-in,☐
+Queue — Front Desk View,Full-screen drawer toggle,☐
+Queue — Nursing View,Nursing worklist filtered to patients at nursing step,☐
+Queue — Nursing View,Open nursing drawer per patient for vitals and history capture,☐
+Queue — Nursing View,Forward patient to Doctor step after nursing complete,☐
+Queue — Doctor View,Doctor worklist with patient cards showing waiting duration,☐
+Queue — Doctor View,Open SOAP note / clinical session per patient,☐
+Queue — Doctor View,SOAP note status badge on queue cards,☐
+Queue — Doctor View,Lab-results-ready banner on patient card,☐
+Queue — Lab View,Lab technician worklist for patients sent to lab step,☐
+Queue — Lab View,Receive lab orders and collect samples,☐
+Queue — Lab View,Enter results for any ordered test,☐
+Queue — Lab View,Round number display for multi-visit tracking,☐
+Appointments & Calendar,Day / week / month calendar views,☐
+Appointments & Calendar,Doctor-based slot generation from working hours,☐
+Appointments & Calendar,Create / edit / cancel appointments,☐
+Appointments & Calendar,Appointment statuses: Booked / Confirmed / Checked-In,☐
+Appointments & Calendar,Doctor and role-based calendar filtering,☐
+Appointments & Calendar,Patient lookup and linkage during booking,☐
+Appointments & Calendar,Appointment face sheet (patient demographics / allergies / history),☐
+Appointments & Calendar,Nursing appointment drawer (vitals / allergy / medication / care data),☐
+Appointments & Calendar,Invoice and billing per appointment,☐
+Appointments & Calendar,Thermal receipt printing per appointment,☐
+Appointments & Calendar,Check-in → Queue handoff workflow,☐
+Appointments & Calendar,Real-time appointment sync across browser tabs,☐
+Clinical / SOAP Notes,Draft → Review → Sign workflow,☐
+Clinical / SOAP Notes,Shared patient SOAP data repository (persists across sessions),☐
+Clinical / SOAP Notes,Completed notes history with timestamps,☐
+Clinical / SOAP Notes,Chief complaint chip selector,☐
+Clinical / SOAP Notes,HPI templates (admin-configurable / specialty-specific),☐
+Clinical / SOAP Notes,Free-text HPI entry,☐
+Clinical / SOAP Notes,Medical history (allergies / medications / past illnesses / surgical history),☐
+Clinical / SOAP Notes,Family history and social history,☐
+Clinical / SOAP Notes,Review of Systems (ROS) with configurable organ systems,☐
+Clinical / SOAP Notes,Allergy selector with severity and reaction,☐
+Clinical / SOAP Notes,Configurable physical examination builder,☐
+Clinical / SOAP Notes,Abnormality dropdown per examination finding (admin-configurable options),☐
+Clinical / SOAP Notes,Specialty-specific PE templates,☐
+Clinical / SOAP Notes,Diagnosis / Assessment with ICD-10 code search,☐
+Clinical / SOAP Notes,Diagnosis drawer with categorized suggestions,☐
+Clinical / SOAP Notes,Care plan and clinical goals section,☐
+Clinical / SOAP Notes,Referral destinations,☐
+Clinical / SOAP Notes,Health education material linkage,☐
+Clinical / SOAP Notes,Medicine selection from formulary catalogue,☐
+Clinical / SOAP Notes,Dose / frequency / route / duration prescription fields,☐
+Clinical / SOAP Notes,Prescription defaults (admin-configurable),☐
+Clinical / SOAP Notes,Drug interaction checker,☐
+Clinical / SOAP Notes,Pediatric dosing calculations,☐
+Clinical / SOAP Notes,Non-formulary (free-text) prescriptions,☐
+Clinical / SOAP Notes,Lab test ordering from master catalogue,☐
+Clinical / SOAP Notes,Lab order sets for bundled ordering,☐
+Clinical / SOAP Notes,POC (point-of-care) lab orders,☐
+Clinical / SOAP Notes,Lab order history carried into signed note,☐
+Clinical / SOAP Notes,Voided orders tracked and shown,☐
+Clinical / SOAP Notes,Sent-to-Lab status indicator on SOAP page,☐
+Clinical / SOAP Notes,Radiology / imaging test ordering from catalogue,☐
+Clinical / SOAP Notes,Imaging order sets,☐
+Clinical / SOAP Notes,Imaging partner selection per order,☐
+Clinical / SOAP Notes,Procedure ordering and documentation,☐
+Clinical / SOAP Notes,Scanned document upload and attachment per note,☐
+Clinical / SOAP Notes,Sign and print clinical note as PDF,☐
+Clinical / SOAP Notes,Print view with formatted layout,☐
+Clinical / SOAP Notes,Lab order timestamps shown on PDF,☐
+Clinical / SOAP Notes,Results Complete badge shown on PDF,☐
+Lab Module,Lab technician queue and worklist,☐
+Lab Module,Lab order receipt with patient and doctor context,☐
+Lab Module,Sample collection tracking,☐
+Lab Module,Result entry for any ordered test,☐
+Lab Module,Lab result templates,☐
+Lab Module,Lab providers management,☐
+Lab Module,Lab order sets (admin-configurable),☐
+Lab Module,Results-ready notification back to doctor queue,☐
+Lab Module,Collected-sample badge clearing when orders resolved,☐
+Nursing Module,Nursing queue and worklist,☐
+Nursing Module,Vitals capture (BP / pulse / temperature / weight / height / SpO₂ etc.),☐
+Nursing Module,Nursing history — chief complaint chips,☐
+Nursing Module,Nursing history — structured medical history panel,☐
+Nursing Module,Nursing history — allergies panel,☐
+Nursing Module,Nursing history — medications panel,☐
+Nursing Module,Nursing history — family and social history panels,☐
+Nursing Module,Triage algorithm application,☐
+Nursing Module,Nursing care tasks management,☐
+Nursing Module,Nursing procedures documentation,☐
+Nursing Module,Nursing appointment drawer (for appointment-based visits),☐
+Nursing Module,Admin-configurable nursing history templates and vitals fields,☐
+Nursing Module,Admin-configurable triage algorithms,☐
+Pharmacy & Formulary,Medicine / drug catalogue management,☐
+Pharmacy & Formulary,Formulary partner management,☐
+Pharmacy & Formulary,Formulary bundles (linked medicine packages),☐
+Pharmacy & Formulary,Drug interaction definitions and checking,☐
+Pharmacy & Formulary,Prescription defaults configuration,☐
+Pharmacy & Formulary,Pharmacy step in multi-step visit queue,☐
+Imaging Module,Imaging test master catalogue,☐
+Imaging Module,Imaging partners management,☐
+Imaging Module,Imaging order sets,☐
+Imaging Module,Reason-for-imaging templates,☐
+Imaging Module,Imaging partner shown alongside test in orders,☐
+Vaccines & Consumables,Vaccine master catalogue with partner management,☐
+Vaccines & Consumables,Consumable items catalogue,☐
+Vaccines & Consumables,Consumable providers management,☐
+Health Records,Centralized health records list page,☐
+Health Records,Records linked to patient and visit,☐
+Health Records,View record as PDF (full clinical note),☐
+Health Records,Delete record with confirmation,☐
+Health Records,Columns: Patient / MRN / Doctor / Date / Visit Type / Note Type,☐
+Internal Staff Messaging,Staff directory (Doctors / Nurses / Front Desk / Lab / Admin),☐
+Internal Staff Messaging,Role and department display per staff member,☐
+Internal Staff Messaging,One-to-one conversation threads,☐
+Internal Staff Messaging,Unread message indicator,☐
+Internal Staff Messaging,Compose and send messages,☐
+Internal Staff Messaging,Message timestamps,☐
+Internal Staff Messaging,Contact search and filter by role,☐
+Internal Staff Messaging,Local persistence (messages survive page refresh),☐
+Billing & Financial Transactions,Financial transactions dashboard (summary view),☐
+Billing & Financial Transactions,Invoice records linked to appointments,☐
+Billing & Financial Transactions,Payment method tracking,☐
+Billing & Financial Transactions,Paid / unpaid status tracking,☐
+Billing & Financial Transactions,Thermal receipt printing per transaction,☐
+Billing & Financial Transactions,Service catalogue-based billing (labs / procedures / medicines / consumables / imaging),☐
+Billing & Financial Transactions,Provider price overrides per service,☐
+Billing & Financial Transactions,Taxable flag per service,☐
+Billing & Financial Transactions,Department assignment per service,☐
+Billing & Financial Transactions,Corporate pricing plans,☐
+Billing & Financial Transactions,Insurance pricing plans,☐
+Billing & Financial Transactions,Doctor fee and revenue share configuration,☐
+Billing & Financial Transactions,Welfare scheme enrollment and application,☐
+Billing & Financial Transactions,Packages / billing bundles,☐
+Reports,Financial summary dashboard,☐
+Reports,Transaction list with filtering,☐
+Reports,Report-oriented navigation and export,☐
+Admin — Org Structure,Department and sub-department management,☐
+Admin — Org Structure,Medical specialties configuration,☐
+Admin — Org Structure,Branch / clinic location management,☐
+Admin — Org Structure,Branch queue mode quick-change badge,☐
+Admin — Staff & Users,Doctor profile management (name / specialty / counter / color / initials),☐
+Admin — Staff & Users,Doctor schedule / working hours and appointment eligibility,☐
+Admin — Staff & Users,Doctor fees and revenue share configuration,☐
+Admin — Staff & Users,User account and counter assignment,☐
+Admin — Staff & Users,Role-based access and permissions,☐
+Admin — Staff & Users,Signing rules configuration,☐
+Admin — Registration Config,Custom registration sections,☐
+Admin — Registration Config,Custom field types (text / number / select / date etc.),☐
+Admin — Registration Config,Field width control in horizontal layout,☐
+Admin — Registration Config,Required / visible field toggles,☐
+Admin — Registration Config,Registration workflow builder,☐
+Admin — Registration Config,Quick registration field selection,☐
+Admin — Registration Config,Edit / rename a custom field after creation,☐
+Admin — Queue Config,Visit type management,☐
+Admin — Queue Config,Counter type and counter management,☐
+Admin — Queue Config,Token numbering rules and prefixes,☐
+Admin — Queue Config,Queue behavior settings (locking / call window / skip rules),☐
+Admin — Queue Config,Doctor partition setup,☐
+Admin — Queue Config,Routing rules per visit type,☐
+Admin — Queue Config,Display screen configuration (patient-facing waiting room screens),☐
+Admin — Queue Config,Queue mode persistence across page refresh,☐
+Admin — Queue Config,Branch-level queue visit type persistence,☐
+Admin — Clinical Config,SOAP note structure customization,☐
+Admin — Clinical Config,Vitals fields configuration,☐
+Admin — Clinical Config,HPI template builder,☐
+Admin — Clinical Config,Physical examination builder (add / edit / reorder systems and findings),☐
+Admin — Clinical Config,PE abnormality options per finding (admin-configurable),☐
+Admin — Clinical Config,Specialty-specific PE template assignment,☐
+Admin — Clinical Config,Clinical complaints library,☐
+Admin — Clinical Config,ICD-10 diagnosis library,☐
+Admin — Clinical Config,POC lab test list,☐
+Admin — Clinical Config,ROS (Review of Systems) configuration,☐
+Admin — Clinical Config,Allergy / family history / social history library,☐
+Admin — Clinical Config,Clinical goals / care plan library,☐
+Admin — Clinical Config,Referral destination management,☐
+Admin — Clinical Config,Comorbidities and surgical procedures library,☐
+Admin — Clinical Config,Health Education document library,☐
+Admin — Nursing Config,Nursing history template management,☐
+Admin — Nursing Config,Nursing vitals configuration,☐
+Admin — Nursing Config,Triage algorithm builder,☐
+Admin — Nursing Config,Nursing procedure templates,☐
+Admin — Lab Config,Lab test master catalogue,☐
+Admin — Lab Config,Lab provider management,☐
+Admin — Lab Config,Lab result templates,☐
+Admin — Lab Config,Lab order sets,☐
+Admin — Imaging Config,Imaging test catalogue,☐
+Admin — Imaging Config,Imaging partner management,☐
+Admin — Imaging Config,Imaging order sets,☐
+Admin — Imaging Config,Imaging reason templates,☐
+Admin — Pharmacy Config,Drug / medicine catalogue,☐
+Admin — Pharmacy Config,Formulary partner management,☐
+Admin — Pharmacy Config,Formulary bundles,☐
+Admin — Pharmacy Config,Drug interaction rules,☐
+Admin — Pharmacy Config,Prescription defaults,☐
+Admin — Pricing & Finance,Service pricing (catalogue-derived),☐
+Admin — Pricing & Finance,Provider price overrides / active / taxable flags / department assignment,☐
+Admin — Pricing & Finance,Service packages / billing bundles,☐
+Admin — Pricing & Finance,Corporate pricing plans,☐
+Admin — Pricing & Finance,Insurance pricing plans,☐
+Admin — Pricing & Finance,Fee schedule management,☐
+Admin — Pricing & Finance,Doctor revenue share settings,☐
+Admin — Pricing & Finance,Welfare scheme management,☐
+Patient Display Screens,Now-serving token display (per queue / counter),☐
+Patient Display Screens,Waiting list with queue positions,☐
+Patient Display Screens,Multi-partition / multi-counter display,☐
+Patient Display Screens,Admin-configurable display screen settings,☐
