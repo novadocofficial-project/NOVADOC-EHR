@@ -72,12 +72,6 @@ export function OurVision() {
 
       <main className="flex-1 px-5 py-8 sm:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-5 flex justify-end">
-            <span className="hidden rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold text-slate-500 sm:block">
-              {VISION_AREAS.length} care areas
-            </span>
-          </div>
-
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {VISION_AREAS.map((area, index) => {
               const Icon = area.icon;
