@@ -679,7 +679,7 @@ export function QueueAppHeader() {
         </div>
         <div className="relative hidden sm:block">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-          <Input placeholder="Search MRN, Name..." className="h-9 w-64 border-slate-200 bg-slate-50 pl-9 text-sm focus-visible:ring-[#4982CF]" />
+          <Input placeholder="Search MRN, Name..." className="h-9 w-40 border-slate-200 bg-slate-50 pl-9 text-sm focus-visible:ring-[#4982CF]" />
         </div>
         <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-500 hover:text-slate-700">
           <Bell className="h-5 w-5" />

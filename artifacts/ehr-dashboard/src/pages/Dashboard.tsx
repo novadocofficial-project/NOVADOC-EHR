@@ -49,7 +49,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { HomeNavButton, QueueNavDropdown, AppointmentsNavDropdown, ReportsNavDropdown } from "@/pages/QueuePageLayout";
+import {
+  HomeNavButton,
+  QueueNavDropdown,
+  AppointmentsNavDropdown,
+  PatientsNavButton,
+  HealthRecordsNavButton,
+  MessagingNavButton,
+  ReportsNavDropdown,
+} from "@/pages/QueuePageLayout";
 import { getPatientIdByMrn } from "@/hooks/usePatients";
 
 const SUMMARY_STATS = [
@@ -693,22 +701,23 @@ export function Dashboard() {
         />
       )}
       
-      <header className="z-20 flex h-14 flex-none items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center">
-            <img src="/novadoc-logo.png" alt="NovaDoc" className="h-8 w-auto" />
-          </div>
-          <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
-            <HomeNavButton />
-            <QueueNavDropdown />
-            <AppointmentsNavDropdown />
-            <ReportsNavDropdown />
-          </nav>
+      <header className="z-20 relative flex h-14 flex-none items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm">
+        <div className="flex items-center">
+          <img src="/novadoc-logo.png" alt="NovaDoc" className="h-8 w-auto" />
         </div>
+        <nav className="hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1 text-sm font-medium text-slate-600 md:flex">
+          <HomeNavButton />
+          <QueueNavDropdown />
+          <AppointmentsNavDropdown />
+          <PatientsNavButton />
+          <HealthRecordsNavButton />
+          <MessagingNavButton />
+          <ReportsNavDropdown />
+        </nav>
         <div className="flex items-center gap-3">
           <div className="relative hidden sm:block">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-            <Input placeholder="Search MRN, Name..." className="h-9 w-64 border-slate-200 bg-slate-50 pl-9 text-sm focus-visible:ring-[#4982CF]" />
+            <Input placeholder="Search MRN, Name..." className="h-9 w-40 border-slate-200 bg-slate-50 pl-9 text-sm focus-visible:ring-[#4982CF]" />
           </div>
           <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-500 hover:text-slate-700">
             <Bell className="h-5 w-5" />
