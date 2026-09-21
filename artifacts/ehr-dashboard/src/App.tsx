@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { Home } from "@/pages/Home";
+import { OurVision } from "@/pages/OurVision";
 import { Dashboard } from "@/pages/Dashboard";
 import { AdminSettings } from "@/pages/AdminSettings";
 import { QueueTokenSingle } from "@/pages/QueueTokenSingle";
@@ -25,6 +26,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/our-vision" component={OurVision} />
       <Route path="/reports" component={Dashboard} />
       <Route path="/admin" component={AdminSettings} />
       <Route path="/queue/token/single" component={QueueTokenSingle} />

@@ -2,7 +2,7 @@ import { useLocation, Link } from "wouter";
 import {
   Bell, Search, Ticket, ChevronDown, Zap, Users, Workflow, BarChart2, Receipt,
   X, Printer, ArrowRight, Heart, Stethoscope, FlaskConical, LayoutDashboard, Calendar,
-  FileText, MessageSquare,
+  FileText, MessageSquare, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -274,23 +274,65 @@ export function uid() {
   return `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
-// ─── Home Nav Button (shared across all headers) ──────────────────────────────
+// ─── Home Nav Dropdown (shared across all headers) ────────────────────────────
 
-export function HomeNavButton() {
+export function HomeNavButton({ compact = false }: { compact?: boolean } = {}) {
   const [location, setLocation] = useLocation();
+  const isActive = location === "/" || location === "/our-vision";
+
   return (
-    <Button
-      variant="ghost"
-      onClick={() => setLocation("/")}
-      className={`h-9 px-3 gap-1.5 text-sm font-medium ${
-        location === "/"
-          ? "bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15"
-          : "text-slate-600 hover:bg-slate-100"
-      }`}
-    >
-      <LayoutDashboard className="h-4 w-4" />
-      Home
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size={compact ? "icon" : "default"}
+          aria-label={compact ? "Open Home menu" : undefined}
+          className={`h-9 px-3 gap-1.5 text-sm font-medium ${
+            isActive
+              ? "bg-[#4982CF]/10 text-[#4982CF] hover:bg-[#4982CF]/15"
+              : "text-slate-600 hover:bg-slate-100"
+          } ${compact ? "w-9 px-0" : ""}`}
+        >
+          <LayoutDashboard className="h-4 w-4" />
+          {!compact && (
+            <>
+              Home
+              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+            </>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52">
+        <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-2">
+          Home
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => setLocation("/")}
+          className={`gap-3 cursor-pointer py-2 ${location === "/" ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
+        >
+          <span className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <LayoutDashboard className="h-3.5 w-3.5 text-[#4982CF]" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold leading-tight">Platform</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Healthcare management modules</p>
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setLocation("/our-vision")}
+          className={`gap-3 cursor-pointer py-2 ${location === "/our-vision" ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
+        >
+          <span className="h-7 w-7 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+            <Eye className="h-3.5 w-3.5 text-violet-600" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold leading-tight">Our Vision</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Our continuum of care</p>
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -632,6 +674,9 @@ export function QueueAppHeader() {
         <ReportsNavDropdown />
       </nav>
       <div className="flex items-center gap-3">
+        <div className="md:hidden">
+          <HomeNavButton compact />
+        </div>
         <div className="relative hidden sm:block">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
           <Input placeholder="Search MRN, Name..." className="h-9 w-64 border-slate-200 bg-slate-50 pl-9 text-sm focus-visible:ring-[#4982CF]" />
