@@ -72,11 +72,7 @@ export function OurVision() {
 
       <main className="flex-1 px-5 py-8 sm:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#4982CF]">Continuum of Care</p>
-              <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-800">Healthcare that meets people where they are</h2>
-            </div>
+          <div className="mb-5 flex justify-end">
             <span className="hidden rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold text-slate-500 sm:block">
               {VISION_AREAS.length} care areas
             </span>
