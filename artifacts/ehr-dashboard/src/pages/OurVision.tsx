@@ -64,7 +64,7 @@ export function OurVision() {
             <span className="text-xs font-semibold tracking-wide text-emerald-400">Connected Care for Every Community</span>
           </div>
           <h1 className="max-w-3xl text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl">
-            Our Vision for Healthcare
+            Long Term Scope for Healthcare
           </h1>
           <p className="mt-2 w-full text-sm leading-5 text-blue-100/75">
             One connected health ecosystem designed to make quality care accessible across every stage of life, every location, and every level of need.
