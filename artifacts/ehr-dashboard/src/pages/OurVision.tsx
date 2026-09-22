@@ -6,6 +6,7 @@ import {
   Building2,
   Cross,
   Dna,
+  HandHeart,
   HeartHandshake,
   House,
   MapPin,
@@ -39,6 +40,7 @@ const VISION_AREAS: VisionArea[] = [
   { label: "Community Outreach Healthcare", description: "Health services brought directly into communities", icon: Users, iconColor: "#d97706", iconBg: "#fef3c7" },
   { label: "Home Health and Palliative Care", description: "Dignified, personalized care in the comfort of home", icon: House, iconColor: "#c2410c", iconBg: "#ffedd5" },
   { label: "Genetic Disease Clinic", description: "Specialized assessment and lifelong genetic care", icon: Dna, iconColor: "#6d28d9", iconBg: "#ede9fe" },
+  { label: "Social Determinants of Health", description: "Addresses the root cause of disease via community health social workers", icon: HandHeart, iconColor: "#0369a1", iconBg: "#e0f2fe" },
   { label: "Population Health", description: "Data-led programs that improve health at scale", icon: Ribbon, iconColor: "#be123c", iconBg: "#ffe4e6" },
 ];
 
