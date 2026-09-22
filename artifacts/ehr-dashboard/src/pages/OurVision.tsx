@@ -46,10 +46,10 @@ const VISION_AREAS: VisionArea[] = [
 
 export function OurVision() {
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-50">
       <QueueAppHeader />
 
-      <section className="relative flex-none overflow-hidden bg-gradient-to-br from-[#0f2544] via-[#1a3460] to-[#2d5fa8] px-5 py-10 sm:px-8">
+      <section className="relative flex-none overflow-hidden bg-gradient-to-br from-[#0f2544] via-[#1a3460] to-[#2d5fa8] px-5 py-6 sm:px-8">
         <div
           className="absolute inset-0 opacity-[0.07]"
           style={{
@@ -66,13 +66,13 @@ export function OurVision() {
           <h1 className="max-w-3xl text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl">
             Our Vision for Healthcare
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100/75">
+          <p className="mt-2 w-full text-sm leading-5 text-blue-100/75">
             One connected health ecosystem designed to make quality care accessible across every stage of life, every location, and every level of need.
           </p>
         </div>
       </section>
 
-      <main className="flex-1 px-5 py-8 sm:px-8">
+      <main className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-8">
         <div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {VISION_AREAS.map((area, index) => {
