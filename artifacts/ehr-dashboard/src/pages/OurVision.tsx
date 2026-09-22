@@ -34,14 +34,14 @@ const VISION_AREAS: VisionArea[] = [
   { label: "Urgent Care", description: "Timely treatment for immediate health concerns", icon: Cross, iconColor: "#ea580c", iconBg: "#ffedd5" },
   { label: "Emergency Care", description: "Rapid clinical response when every minute matters", icon: Ambulance, iconColor: "#dc2626", iconBg: "#fee2e2" },
   { label: "Preventive Health and Wellness (NCD)", description: "Proactive screening and long-term disease prevention", icon: Activity, iconColor: "#059669", iconBg: "#d1fae5" },
-  { label: "Mental Healthcare", description: "Compassionate support for emotional wellbeing", icon: Brain, iconColor: "#9333ea", iconBg: "#f3e8ff" },
-  { label: "Specialty Care", description: "Expert pathways for complex health needs", icon: Stethoscope, iconColor: "#0891b2", iconBg: "#cffafe" },
-  { label: "Telemedicine and Digital Clinic", description: "Care without distance through connected clinics", icon: Video, iconColor: "#0d9488", iconBg: "#ccfbf1" },
-  { label: "Community Outreach Healthcare", description: "Health services brought directly into communities", icon: Users, iconColor: "#d97706", iconBg: "#fef3c7" },
+  { label: "Mental Healthcare", description: "Integrating mental healthcare to primary care", icon: Brain, iconColor: "#9333ea", iconBg: "#f3e8ff" },
+  { label: "Specialty Care", description: "Ambulatory specialist care for complex health needs", icon: Stethoscope, iconColor: "#0891b2", iconBg: "#cffafe" },
+  { label: "Telemedicine and Digital Clinic", description: "Access to healthcare in remote areas", icon: Video, iconColor: "#0d9488", iconBg: "#ccfbf1" },
+  { label: "Community Outreach Healthcare", description: "Healthcare services based in community", icon: Users, iconColor: "#d97706", iconBg: "#fef3c7" },
   { label: "Home Health and Palliative Care", description: "Dignified, personalized care in the comfort of home", icon: House, iconColor: "#c2410c", iconBg: "#ffedd5" },
-  { label: "Genetic Disease Clinic", description: "Specialized assessment and lifelong genetic care", icon: Dna, iconColor: "#6d28d9", iconBg: "#ede9fe" },
+  { label: "Genetic Disease Clinic", description: "Specialize genetic disease evaluation and management", icon: Dna, iconColor: "#6d28d9", iconBg: "#ede9fe" },
   { label: "Social Determinants of Health", description: "Addresses the root cause of disease via community health social workers", icon: HandHeart, iconColor: "#0369a1", iconBg: "#e0f2fe" },
-  { label: "Population Health", description: "Data-led programs that improve health at scale", icon: Ribbon, iconColor: "#be123c", iconBg: "#ffe4e6" },
+  { label: "Population Health", description: "Data led population health, research leading to innovation of care", icon: Ribbon, iconColor: "#be123c", iconBg: "#ffe4e6" },
 ];
 
 export function OurVision() {
