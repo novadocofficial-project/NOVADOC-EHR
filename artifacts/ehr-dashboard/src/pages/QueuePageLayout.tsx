@@ -327,7 +327,7 @@ export function HomeNavButton({ compact = false }: { compact?: boolean } = {}) {
             <Eye className="h-3.5 w-3.5 text-violet-600" />
           </span>
           <div>
-            <p className="text-sm font-semibold leading-tight">Our Vision</p>
+            <p className="text-sm font-semibold leading-tight">Our Scope</p>
             <p className="text-[10px] text-slate-400 leading-tight">Our continuum of care</p>
           </div>
         </DropdownMenuItem>
