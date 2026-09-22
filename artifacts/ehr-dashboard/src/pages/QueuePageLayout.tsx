@@ -278,7 +278,7 @@ export function uid() {
 
 export function HomeNavButton({ compact = false }: { compact?: boolean } = {}) {
   const [location, setLocation] = useLocation();
-  const isActive = location === "/" || location === "/our-vision";
+  const isActive = location === "/" || location === "/our-scope" || location === "/our-vision";
 
   return (
     <DropdownMenu>
@@ -320,8 +320,8 @@ export function HomeNavButton({ compact = false }: { compact?: boolean } = {}) {
           </div>
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => setLocation("/our-vision")}
-          className={`gap-3 cursor-pointer py-2 ${location === "/our-vision" ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
+          onClick={() => setLocation("/our-scope")}
+          className={`gap-3 cursor-pointer py-2 ${location === "/our-scope" ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
         >
           <span className="h-7 w-7 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
             <Eye className="h-3.5 w-3.5 text-violet-600" />
@@ -329,6 +329,18 @@ export function HomeNavButton({ compact = false }: { compact?: boolean } = {}) {
           <div>
             <p className="text-sm font-semibold leading-tight">Our Scope</p>
             <p className="text-[10px] text-slate-400 leading-tight">Our continuum of care</p>
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setLocation("/our-vision")}
+          className={`gap-3 cursor-pointer py-2 ${location === "/our-vision" ? "bg-[#4982CF]/8 text-[#4982CF]" : ""}`}
+        >
+          <span className="h-7 w-7 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+            <Heart className="h-3.5 w-3.5 text-emerald-600" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold leading-tight">Our Vision</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Principles guiding our platform</p>
           </div>
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -44,7 +44,7 @@ const VISION_AREAS: VisionArea[] = [
   { label: "Population Health", description: "Data led population health, research leading to innovation of care", icon: Ribbon, iconColor: "#be123c", iconBg: "#ffe4e6" },
 ];
 
-export function OurVision() {
+export function OurScope() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-50">
       <QueueAppHeader />
