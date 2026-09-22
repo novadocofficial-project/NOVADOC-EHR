@@ -58,7 +58,7 @@ export function OurVision() {
           }}
         />
         <div className="absolute -bottom-24 -right-16 h-72 w-72 rounded-full bg-blue-300/10 blur-2xl" />
-        <div className="relative z-10 mx-auto max-w-7xl">
+        <div className="relative z-10">
           <div className="mb-3 flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.15)]" />
             <span className="text-xs font-semibold tracking-wide text-emerald-400">Connected Care for Every Community</span>
@@ -73,7 +73,7 @@ export function OurVision() {
       </section>
 
       <main className="flex-1 px-5 py-8 sm:px-8">
-        <div className="mx-auto max-w-7xl">
+        <div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {VISION_AREAS.map((area, index) => {
               const Icon = area.icon;
